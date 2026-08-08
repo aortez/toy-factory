@@ -38,6 +38,8 @@ build/zephyr/zephyr.uf2
 Useful commands:
 
 ```sh
+make          # show all available targets (`make help` also works)
+make build    # build the firmware
 make setup    # explicitly refresh the pinned west dependencies
 make format   # format the application C source in the container
 make check    # formatting, whitespace, and a clean build
