@@ -10,7 +10,7 @@ The first milestone intentionally exercises only low-risk hardware:
 - exposes the Zephyr log console over USB CDC ACM;
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
-- initializes the LCD over SPI and draws an asymmetric orientation target;
+- initializes the LCD over SPI and draws an asymmetric target with a movable marker;
 - emits a five-second heartbeat over USB and on the blue LED.
 
 The LCD backlight is held off until the test frame is complete, then enabled at
@@ -66,6 +66,10 @@ top at low brightness. The RGB LED should show red, green, and blue in sequence,
 then blink blue. A/B/X illuminate red/green/blue respectively; Y illuminates all
 three channels.
 
+A white-bordered magenta marker starts in the center. The D-pad moves it in
+8-pixel steps and repeats while held. Each move redraws only the marker's old
+and new bounds. Press A to force a full-screen redraw for comparison.
+
 The ROM bootloader is independent of the application, so a faulty Zephyr image
 can normally be replaced by repeating the hold-X procedure.
 
@@ -85,8 +89,12 @@ with a different number.
 Expected messages include button press/release events and a periodic line like:
 
 ```text
-<inf> picosystem_playground: alive: uptime=10000 ms, buttons=0x00, display=109393 us
+<inf> picosystem_display_test: Partial #1: 24x32 at (108,100), 2130 us, 704 KiB/s
+<inf> picosystem_playground: alive: uptime=10000 ms, buttons=0x00, full=116593 us, partial=2130 us/24x32 (#1)
 ```
+
+After moving the marker, the log also reports the dirty rectangle and measured
+transfer rate.
 
 ## Repository layout
 
@@ -108,7 +116,9 @@ See [the hardware map](docs/hardware.md) before adding peripherals and
 `make check` verifies configuration, device tree, compilation, linking, and UF2
 generation. USB CDC, all eight buttons, the RGB heartbeat, hold-X recovery, and
 the asymmetric display target at 20 MHz and 25% backlight have been checked on
-one PIM559. Its bounded eight-row renderer measured 109393 us for a full frame.
+one PIM559. Its bounded eight-row renderer measured 109393 us for the static
+target and about 116 ms with the movable marker. Cardinal partial updates took
+1.83-2.13 ms; diagonal updates took 2.29-2.60 ms without visible corruption.
 Backlight startup behavior and flash-size behavior still require physical
 confirmation. Record those results in the roadmap rather than treating a
 successful cross-build as hardware validation.

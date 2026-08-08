@@ -54,3 +54,9 @@ eight-row chunks took 109393 us (1028 KiB/s). The earlier one-row baseline took
 194685 us (577 KiB/s), so batching reduced latency by about 44%. These figures
 measure the complete Zephyr display call path, including panel-window and driver
 overhead; they are not raw SPI wire-speed measurements.
+
+With the interactive marker overlay, repeated full redraws took 116137-116895
+us. Cardinal 32 x 24 or 24 x 32 dirty rectangles took 1832-2130 us (704-818
+KiB/s), while diagonal 32 x 32 rectangles took 2285-2602 us (768-875 KiB/s).
+More than 300 held-key updates, diagonal moves, and edge clamps completed
+without a display-write error or visible corruption.

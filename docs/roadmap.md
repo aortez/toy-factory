@@ -30,7 +30,8 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add an asymmetric corner/arrow orientation target.
 - [x] Confirm target orientation and 20 MHz SPI transfer timing on hardware.
 - [x] Measure full-frame throughput with a bounded eight-row buffer.
-- [ ] Measure partial-update throughput.
+- [x] Add a bounded interactive dirty-rectangle test.
+- [x] Measure partial-update throughput.
 - [ ] Confirm that backlight-off is the safe startup state.
 
 ## 3. Remaining board peripherals

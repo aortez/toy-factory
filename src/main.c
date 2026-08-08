@@ -18,6 +18,8 @@
 
 LOG_MODULE_REGISTER(picosystem_playground, LOG_LEVEL_INF);
 
+#define DISPLAY_MOVE_REPEAT_MS 100
+
 enum button_index {
 	BUTTON_UP,
 	BUTTON_DOWN,
@@ -29,6 +31,8 @@ enum button_index {
 	BUTTON_Y,
 	BUTTON_COUNT,
 };
+
+#define DPAD_BUTTON_MASK (BIT(BUTTON_UP) | BIT(BUTTON_DOWN) | BIT(BUTTON_LEFT) | BIT(BUTTON_RIGHT))
 
 struct named_gpio {
 	const char *name;
@@ -163,7 +167,7 @@ static void log_button_changes(uint32_t previous_state, uint32_t state)
 
 int main(void)
 {
-	struct picosystem_display_test_result display_result;
+	struct picosystem_display_test_state display_state;
 
 	for (size_t i = 0; i < ARRAY_SIZE(buttons); ++i) {
 		const int err = configure_input(&buttons[i]);
@@ -193,7 +197,7 @@ int main(void)
 		return err;
 	}
 
-	err = picosystem_display_test_run(&display_result);
+	err = picosystem_display_test_run(&display_state);
 	if (err != 0) {
 		LOG_ERR("Display smoke test failed (%d)", err);
 		const int led_err = set_rgb(true, false, false);
@@ -204,10 +208,12 @@ int main(void)
 	}
 
 	LOG_INF("PicoSystem GPIO bring-up ready");
-	LOG_INF("A=red, B=green, X=blue, Y=white; D-pad events are logged");
+	LOG_INF("D-pad moves the marker; A forces a full redraw for comparison");
+	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 
 	uint32_t previous_state = 0U;
 	int64_t next_status_time = k_uptime_get() + 5000;
+	int64_t next_move_time = 0;
 
 	while (true) {
 		uint32_t state;
@@ -217,7 +223,49 @@ int main(void)
 			return err;
 		}
 
+		const int64_t now = k_uptime_get();
+		const uint32_t pressed = state & ~previous_state;
+		const bool dpad_changed = ((state ^ previous_state) & DPAD_BUTTON_MASK) != 0U;
+		const uint32_t dpad_state = state & DPAD_BUTTON_MASK;
+
 		log_button_changes(previous_state, state);
+
+		if (dpad_state == 0U) {
+			next_move_time = now;
+		} else if (dpad_changed || (now >= next_move_time)) {
+			int8_t horizontal = 0;
+			int8_t vertical = 0;
+
+			if ((state & BIT(BUTTON_LEFT)) != 0U) {
+				--horizontal;
+			}
+			if ((state & BIT(BUTTON_RIGHT)) != 0U) {
+				++horizontal;
+			}
+			if ((state & BIT(BUTTON_UP)) != 0U) {
+				--vertical;
+			}
+			if ((state & BIT(BUTTON_DOWN)) != 0U) {
+				++vertical;
+			}
+
+			err = picosystem_display_test_move(&display_state, horizontal, vertical);
+			if (err != 0) {
+				LOG_ERR("Partial display update failed (%d)", err);
+				return err;
+			}
+
+			next_move_time = now + DISPLAY_MOVE_REPEAT_MS;
+		}
+
+		if ((pressed & BIT(BUTTON_A)) != 0U) {
+			err = picosystem_display_test_redraw(&display_state);
+			if (err != 0) {
+				LOG_ERR("Full display redraw failed (%d)", err);
+				return err;
+			}
+		}
+
 		previous_state = state;
 
 		const bool y_pressed = (state & BIT(BUTTON_Y)) != 0U;
@@ -236,10 +284,13 @@ int main(void)
 			return err;
 		}
 
-		const int64_t now = k_uptime_get();
 		if (now >= next_status_time) {
-			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, display=%u us", now, state,
-				display_result.frame_time_us);
+			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, full=%u us, "
+				"partial=%u us/%ux%u (#%u)",
+				now, state, display_state.full_frame_time_us,
+				display_state.last_partial_time_us,
+				display_state.last_partial_width, display_state.last_partial_height,
+				display_state.partial_update_count);
 			next_status_time = now + 5000;
 		}
 
