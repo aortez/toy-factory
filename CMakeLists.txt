@@ -8,6 +8,7 @@ project(picosystem_playground)
 
 target_sources(app PRIVATE
 	src/battery.c
+	src/diagnostic_shell.c
 	src/display_test.c
 	src/main.c
 	src/piezo.c

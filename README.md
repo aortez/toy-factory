@@ -7,14 +7,14 @@ Docker Compose plugin.
 The first milestone intentionally exercises only low-risk hardware:
 
 - boots a Zephyr 4.4.2 image from the RP2040 UF2 bootloader;
-- exposes the Zephyr log console over USB CDC ACM;
+- exposes an interactive Zephyr shell and log console over USB CDC ACM;
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
 - initializes the LCD over SPI and draws an asymmetric target with a movable marker;
 - plays a short, bounded piezo tone when B is pressed;
-- averages and reports the GP26 battery-voltage ADC every five seconds;
+- averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
 - classifies the GP2 VBUS and active-low GP24 charger-status inputs;
-- emits a five-second heartbeat over USB and on the blue LED.
+- emits a 30-second log heartbeat and a faster visual heartbeat on the blue LED.
 
 The LCD backlight is held off until the test frame is complete, then enabled at
 25%. The piezo starts silent and uses a conservative 25 us active pulse for the
@@ -81,7 +81,7 @@ before.
 The ROM bootloader is independent of the application, so a faulty Zephyr image
 can normally be replaced by repeating the hold-X procedure.
 
-## USB log console
+## USB diagnostic shell and log console
 
 After the application boots, the same USB cable presents a CDC ACM serial
 device. On Linux it will usually be `/dev/ttyACM0`:
@@ -92,7 +92,29 @@ make monitor PORT=/dev/ttyACM0
 
 The monitor also runs inside Docker. Press `Ctrl+]` to exit its terminal.
 The port disconnects briefly each time the PicoSystem resets and may return
-with a different number.
+with a different number. Press Enter after connecting to reveal the
+`picosystem:~$` prompt. Tab completion, command history, and asynchronous Zephyr
+logs share the same terminal.
+
+The application adds these commands:
+
+```text
+picosystem status
+picosystem buttons
+picosystem led auto|off|red|green|blue|white
+picosystem tone <frequency_hz> <duration_ms>
+picosystem display stats
+```
+
+`picosystem status` returns current uptime and software LED mode alongside one
+coherent hardware snapshot containing buttons, USB/charger state, the most
+recent battery sample and its age, display timing, and sprite position.
+`buttons` is a compact live-input view.
+The LED override takes effect in the main hardware loop; `auto` restores the
+button colors and blue heartbeat. The independent hardware red charge indicator
+is not disabled by `led off`. Tone requests are constrained to 100-4000 Hz and
+1-1000 ms and are queued for the main loop rather than driving PWM from the
+shell thread. Enter `picosystem -h` for command help.
 
 Expected messages include button press/release events and a periodic line like:
 
@@ -112,7 +134,8 @@ charge-percentage estimate. Power status is reported as `battery`,
 VBUS is retained as a separate diagnostic state. Each active charger sample
 holds `usb-charging` for one second so sampled status pulses do not flood the
 log. A resulting input combination must remain unchanged for 250 ms before it
-replaces the reported state.
+replaces the reported state. Routine battery/heartbeat logging now occurs every
+30 seconds; use `picosystem status` for an immediate snapshot.
 
 ## Repository layout
 
@@ -148,3 +171,8 @@ red charge indicator have also been checked. The unit continued running in the
 `battery` state after USB was removed, reported charge activity after USB was
 restored, and later remained `usb-powered` for a 130-second capture at
 4206-4208 mV while the charge-complete LED behavior was blue-heartbeat only.
+The diagnostic shell has also been checked through the physical USB connection:
+help, status, display statistics, bounded tone parsing/playback, every software
+LED override with `auto` recovery, and a held-X snapshot (`0x40 X`) behaved as
+documented. A three-command input burst produced no RX overrun, and startup plus
+30-second heartbeat logs were preserved without dropped-message reports.

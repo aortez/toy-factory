@@ -61,15 +61,25 @@ int picosystem_piezo_init(void)
 	return 0;
 }
 
+int picosystem_piezo_validate(uint32_t frequency_hz, uint32_t duration_ms)
+{
+	if ((frequency_hz < PIEZO_MIN_FREQUENCY_HZ) || (frequency_hz > PIEZO_MAX_FREQUENCY_HZ) ||
+	    (duration_ms == 0U) || (duration_ms > PIEZO_MAX_DURATION_MS)) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int picosystem_piezo_play(uint32_t frequency_hz, uint32_t duration_ms)
 {
 	if (!piezo_initialized) {
 		return -EACCES;
 	}
 
-	if ((frequency_hz < PIEZO_MIN_FREQUENCY_HZ) || (frequency_hz > PIEZO_MAX_FREQUENCY_HZ) ||
-	    (duration_ms == 0U) || (duration_ms > PIEZO_MAX_DURATION_MS)) {
-		return -EINVAL;
+	const int validation_err = picosystem_piezo_validate(frequency_hz, duration_ms);
+	if (validation_err != 0) {
+		return validation_err;
 	}
 
 	struct k_work_sync sync;

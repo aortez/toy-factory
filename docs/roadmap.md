@@ -43,7 +43,8 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add VBUS/charger-status sampling while preserving the automatic red indicator.
 - [x] Confirm USB-powered/charging states and indicator behavior on physical hardware.
 - [ ] Audit the factory flash/data layout before adding persistent storage.
-- [ ] Add a shell command that reports board state without flooding logs.
+- [x] Add a USB shell that reports board state without flooding logs.
+- [x] Confirm status, buttons, LED overrides, and queued tones through the physical shell.
 
 ## 4. Game-oriented graphics
 

@@ -12,6 +12,9 @@
 /* Configure the transducer's PWM output and leave it silent. */
 int picosystem_piezo_init(void);
 
+/* Validate the public frequency and duration limits without touching hardware. */
+int picosystem_piezo_validate(uint32_t frequency_hz, uint32_t duration_ms);
+
 /* Start a bounded tone; a delayed work item returns the output to silence. */
 int picosystem_piezo_play(uint32_t frequency_hz, uint32_t duration_ms);
 

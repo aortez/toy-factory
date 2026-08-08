@@ -15,6 +15,7 @@
 #include <zephyr/sys/util.h>
 
 #include "battery.h"
+#include "diagnostic_shell.h"
 #include "display_test.h"
 #include "piezo.h"
 #include "power_status.h"
@@ -24,47 +25,43 @@ LOG_MODULE_REGISTER(picosystem_playground, LOG_LEVEL_INF);
 #define DISPLAY_MOVE_REPEAT_MS  100
 #define PIEZO_TEST_FREQUENCY_HZ 440U
 #define PIEZO_TEST_DURATION_MS  180U
+#define STATUS_LOG_INTERVAL_MS  30000
 
-enum button_index {
-	BUTTON_UP,
-	BUTTON_DOWN,
-	BUTTON_LEFT,
-	BUTTON_RIGHT,
-	BUTTON_A,
-	BUTTON_B,
-	BUTTON_X,
-	BUTTON_Y,
-	BUTTON_COUNT,
-};
-
-#define DPAD_BUTTON_MASK (BIT(BUTTON_UP) | BIT(BUTTON_DOWN) | BIT(BUTTON_LEFT) | BIT(BUTTON_RIGHT))
+#define DPAD_BUTTON_MASK                                                                           \
+	(BIT(PICOSYSTEM_BUTTON_UP) | BIT(PICOSYSTEM_BUTTON_DOWN) | BIT(PICOSYSTEM_BUTTON_LEFT) |   \
+	 BIT(PICOSYSTEM_BUTTON_RIGHT))
 
 struct named_gpio {
 	const char *name;
 	struct gpio_dt_spec gpio;
 };
 
-static const struct named_gpio buttons[BUTTON_COUNT] = {
-	[BUTTON_UP] = {.name = "UP", .gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_up), gpios)},
-	[BUTTON_DOWN] =
+static const struct named_gpio buttons[PICOSYSTEM_BUTTON_COUNT] = {
+	[PICOSYSTEM_BUTTON_UP] = {.name = "UP",
+				  .gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_up), gpios)},
+	[PICOSYSTEM_BUTTON_DOWN] =
 		{
 			.name = "DOWN",
 			.gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_down), gpios),
 		},
-	[BUTTON_LEFT] =
+	[PICOSYSTEM_BUTTON_LEFT] =
 		{
 			.name = "LEFT",
 			.gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_left), gpios),
 		},
-	[BUTTON_RIGHT] =
+	[PICOSYSTEM_BUTTON_RIGHT] =
 		{
 			.name = "RIGHT",
 			.gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_right), gpios),
 		},
-	[BUTTON_A] = {.name = "A", .gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_a), gpios)},
-	[BUTTON_B] = {.name = "B", .gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_b), gpios)},
-	[BUTTON_X] = {.name = "X", .gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_x), gpios)},
-	[BUTTON_Y] = {.name = "Y", .gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_y), gpios)},
+	[PICOSYSTEM_BUTTON_A] = {.name = "A",
+				 .gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_a), gpios)},
+	[PICOSYSTEM_BUTTON_B] = {.name = "B",
+				 .gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_b), gpios)},
+	[PICOSYSTEM_BUTTON_X] = {.name = "X",
+				 .gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_x), gpios)},
+	[PICOSYSTEM_BUTTON_Y] = {.name = "Y",
+				 .gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(button_y), gpios)},
 };
 
 static const struct gpio_dt_spec led_red = GPIO_DT_SPEC_GET(DT_NODELABEL(led_red), gpios);
@@ -170,23 +167,21 @@ static void log_button_changes(uint32_t previous_state, uint32_t state)
 	}
 }
 
-static int log_battery_voltage(void)
+static int read_and_log_battery(struct picosystem_battery_sample *sample)
 {
-	struct picosystem_battery_sample sample;
-
-	const int err = picosystem_battery_read(&sample);
+	const int err = picosystem_battery_read(sample);
 	if (err != 0) {
 		LOG_ERR("Battery voltage read failed (%d)", err);
 		return err;
 	}
 
-	if (!sample.plausible) {
+	if (!sample->plausible) {
 		LOG_WRN("Battery voltage outside plausible LiPo range: %u mV (raw mean %u)",
-			sample.millivolts, sample.raw_average);
+			sample->millivolts, sample->raw_average);
 		return 0;
 	}
 
-	LOG_INF("battery: %u mV (raw mean %u)", sample.millivolts, sample.raw_average);
+	LOG_INF("battery: %u mV (raw mean %u)", sample->millivolts, sample->raw_average);
 	return 0;
 }
 
@@ -211,8 +206,60 @@ static bool power_status_equal(const struct picosystem_power_status *left,
 	       (left->charging == right->charging);
 }
 
+static void apply_led_mode(enum picosystem_led_mode mode, bool *red, bool *green, bool *blue)
+{
+	switch (mode) {
+	case PICOSYSTEM_LED_MODE_OFF:
+		*red = false;
+		*green = false;
+		*blue = false;
+		break;
+	case PICOSYSTEM_LED_MODE_RED:
+		*red = true;
+		*green = false;
+		*blue = false;
+		break;
+	case PICOSYSTEM_LED_MODE_GREEN:
+		*red = false;
+		*green = true;
+		*blue = false;
+		break;
+	case PICOSYSTEM_LED_MODE_BLUE:
+		*red = false;
+		*green = false;
+		*blue = true;
+		break;
+	case PICOSYSTEM_LED_MODE_WHITE:
+		*red = true;
+		*green = true;
+		*blue = true;
+		break;
+	case PICOSYSTEM_LED_MODE_AUTO:
+	default:
+		break;
+	}
+}
+
+static int publish_diagnostic_snapshot(const struct picosystem_battery_sample *battery,
+				       int64_t battery_sample_uptime_ms,
+				       const struct picosystem_power_status *power,
+				       const struct picosystem_display_test_state *display,
+				       uint32_t buttons_state)
+{
+	const struct picosystem_diagnostic_snapshot snapshot = {
+		.battery = *battery,
+		.power = *power,
+		.display = *display,
+		.battery_sample_uptime_ms = battery_sample_uptime_ms,
+		.buttons = buttons_state,
+	};
+
+	return picosystem_diagnostic_shell_publish(&snapshot);
+}
+
 int main(void)
 {
+	struct picosystem_battery_sample battery_sample;
 	struct picosystem_display_test_state display_state;
 	struct picosystem_power_status power_status;
 
@@ -272,10 +319,11 @@ int main(void)
 		return err;
 	}
 
-	err = log_battery_voltage();
+	err = read_and_log_battery(&battery_sample);
 	if (err != 0) {
 		return err;
 	}
+	int64_t battery_sample_uptime_ms = k_uptime_get();
 
 	err = picosystem_power_status_read(&power_status);
 	if (err != 0) {
@@ -289,9 +337,17 @@ int main(void)
 	LOG_INF("B plays a short 440 Hz piezo tone");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 	LOG_INF("GP2 remains an input; the automatic red charge indicator is enabled");
+	LOG_INF("USB diagnostics ready; enter 'picosystem -h'");
 
 	uint32_t previous_state = 0U;
-	int64_t next_status_time = k_uptime_get() + 5000;
+	err = publish_diagnostic_snapshot(&battery_sample, battery_sample_uptime_ms, &power_status,
+					  &display_state, previous_state);
+	if (err != 0) {
+		LOG_ERR("Failed to publish initial diagnostic snapshot (%d)", err);
+		return err;
+	}
+
+	int64_t next_status_time = k_uptime_get() + STATUS_LOG_INTERVAL_MS;
 	int64_t next_move_time = 0;
 
 	while (true) {
@@ -327,16 +383,16 @@ int main(void)
 			int8_t horizontal = 0;
 			int8_t vertical = 0;
 
-			if ((state & BIT(BUTTON_LEFT)) != 0U) {
+			if ((state & BIT(PICOSYSTEM_BUTTON_LEFT)) != 0U) {
 				--horizontal;
 			}
-			if ((state & BIT(BUTTON_RIGHT)) != 0U) {
+			if ((state & BIT(PICOSYSTEM_BUTTON_RIGHT)) != 0U) {
 				++horizontal;
 			}
-			if ((state & BIT(BUTTON_UP)) != 0U) {
+			if ((state & BIT(PICOSYSTEM_BUTTON_UP)) != 0U) {
 				--vertical;
 			}
-			if ((state & BIT(BUTTON_DOWN)) != 0U) {
+			if ((state & BIT(PICOSYSTEM_BUTTON_DOWN)) != 0U) {
 				++vertical;
 			}
 
@@ -349,7 +405,7 @@ int main(void)
 			next_move_time = now + DISPLAY_MOVE_REPEAT_MS;
 		}
 
-		if ((pressed & BIT(BUTTON_A)) != 0U) {
+		if ((pressed & BIT(PICOSYSTEM_BUTTON_A)) != 0U) {
 			err = picosystem_display_test_redraw(&display_state);
 			if (err != 0) {
 				LOG_ERR("Full display redraw failed (%d)", err);
@@ -357,7 +413,7 @@ int main(void)
 			}
 		}
 
-		if ((pressed & BIT(BUTTON_B)) != 0U) {
+		if ((pressed & BIT(PICOSYSTEM_BUTTON_B)) != 0U) {
 			err = picosystem_piezo_play(PIEZO_TEST_FREQUENCY_HZ,
 						    PIEZO_TEST_DURATION_MS);
 			if (err != 0) {
@@ -366,17 +422,33 @@ int main(void)
 			}
 		}
 
+		struct picosystem_tone_request tone_request;
+		err = picosystem_diagnostic_shell_take_tone(&tone_request);
+		if (err == 0) {
+			err = picosystem_piezo_play(tone_request.frequency_hz,
+						    tone_request.duration_ms);
+			if (err != 0) {
+				LOG_ERR("Shell piezo tone failed (%d)", err);
+				return err;
+			}
+		} else if (err != -ENOMSG) {
+			LOG_ERR("Failed to take shell tone request (%d)", err);
+			return err;
+		}
+
 		previous_state = state;
 
-		const bool y_pressed = (state & BIT(BUTTON_Y)) != 0U;
-		const bool red = y_pressed || ((state & BIT(BUTTON_A)) != 0U);
-		const bool green = y_pressed || ((state & BIT(BUTTON_B)) != 0U);
-		bool blue = y_pressed || ((state & BIT(BUTTON_X)) != 0U);
+		const bool y_pressed = (state & BIT(PICOSYSTEM_BUTTON_Y)) != 0U;
+		bool red = y_pressed || ((state & BIT(PICOSYSTEM_BUTTON_A)) != 0U);
+		bool green = y_pressed || ((state & BIT(PICOSYSTEM_BUTTON_B)) != 0U);
+		bool blue = y_pressed || ((state & BIT(PICOSYSTEM_BUTTON_X)) != 0U);
 
-		if ((state & (BIT(BUTTON_A) | BIT(BUTTON_B) | BIT(BUTTON_X) | BIT(BUTTON_Y))) ==
-		    0U) {
+		if ((state & (BIT(PICOSYSTEM_BUTTON_A) | BIT(PICOSYSTEM_BUTTON_B) |
+			      BIT(PICOSYSTEM_BUTTON_X) | BIT(PICOSYSTEM_BUTTON_Y))) == 0U) {
 			blue = ((k_uptime_get() / 500) & 1) != 0;
 		}
+
+		apply_led_mode(picosystem_diagnostic_shell_led_mode(), &red, &green, &blue);
 
 		err = set_rgb(red, green, blue);
 		if (err != 0) {
@@ -385,10 +457,11 @@ int main(void)
 		}
 
 		if (now >= next_status_time) {
-			err = log_battery_voltage();
+			err = read_and_log_battery(&battery_sample);
 			if (err != 0) {
 				return err;
 			}
+			battery_sample_uptime_ms = k_uptime_get();
 
 			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, power=%s, full=%u us, "
 				"partial=%u us/%ux%u (#%u)",
@@ -397,7 +470,14 @@ int main(void)
 				display_state.last_partial_time_us,
 				display_state.last_partial_width, display_state.last_partial_height,
 				display_state.partial_update_count);
-			next_status_time = now + 5000;
+			next_status_time = now + STATUS_LOG_INTERVAL_MS;
+		}
+
+		err = publish_diagnostic_snapshot(&battery_sample, battery_sample_uptime_ms,
+						  &power_status, &display_state, state);
+		if (err != 0) {
+			LOG_ERR("Failed to publish diagnostic snapshot (%d)", err);
+			return err;
 		}
 
 		k_msleep(20);
