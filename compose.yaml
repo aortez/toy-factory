@@ -1,5 +1,6 @@
 services:
   firmware:
+    image: picosystem-zephyr-builder:local
     build:
       context: .
       dockerfile: docker/Dockerfile
