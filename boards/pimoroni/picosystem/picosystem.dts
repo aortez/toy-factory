@@ -9,6 +9,9 @@
 #include <raspberrypi/rpi_pico/rp2040.dtsi>
 #include <zephyr/dt-bindings/gpio/gpio.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/mipi_dbi/mipi_dbi.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+#include "picosystem-pinctrl.dtsi"
 
 / {
 	model = "Pimoroni PicoSystem PIM559";
@@ -19,6 +22,7 @@
 		zephyr,flash = &flash0;
 		zephyr,flash-controller = &ssi;
 		zephyr,code-partition = &code_partition;
+		zephyr,display = &lcd;
 	};
 
 	aliases {
@@ -97,6 +101,53 @@
 			zephyr,code = <INPUT_KEY_Y>;
 		};
 	};
+
+	pwm_leds {
+		compatible = "pwm-leds";
+
+		lcd_backlight: lcd-backlight {
+			pwms = <&pwm 12 PWM_USEC(50) PWM_POLARITY_NORMAL>;
+			label = "PicoSystem LCD backlight";
+		};
+	};
+
+	lcd_mipi_dbi: mipi-dbi {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&spi0>;
+		dc-gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
+		write-only;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+
+		lcd: st7789v@0 {
+			compatible = "sitronix,st7789v";
+			reg = <0>;
+			mipi-max-frequency = <8000000>;
+			width = <240>;
+			height = <240>;
+			x-offset = <0>;
+			y-offset = <0>;
+			vcom = <0x25>;
+			gctrl = <0x14>;
+			vrhs = <0x12>;
+			vdvs = <0x20>;
+			mdac = <0x04>;
+			gamma = <0x01>;
+			colmod = <0x05>;
+			lcm = <0x2c>;
+			porch-param = [0c 0c 00 33 33];
+			cmd2en-param = [5a 69 02 01];
+			pwctrl1-param = [a4 a1];
+			pvgam-param = [d0 04 0d 11 13 2b 3f 54 4c 18 0d 0b 1f 23];
+			nvgam-param = [d0 04 0c 11 13 2c 3f 44 51 2f 1f 1f 20 23];
+			ram-param = [00 f0];
+			rgb-param = [cd 08 14];
+			mipi-mode = "MIPI_DBI_MODE_SPI_4WIRE";
+			status = "okay";
+		};
+	};
 };
 
 &flash0 {
@@ -123,6 +174,19 @@
 };
 
 &gpio0 {
+	status = "okay";
+};
+
+&pwm {
+	pinctrl-0 = <&picosystem_backlight_pwm_default>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&spi0 {
+	pinctrl-0 = <&picosystem_spi0_default>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpio0 5 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 

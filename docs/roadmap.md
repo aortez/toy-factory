@@ -15,16 +15,19 @@ enough to mark hardware-dependent acceptance items complete.
 
 - [x] Define the PIM559 RP2040, 16 MiB flash, USB, buttons, and RGB LED.
 - [x] Cross-build a UF2 image.
+- [x] Confirm the blue RGB heartbeat on physical hardware.
 - [ ] Confirm the red/green/blue startup sequence on physical hardware.
-- [ ] Confirm USB CDC enumeration and periodic log output.
-- [ ] Confirm all eight button mappings and active-low behavior.
-- [ ] Confirm hold-X UF2 recovery after flashing Zephyr.
+- [x] Confirm USB CDC enumeration and periodic log output.
+- [x] Confirm all eight button mappings and active-low behavior.
+- [x] Confirm hold-X UF2 recovery after flashing Zephyr.
 
 ## 2. Conventional display path
 
-- [ ] Add SPI0 pin control, LCD reset, chip select, D/C, and backlight PWM.
-- [ ] Add and tune the Zephyr ST7789V/MIPI-DBI device-tree node.
-- [ ] Render solid-color and orientation test patterns using RGB565.
+- [x] Add SPI0 pin control, LCD reset, chip select, D/C, and backlight PWM.
+- [x] Add an initial Zephyr ST7789V/MIPI-DBI device-tree node.
+- [x] Add a line-buffered RGB565 color-bar test.
+- [x] Confirm full-frame geometry, RGB color order, and 25% PWM backlight.
+- [ ] Add an asymmetric orientation marker and tune panel settings if needed.
 - [ ] Measure full-frame and partial-update throughput.
 - [ ] Confirm that backlight-off is the safe startup state.
 

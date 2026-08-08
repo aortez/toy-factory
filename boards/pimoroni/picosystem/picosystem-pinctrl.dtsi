@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) 2026 PicoSystem Playground contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/pinctrl/rpi-pico-rp2040-pinctrl.h>
+
+&pinctrl {
+	picosystem_spi0_default: picosystem_spi0_default {
+		group1 {
+			pinmux = <SPI0_SCK_P6>, <SPI0_TX_P7>;
+		};
+	};
+
+	picosystem_backlight_pwm_default: picosystem_backlight_pwm_default {
+		group1 {
+			pinmux = <PWM_6A_P12>;
+		};
+	};
+};

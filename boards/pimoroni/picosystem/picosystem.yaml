@@ -10,8 +10,11 @@ toolchain:
 supported:
   - clock
   - counter
+  - display
   - flash
   - gpio
   - hwinfo
+  - pwm
+  - spi
   - usbd
   - watchdog

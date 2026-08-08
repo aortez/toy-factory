@@ -17,7 +17,7 @@ build:
 	$(COMPOSE) run --rm firmware
 
 format:
-	$(COMPOSE) run --rm firmware clang-format -i src/main.c
+	$(COMPOSE) run --rm firmware clang-format -i src/*.c src/*.h
 
 check:
 	$(COMPOSE) run --rm firmware ./scripts/container/check.sh

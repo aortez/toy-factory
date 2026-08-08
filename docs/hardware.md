@@ -42,7 +42,9 @@ Other board-level resources:
 - no Wi-Fi, Bluetooth, or other radio.
 
 The board target currently declares the physical flash size, USB device,
-buttons, and RGB LED. Before enabling settings, a filesystem, or unusually large
-images, audit the factory firmware's flash/data layout and define explicit
-storage partitions. A peripheral should be added to the device tree only when
-its driver milestone begins, keeping early failures easy to isolate.
+buttons, RGB LED, SPI display, and PWM backlight. The first display test uses
+RGB565 at 8 MHz and deliberately does not use the tearing-effect signal. Before
+enabling settings, a filesystem, or unusually large images, audit the factory
+firmware's flash/data layout and define explicit storage partitions. A
+peripheral should be added to the device tree only when its driver milestone
+begins, keeping early failures easy to isolate.

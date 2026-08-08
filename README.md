@@ -10,10 +10,12 @@ The first milestone intentionally exercises only low-risk hardware:
 - exposes the Zephyr log console over USB CDC ACM;
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
+- initializes the LCD over SPI and draws RGB/white/black color bars;
 - emits a five-second heartbeat over USB and on the blue LED.
 
-The LCD, backlight, audio, battery ADC, and charger status are documented but
-not enabled yet.
+The LCD backlight is held off until the test frame is complete, then enabled at
+25%. Audio, battery ADC, charger status, and optimized display transfers are
+documented but not enabled yet.
 
 ## Build
 
@@ -58,9 +60,10 @@ make flash UF2_MOUNT=/media/$USER/RPI-RP2
 # macOS commonly uses: UF2_MOUNT=/Volumes/RPI-RP2
 ```
 
-The PicoSystem reboots automatically when the copy completes. Its RGB LED
-should show red, green, and blue in sequence, then blink blue. A/B/X illuminate
-red/green/blue respectively; Y illuminates all three channels.
+The PicoSystem reboots automatically when the copy completes. Its LCD should
+show vertical red, green, blue, white, and black bars at low brightness. The RGB
+LED should show red, green, and blue in sequence, then blink blue. A/B/X
+illuminate red/green/blue respectively; Y illuminates all three channels.
 
 The ROM bootloader is independent of the application, so a faulty Zephyr image
 can normally be replaced by repeating the hold-X procedure.
@@ -102,6 +105,8 @@ See [the hardware map](docs/hardware.md) before adding peripherals and
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation. Physical LED, button, USB enumeration, and flash-size behavior must
-still be confirmed on a PIM559. Record those results in the roadmap rather than
-treating a successful cross-build as hardware validation.
+generation. USB CDC, all eight buttons, the RGB heartbeat, hold-X recovery, and
+the display color bars at 25% backlight have been checked on one PIM559. An
+asymmetric orientation test, backlight startup behavior, and flash-size behavior
+still require physical confirmation. Record those results in the roadmap rather
+than treating a successful cross-build as hardware validation.

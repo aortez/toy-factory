@@ -14,6 +14,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 
+#include "display_test.h"
+
 LOG_MODULE_REGISTER(picosystem_playground, LOG_LEVEL_INF);
 
 enum button_index {
@@ -186,6 +188,16 @@ int main(void)
 	err = run_led_self_test();
 	if (err != 0) {
 		LOG_ERR("RGB LED self-test failed (%d)", err);
+		return err;
+	}
+
+	err = picosystem_display_test_run();
+	if (err != 0) {
+		LOG_ERR("Display smoke test failed (%d)", err);
+		const int led_err = set_rgb(true, false, false);
+		if (led_err != 0) {
+			LOG_ERR("Failed to indicate display error on RGB LED (%d)", led_err);
+		}
 		return err;
 	}
 
