@@ -41,7 +41,7 @@ Useful commands:
 make setup    # explicitly refresh the pinned west dependencies
 make format   # format the application C source in the container
 make check    # formatting, whitespace, and a clean build
-make shell    # enter the build container
+make container-shell  # enter the build container (`make shell` also works)
 ```
 
 The Ubuntu base, SDK archives, Python dependencies, and Zephyr release are
@@ -56,13 +56,16 @@ dependency volume.
 3. Release X when the `RPI-RP2` mass-storage volume appears.
 4. Copy `build/zephyr/zephyr.uf2` to that volume.
 
-On Linux or macOS, the checked flash helper validates the UF2 volume before it
-copies anything:
+On Linux or macOS, `make update` builds the firmware, detects exactly one
+mounted RP2040 UF2 volume, validates it, and copies the artifact:
 
 ```sh
-make flash UF2_MOUNT=/media/$USER/RPI-RP2
-# macOS commonly uses: UF2_MOUNT=/Volumes/RPI-RP2
+make update
 ```
+
+If detection is ambiguous or the volume is mounted somewhere unusual, select
+it explicitly with `make update UF2_MOUNT=/path/to/RPI-RP2`. The existing
+`make flash` target is an alias for the same build-and-flash workflow.
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
 show red/green/blue/white corner blocks and a yellow arrow pointing toward the
@@ -84,17 +87,29 @@ can normally be replaced by repeating the hold-X procedure.
 ## USB diagnostic shell and log console
 
 After the application boots, the same USB cable presents a CDC ACM serial
-device. On Linux it will usually be `/dev/ttyACM0`:
+device. `make console` detects exactly one Zephyr CDC ACM device and opens the
+interactive shell and log stream:
 
 ```sh
-make monitor PORT=/dev/ttyACM0
+make console
 ```
 
-The monitor also runs inside Docker. Press `Ctrl+]` to exit its terminal.
-The port disconnects briefly each time the PicoSystem resets and may return
-with a different number. Press Enter after connecting to reveal the
+The console runs inside Docker. Press `Ctrl+]` to exit its terminal. If more
+than one matching port exists, select one with
+`make console PORT=/dev/ttyACM0`. `make monitor` remains as a compatibility
+alias. The port disconnects briefly each time the PicoSystem resets and may
+return with a different number. Press Enter after connecting to reveal the
 `picosystem:~$` prompt. Tab completion, command history, and asynchronous Zephyr
 logs share the same terminal.
+
+For a non-interactive snapshot, run:
+
+```sh
+make status
+```
+
+`status` briefly owns the same serial port as `console`, sends `picosystem
+status`, prints the response, and exits. Close the console before using it.
 
 The application adds these commands:
 
