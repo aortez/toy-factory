@@ -119,6 +119,7 @@ the asymmetric display target at 20 MHz and 25% backlight have been checked on
 one PIM559. Its bounded eight-row renderer measured 109393 us for the static
 target and about 116 ms with the movable marker. Cardinal partial updates took
 1.83-2.13 ms; diagonal updates took 2.29-2.60 ms without visible corruption.
-Backlight startup behavior and flash-size behavior still require physical
+A cold power-on also showed no visible bright/white backlight flash before the
+completed target appeared. Flash-size behavior still requires physical
 confirmation. Record those results in the roadmap rather than treating a
 successful cross-build as hardware validation.

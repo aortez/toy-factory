@@ -32,7 +32,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Measure full-frame throughput with a bounded eight-row buffer.
 - [x] Add a bounded interactive dirty-rectangle test.
 - [x] Measure partial-update throughput.
-- [ ] Confirm that backlight-off is the safe startup state.
+- [x] Confirm that backlight-off is the safe startup state.
 
 ## 3. Remaining board peripherals
 

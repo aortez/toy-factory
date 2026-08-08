@@ -60,3 +60,6 @@ us. Cardinal 32 x 24 or 24 x 32 dirty rectangles took 1832-2130 us (704-818
 KiB/s), while diagonal 32 x 32 rectangles took 2285-2602 us (768-875 KiB/s).
 More than 300 held-key updates, diagonal moves, and edge clamps completed
 without a display-write error or visible corruption.
+
+On a cold power-on, the backlight remained visually dark until the completed
+frame appeared; no bright or white startup flash was observed.
