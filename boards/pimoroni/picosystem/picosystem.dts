@@ -111,6 +111,12 @@
 		};
 	};
 
+	piezo: piezo {
+		compatible = "pimoroni,picosystem-piezo";
+		pwms = <&pwm 11 PWM_HZ(440) PWM_POLARITY_NORMAL>;
+		status = "okay";
+	};
+
 	lcd_mipi_dbi: mipi-dbi {
 		compatible = "zephyr,mipi-dbi-spi";
 		spi-dev = <&spi0>;
@@ -178,7 +184,7 @@
 };
 
 &pwm {
-	pinctrl-0 = <&picosystem_backlight_pwm_default>;
+	pinctrl-0 = <&picosystem_pwm_default>;
 	pinctrl-names = "default";
 	status = "okay";
 };

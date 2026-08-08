@@ -36,7 +36,8 @@ enough to mark hardware-dependent acceptance items complete.
 
 ## 3. Remaining board peripherals
 
-- [ ] Add PWM piezo support and a short tone test.
+- [x] Add PWM piezo support and a short B-button tone test.
+- [x] Confirm the tone and silent startup/idle state on physical hardware.
 - [ ] Add battery ADC sampling, divider conversion, and sanity limits.
 - [ ] Add charger status and charge indicator behavior.
 - [ ] Audit the factory flash/data layout before adding persistent storage.

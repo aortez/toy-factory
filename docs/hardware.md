@@ -42,12 +42,21 @@ Other board-level resources:
 - no Wi-Fi, Bluetooth, or other radio.
 
 The board target currently declares the physical flash size, USB device,
-buttons, RGB LED, SPI display, and PWM backlight. The display test uses RGB565
-at 20 MHz and deliberately does not use the tearing-effect signal. Before
-enabling settings, a filesystem, or unusually large images, audit the factory
-firmware's flash/data layout and define explicit storage partitions. A
+buttons, RGB LED, SPI display, PWM backlight, and PWM piezo. The display test
+uses RGB565 at 20 MHz and deliberately does not use the tearing-effect signal.
+Before enabling settings, a filesystem, or unusually large images, audit the
+factory firmware's flash/data layout and define explicit storage partitions. A
 peripheral should be added to the device tree only when its driver milestone
 begins, keeping early failures easy to isolate.
+
+Pimoroni's native implementation drives the GP11 piezo with active-high PWM and
+uses a short positive pulse to limit transducer deflection, with 100 us as its
+maximum-volume pulse. The initial Zephyr test is intentionally quieter: B plays
+440 Hz for 180 ms using a 25 us pulse. A delayed system-work item silences the
+channel independently of the display loop, and initialization explicitly sets
+the pulse width to zero. On the tested PIM559, startup and idle remained silent,
+the tone was clearly audible, and rapid presses safely extended playback only
+until 180 ms after the final press.
 
 On the tested PIM559, sending the 115200-byte orientation frame in bounded
 eight-row chunks took 109393 us (1028 KiB/s). The earlier one-row baseline took

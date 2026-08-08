@@ -15,10 +15,13 @@
 #include <zephyr/sys/util.h>
 
 #include "display_test.h"
+#include "piezo.h"
 
 LOG_MODULE_REGISTER(picosystem_playground, LOG_LEVEL_INF);
 
-#define DISPLAY_MOVE_REPEAT_MS 100
+#define DISPLAY_MOVE_REPEAT_MS  100
+#define PIEZO_TEST_FREQUENCY_HZ 440U
+#define PIEZO_TEST_DURATION_MS  180U
 
 enum button_index {
 	BUTTON_UP,
@@ -191,6 +194,12 @@ int main(void)
 		return err;
 	}
 
+	err = picosystem_piezo_init();
+	if (err != 0) {
+		LOG_ERR("Piezo initialization failed (%d)", err);
+		return err;
+	}
+
 	err = run_led_self_test();
 	if (err != 0) {
 		LOG_ERR("RGB LED self-test failed (%d)", err);
@@ -209,6 +218,7 @@ int main(void)
 
 	LOG_INF("PicoSystem GPIO bring-up ready");
 	LOG_INF("D-pad moves the marker; A forces a full redraw for comparison");
+	LOG_INF("B plays a short 440 Hz piezo tone");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 
 	uint32_t previous_state = 0U;
@@ -262,6 +272,15 @@ int main(void)
 			err = picosystem_display_test_redraw(&display_state);
 			if (err != 0) {
 				LOG_ERR("Full display redraw failed (%d)", err);
+				return err;
+			}
+		}
+
+		if ((pressed & BIT(BUTTON_B)) != 0U) {
+			err = picosystem_piezo_play(PIEZO_TEST_FREQUENCY_HZ,
+						    PIEZO_TEST_DURATION_MS);
+			if (err != 0) {
+				LOG_ERR("Piezo tone test failed (%d)", err);
 				return err;
 			}
 		}

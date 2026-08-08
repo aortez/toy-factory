@@ -11,10 +11,12 @@ The first milestone intentionally exercises only low-risk hardware:
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
 - initializes the LCD over SPI and draws an asymmetric target with a movable marker;
+- plays a short, bounded piezo tone when B is pressed;
 - emits a five-second heartbeat over USB and on the blue LED.
 
 The LCD backlight is held off until the test frame is complete, then enabled at
-25%. Audio, battery ADC, charger status, and DMA/PIO display transfers are
+25%. The piezo starts silent and uses a conservative 25 us active pulse for the
+tone test. Battery ADC, charger status, and DMA/PIO display transfers are
 documented but not enabled yet.
 
 ## Build
@@ -68,7 +70,9 @@ three channels.
 
 A white-bordered magenta marker starts in the center. The D-pad moves it in
 8-pixel steps and repeats while held. Each move redraws only the marker's old
-and new bounds. Press A to force a full-screen redraw for comparison.
+and new bounds. Press A to force a full-screen redraw for comparison. Press B
+to play a 440 Hz tone for 180 ms; the green RGB channel remains tied to B as
+before.
 
 The ROM bootloader is independent of the application, so a faulty Zephyr image
 can normally be replaced by repeating the hold-X procedure.
@@ -94,7 +98,8 @@ Expected messages include button press/release events and a periodic line like:
 ```
 
 After moving the marker, the log also reports the dirty rectangle and measured
-transfer rate.
+transfer rate. Pressing B logs the start of the tone and confirms when the
+delayed shutoff has returned the PWM output to silence.
 
 ## Repository layout
 
@@ -120,6 +125,7 @@ one PIM559. Its bounded eight-row renderer measured 109393 us for the static
 target and about 116 ms with the movable marker. Cardinal partial updates took
 1.83-2.13 ms; diagonal updates took 2.29-2.60 ms without visible corruption.
 A cold power-on also showed no visible bright/white backlight flash before the
-completed target appeared. Flash-size behavior still requires physical
-confirmation. Record those results in the roadmap rather than treating a
-successful cross-build as hardware validation.
+completed target appeared. The 440 Hz piezo tone, silent startup/idle state,
+and rapid retrigger behavior have also been checked on the same unit. Flash-size
+behavior still requires physical confirmation. Record those results in the
+roadmap rather than treating a successful cross-build as hardware validation.

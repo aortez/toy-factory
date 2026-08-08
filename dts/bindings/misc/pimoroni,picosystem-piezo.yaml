@@ -1,0 +1,14 @@
+# Copyright (c) 2026 PicoSystem Playground contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: PWM-driven piezo transducer on the Pimoroni PicoSystem
+
+compatible: "pimoroni,picosystem-piezo"
+
+include: base.yaml
+
+properties:
+  pwms:
+    type: phandle-array
+    required: true
+    description: PWM specifier driving the piezo transducer.

@@ -6,4 +6,4 @@ list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(picosystem_playground)
 
-target_sources(app PRIVATE src/display_test.c src/main.c)
+target_sources(app PRIVATE src/display_test.c src/main.c src/piezo.c)

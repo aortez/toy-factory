@@ -13,9 +13,9 @@
 		};
 	};
 
-	picosystem_backlight_pwm_default: picosystem_backlight_pwm_default {
+	picosystem_pwm_default: picosystem_pwm_default {
 		group1 {
-			pinmux = <PWM_6A_P12>;
+			pinmux = <PWM_5B_P11>, <PWM_6A_P12>;
 		};
 	};
 };
