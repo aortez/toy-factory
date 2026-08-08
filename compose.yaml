@@ -1,0 +1,16 @@
+services:
+  firmware:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    working_dir: /workspace/app
+    init: true
+    volumes:
+      # Dependencies persist in a Docker volume; only project files and build
+      # artifacts are written into the host checkout.
+      - zephyr-workspace:/workspace
+      - .:/workspace/app
+    command: ./scripts/container/build.sh
+
+volumes:
+  zephyr-workspace:

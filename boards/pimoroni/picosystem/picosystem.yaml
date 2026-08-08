@@ -1,0 +1,17 @@
+identifier: picosystem
+name: Pimoroni PicoSystem (PIM559)
+type: mcu
+arch: arm
+flash: 16384
+ram: 264
+toolchain:
+  - zephyr
+  - gnuarmemb
+supported:
+  - clock
+  - counter
+  - flash
+  - gpio
+  - hwinfo
+  - usbd
+  - watchdog

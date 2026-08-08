@@ -1,0 +1,146 @@
+/*
+ * Copyright (c) 2026 PicoSystem Playground contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <raspberrypi/rpi_pico/rp2040.dtsi>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	model = "Pimoroni PicoSystem PIM559";
+	compatible = "pimoroni,picosystem";
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,flash-controller = &ssi;
+		zephyr,code-partition = &code_partition;
+	};
+
+	aliases {
+		led0 = &led_blue;
+		sw0 = &button_x;
+		watchdog0 = &wdt0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led_red: led_red {
+			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+			label = "PicoSystem RGB red";
+		};
+
+		led_green: led_green {
+			gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+			label = "PicoSystem RGB green";
+		};
+
+		led_blue: led_blue {
+			gpios = <&gpio0 15 GPIO_ACTIVE_HIGH>;
+			label = "PicoSystem RGB blue";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+
+		button_up: button_up {
+			gpios = <&gpio0 23 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Up";
+			zephyr,code = <INPUT_KEY_UP>;
+		};
+
+		button_down: button_down {
+			gpios = <&gpio0 20 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Down";
+			zephyr,code = <INPUT_KEY_DOWN>;
+		};
+
+		button_left: button_left {
+			gpios = <&gpio0 22 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Left";
+			zephyr,code = <INPUT_KEY_LEFT>;
+		};
+
+		button_right: button_right {
+			gpios = <&gpio0 21 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Right";
+			zephyr,code = <INPUT_KEY_RIGHT>;
+		};
+
+		button_a: button_a {
+			gpios = <&gpio0 18 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "A";
+			zephyr,code = <INPUT_KEY_A>;
+		};
+
+		button_b: button_b {
+			gpios = <&gpio0 19 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "B";
+			zephyr,code = <INPUT_KEY_B>;
+		};
+
+		button_x: button_x {
+			gpios = <&gpio0 17 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "X";
+			zephyr,code = <INPUT_KEY_X>;
+		};
+
+		button_y: button_y {
+			gpios = <&gpio0 16 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Y";
+			zephyr,code = <INPUT_KEY_Y>;
+		};
+	};
+};
+
+&flash0 {
+	reg = <0x10000000 DT_SIZE_M(16)>;
+	ranges = <0x0 0x10000000 DT_SIZE_M(16)>;
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		second_stage_bootloader: partition@0 {
+			label = "second_stage_bootloader";
+			reg = <0x00000000 0x100>;
+			read-only;
+		};
+
+		code_partition: partition@100 {
+			label = "code-partition";
+			reg = <0x100 (DT_SIZE_M(16) - 0x100)>;
+			read-only;
+		};
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&timer {
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+zephyr_udc0: &usbd {
+	status = "okay";
+};
+
+&vreg {
+	regulator-always-on;
+	regulator-allowed-modes = <REGULATOR_RPI_PICO_MODE_NORMAL>;
+};
+
+#include <../boards/common/usb/cdc_acm_serial.dtsi>

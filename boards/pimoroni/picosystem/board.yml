@@ -1,0 +1,6 @@
+board:
+  name: picosystem
+  full_name: PicoSystem (PIM559)
+  vendor: pimoroni
+  socs:
+    - name: rp2040

@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+---
+BasedOnStyle: LLVM
+AlignConsecutiveMacros: AcrossComments
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Linux
+ColumnLimit: 100
+ContinuationIndentWidth: 8
+IndentCaseLabels: false
+IndentWidth: 8
+InsertBraces: true
+InsertNewlineAtEOF: true
+SortIncludes: Never
+UseTab: ForContinuationAndIndentation
