@@ -13,12 +13,13 @@ The first milestone intentionally exercises only low-risk hardware:
 - initializes the LCD over SPI and draws an asymmetric target with a movable marker;
 - plays a short, bounded piezo tone when B is pressed;
 - averages and reports the GP26 battery-voltage ADC every five seconds;
+- classifies the GP2 VBUS and active-low GP24 charger-status inputs;
 - emits a five-second heartbeat over USB and on the blue LED.
 
 The LCD backlight is held off until the test frame is complete, then enabled at
 25%. The piezo starts silent and uses a conservative 25 us active pulse for the
-tone test. Charger status and DMA/PIO display transfers are documented but not
-enabled yet.
+tone test. GP2 remains an input so the board's automatic red charging indicator
+continues to work. DMA/PIO display transfers are documented but not enabled yet.
 
 ## Build
 
@@ -67,7 +68,9 @@ The PicoSystem reboots automatically when the copy completes. Its LCD should
 show red/green/blue/white corner blocks and a yellow arrow pointing toward the
 top at low brightness. The RGB LED should show red, green, and blue in sequence,
 then blink blue. A/B/X illuminate red/green/blue respectively; Y illuminates all
-three channels.
+three channels. While the battery is actively charging, the board's independent
+hardware path also illuminates the red channel, so software-selected colors can
+mix with red.
 
 A white-bordered magenta marker starts in the center. The D-pad moves it in
 8-pixel steps and repeats while held. Each move redraws only the marker's old
@@ -96,14 +99,20 @@ Expected messages include button press/release events and a periodic line like:
 ```text
 <inf> picosystem_display_test: Partial #1: 24x32 at (108,100), 2130 us, 704 KiB/s
 <inf> picosystem_playground: battery: 3988 mV (raw mean 1650)
-<inf> picosystem_playground: alive: uptime=10000 ms, buttons=0x00, full=116593 us, partial=2130 us/24x32 (#1)
+<inf> picosystem_playground: power: usb-charging (usb=present, charge=active)
+<inf> picosystem_playground: alive: uptime=10000 ms, buttons=0x00, power=usb-charging, full=116593 us, partial=2130 us/24x32 (#1)
 ```
 
 After moving the marker, the log also reports the dirty rectangle and measured
 transfer rate. Pressing B logs the start of the tone and confirms when the
 delayed shutoff has returned the PWM output to silence. Battery readings are
 averaged over 16 raw samples. They are diagnostic voltage measurements, not a
-charge-percentage estimate.
+charge-percentage estimate. Power status is reported as `battery`,
+`usb-powered`, or `usb-charging`; an unexpected active charger signal without
+VBUS is retained as a separate diagnostic state. Each active charger sample
+holds `usb-charging` for one second so sampled status pulses do not flood the
+log. A resulting input combination must remain unchanged for 250 ms before it
+replaces the reported state.
 
 ## Repository layout
 
@@ -134,5 +143,8 @@ and rapid retrigger behavior have also been checked on the same unit. Flash-size
 behavior still requires physical confirmation. Eight USB-powered battery reports
 over 35 seconds measured 4196-4201 mV with raw means of 1736-1738 and no ADC
 errors. This confirms plausible, repeatable telemetry, not absolute calibration
-against an external meter. Record results in the roadmap rather than treating a
-successful cross-build as hardware validation.
+against an external meter. GP2/GP24 power-state sampling and the independent
+red charge indicator have also been checked. The unit continued running in the
+`battery` state after USB was removed, reported charge activity after USB was
+restored, and later remained `usb-powered` for a 130-second capture at
+4206-4208 mV while the charge-complete LED behavior was blue-heartbeat only.

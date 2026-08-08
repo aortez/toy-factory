@@ -17,6 +17,7 @@
 #include "battery.h"
 #include "display_test.h"
 #include "piezo.h"
+#include "power_status.h"
 
 LOG_MODULE_REGISTER(picosystem_playground, LOG_LEVEL_INF);
 
@@ -189,9 +190,31 @@ static int log_battery_voltage(void)
 	return 0;
 }
 
+static void log_power_status(const struct picosystem_power_status *status)
+{
+	const char *const state_name = picosystem_power_state_name(status->state);
+	const char *const usb_name = status->usb_power_present ? "present" : "absent";
+	const char *const charge_name = status->charging ? "active" : "inactive";
+
+	if (status->state == PICOSYSTEM_POWER_STATE_CHARGE_WITHOUT_USB) {
+		LOG_WRN("power: %s (usb=%s, charge=%s)", state_name, usb_name, charge_name);
+		return;
+	}
+
+	LOG_INF("power: %s (usb=%s, charge=%s)", state_name, usb_name, charge_name);
+}
+
+static bool power_status_equal(const struct picosystem_power_status *left,
+			       const struct picosystem_power_status *right)
+{
+	return (left->usb_power_present == right->usb_power_present) &&
+	       (left->charging == right->charging);
+}
+
 int main(void)
 {
 	struct picosystem_display_test_state display_state;
+	struct picosystem_power_status power_status;
 
 	for (size_t i = 0; i < ARRAY_SIZE(buttons); ++i) {
 		const int err = configure_input(&buttons[i]);
@@ -227,6 +250,12 @@ int main(void)
 		return err;
 	}
 
+	err = picosystem_power_status_init();
+	if (err != 0) {
+		LOG_ERR("Power-status initialization failed (%d)", err);
+		return err;
+	}
+
 	err = run_led_self_test();
 	if (err != 0) {
 		LOG_ERR("RGB LED self-test failed (%d)", err);
@@ -248,10 +277,18 @@ int main(void)
 		return err;
 	}
 
+	err = picosystem_power_status_read(&power_status);
+	if (err != 0) {
+		LOG_ERR("Power-status read failed (%d)", err);
+		return err;
+	}
+	log_power_status(&power_status);
+
 	LOG_INF("PicoSystem GPIO bring-up ready");
 	LOG_INF("D-pad moves the marker; A forces a full redraw for comparison");
 	LOG_INF("B plays a short 440 Hz piezo tone");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
+	LOG_INF("GP2 remains an input; the automatic red charge indicator is enabled");
 
 	uint32_t previous_state = 0U;
 	int64_t next_status_time = k_uptime_get() + 5000;
@@ -259,11 +296,23 @@ int main(void)
 
 	while (true) {
 		uint32_t state;
+		struct picosystem_power_status next_power_status;
 
 		err = read_buttons(&state);
 		if (err != 0) {
 			return err;
 		}
+
+		err = picosystem_power_status_read(&next_power_status);
+		if (err != 0) {
+			LOG_ERR("Power-status read failed (%d)", err);
+			return err;
+		}
+
+		if (!power_status_equal(&power_status, &next_power_status)) {
+			log_power_status(&next_power_status);
+		}
+		power_status = next_power_status;
 
 		const int64_t now = k_uptime_get();
 		const uint32_t pressed = state & ~previous_state;
@@ -341,9 +390,10 @@ int main(void)
 				return err;
 			}
 
-			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, full=%u us, "
+			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, power=%s, full=%u us, "
 				"partial=%u us/%ux%u (#%u)",
-				now, state, display_state.full_frame_time_us,
+				now, state, picosystem_power_state_name(power_status.state),
+				display_state.full_frame_time_us,
 				display_state.last_partial_time_us,
 				display_state.last_partial_width, display_state.last_partial_height,
 				display_state.partial_update_count);

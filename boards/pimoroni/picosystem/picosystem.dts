@@ -117,6 +117,13 @@
 		status = "okay";
 	};
 
+	power_status: power-status {
+		compatible = "pimoroni,picosystem-power-status";
+		vbus-detect-gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+		charge-status-gpios = <&gpio0 24 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+		status = "okay";
+	};
+
 	battery_voltage: battery-voltage {
 		compatible = "voltage-divider";
 		io-channels = <&adc 0>;

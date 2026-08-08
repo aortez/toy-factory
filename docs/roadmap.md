@@ -40,7 +40,8 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Confirm the tone and silent startup/idle state on physical hardware.
 - [x] Add battery ADC sampling, divider conversion, and sanity limits.
 - [x] Confirm plausible and repeatable battery readings on physical hardware.
-- [ ] Add charger status and charge indicator behavior.
+- [x] Add VBUS/charger-status sampling while preserving the automatic red indicator.
+- [x] Confirm USB-powered/charging states and indicator behavior on physical hardware.
 - [ ] Audit the factory flash/data layout before adding persistent storage.
 - [ ] Add a shell command that reports board state without flooding logs.
 

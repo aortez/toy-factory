@@ -1,0 +1,21 @@
+# Copyright (c) 2026 PicoSystem Playground contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: USB power and LiPo charger status inputs on the Pimoroni PicoSystem
+
+compatible: "pimoroni,picosystem-power-status"
+
+include: base.yaml
+
+properties:
+  vbus-detect-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Active-high divided VBUS input. This pin also enables the board's
+      automatic red charge indicator and must remain configured as an input.
+
+  charge-status-gpios:
+    type: phandle-array
+    required: true
+    description: Active-low status output from the LiPo charger.

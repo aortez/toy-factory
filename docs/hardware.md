@@ -8,7 +8,7 @@ and [native hardware implementation](https://github.com/pimoroni/picosystem/blob
 |---:|---|---|
 | GP0 | Internal debug UART TX | Optional debugger work |
 | GP1 | Internal debug UART RX | Optional debugger work |
-| GP2 | Charge indicator LED | Power/charger support |
+| GP2 | USB VBUS detect, active high; gates automatic red charge indicator | Power/charger support |
 | GP4 | LCD reset | Display |
 | GP5 | LCD chip select | Display |
 | GP6 | LCD SPI0 clock | Display |
@@ -18,7 +18,7 @@ and [native hardware implementation](https://github.com/pimoroni/picosystem/blob
 | GP11 | Piezo audio PWM | Audio |
 | GP12 | LCD backlight PWM | Display |
 | GP13 | RGB LED green | GPIO bring-up |
-| GP14 | RGB LED red | GPIO bring-up |
+| GP14 | RGB LED red; shared with hardware charge-status path | GPIO bring-up |
 | GP15 | RGB LED blue | GPIO bring-up |
 | GP16 | Y button, active low | GPIO bring-up |
 | GP17 | X button, active low | GPIO bring-up / UF2 entry |
@@ -48,6 +48,43 @@ tearing-effect signal. Before enabling settings, a filesystem, or unusually
 large images, audit the factory firmware's flash/data layout and define explicit
 storage partitions. A peripheral should be added to the device tree only when
 its driver milestone begins, keeping early failures easy to isolate.
+
+## USB power and charging status
+
+GP2 is not a dedicated LED output. The schematic connects VBUS to
+`VBUS_DETECT` through a 10 kOhm/10 kOhm divider, producing about 2.5 V while USB
+power is present and pulling the net low when it is absent. That same net drives
+the gate of the MOSFET that allows the charger's `CHARGE_STAT` signal to sink
+current through the RGB LED's red channel. The result is an automatic red light
+while VBUS is present and the charger asserts its active-low status output.
+Firmware can still drive the red channel independently through GP14.
+
+Pimoroni's native runtime calls GP2 `CHARGE_LED` and deliberately drives it low,
+which suppresses the automatic indicator and gives software exclusive RGB
+control. The Zephyr bring-up instead configures GP2 as an active-high input so it
+can report VBUS and leaves the hardware indicator enabled. GP2 must not be
+changed to an output casually because it is electrically connected to the VBUS
+divider.
+
+GP24 reads `CHARGE_STAT` as active low with an internal pull-up. The charger
+asserts it during preconditioning, fast-charge, and constant-voltage charging;
+an inactive level means charging is complete, shut down, or otherwise not
+active. Combining the two inputs produces `battery`, `usb-powered`, and
+`usb-charging` states. `charge-active-without-usb` is retained as a diagnostic
+state for a transition or an electrical/configuration fault rather than being
+silently mapped to battery operation. The tested, nearly full unit produced
+brief raw charge-status assertions when sampled every 20 ms, while the hardware
+red indicator remained visibly active. Each sampled assertion therefore holds
+the reported charging state for one second, and a different combined state must
+then persist for 250 ms before firmware reports it. This qualification is for
+telemetry stability; it does not alter either pin or the hardware LED path.
+
+Physical validation exercised all three normal classifications. Removing USB
+produced `battery` without resetting the running application. Restoring USB
+produced `usb-charging` while the automatic red channel was visible. After the
+nearly full cell finished charging, a 130-second serial capture remained stable
+at `usb-powered` with 4206-4208 mV readings and a blue-only heartbeat; no red
+charge indication or impossible charge-without-USB state appeared.
 
 Battery sense uses a 1.5 MOhm upper leg and 750 kOhm lower leg, plus a 100 nF
 filter capacitor, so GP26/ADC0 sees one third of VBAT. The Zephyr test takes 16
