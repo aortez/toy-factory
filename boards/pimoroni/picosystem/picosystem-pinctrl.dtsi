@@ -7,6 +7,13 @@
 #include <zephyr/dt-bindings/pinctrl/rpi-pico-rp2040-pinctrl.h>
 
 &pinctrl {
+	picosystem_adc_default: picosystem_adc_default {
+		group1 {
+			pinmux = <ADC_CH0_P26>;
+			input-enable;
+		};
+	};
+
 	picosystem_spi0_default: picosystem_spi0_default {
 		group1 {
 			pinmux = <SPI0_SCK_P6>, <SPI0_TX_P7>;

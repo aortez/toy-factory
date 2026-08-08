@@ -38,7 +38,8 @@ enough to mark hardware-dependent acceptance items complete.
 
 - [x] Add PWM piezo support and a short B-button tone test.
 - [x] Confirm the tone and silent startup/idle state on physical hardware.
-- [ ] Add battery ADC sampling, divider conversion, and sanity limits.
+- [x] Add battery ADC sampling, divider conversion, and sanity limits.
+- [x] Confirm plausible and repeatable battery readings on physical hardware.
 - [ ] Add charger status and charge indicator behavior.
 - [ ] Audit the factory flash/data layout before adding persistent storage.
 - [ ] Add a shell command that reports board state without flooding logs.

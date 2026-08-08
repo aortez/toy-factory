@@ -42,12 +42,23 @@ Other board-level resources:
 - no Wi-Fi, Bluetooth, or other radio.
 
 The board target currently declares the physical flash size, USB device,
-buttons, RGB LED, SPI display, PWM backlight, and PWM piezo. The display test
-uses RGB565 at 20 MHz and deliberately does not use the tearing-effect signal.
-Before enabling settings, a filesystem, or unusually large images, audit the
-factory firmware's flash/data layout and define explicit storage partitions. A
-peripheral should be added to the device tree only when its driver milestone
-begins, keeping early failures easy to isolate.
+buttons, RGB LED, SPI display, PWM backlight, PWM piezo, and battery ADC. The
+display test uses RGB565 at 20 MHz and deliberately does not use the
+tearing-effect signal. Before enabling settings, a filesystem, or unusually
+large images, audit the factory firmware's flash/data layout and define explicit
+storage partitions. A peripheral should be added to the device tree only when
+its driver milestone begins, keeping early failures easy to isolate.
+
+Battery sense uses a 1.5 MOhm upper leg and 750 kOhm lower leg, plus a 100 nF
+filter capacitor, so GP26/ADC0 sees one third of VBAT. The Zephyr test takes 16
+back-to-back 12-bit samples, averages the raw codes, converts using the declared
+3.3 V ADC reference, and applies the divider values from device tree. Results
+outside 2.5-4.3 V are flagged but still reported. This is diagnostic telemetry,
+not a calibrated fuel gauge or charge-percentage model. On the tested,
+USB-powered PIM559, eight reports over 35 seconds measured 4196-4201 mV with raw
+means of 1736-1738 and no ADC errors. The 5 mV spread confirms repeatability and
+a plausible nearly-full LiPo reading, but no external meter was used to establish
+absolute accuracy.
 
 Pimoroni's native implementation drives the GP11 piezo with active-high PWM and
 uses a short positive pulse to limit transducer deflection, with 100 us as its

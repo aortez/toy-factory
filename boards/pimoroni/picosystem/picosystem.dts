@@ -117,6 +117,14 @@
 		status = "okay";
 	};
 
+	battery_voltage: battery-voltage {
+		compatible = "voltage-divider";
+		io-channels = <&adc 0>;
+		output-ohms = <750000>;
+		full-ohms = <(1500000 + 750000)>;
+		status = "okay";
+	};
+
 	lcd_mipi_dbi: mipi-dbi {
 		compatible = "zephyr,mipi-dbi-spi";
 		spi-dev = <&spi0>;
@@ -153,6 +161,23 @@
 			mipi-mode = "MIPI_DBI_MODE_SPI_4WIRE";
 			status = "okay";
 		};
+	};
+};
+
+&adc {
+	pinctrl-0 = <&picosystem_adc_default>;
+	pinctrl-names = "default";
+	vref-mv = <3300>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	channel@0 {
+		reg = <0>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <12>;
 	};
 };
 

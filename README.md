@@ -12,12 +12,13 @@ The first milestone intentionally exercises only low-risk hardware:
 - performs an RGB LED self-test and then mirrors the face buttons;
 - initializes the LCD over SPI and draws an asymmetric target with a movable marker;
 - plays a short, bounded piezo tone when B is pressed;
+- averages and reports the GP26 battery-voltage ADC every five seconds;
 - emits a five-second heartbeat over USB and on the blue LED.
 
 The LCD backlight is held off until the test frame is complete, then enabled at
 25%. The piezo starts silent and uses a conservative 25 us active pulse for the
-tone test. Battery ADC, charger status, and DMA/PIO display transfers are
-documented but not enabled yet.
+tone test. Charger status and DMA/PIO display transfers are documented but not
+enabled yet.
 
 ## Build
 
@@ -94,12 +95,15 @@ Expected messages include button press/release events and a periodic line like:
 
 ```text
 <inf> picosystem_display_test: Partial #1: 24x32 at (108,100), 2130 us, 704 KiB/s
+<inf> picosystem_playground: battery: 3988 mV (raw mean 1650)
 <inf> picosystem_playground: alive: uptime=10000 ms, buttons=0x00, full=116593 us, partial=2130 us/24x32 (#1)
 ```
 
 After moving the marker, the log also reports the dirty rectangle and measured
 transfer rate. Pressing B logs the start of the tone and confirms when the
-delayed shutoff has returned the PWM output to silence.
+delayed shutoff has returned the PWM output to silence. Battery readings are
+averaged over 16 raw samples. They are diagnostic voltage measurements, not a
+charge-percentage estimate.
 
 ## Repository layout
 
@@ -127,5 +131,8 @@ target and about 116 ms with the movable marker. Cardinal partial updates took
 A cold power-on also showed no visible bright/white backlight flash before the
 completed target appeared. The 440 Hz piezo tone, silent startup/idle state,
 and rapid retrigger behavior have also been checked on the same unit. Flash-size
-behavior still requires physical confirmation. Record those results in the
-roadmap rather than treating a successful cross-build as hardware validation.
+behavior still requires physical confirmation. Eight USB-powered battery reports
+over 35 seconds measured 4196-4201 mV with raw means of 1736-1738 and no ADC
+errors. This confirms plausible, repeatable telemetry, not absolute calibration
+against an external meter. Record results in the roadmap rather than treating a
+successful cross-build as hardware validation.

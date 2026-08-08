@@ -14,6 +14,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 
+#include "battery.h"
 #include "display_test.h"
 #include "piezo.h"
 
@@ -168,6 +169,26 @@ static void log_button_changes(uint32_t previous_state, uint32_t state)
 	}
 }
 
+static int log_battery_voltage(void)
+{
+	struct picosystem_battery_sample sample;
+
+	const int err = picosystem_battery_read(&sample);
+	if (err != 0) {
+		LOG_ERR("Battery voltage read failed (%d)", err);
+		return err;
+	}
+
+	if (!sample.plausible) {
+		LOG_WRN("Battery voltage outside plausible LiPo range: %u mV (raw mean %u)",
+			sample.millivolts, sample.raw_average);
+		return 0;
+	}
+
+	LOG_INF("battery: %u mV (raw mean %u)", sample.millivolts, sample.raw_average);
+	return 0;
+}
+
 int main(void)
 {
 	struct picosystem_display_test_state display_state;
@@ -200,6 +221,12 @@ int main(void)
 		return err;
 	}
 
+	err = picosystem_battery_init();
+	if (err != 0) {
+		LOG_ERR("Battery ADC initialization failed (%d)", err);
+		return err;
+	}
+
 	err = run_led_self_test();
 	if (err != 0) {
 		LOG_ERR("RGB LED self-test failed (%d)", err);
@@ -213,6 +240,11 @@ int main(void)
 		if (led_err != 0) {
 			LOG_ERR("Failed to indicate display error on RGB LED (%d)", led_err);
 		}
+		return err;
+	}
+
+	err = log_battery_voltage();
+	if (err != 0) {
 		return err;
 	}
 
@@ -304,6 +336,11 @@ int main(void)
 		}
 
 		if (now >= next_status_time) {
+			err = log_battery_voltage();
+			if (err != 0) {
+				return err;
+			}
+
 			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, full=%u us, "
 				"partial=%u us/%ux%u (#%u)",
 				now, state, display_state.full_frame_time_us,
