@@ -6,7 +6,7 @@ FIRMWARE_IMAGE := picosystem-zephyr-builder:local
 UF2 := build/zephyr/zephyr.uf2
 SERIAL_PORT_HELPER := ./scripts/find-serial-port.sh
 
-.PHONY: help image setup build format check container-shell update console status flash monitor shell
+.PHONY: help image setup build format check container-shell update bootloader console status flash monitor shell
 
 ##@ General
 
@@ -40,8 +40,11 @@ container-shell: ## Open a shell in the builder container
 
 ##@ Device
 
-update: build ## Build and flash the detected RP2040 UF2 volume
-	./scripts/flash.sh "$(UF2_MOUNT)" "$(UF2)"
+update: build ## Build, enter the ROM bootloader, and flash firmware
+	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(UF2)" "$(FIRMWARE_IMAGE)"
+
+bootloader: image ## Reboot the running app into the RP2040 ROM bootloader
+	./scripts/reboot-to-bootloader.sh "$(PORT)" "$(FIRMWARE_IMAGE)"
 
 console: image ## Open the interactive device shell and log stream
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \

@@ -7,6 +7,7 @@
 /dts-v1/;
 
 #include <raspberrypi/rpi_pico/rp2040.dtsi>
+#include <vendor/raspberrypi/rp2040-boot-mode-retention.dtsi>
 #include <zephyr/dt-bindings/gpio/gpio.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/mipi_dbi/mipi_dbi.h>

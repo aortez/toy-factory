@@ -53,21 +53,33 @@ dependency volume.
 
 ## Flash
 
-1. Turn the PicoSystem off.
-2. Hold **X** while turning it on.
-3. Release X when the `RPI-RP2` mass-storage volume appears.
-4. Copy `build/zephyr/zephyr.uf2` to that volume.
-
-On Linux or macOS, `make update` builds the firmware, detects exactly one
-mounted RP2040 UF2 volume, validates it, and copies the artifact:
+On Linux or macOS, `make update` handles the normal development cycle. It
+builds the firmware, asks the running application to reboot into the RP2040 ROM
+bootloader, waits for the `RPI-RP2` volume, validates it, and copies the UF2:
 
 ```sh
 make update
 ```
 
-If detection is ambiguous or the volume is mounted somewhere unusual, select
-it explicitly with `make update UF2_MOUNT=/path/to/RPI-RP2`. The existing
-`make flash` target is an alias for the same build-and-flash workflow.
+If the PicoSystem is already in update mode, the command skips the reboot and
+flashes it directly. If serial-port or mount detection is ambiguous, select the
+device explicitly with `PORT=/dev/ttyACM0` or
+`UF2_MOUNT=/path/to/RPI-RP2`. The existing `make flash` target is an alias for
+the same workflow. Close `make console` before updating because only one
+process can own the serial port.
+
+To enter update mode without building or flashing, run:
+
+```sh
+make bootloader
+```
+
+The physical gesture remains the recovery path for a blank or broken image:
+
+1. Turn the PicoSystem off.
+2. Hold **X** while turning it on.
+3. Release X when the `RPI-RP2` mass-storage volume appears.
+4. Run `make update` again.
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
 show red/green/blue/white corner blocks and a yellow arrow pointing toward the
@@ -83,8 +95,8 @@ and new bounds. Press A to force a full-screen redraw for comparison. Press B
 to play a 440 Hz tone for 180 ms; the green RGB channel remains tied to B as
 before.
 
-The ROM bootloader is independent of the application, so a faulty Zephyr image
-can normally be replaced by repeating the hold-X procedure.
+The ROM bootloader is independent of the application, so software-controlled
+entry cannot remove the hold-X recovery path.
 
 ## USB diagnostic shell and log console
 
@@ -121,6 +133,7 @@ picosystem buttons
 picosystem led auto|off|red|green|blue|white
 picosystem tone <frequency_hz> <duration_ms>
 picosystem display stats
+picosystem reboot bootloader
 ```
 
 `picosystem status` returns current uptime and software LED mode alongside one
@@ -132,6 +145,9 @@ button colors and blue heartbeat. The independent hardware red charge indicator
 is not disabled by `led off`. Tone requests are constrained to 100-4000 Hz and
 1-1000 ms and are queued for the main loop rather than driving PWM from the
 shell thread. Enter `picosystem -h` for command help.
+`reboot bootloader` stores a one-shot boot-mode marker in reserved SRAM and
+performs a cold reset; Zephyr consumes and clears the marker before entering
+the RP2040 ROM USB bootloader.
 
 Expected messages include button press/release events and a periodic line like:
 

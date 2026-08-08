@@ -14,12 +14,16 @@
 #include <string.h>
 
 #include <zephyr/kernel.h>
+#include <zephyr/retention/bootmode.h>
 #include <zephyr/shell/shell.h>
 #include <zephyr/shell/shell_string_conv.h>
 #include <zephyr/sys/atomic.h>
+#include <zephyr/sys/reboot.h>
 #include <zephyr/sys/util.h>
 
 #include "piezo.h"
+
+#define BOOTLOADER_REBOOT_DELAY_MS 100
 
 struct named_button {
 	const char *name;
@@ -260,10 +264,33 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 	return 0;
 }
 
+static int cmd_reboot_bootloader(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	const int err = bootmode_set(BOOT_MODE_TYPE_BOOTLOADER);
+	if (err != 0) {
+		shell_error(shell, "Failed to select the ROM bootloader (%d)", err);
+		return err;
+	}
+
+	shell_print(shell, "Rebooting into the RP2040 ROM USB bootloader");
+	/* Give the USB shell backend time to transmit the notice before reset. */
+	k_msleep(BOOTLOADER_REBOOT_DELAY_MS);
+	sys_reboot(SYS_REBOOT_COLD);
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(display_commands,
 			       SHELL_CMD_ARG(stats, NULL,
 					     "Show display timing and sprite position.",
 					     cmd_display_stats, 1, 0),
+			       SHELL_SUBCMD_SET_END);
+
+SHELL_STATIC_SUBCMD_SET_CREATE(reboot_commands,
+			       SHELL_CMD_ARG(bootloader, NULL,
+					     "Reboot into the RP2040 ROM USB bootloader.",
+					     cmd_reboot_bootloader, 1, 0),
 			       SHELL_SUBCMD_SET_END);
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
@@ -281,7 +308,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 				 "Frequency: 100-4000 Hz; duration: 1-1000 ms."),
 		      cmd_tone, 3, 0),
 	SHELL_CMD(display, &display_commands, "Display diagnostic commands.", NULL),
-	SHELL_SUBCMD_SET_END);
+	SHELL_CMD(reboot, &reboot_commands, "Reboot commands.", NULL), SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(picosystem, &picosystem_commands, "PicoSystem diagnostics.", NULL);
 

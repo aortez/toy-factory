@@ -37,6 +37,25 @@ def read_until_prompt(
     return bytes(received)
 
 
+def read_until_disconnect(
+    connection: serial.Serial,
+    timeout_seconds: float,
+) -> tuple[bytes, bool]:
+    deadline = time.monotonic() + timeout_seconds
+    received = bytearray()
+
+    while time.monotonic() < deadline:
+        try:
+            chunk = connection.read(max(connection.in_waiting, 1))
+        except (OSError, serial.SerialException):
+            return bytes(received), True
+
+        if chunk:
+            received.extend(chunk)
+
+    return bytes(received), False
+
+
 def clean_response(response: bytes, command: str) -> str:
     text = ANSI_ESCAPE.sub(b"", response).decode("utf-8", errors="replace")
     text = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -59,6 +78,11 @@ def clean_response(response: bytes, command: str) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--expect-disconnect",
+        action="store_true",
+        help="succeed when the command intentionally disconnects the USB device",
+    )
     parser.add_argument("port", help="USB CDC ACM device")
     parser.add_argument("command", nargs="+", help="shell command and arguments")
     parser.add_argument("--timeout", type=float, default=3.0, help="response timeout in seconds")
@@ -90,17 +114,34 @@ def main() -> int:
                 return 1
 
             connection.reset_input_buffer()
-            connection.write(command.encode("utf-8") + b"\r")
-            connection.flush()
+            try:
+                connection.write(command.encode("utf-8") + b"\r")
+                connection.flush()
+            except (OSError, serial.SerialException):
+                if args.expect_disconnect:
+                    return 0
+                raise
 
-            response = read_until_prompt(connection, args.timeout)
-            if PROMPT not in response:
-                print(f"timed out waiting for '{command}' on {args.port}", file=sys.stderr)
-                return 1
+            if args.expect_disconnect:
+                response, disconnected = read_until_disconnect(connection, args.timeout)
+            else:
+                response = read_until_prompt(connection, args.timeout)
+                disconnected = False
 
             output = clean_response(response, command)
             if output:
                 print(output)
+
+            if args.expect_disconnect:
+                if not disconnected:
+                    print(
+                        f"'{command}' did not disconnect {args.port}",
+                        file=sys.stderr,
+                    )
+                    return 1
+            elif PROMPT not in response:
+                print(f"timed out waiting for '{command}' on {args.port}", file=sys.stderr)
+                return 1
     except (OSError, serial.SerialException) as error:
         print(f"could not use {args.port}: {error}", file=sys.stderr)
         return 1
