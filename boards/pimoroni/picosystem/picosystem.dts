@@ -124,7 +124,7 @@
 		lcd: st7789v@0 {
 			compatible = "sitronix,st7789v";
 			reg = <0>;
-			mipi-max-frequency = <8000000>;
+			mipi-max-frequency = <20000000>;
 			width = <240>;
 			height = <240>;
 			x-offset = <0>;

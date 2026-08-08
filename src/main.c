@@ -163,6 +163,8 @@ static void log_button_changes(uint32_t previous_state, uint32_t state)
 
 int main(void)
 {
+	struct picosystem_display_test_result display_result;
+
 	for (size_t i = 0; i < ARRAY_SIZE(buttons); ++i) {
 		const int err = configure_input(&buttons[i]);
 		if (err != 0) {
@@ -191,7 +193,7 @@ int main(void)
 		return err;
 	}
 
-	err = picosystem_display_test_run();
+	err = picosystem_display_test_run(&display_result);
 	if (err != 0) {
 		LOG_ERR("Display smoke test failed (%d)", err);
 		const int led_err = set_rgb(true, false, false);
@@ -236,7 +238,8 @@ int main(void)
 
 		const int64_t now = k_uptime_get();
 		if (now >= next_status_time) {
-			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x", now, state);
+			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, display=%u us", now, state,
+				display_result.frame_time_us);
 			next_status_time = now + 5000;
 		}
 

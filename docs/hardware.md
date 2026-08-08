@@ -42,9 +42,15 @@ Other board-level resources:
 - no Wi-Fi, Bluetooth, or other radio.
 
 The board target currently declares the physical flash size, USB device,
-buttons, RGB LED, SPI display, and PWM backlight. The first display test uses
-RGB565 at 8 MHz and deliberately does not use the tearing-effect signal. Before
+buttons, RGB LED, SPI display, and PWM backlight. The display test uses RGB565
+at 20 MHz and deliberately does not use the tearing-effect signal. Before
 enabling settings, a filesystem, or unusually large images, audit the factory
 firmware's flash/data layout and define explicit storage partitions. A
 peripheral should be added to the device tree only when its driver milestone
 begins, keeping early failures easy to isolate.
+
+On the tested PIM559, sending the 115200-byte orientation frame in bounded
+eight-row chunks took 109393 us (1028 KiB/s). The earlier one-row baseline took
+194685 us (577 KiB/s), so batching reduced latency by about 44%. These figures
+measure the complete Zephyr display call path, including panel-window and driver
+overhead; they are not raw SPI wire-speed measurements.

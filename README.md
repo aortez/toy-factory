@@ -10,11 +10,11 @@ The first milestone intentionally exercises only low-risk hardware:
 - exposes the Zephyr log console over USB CDC ACM;
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
-- initializes the LCD over SPI and draws RGB/white/black color bars;
+- initializes the LCD over SPI and draws an asymmetric orientation target;
 - emits a five-second heartbeat over USB and on the blue LED.
 
 The LCD backlight is held off until the test frame is complete, then enabled at
-25%. Audio, battery ADC, charger status, and optimized display transfers are
+25%. Audio, battery ADC, charger status, and DMA/PIO display transfers are
 documented but not enabled yet.
 
 ## Build
@@ -61,9 +61,10 @@ make flash UF2_MOUNT=/media/$USER/RPI-RP2
 ```
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
-show vertical red, green, blue, white, and black bars at low brightness. The RGB
-LED should show red, green, and blue in sequence, then blink blue. A/B/X
-illuminate red/green/blue respectively; Y illuminates all three channels.
+show red/green/blue/white corner blocks and a yellow arrow pointing toward the
+top at low brightness. The RGB LED should show red, green, and blue in sequence,
+then blink blue. A/B/X illuminate red/green/blue respectively; Y illuminates all
+three channels.
 
 The ROM bootloader is independent of the application, so a faulty Zephyr image
 can normally be replaced by repeating the hold-X procedure.
@@ -84,7 +85,7 @@ with a different number.
 Expected messages include button press/release events and a periodic line like:
 
 ```text
-<inf> picosystem_playground: alive: uptime=10000 ms, buttons=0x00
+<inf> picosystem_playground: alive: uptime=10000 ms, buttons=0x00, display=109393 us
 ```
 
 ## Repository layout
@@ -106,7 +107,8 @@ See [the hardware map](docs/hardware.md) before adding peripherals and
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
 generation. USB CDC, all eight buttons, the RGB heartbeat, hold-X recovery, and
-the display color bars at 25% backlight have been checked on one PIM559. An
-asymmetric orientation test, backlight startup behavior, and flash-size behavior
-still require physical confirmation. Record those results in the roadmap rather
-than treating a successful cross-build as hardware validation.
+the asymmetric display target at 20 MHz and 25% backlight have been checked on
+one PIM559. Its bounded eight-row renderer measured 109393 us for a full frame.
+Backlight startup behavior and flash-size behavior still require physical
+confirmation. Record those results in the roadmap rather than treating a
+successful cross-build as hardware validation.

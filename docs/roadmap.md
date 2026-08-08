@@ -25,10 +25,12 @@ enough to mark hardware-dependent acceptance items complete.
 
 - [x] Add SPI0 pin control, LCD reset, chip select, D/C, and backlight PWM.
 - [x] Add an initial Zephyr ST7789V/MIPI-DBI device-tree node.
-- [x] Add a line-buffered RGB565 color-bar test.
+- [x] Add a bounded RGB565 color-bar test.
 - [x] Confirm full-frame geometry, RGB color order, and 25% PWM backlight.
-- [ ] Add an asymmetric orientation marker and tune panel settings if needed.
-- [ ] Measure full-frame and partial-update throughput.
+- [x] Add an asymmetric corner/arrow orientation target.
+- [x] Confirm target orientation and 20 MHz SPI transfer timing on hardware.
+- [x] Measure full-frame throughput with a bounded eight-row buffer.
+- [ ] Measure partial-update throughput.
 - [ ] Confirm that backlight-off is the safe startup state.
 
 ## 3. Remaining board peripherals
