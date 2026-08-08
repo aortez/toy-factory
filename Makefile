@@ -51,7 +51,7 @@ console: image ## Open the interactive device shell and log stream
 		echo "opening PicoSystem console on $$port (exit with Ctrl+])"; \
 		exec $(DOCKER) run --rm --interactive --tty --user 0:0 \
 			--device "$$port:$$port" "$(FIRMWARE_IMAGE)" \
-			python3 -m serial.tools.miniterm "$$port" 115200
+			python3 -m serial.tools.miniterm --filter direct "$$port" 115200
 
 status: image ## Print one device status snapshot and exit
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
