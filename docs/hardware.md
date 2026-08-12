@@ -121,21 +121,26 @@ without a display-write error or visible corruption.
 
 The game-oriented framebuffer baseline uses 115200 bytes for one 240 x 240
 RGB565 framebuffer and 3840 bytes for an eight-row transfer buffer. Its initial
-full transfer took 89840 us (1252 KiB/s), while routine 18 x 18 dirty transfers
-took about 820-833 us. After 3518 fixed updates it sustained 62.5 fps with zero
-skipped ticks, including twelve back-to-back USB status requests. The worst
+bounded full transfer took 89840 us (1252 KiB/s), while routine 18 x 18 dirty
+transfers took about 820-833 us. After 3518 fixed updates it sustained 62.5 fps
+with zero skipped ticks, including twelve back-to-back USB status requests. The worst
 complete dirty render observed in that run was 3340 us, and main-thread stack
 high-water was 892 of 2048 bytes. The animated sprite, D-pad steering, and
 repeated full redraws were visually confirmed without corruption. A forced full
-redraw is synchronous and takes about 90 ms, so its diagnostic A-button path
-visibly hitches and can intentionally accumulate skipped game ticks.
+redraw remains synchronous, so its diagnostic A-button path visibly hitches and
+can intentionally accumulate skipped game ticks.
 
-Zephyr's preassembled RP2040 PIO SPI and PIO/DMA paths were also measured at
-the same configured 20 MHz. PIO polling was slower for both full and dirty
-updates. PIO/DMA reduced the full transfer to about 82.3 ms but increased the
-routine 18 x 18 transfer to 1.92-2.06 ms and consumed more flash, RAM, and stack.
-The hardware SPI0/PL022 path therefore remains the default; full results and
-reproduction targets are in [the benchmark report](../benchmarks/pio-dma/README.md).
+Full frames now bypass the staging buffer and send the wire-ready framebuffer
+with one display write. This reduced PL022 full-frame time to 77,692-77,711 us
+without changing the roughly 0.82 ms dirty path. Zephyr's preassembled RP2040
+PIO SPI and PIO/DMA paths were measured again at the same configured 20 MHz.
+PIO polling took 106,429 us; PIO/DMA took 47,303-47,351 us, close to the
+46,080 us payload wire-time floor. PIO/DMA still increased the routine 18 x 18
+transfer to 1.91-1.94 ms and consumed more flash, RAM, and stack. The dirty-first
+demo therefore retains hardware SPI0/PL022 as its default, while large-update
+workloads should reconsider PIO/DMA. The direct full-frame output was visually
+confirmed on the physical PIM559. Full results and reproduction targets are in
+[the benchmark report](../benchmarks/pio-dma/README.md).
 
 On a cold power-on, the backlight remained visually dark until the completed
 frame appeared; no bright or white startup flash was observed.

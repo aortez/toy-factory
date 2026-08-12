@@ -101,7 +101,7 @@ tick and each normal presentation covers only the union of its old and new
 bounds. The D-pad steers its horizontal and vertical velocity. Press A to force
 a full-screen redraw for comparison and B to play a 440 Hz tone for 180 ms.
 The current display path is synchronous, so the A-button diagnostic blocks the
-game loop for about 90 ms and produces an expected visible hitch; it is not a
+game loop for about 78 ms and produces an expected visible hitch; it is not a
 gameplay pause.
 
 The RGB LED shows red, green, and blue in sequence at startup, then blinks blue.
@@ -201,17 +201,18 @@ west.yml                     Pinned Zephyr/module manifest
 
 See [the hardware map](docs/hardware.md) before adding peripherals and
 [the bring-up roadmap](docs/roadmap.md) for the next milestones. The measured
-[PIO/DMA comparison](benchmarks/pio-dma/README.md) explains why the hardware
-SPI0/PL022 display path remains the default.
+[PIO/DMA comparison](benchmarks/pio-dma/README.md) shows the tradeoff between
+the default hardware SPI0/PL022 dirty-update path and faster PIO/DMA full frames.
 
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
 generation. The framebuffer image currently links at 142,620 bytes of RAM
 (52.96% of the available region), including the 115,200-byte framebuffer and
-3,840-byte transfer buffer. On the tested PIM559, the initial full-frame
-transfer took 89,840 us (1252 KiB/s). Normal 18 x 18 dirty transfers took about
-820-833 us, and the worst complete dirty render observed during repeated USB
+3,840-byte transfer buffer. Full frames bypass that staging buffer with one
+contiguous display write. On the tested PIM559, the initial PL022 full-frame
+transfer took 77,692-77,711 us (1447-1448 KiB/s). Normal 18 x 18 dirty transfers
+took about 820-840 us, and the worst complete dirty render observed during repeated USB
 shell traffic was 3,340 us. After 3,518 fixed updates the effective rate was
 62.5 fps with zero skipped ticks; main-thread stack high-water was 892 of 2048
 bytes. Twelve back-to-back status queries did not change the frame rate or skip

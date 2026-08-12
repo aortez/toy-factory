@@ -123,6 +123,31 @@ static uint32_t throughput_kib_per_second(size_t byte_count, uint32_t elapsed_us
 			  ((uint64_t)MAX(elapsed_us, 1U) * 1024U));
 }
 
+static void record_present_stats(struct picosystem_graphics_stats *stats, uint16_t width,
+				 uint16_t height, size_t byte_count, uint32_t start_cycles)
+{
+	const uint32_t elapsed_cycles = k_cycle_get_32() - start_cycles;
+	const uint32_t elapsed_us = MAX(k_cyc_to_us_floor32(elapsed_cycles), 1U);
+
+	stats->last_present_time_us = elapsed_us;
+	stats->last_present_throughput_kib_per_second =
+		throughput_kib_per_second(byte_count, elapsed_us);
+	stats->last_present_width = width;
+	stats->last_present_height = height;
+	if (stats->present_count < UINT32_MAX) {
+		++stats->present_count;
+	}
+
+	if ((width == DISPLAY_WIDTH) && (height == DISPLAY_HEIGHT)) {
+		stats->full_present_time_us = elapsed_us;
+		stats->full_present_throughput_kib_per_second =
+			throughput_kib_per_second(byte_count, elapsed_us);
+		if (stats->full_present_count < UINT32_MAX) {
+			++stats->full_present_count;
+		}
+	}
+}
+
 static uint16_t native_color(picosystem_color_t color)
 {
 	return sys_cpu_to_be16(color);
@@ -288,41 +313,37 @@ int picosystem_graphics_present_region(struct picosystem_graphics_stats *stats,
 		row_offset += write_rows;
 	}
 
-	const uint32_t elapsed_cycles = k_cycle_get_32() - start_cycles;
-	const uint32_t elapsed_us = MAX(k_cyc_to_us_floor32(elapsed_cycles), 1U);
 	const size_t byte_count = (size_t)region->width * region->height * sizeof(framebuffer[0]);
 
-	stats->last_present_time_us = elapsed_us;
-	stats->last_present_throughput_kib_per_second =
-		throughput_kib_per_second(byte_count, elapsed_us);
-	stats->last_present_width = region->width;
-	stats->last_present_height = region->height;
-	if (stats->present_count < UINT32_MAX) {
-		++stats->present_count;
-	}
-
-	if ((region->width == DISPLAY_WIDTH) && (region->height == DISPLAY_HEIGHT)) {
-		stats->full_present_time_us = elapsed_us;
-		stats->full_present_throughput_kib_per_second =
-			throughput_kib_per_second(byte_count, elapsed_us);
-		if (stats->full_present_count < UINT32_MAX) {
-			++stats->full_present_count;
-		}
-	}
-
+	record_present_stats(stats, region->width, region->height, byte_count, start_cycles);
 	return 0;
 }
 
 int picosystem_graphics_present_full(struct picosystem_graphics_stats *stats)
 {
-	const struct picosystem_rect full_display = {
-		.x = 0U,
-		.y = 0U,
+	if ((stats == NULL) || !graphics_initialized) {
+		return -EINVAL;
+	}
+
+	const struct display_buffer_descriptor descriptor = {
+		.buf_size = sizeof(framebuffer),
 		.width = DISPLAY_WIDTH,
 		.height = DISPLAY_HEIGHT,
+		.pitch = DISPLAY_WIDTH,
+		.frame_incomplete = false,
 	};
+	const uint32_t start_cycles = k_cycle_get_32();
 
-	return picosystem_graphics_present_region(stats, &full_display);
+	/* Full frames are contiguous and already stored in the panel's RGB565X byte order. */
+	const int err = display_write(display, 0U, 0U, &descriptor, framebuffer);
+	if (err != 0) {
+		LOG_ERR("Full-frame display write failed (%d)", err);
+		return err;
+	}
+
+	record_present_stats(stats, DISPLAY_WIDTH, DISPLAY_HEIGHT, sizeof(framebuffer),
+			     start_cycles);
+	return 0;
 }
 
 void picosystem_graphics_clear(picosystem_color_t color)

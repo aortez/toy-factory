@@ -19,30 +19,36 @@ make update          # restore the default PL022 image
 ## PIM559 results
 
 All variants used the same application, 20 MHz configured display frequency,
-240 x 240 RGB565 framebuffer, and 18 x 18 animated dirty region. Times cover
-the synchronous Zephyr display call. Each image was built cleanly, flashed
-through the software bootloader path, and queried over USB CDC on the same
-PIM559.
+240 x 240 RGB565 framebuffer, and 18 x 18 animated dirty region. Full frames
+are one contiguous 115,200-byte display write; partial regions continue to use
+the bounded eight-row staging buffer. Times cover the synchronous Zephyr
+display call. Each image was built cleanly, flashed through the software
+bootloader path, and queried over USB CDC on the same PIM559.
 
 | Transport | Flash | RAM | Full present | Typical 18 x 18 present | Main stack high-water |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| SPI0/PL022 | 115,644 B | 142,620 B | 89,900 us | 818 us | 892 / 2048 B |
-| PIO polling | 119,624 B | 142,692 B | 130,627 us | 1,615 us | 1016 / 2048 B |
-| PIO plus DMA | 123,116 B | 143,204 B | 82,297-82,345 us | 1,915-2,060 us | 1132 / 2048 B |
+| SPI0/PL022 | 115,852 B | 142,620 B | 77,692-77,711 us | 821-839 us | 892 / 2048 B |
+| PIO polling | 119,832 B | 142,692 B | 106,429 us | 1,553 us | 1016 / 2048 B |
+| PIO plus DMA | 123,324 B | 143,204 B | 47,303-47,351 us | 1,913-1,940 us | 1132 / 2048 B |
 
 All three variants sustained the fixed 62.5 fps update rate with zero skipped
 ticks during their steady-state sample. The PIO/DMA image also retained zero
 skips while serving twelve back-to-back USB status commands; its worst complete
 dirty render during that run was 5,903 us.
 
-PIO/DMA improved the infrequent full-frame transfer by about 8.4%, but made the
-normal dirty transfer 2.3-2.5 times slower, added 7,472 bytes of flash and 584
-bytes of RAM, and raised measured main-stack use by 240 bytes. The Zephyr driver
-uses DMA for the ST7789's short command/window transactions as well as pixel
-payloads, so setup overhead dominates small updates. Its public SPI operation
-also waits synchronously for DMA completion, meaning it does not remove the
-visible full-redraw stall.
+Replacing thirty staged writes with one contiguous write reduced full-frame
+time from 89,900 to 77,692-77,711 us on PL022, from 130,627 to 106,429 us with
+PIO polling, and from 82,297-82,345 to 47,303-47,351 us with PIO/DMA. The
+PIO/DMA result is within about 2.8% of the 46,080 us payload wire-time floor at
+20 MHz and is about 39% faster than the new PL022 path.
 
-The default therefore remains SPI0/PL022. PIO/DMA may be worth revisiting with
-a transfer-size threshold, an asynchronous display worker, or a renderer that
-primarily sends large contiguous regions.
+PIO/DMA still makes the normal dirty transfer about 2.3 times slower, adds
+7,472 bytes of flash and 584 bytes of RAM, and raises measured main-stack use
+by 240 bytes. DMA setup overhead dominates the ST7789's short command/window
+transactions. Zephyr's public SPI operation also waits synchronously for DMA
+completion, so even the near-wire-speed full update blocks the caller for about
+47 ms.
+
+The dirty-first demo therefore retains SPI0/PL022 as its default. A workload
+dominated by large contiguous updates should reconsider PIO/DMA, ideally with
+a transfer-size threshold or an asynchronous display worker.
