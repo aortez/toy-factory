@@ -73,6 +73,13 @@ device explicitly with `PORT=/dev/ttyACM0` or
 the same workflow. Close `make console` before updating because only one
 process can own the serial port.
 
+On Linux, if the verified `RPI-RP2` block device appears but the desktop does
+not automount it, `make update` uses `udisksctl` as a fallback. It accepts only
+a unique removable USB VFAT partition whose udev vendor/model and filesystem
+identity match the RP2040 ROM bootloader; ambiguous devices are never mounted
+or flashed automatically. Install the host's `udisks2` package or mount the
+volume manually when `udisksctl` is unavailable.
+
 To enter update mode without building or flashing, run:
 
 ```sh
