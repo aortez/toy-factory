@@ -43,8 +43,9 @@ Other board-level resources:
 
 The board target currently declares the physical flash size, USB device,
 buttons, RGB LED, SPI display, PWM backlight, PWM piezo, and battery ADC. The
-display test uses RGB565 at 20 MHz and deliberately does not use the
-tearing-effect signal. Before enabling settings, a filesystem, or unusually
+graphics baseline uses one 115,200-byte RGB565 framebuffer and a packed
+3,840-byte transfer buffer at 20 MHz; it deliberately does not use the
+tearing-effect signal yet. Before enabling settings, a filesystem, or unusually
 large images, audit the factory firmware's flash/data layout and define explicit
 storage partitions. A peripheral should be added to the device tree only when
 its driver milestone begins, keeping early failures easy to isolate.
@@ -117,6 +118,17 @@ us. Cardinal 32 x 24 or 24 x 32 dirty rectangles took 1832-2130 us (704-818
 KiB/s), while diagonal 32 x 32 rectangles took 2285-2602 us (768-875 KiB/s).
 More than 300 held-key updates, diagonal moves, and edge clamps completed
 without a display-write error or visible corruption.
+
+The game-oriented framebuffer baseline uses 115200 bytes for one 240 x 240
+RGB565 framebuffer and 3840 bytes for an eight-row transfer buffer. Its initial
+full transfer took 89840 us (1252 KiB/s), while routine 18 x 18 dirty transfers
+took about 820-833 us. After 3518 fixed updates it sustained 62.5 fps with zero
+skipped ticks, including twelve back-to-back USB status requests. The worst
+complete dirty render observed in that run was 3340 us, and main-thread stack
+high-water was 892 of 2048 bytes. The animated sprite, D-pad steering, and
+repeated full redraws were visually confirmed without corruption. A forced full
+redraw is synchronous and takes about 90 ms, so its diagnostic A-button path
+visibly hitches and can intentionally accumulate skipped game ticks.
 
 On a cold power-on, the backlight remained visually dark until the completed
 frame appeared; no bright or white startup flash was observed.

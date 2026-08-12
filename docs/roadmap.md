@@ -48,8 +48,11 @@ enough to mark hardware-dependent acceptance items complete.
 
 ## 4. Game-oriented graphics
 
-- [ ] Decide between a full 240 x 240 RGB565 framebuffer and partial buffers.
-- [ ] Measure RAM, stack high-water marks, frame time, and USB logging impact.
+- [x] Select one full 240 x 240 RGB565 framebuffer with packed partial transfers.
+- [x] Add clipped pixel, rectangle, monochrome-sprite, and compact text primitives.
+- [x] Separate fixed-step game updates from dirty-region presentation.
+- [x] Confirm the bouncing/steerable framebuffer demo on physical hardware.
+- [x] Measure RAM, stack high-water marks, frame time, and USB logging impact.
 - [ ] Evaluate a preassembled PIO/DMA transfer path.
 - [ ] Use the LCD tearing-effect signal for synchronized presentation.
 - [ ] Evaluate 120 x 120 pixel-doubled rendering.

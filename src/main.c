@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include <zephyr/device.h>
@@ -16,20 +17,16 @@
 
 #include "battery.h"
 #include "diagnostic_shell.h"
-#include "display_test.h"
+#include "game_demo.h"
 #include "piezo.h"
 #include "power_status.h"
 
 LOG_MODULE_REGISTER(picosystem_playground, LOG_LEVEL_INF);
 
-#define DISPLAY_MOVE_REPEAT_MS  100
-#define PIEZO_TEST_FREQUENCY_HZ 440U
-#define PIEZO_TEST_DURATION_MS  180U
-#define STATUS_LOG_INTERVAL_MS  30000
-
-#define DPAD_BUTTON_MASK                                                                           \
-	(BIT(PICOSYSTEM_BUTTON_UP) | BIT(PICOSYSTEM_BUTTON_DOWN) | BIT(PICOSYSTEM_BUTTON_LEFT) |   \
-	 BIT(PICOSYSTEM_BUTTON_RIGHT))
+#define PIEZO_TEST_FREQUENCY_HZ  440U
+#define PIEZO_TEST_DURATION_MS   180U
+#define STACK_SAMPLE_INTERVAL_MS 1000
+#define STATUS_LOG_INTERVAL_MS   30000
 
 struct named_gpio {
 	const char *name;
@@ -240,16 +237,59 @@ static void apply_led_mode(enum picosystem_led_mode mode, bool *red, bool *green
 	}
 }
 
+static struct picosystem_game_input game_input_from_buttons(uint32_t buttons_state)
+{
+	struct picosystem_game_input input = {0};
+
+	if ((buttons_state & BIT(PICOSYSTEM_BUTTON_LEFT)) != 0U) {
+		--input.horizontal;
+	}
+	if ((buttons_state & BIT(PICOSYSTEM_BUTTON_RIGHT)) != 0U) {
+		++input.horizontal;
+	}
+	if ((buttons_state & BIT(PICOSYSTEM_BUTTON_UP)) != 0U) {
+		--input.vertical;
+	}
+	if ((buttons_state & BIT(PICOSYSTEM_BUTTON_DOWN)) != 0U) {
+		++input.vertical;
+	}
+
+	return input;
+}
+
+static int sample_main_stack(struct picosystem_runtime_metrics *runtime)
+{
+	if (runtime == NULL) {
+		return -EINVAL;
+	}
+
+	size_t unused_bytes;
+	const int err = k_thread_stack_space_get(k_current_get(), &unused_bytes);
+	if (err != 0) {
+		return err;
+	}
+
+	if (unused_bytes > CONFIG_MAIN_STACK_SIZE) {
+		return -ERANGE;
+	}
+
+	runtime->main_stack_size_bytes = CONFIG_MAIN_STACK_SIZE;
+	runtime->main_stack_used_bytes = CONFIG_MAIN_STACK_SIZE - unused_bytes;
+	return 0;
+}
+
 static int publish_diagnostic_snapshot(const struct picosystem_battery_sample *battery,
 				       int64_t battery_sample_uptime_ms,
 				       const struct picosystem_power_status *power,
-				       const struct picosystem_display_test_state *display,
+				       const struct picosystem_game_demo_state *game,
+				       const struct picosystem_runtime_metrics *runtime,
 				       uint32_t buttons_state)
 {
 	const struct picosystem_diagnostic_snapshot snapshot = {
 		.battery = *battery,
 		.power = *power,
-		.display = *display,
+		.game = *game,
+		.runtime = *runtime,
 		.battery_sample_uptime_ms = battery_sample_uptime_ms,
 		.buttons = buttons_state,
 	};
@@ -260,8 +300,9 @@ static int publish_diagnostic_snapshot(const struct picosystem_battery_sample *b
 int main(void)
 {
 	struct picosystem_battery_sample battery_sample;
-	struct picosystem_display_test_state display_state;
+	struct picosystem_game_demo_state game_state;
 	struct picosystem_power_status power_status;
+	struct picosystem_runtime_metrics runtime_metrics;
 
 	for (size_t i = 0; i < ARRAY_SIZE(buttons); ++i) {
 		const int err = configure_input(&buttons[i]);
@@ -309,12 +350,12 @@ int main(void)
 		return err;
 	}
 
-	err = picosystem_display_test_run(&display_state);
+	err = picosystem_game_demo_init(&game_state);
 	if (err != 0) {
-		LOG_ERR("Display smoke test failed (%d)", err);
+		LOG_ERR("Framebuffer game demo failed to initialize (%d)", err);
 		const int led_err = set_rgb(true, false, false);
 		if (led_err != 0) {
-			LOG_ERR("Failed to indicate display error on RGB LED (%d)", led_err);
+			LOG_ERR("Failed to indicate graphics error on RGB LED (%d)", led_err);
 		}
 		return err;
 	}
@@ -332,8 +373,14 @@ int main(void)
 	}
 	log_power_status(&power_status);
 
-	LOG_INF("PicoSystem GPIO bring-up ready");
-	LOG_INF("D-pad moves the marker; A forces a full redraw for comparison");
+	err = sample_main_stack(&runtime_metrics);
+	if (err != 0) {
+		LOG_ERR("Failed to sample main stack usage (%d)", err);
+		return err;
+	}
+
+	LOG_INF("PicoSystem game-oriented framebuffer baseline ready");
+	LOG_INF("D-pad steers the sprite; A forces a full redraw for comparison");
 	LOG_INF("B plays a short 440 Hz piezo tone");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 	LOG_INF("GP2 remains an input; the automatic red charge indicator is enabled");
@@ -341,14 +388,16 @@ int main(void)
 
 	uint32_t previous_state = 0U;
 	err = publish_diagnostic_snapshot(&battery_sample, battery_sample_uptime_ms, &power_status,
-					  &display_state, previous_state);
+					  &game_state, &runtime_metrics, previous_state);
 	if (err != 0) {
 		LOG_ERR("Failed to publish initial diagnostic snapshot (%d)", err);
 		return err;
 	}
 
-	int64_t next_status_time = k_uptime_get() + STATUS_LOG_INTERVAL_MS;
-	int64_t next_move_time = 0;
+	const int64_t scheduling_start_ms = k_uptime_get();
+	int64_t next_game_tick_ms = scheduling_start_ms + PICOSYSTEM_GAME_TICK_INTERVAL_MS;
+	int64_t next_stack_sample_ms = scheduling_start_ms + STACK_SAMPLE_INTERVAL_MS;
+	int64_t next_status_time = scheduling_start_ms + STATUS_LOG_INTERVAL_MS;
 
 	while (true) {
 		uint32_t state;
@@ -372,43 +421,46 @@ int main(void)
 
 		const int64_t now = k_uptime_get();
 		const uint32_t pressed = state & ~previous_state;
-		const bool dpad_changed = ((state ^ previous_state) & DPAD_BUTTON_MASK) != 0U;
-		const uint32_t dpad_state = state & DPAD_BUTTON_MASK;
 
 		log_button_changes(previous_state, state);
 
-		if (dpad_state == 0U) {
-			next_move_time = now;
-		} else if (dpad_changed || (now >= next_move_time)) {
-			int8_t horizontal = 0;
-			int8_t vertical = 0;
-
-			if ((state & BIT(PICOSYSTEM_BUTTON_LEFT)) != 0U) {
-				--horizontal;
-			}
-			if ((state & BIT(PICOSYSTEM_BUTTON_RIGHT)) != 0U) {
-				++horizontal;
-			}
-			if ((state & BIT(PICOSYSTEM_BUTTON_UP)) != 0U) {
-				--vertical;
-			}
-			if ((state & BIT(PICOSYSTEM_BUTTON_DOWN)) != 0U) {
-				++vertical;
-			}
-
-			err = picosystem_display_test_move(&display_state, horizontal, vertical);
+		const struct picosystem_game_input game_input = game_input_from_buttons(state);
+		uint32_t catch_up_steps = 0U;
+		while ((now >= next_game_tick_ms) &&
+		       (catch_up_steps < PICOSYSTEM_GAME_MAX_CATCH_UP)) {
+			err = picosystem_game_demo_update(&game_state, &game_input);
 			if (err != 0) {
-				LOG_ERR("Partial display update failed (%d)", err);
+				LOG_ERR("Game logic update failed (%d)", err);
 				return err;
 			}
 
-			next_move_time = now + DISPLAY_MOVE_REPEAT_MS;
+			next_game_tick_ms += PICOSYSTEM_GAME_TICK_INTERVAL_MS;
+			++catch_up_steps;
+		}
+
+		if (now >= next_game_tick_ms) {
+			const int64_t skipped_ticks =
+				((now - next_game_tick_ms) / PICOSYSTEM_GAME_TICK_INTERVAL_MS) + 1;
+			const uint32_t bounded_skipped_ticks =
+				(skipped_ticks > UINT32_MAX) ? UINT32_MAX : (uint32_t)skipped_ticks;
+
+			picosystem_game_demo_note_skipped_ticks(&game_state, bounded_skipped_ticks);
+			next_game_tick_ms += skipped_ticks * PICOSYSTEM_GAME_TICK_INTERVAL_MS;
 		}
 
 		if ((pressed & BIT(PICOSYSTEM_BUTTON_A)) != 0U) {
-			err = picosystem_display_test_redraw(&display_state);
+			err = picosystem_game_demo_redraw(&game_state);
 			if (err != 0) {
-				LOG_ERR("Full display redraw failed (%d)", err);
+				LOG_ERR("Full framebuffer redraw failed (%d)", err);
+				return err;
+			}
+			LOG_INF("Full framebuffer redraw: %u us present, %u us render",
+				game_state.graphics.full_present_time_us,
+				game_state.last_render_time_us);
+		} else if (catch_up_steps > 0U) {
+			err = picosystem_game_demo_present(&game_state);
+			if (err != 0) {
+				LOG_ERR("Dirty-region presentation failed (%d)", err);
 				return err;
 			}
 		}
@@ -456,6 +508,15 @@ int main(void)
 			return err;
 		}
 
+		if (now >= next_stack_sample_ms) {
+			err = sample_main_stack(&runtime_metrics);
+			if (err != 0) {
+				LOG_ERR("Failed to sample main stack usage (%d)", err);
+				return err;
+			}
+			next_stack_sample_ms = now + STACK_SAMPLE_INTERVAL_MS;
+		}
+
 		if (now >= next_status_time) {
 			err = read_and_log_battery(&battery_sample);
 			if (err != 0) {
@@ -463,24 +524,33 @@ int main(void)
 			}
 			battery_sample_uptime_ms = k_uptime_get();
 
-			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, power=%s, full=%u us, "
-				"partial=%u us/%ux%u (#%u)",
+			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, power=%s, frame=%u, "
+				"present=%u us/%ux%u, skipped=%u, main-stack=%u/%u bytes",
 				now, state, picosystem_power_state_name(power_status.state),
-				display_state.full_frame_time_us,
-				display_state.last_partial_time_us,
-				display_state.last_partial_width, display_state.last_partial_height,
-				display_state.partial_update_count);
+				game_state.presented_frame_count,
+				game_state.graphics.last_present_time_us,
+				game_state.graphics.last_present_width,
+				game_state.graphics.last_present_height,
+				game_state.skipped_tick_count,
+				runtime_metrics.main_stack_used_bytes,
+				runtime_metrics.main_stack_size_bytes);
 			next_status_time = now + STATUS_LOG_INTERVAL_MS;
 		}
 
 		err = publish_diagnostic_snapshot(&battery_sample, battery_sample_uptime_ms,
-						  &power_status, &display_state, state);
+						  &power_status, &game_state, &runtime_metrics,
+						  state);
 		if (err != 0) {
 			LOG_ERR("Failed to publish diagnostic snapshot (%d)", err);
 			return err;
 		}
 
-		k_msleep(20);
+		const int64_t sleep_ms = next_game_tick_ms - k_uptime_get();
+		if (sleep_ms > 0) {
+			k_msleep((int32_t)sleep_ms);
+		} else {
+			k_yield();
+		}
 	}
 
 	return 0;

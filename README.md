@@ -4,22 +4,27 @@ An experimental, out-of-tree Zephyr port for the Pimoroni PicoSystem PIM559.
 The build runs entirely in Docker; the host needs only Git, Docker, and the
 Docker Compose plugin.
 
-The first milestone intentionally exercises only low-risk hardware:
+The current baseline exercises the complete board and a game-oriented graphics
+path:
 
 - boots a Zephyr 4.4.2 image from the RP2040 UF2 bootloader;
 - exposes an interactive Zephyr shell and log console over USB CDC ACM;
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
-- initializes the LCD over SPI and draws an asymmetric target with a movable marker;
+- owns one 240 x 240 RGB565 framebuffer and presents packed dirty regions over SPI;
+- runs a fixed 16 ms game update with an automatically bouncing, D-pad-steered sprite;
 - plays a short, bounded piezo tone when B is pressed;
 - averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
 - classifies the GP2 VBUS and active-low GP24 charger-status inputs;
 - emits a 30-second log heartbeat and a faster visual heartbeat on the blue LED.
 
-The LCD backlight is held off until the test frame is complete, then enabled at
-25%. The piezo starts silent and uses a conservative 25 us active pulse for the
-tone test. GP2 remains an input so the board's automatic red charging indicator
-continues to work. DMA/PIO display transfers are documented but not enabled yet.
+The LCD backlight is held off until the initial framebuffer is complete and has
+been transferred, then enabled at 25%. The framebuffer consumes 115,200 bytes;
+a separate 3,840-byte staging buffer packs partial rows for efficient driver
+writes. The piezo starts silent and uses a conservative 25 us active pulse for
+the tone test. GP2 remains an input so the board's automatic red charging
+indicator continues to work. DMA/PIO display transfers are documented but not
+enabled yet.
 
 ## Build
 
@@ -82,18 +87,19 @@ The physical gesture remains the recovery path for a blank or broken image:
 4. Run `make update` again.
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
-show red/green/blue/white corner blocks and a yellow arrow pointing toward the
-top at low brightness. The RGB LED should show red, green, and blue in sequence,
-then blink blue. A/B/X illuminate red/green/blue respectively; Y illuminates all
-three channels. While the battery is actively charging, the board's independent
-hardware path also illuminates the red channel, so software-selected colors can
-mix with red.
+show a dark checkerboard playfield, cyan border, white `FRAMEBUFFER DIRTY 16MS`
+heading, and a moving yellow sprite. The sprite updates on a fixed 16 ms logic
+tick and each normal presentation covers only the union of its old and new
+bounds. The D-pad steers its horizontal and vertical velocity. Press A to force
+a full-screen redraw for comparison and B to play a 440 Hz tone for 180 ms.
+The current display path is synchronous, so the A-button diagnostic blocks the
+game loop for about 90 ms and produces an expected visible hitch; it is not a
+gameplay pause.
 
-A white-bordered magenta marker starts in the center. The D-pad moves it in
-8-pixel steps and repeats while held. Each move redraws only the marker's old
-and new bounds. Press A to force a full-screen redraw for comparison. Press B
-to play a 440 Hz tone for 180 ms; the green RGB channel remains tied to B as
-before.
+The RGB LED shows red, green, and blue in sequence at startup, then blinks blue.
+A/B/X illuminate red/green/blue respectively; Y illuminates all three channels.
+While the battery is actively charging, the board's independent hardware path
+also illuminates the red channel, so software-selected colors can mix with red.
 
 The ROM bootloader is independent of the application, so software-controlled
 entry cannot remove the hold-X recovery path.
@@ -138,7 +144,8 @@ picosystem reboot bootloader
 
 `picosystem status` returns current uptime and software LED mode alongside one
 coherent hardware snapshot containing buttons, USB/charger state, the most
-recent battery sample and its age, display timing, and sprite position.
+recent battery sample and its age, framebuffer/presentation timing, game-loop
+rate and skipped ticks, sprite state, and the main-thread stack high-water mark.
 `buttons` is a compact live-input view.
 The LED override takes effect in the main hardware loop; `auto` restores the
 button colors and blue heartbeat. The independent hardware red charge indicator
@@ -152,17 +159,19 @@ the RP2040 ROM USB bootloader.
 Expected messages include button press/release events and a periodic line like:
 
 ```text
-<inf> picosystem_display_test: Partial #1: 24x32 at (108,100), 2130 us, 704 KiB/s
-<inf> picosystem_playground: battery: 3988 mV (raw mean 1650)
+<inf> picosystem_graphics: Framebuffer ready: 115200 bytes plus 3840-byte transfer buffer, SPI 20000000 Hz
+<inf> picosystem_playground: battery: 3850 mV (raw mean 1593)
 <inf> picosystem_playground: power: usb-charging (usb=present, charge=active)
-<inf> picosystem_playground: alive: uptime=10000 ms, buttons=0x00, power=usb-charging, full=116593 us, partial=2130 us/24x32 (#1)
+<inf> picosystem_playground: alive: uptime=30000 ms, buttons=0x00, power=usb-charging, frame=1875, present=820 us/18x18, skipped=0, main-stack=892/2048 bytes
 ```
 
-After moving the marker, the log also reports the dirty rectangle and measured
-transfer rate. Pressing B logs the start of the tone and confirms when the
-delayed shutoff has returned the PWM output to silence. Battery readings are
-averaged over 16 raw samples. They are diagnostic voltage measurements, not a
-charge-percentage estimate. Power status is reported as `battery`,
+The animation deliberately avoids per-frame logging; use `picosystem display
+stats` for current buffer sizes, full and dirty presentation timing, effective
+frame rate, skipped ticks, render time, sprite state, and main-stack usage.
+Pressing B logs the start of the tone and confirms when the delayed shutoff has
+returned the PWM output to silence. Battery readings are averaged over 16 raw
+samples. They are diagnostic voltage measurements, not a charge-percentage
+estimate. Power status is reported as `battery`,
 `usb-powered`, or `usb-charging`; an unexpected active charger signal without
 VBUS is retained as a separate diagnostic state. Each active charger sample
 holds `usb-charging` for one second so sampled status pulses do not flood the
@@ -188,11 +197,22 @@ See [the hardware map](docs/hardware.md) before adding peripherals and
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation. USB CDC, all eight buttons, the RGB heartbeat, hold-X recovery, and
-the asymmetric display target at 20 MHz and 25% backlight have been checked on
-one PIM559. Its bounded eight-row renderer measured 109393 us for the static
-target and about 116 ms with the movable marker. Cardinal partial updates took
-1.83-2.13 ms; diagonal updates took 2.29-2.60 ms without visible corruption.
+generation. The framebuffer image currently links at 142,620 bytes of RAM
+(52.96% of the available region), including the 115,200-byte framebuffer and
+3,840-byte transfer buffer. On the tested PIM559, the initial full-frame
+transfer took 89,840 us (1252 KiB/s). Normal 18 x 18 dirty transfers took about
+820-833 us, and the worst complete dirty render observed during repeated USB
+shell traffic was 3,340 us. After 3,518 fixed updates the effective rate was
+62.5 fps with zero skipped ticks; main-thread stack high-water was 892 of 2048
+bytes. Twelve back-to-back status queries did not change the frame rate or skip
+count. USB CDC, all eight buttons, the RGB heartbeat,
+hold-X recovery, and the earlier asymmetric display target at 20 MHz and 25%
+backlight have been checked on one PIM559. Its bounded eight-row renderer
+measured 109393 us for the static target and about 116 ms with the movable
+marker. Cardinal partial updates took 1.83-2.13 ms; diagonal updates took
+2.29-2.60 ms without visible corruption. The framebuffer animation, D-pad
+steering, and repeated A-button full redraws were also visually confirmed
+without corruption; the expected full-transfer hitch was visible.
 A cold power-on also showed no visible bright/white backlight flash before the
 completed target appeared. The 440 Hz piezo tone, silent startup/idle state,
 and rapid retrigger behavior have also been checked on the same unit. Flash-size

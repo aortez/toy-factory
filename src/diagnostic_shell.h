@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 #include "battery.h"
-#include "display_test.h"
+#include "game_demo.h"
 #include "power_status.h"
 
 enum picosystem_button_index {
@@ -35,10 +35,16 @@ enum picosystem_led_mode {
 	PICOSYSTEM_LED_MODE_WHITE,
 };
 
+struct picosystem_runtime_metrics {
+	uint32_t main_stack_size_bytes;
+	uint32_t main_stack_used_bytes;
+};
+
 struct picosystem_diagnostic_snapshot {
 	struct picosystem_battery_sample battery;
 	struct picosystem_power_status power;
-	struct picosystem_display_test_state display;
+	struct picosystem_game_demo_state game;
+	struct picosystem_runtime_metrics runtime;
 	int64_t battery_sample_uptime_ms;
 	uint32_t buttons;
 };
