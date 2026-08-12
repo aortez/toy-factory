@@ -1,4 +1,6 @@
 /build/
+/build-pio/
+/build-pio-dma/
 /.cache/
 /.west/
 *.swp

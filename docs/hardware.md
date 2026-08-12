@@ -130,5 +130,12 @@ repeated full redraws were visually confirmed without corruption. A forced full
 redraw is synchronous and takes about 90 ms, so its diagnostic A-button path
 visibly hitches and can intentionally accumulate skipped game ticks.
 
+Zephyr's preassembled RP2040 PIO SPI and PIO/DMA paths were also measured at
+the same configured 20 MHz. PIO polling was slower for both full and dirty
+updates. PIO/DMA reduced the full transfer to about 82.3 ms but increased the
+routine 18 x 18 transfer to 1.92-2.06 ms and consumed more flash, RAM, and stack.
+The hardware SPI0/PL022 path therefore remains the default; full results and
+reproduction targets are in [the benchmark report](../benchmarks/pio-dma/README.md).
+
 On a cold power-on, the backlight remained visually dark until the completed
 frame appeared; no bright or white startup flash was observed.

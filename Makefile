@@ -4,9 +4,12 @@ COMPOSE := docker compose
 DOCKER := docker
 FIRMWARE_IMAGE := picosystem-zephyr-builder:local
 UF2 := build/zephyr/zephyr.uf2
+PIO_UF2 := build-pio/zephyr/zephyr.uf2
+PIO_DMA_UF2 := build-pio-dma/zephyr/zephyr.uf2
 SERIAL_PORT_HELPER := ./scripts/find-serial-port.sh
 
-.PHONY: help image setup build format check container-shell update bootloader console status flash monitor shell
+.PHONY: help image setup build build-pio build-pio-dma format check check-pio-dma \
+	container-shell update update-pio update-pio-dma bootloader console status flash monitor shell
 
 ##@ General
 
@@ -29,11 +32,20 @@ setup: ## Refresh the pinned Zephyr dependencies
 build: ## Build the firmware in Docker
 	$(COMPOSE) run --rm firmware
 
+build-pio: ## Build the PIO SPI benchmark variant
+	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --variant pio
+
+build-pio-dma: ## Build the PIO SPI plus DMA benchmark variant
+	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --variant pio-dma
+
 format: ## Format the application C source
 	$(COMPOSE) run --rm firmware clang-format -i src/*.c src/*.h
 
 check: ## Run checks and a pristine firmware build
 	$(COMPOSE) run --rm firmware ./scripts/container/check.sh
+
+check-pio-dma: ## Pristine-build the PIO SPI plus DMA benchmark
+	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --pristine --variant pio-dma
 
 container-shell: ## Open a shell in the builder container
 	$(COMPOSE) run --rm firmware bash
@@ -42,6 +54,12 @@ container-shell: ## Open a shell in the builder container
 
 update: build ## Build, enter the ROM bootloader, and flash firmware
 	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(UF2)" "$(FIRMWARE_IMAGE)"
+
+update-pio: build-pio ## Build and flash the PIO SPI benchmark
+	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(PIO_UF2)" "$(FIRMWARE_IMAGE)"
+
+update-pio-dma: build-pio-dma ## Build and flash the PIO SPI plus DMA benchmark
+	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(PIO_DMA_UF2)" "$(FIRMWARE_IMAGE)"
 
 bootloader: image ## Reboot the running app into the RP2040 ROM bootloader
 	./scripts/reboot-to-bootloader.sh "$(PORT)" "$(FIRMWARE_IMAGE)"

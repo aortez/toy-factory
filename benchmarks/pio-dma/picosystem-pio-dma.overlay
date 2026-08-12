@@ -1,0 +1,47 @@
+/*
+ * Copyright (c) 2026 PicoSystem Playground contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/dma/rpi-pico-dma-rp2040.h>
+#include <zephyr/dt-bindings/pinctrl/rpi-pico-rp2040-pinctrl.h>
+
+&pinctrl {
+	picosystem_pio0_spi_default: picosystem_pio0_spi_default {
+		group1 {
+			pinmux = <PIO0_P6>, <PIO0_P7>;
+		};
+	};
+};
+
+&spi0 {
+	status = "disabled";
+};
+
+&dma {
+	status = "okay";
+};
+
+&pio0 {
+	status = "okay";
+
+	picosystem_pio0_spi: picosystem-pio0-spi {
+		compatible = "raspberrypi,pico-spi-pio";
+		pinctrl-0 = <&picosystem_pio0_spi_default>;
+		pinctrl-names = "default";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clocks RPI_PICO_CLKID_CLK_SYS>;
+		cs-gpios = <&gpio0 5 GPIO_ACTIVE_LOW>;
+		clk-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+		mosi-gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+		dmas = <&dma 0 0 0>, <&dma 1 0 0>;
+		dma-names = "tx", "rx";
+		status = "okay";
+	};
+};
+
+&lcd_mipi_dbi {
+	spi-dev = <&picosystem_pio0_spi>;
+};

@@ -45,6 +45,7 @@ Useful commands:
 ```sh
 make          # show all available targets (`make help` also works)
 make build    # build the firmware
+make build-pio-dma  # build the optional PIO/DMA display benchmark
 make setup    # explicitly refresh the pinned west dependencies
 make format   # format the application C source in the container
 make check    # formatting, whitespace, and a clean build
@@ -199,7 +200,9 @@ west.yml                     Pinned Zephyr/module manifest
 ```
 
 See [the hardware map](docs/hardware.md) before adding peripherals and
-[the bring-up roadmap](docs/roadmap.md) for the next milestones.
+[the bring-up roadmap](docs/roadmap.md) for the next milestones. The measured
+[PIO/DMA comparison](benchmarks/pio-dma/README.md) explains why the hardware
+SPI0/PL022 display path remains the default.
 
 ## Current validation boundary
 

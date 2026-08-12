@@ -53,7 +53,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Separate fixed-step game updates from dirty-region presentation.
 - [x] Confirm the bouncing/steerable framebuffer demo on physical hardware.
 - [x] Measure RAM, stack high-water marks, frame time, and USB logging impact.
-- [ ] Evaluate a preassembled PIO/DMA transfer path.
+- [x] Evaluate a preassembled PIO/DMA transfer path; retain PL022 for dirty updates.
 - [ ] Use the LCD tearing-effect signal for synchronized presentation.
 - [ ] Evaluate 120 x 120 pixel-doubled rendering.
 
