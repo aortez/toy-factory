@@ -12,8 +12,10 @@ path:
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and presents packed dirty regions over SPI;
-- aligns partial display writes with the LCD's GP8 tearing-effect signal;
-- runs a fixed 16 ms game update with an automatically bouncing, D-pad-steered sprite;
+- runs exact 120 Hz fixed-step game logic with Q16.16 positions;
+- publishes compact state snapshots to an independent, lower-priority renderer;
+- late-latches the newest snapshot and aligns partial display writes with the LCD's GP8
+  tearing-effect signal;
 - plays a short, bounded piezo tone when B is pressed;
 - averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
 - classifies the GP2 VBUS and active-low GP24 charger-status inputs;
@@ -96,14 +98,14 @@ The physical gesture remains the recovery path for a blank or broken image:
 4. Run `make update` again.
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
-show a dark checkerboard playfield, cyan border, white `FRAMEBUFFER DIRTY 16MS`
-heading, and a moving yellow sprite. The sprite updates on a fixed 16 ms logic
-tick and each normal presentation covers only the union of its old and new
-bounds. The D-pad steers its horizontal and vertical velocity. Press A to force
-a full-screen redraw for comparison and B to play a 440 Hz tone for 180 ms.
-The current display path is synchronous, so the A-button diagnostic blocks the
-game loop for about 78 ms and produces an expected visible hitch; it is not a
-gameplay pause.
+show a dark checkerboard playfield, cyan border, white `SIM 120HZ TE DISPLAY`
+heading, and a moving yellow sprite. The sprite advances on exact rational
+120 Hz deadlines and each normal presentation covers only the union of its old
+and new bounds. The D-pad steers its horizontal and vertical velocity. Press A
+to queue a full-screen redraw for comparison and B to play a 440 Hz tone for
+180 ms. A full transfer still occupies the panel for roughly 80 ms, but it runs
+on the renderer thread: game logic and input sampling continue at 120 Hz and
+newer snapshots coalesce while the renderer is busy.
 
 The RGB LED shows red, green, and blue in sequence at startup, then blinks blue.
 A/B/X illuminate red/green/blue respectively; Y illuminates all three channels.
@@ -135,12 +137,16 @@ For a non-interactive snapshot, run:
 
 ```sh
 make status
+make game-stats
+make game-redraw
 make display-sync
 ```
 
 `status` briefly owns the same serial port as `console`, sends `picosystem
 status`, prints the response, and exits. Close the console before using it.
-`display-sync` reports the panel refresh signal and bounded-wait counters.
+`game-stats` reports detailed simulation/renderer metrics, `game-redraw` queues
+the same asynchronous full redraw as the A button, and `display-sync` reports
+the panel refresh signal and bounded-wait counters.
 
 The application adds these commands:
 
@@ -151,19 +157,25 @@ picosystem led auto|off|red|green|blue|white
 picosystem tone <frequency_hz> <duration_ms>
 picosystem display stats
 picosystem display sync [on|off]
+picosystem game stats
+picosystem game redraw
 picosystem reboot bootloader
 ```
 
 `picosystem status` returns current uptime and software LED mode alongside one
 coherent hardware snapshot containing buttons, USB/charger state, the most
 recent battery sample and its age, framebuffer/presentation timing, game-loop
-rate and skipped ticks, sprite state, and the main-thread stack high-water mark.
+rate and skipped ticks, snapshot age, simulation/displayed sprite state, and
+both application-thread stack high-water marks.
 `buttons` is a compact live-input view.
 `display sync` reports GP8 edge timing, refresh frequency, blanking-pulse width,
 qualification state, wait latency, and fallback counts. Passing `off` bypasses
 TE waits without disabling measurement; `on` restores automatic synchronization.
 Only partial presents wait for TE because a full frame cannot fit within one
-panel refresh interval.
+panel refresh interval. `game stats` exposes scheduler backlog and budget
+counters, published/coalesced snapshots, renderer health, state age at the SPI
+write, full-redraw count, and both stack high-water marks. `game redraw` only
+posts a coalesced request; the shell never touches the framebuffer or display.
 The LED override takes effect in the main hardware loop; `auto` restores the
 button colors and blue heartbeat. The independent hardware red charge indicator
 is not disabled by `led off`. Tone requests are constrained to 100-4000 Hz and
@@ -179,12 +191,13 @@ Expected messages include button press/release events and a periodic line like:
 <inf> picosystem_graphics: Framebuffer ready: 115200 bytes plus 3840-byte transfer buffer, SPI 20000000 Hz
 <inf> picosystem_playground: battery: 3850 mV (raw mean 1593)
 <inf> picosystem_playground: power: usb-charging (usb=present, charge=active)
-<inf> picosystem_playground: alive: uptime=30000 ms, buttons=0x00, power=usb-charging, frame=1789, present=820 us/18x18, skipped=0, main-stack=988/2048 bytes
+<inf> picosystem_playground: alive: uptime=30000 ms, buttons=0x00, power=usb-charging, ticks=3465, frame=1721, present=820 us/18x18, skipped=0, stacks=1184/2048+628/2048 bytes
 ```
 
 The animation deliberately avoids per-frame logging; use `picosystem display
-stats` for current buffer sizes, full and dirty presentation timing, effective
-frame rate, skipped ticks, render time, sprite state, and main-stack usage.
+stats` or `picosystem game stats` for current buffer sizes, full and dirty
+presentation timing, simulation and presentation rates, skipped ticks, render
+time, snapshot age, sprite state, and stack usage.
 Pressing B logs the start of the tone and confirms when the delayed shutoff has
 returned the PWM output to silence. Battery readings are averaged over 16 raw
 samples. They are diagnostic voltage measurements, not a charge-percentage
@@ -213,28 +226,57 @@ See [the hardware map](docs/hardware.md) before adding peripherals and
 [PIO/DMA comparison](benchmarks/pio-dma/README.md) shows the tradeoff between
 the default hardware SPI0/PL022 dirty-update path and faster PIO/DMA full frames.
 
+## Game-loop architecture
+
+The RP2040 build currently uses one core, so this is priority-based decoupling
+rather than parallel CPU execution. The priority-0 main thread owns all
+authoritative game state, samples input, and advances fixed 120 Hz ticks. It
+publishes a 24-byte immutable render snapshot into one of two slots under a
+short spin lock. A saturated semaphore wakes the priority-1 renderer, which
+coalesces obsolete snapshots instead of making simulation wait.
+
+For normal dirty updates, the renderer waits for a qualified TE rising edge,
+then late-latches the newest snapshot and immediately draws/presents it. This
+keeps presentation synchronized to the roughly 59.63 Hz panel while logic runs
+twice as fast. Slow or deliberately full redraws may reduce presentation rate,
+but they do not change simulation time. This ownership boundary is intended to
+remain stable as the demo grows into heavier physics: simulation can later
+publish a richer read-only snapshot without giving rendering access to live
+world state.
+
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation. The synchronized framebuffer image currently links at 142,804 bytes
-of RAM (53.03% of the available region), including the 115,200-byte framebuffer
-and 3,840-byte transfer buffer. Full frames bypass that staging buffer with one
-contiguous display write. On the tested PIM559, the initial PL022 full-frame
-transfer took 77,692-77,711 us (1447-1448 KiB/s). GP8 measured about 59.65 Hz
-with a roughly 1.15 ms active-high blanking pulse. Partial writes now begin on a
-fresh rising edge after four plausible periods; missing or stale pulses bypass
-the wait, and an individual wait is limited to 20 ms. A 4,581-frame synchronized
-run, including twelve back-to-back status queries, had zero TE timeouts and zero
-skipped logic ticks. Normal display writes remained about 0.80-0.95 ms, with
-1.52-1.62 ms outliers during USB traffic; main-thread stack high-water was 988
-of 2048 bytes. USB CDC, all eight buttons, the RGB heartbeat,
+generation and also runs a native deadline-scheduler test against an iterative
+reference. The default decoupled-loop image uses 145,292 bytes of RAM (53.95%)
+and 124,644 bytes of flash, including the 115,200-byte framebuffer, 3,840-byte
+transfer buffer, and two 24-byte render snapshots. Full frames bypass the
+staging buffer with one contiguous display write.
+
+On the tested PIM559, the exact 120 Hz scheduler ran with a maximum observed
+backlog of one, zero skipped ticks, and zero over-budget updates. The worst
+simulation update during the run was 1,149 us of its 8,333 us budget. Normal
+TE-driven presentation settled at about 59.6 fps with dirty state typically
+2.8-6.4 ms old and a 10.0 ms observed maximum at the start of its SPI write.
+Sixteen back-to-back USB status sessions did not change those scheduler
+counters. Renderer-owned full redraws took 81,906-82,094 us; snapshots coalesced
+while they ran, and simulation still reported no backlog growth or skipped tick.
+Main- and render-thread stack high-water marks were 1,184 and 628 bytes of their
+respective 2,048-byte stacks.
+
+GP8 measured 59.626 Hz over the same stress run, with a 16,771 us mean period,
+roughly 1.15 ms active-high blanking pulse, no GPIO read errors, and no TE wait
+timeouts. Runtime sync-off made the renderer consume snapshots near the 120 Hz
+publication rate; sync-on immediately restored TE-driven presentation without
+rebooting or disrupting simulation. USB CDC, all eight buttons, the RGB heartbeat,
 hold-X recovery, and the earlier asymmetric display target at 20 MHz and 25%
 backlight have been checked on one PIM559. Its bounded eight-row renderer
 measured 109393 us for the static target and about 116 ms with the movable
 marker. Cardinal partial updates took 1.83-2.13 ms; diagonal updates took
 2.29-2.60 ms without visible corruption. The framebuffer animation, D-pad
-steering, and repeated A-button full redraws were also visually confirmed
-without corruption; the expected full-transfer hitch was visible.
+steering, and earlier synchronous full-redraw path were visually confirmed
+without corruption. The current asynchronous full-redraw path is
+counter-verified; final visual confirmation remains a physical smoke-test item.
 A cold power-on also showed no visible bright/white backlight flash before the
 completed target appeared. The 440 Hz piezo tone, silent startup/idle state,
 and rapid retrigger behavior have also been checked on the same unit. Flash-size

@@ -123,16 +123,50 @@ and no GPIO read errors. The high blanking pulse averaged 1,151 us; the low
 active-scan interval averaged 15,610 us. `picosystem display sync` exposes these
 measurements and supports runtime `on` and `off` controls.
 
-Partial presentations wait for a fresh rising edge only after four periods
-qualify between 15 and 18.5 ms. Each wait is capped at 20 ms, stale signals are
-bypassed, and full-frame writes remain unsynchronized because their roughly
-77.7 ms transfer cannot fit in a panel refresh interval. In a synchronized
-4,581-present run, including twelve back-to-back USB status commands, the
-firmware recorded no timeout and no skipped logic tick. Presentation settled at
-the panel's roughly 59.65 Hz while the fixed game logic remained at 62.5 Hz.
-Routine 18 x 18 and catch-up 20 x 20 writes took about 0.80-0.95 ms; USB traffic
-occasionally extended the synchronous SPI call to 1.52-1.62 ms. Main-thread
-stack high-water was 988 of 2048 bytes.
+The renderer waits for a fresh rising edge only after four periods qualify
+between 15 and 18.5 ms. Each wait is capped at 20 ms, stale signals are bypassed,
+and full-frame writes remain unsynchronized because their roughly 78-82 ms
+transfer cannot fit in a panel refresh interval. It late-latches the newest
+published state after the wait, immediately before drawing and starting SPI.
+In the final stress run, GP8 measured 59.626 Hz over more than 8,000 periods,
+with a 16,771 us mean period, no GPIO read errors, and no TE timeout. Runtime
+`sync off` and `sync on` also switched cleanly between unconstrained snapshot
+consumption and TE-driven presentation without rebooting.
+
+## Decoupled 120 Hz simulation and presentation
+
+Zephyr currently runs this RP2040 target on one core. The priority-0 main thread
+owns input and all authoritative simulation state; a preemptible priority-1
+worker owns the framebuffer and display after initialization. The scheduler
+represents 120 Hz as rational kernel-tick deadlines rather than rounding it to
+an integer millisecond period. With the configured 10 kHz kernel tick, the
+deadline spacing repeats 83, 83, and 84 ticks, totaling exactly 250 ticks for
+three updates and 10,000 ticks for 120 updates. A native host test checks this
+pattern, catch-up boundaries, validation, and the constant-time due-count result
+against an iterative reference.
+
+Simulation uses Q16.16 positions and publishes a 24-byte immutable snapshot on
+every update. Two slots and a short spin-lock-protected copy prevent the
+renderer from observing partially updated state. A saturated semaphore is only
+a wake-up hint: if two or more simulation states arrive during a panel period,
+the renderer deliberately coalesces the older ones. The main thread never waits
+for TE, framebuffer work, or SPI, and the renderer never reads live simulation
+state.
+
+On hardware, normal presentation remained about 59.6 fps while the simulation
+advanced at 120 Hz. Snapshot state was typically 2.8-6.4 ms old at the start of
+the SPI write, with a 10.0 ms observed dirty-update maximum. The maximum
+simulation update was 1,149 us of the 8,333 us budget; maximum scheduler backlog
+was one, with zero skipped and zero over-budget ticks. Sixteen back-to-back USB
+status sessions left those counters unchanged. Main and renderer stack
+high-water marks were 1,184/2,048 and 628/2,048 bytes respectively.
+
+Asynchronous full redraws measured 81,906-82,094 us. During those intervals the main
+thread continued to simulate and publish; the renderer coalesced superseded
+snapshots, then resumed TE-driven dirty presentation with the latest state.
+Scheduler backlog and skipped-tick counters remained unchanged. The A button
+and `picosystem game redraw` both post this same coalesced request rather than
+calling graphics code from their requesting context.
 
 On the tested PIM559, sending the 115200-byte orientation frame in bounded
 eight-row chunks took 109393 us (1028 KiB/s). The earlier one-row baseline took
@@ -146,16 +180,15 @@ KiB/s), while diagonal 32 x 32 rectangles took 2285-2602 us (768-875 KiB/s).
 More than 300 held-key updates, diagonal moves, and edge clamps completed
 without a display-write error or visible corruption.
 
-The game-oriented framebuffer baseline uses 115200 bytes for one 240 x 240
-RGB565 framebuffer and 3840 bytes for an eight-row transfer buffer. Its initial
-bounded full transfer took 89840 us (1252 KiB/s), while routine 18 x 18 dirty
-transfers took about 820-833 us. After 3518 fixed updates it sustained 62.5 fps
-with zero skipped ticks, including twelve back-to-back USB status requests. The worst
-complete dirty render observed in that run was 3340 us, and main-thread stack
-high-water was 892 of 2048 bytes. The animated sprite, D-pad steering, and
-repeated full redraws were visually confirmed without corruption. A forced full
-redraw remains synchronous, so its diagnostic A-button path visibly hitches and
-can intentionally accumulate skipped game ticks.
+The earlier single-threaded framebuffer baseline established the buffer sizes
+and dirty-region geometry: 115200 bytes for one 240 x 240 RGB565 framebuffer
+and 3840 bytes for an eight-row transfer buffer. Its initial bounded full
+transfer took 89840 us (1252 KiB/s), while routine 18 x 18 dirty transfers took
+about 820-833 us. After 3518 fixed updates it sustained 62.5 fps with zero
+skipped ticks, including twelve back-to-back USB status requests. The animated
+sprite, D-pad steering, and synchronous full redraws were visually confirmed
+without corruption. Those 62.5 Hz and blocking-redraw figures are historical;
+the current 120 Hz decoupled loop above replaces that scheduling path.
 
 Full frames now bypass the staging buffer and send the wire-ready framebuffer
 with one display write. This reduced PL022 full-frame time to 77,692-77,711 us

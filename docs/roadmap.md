@@ -56,12 +56,17 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add and benchmark a contiguous one-transfer full-frame path.
 - [x] Evaluate a preassembled PIO/DMA transfer path; retain PL022 for dirty updates.
 - [x] Use the LCD tearing-effect signal for synchronized presentation.
+- [x] Run authoritative simulation on exact rational 120 Hz deadlines.
+- [x] Hand immutable snapshots to a lower-priority, TE-driven renderer.
+- [x] Confirm that full redraws and repeated USB queries do not skip simulation ticks.
+- [ ] Visually confirm the asynchronous A-button full-redraw path on hardware.
 - [ ] Evaluate 120 x 120 pixel-doubled rendering.
 
 ## 5. Automation and maintenance
 
 - [ ] Add hosted CI after selecting the repository host.
 - [ ] Archive UF2 and size reports for tagged builds.
-- [ ] Add native unit tests for hardware-independent game/application logic.
+- [x] Add a native unit test for the hardware-independent fixed-rate scheduler.
+- [ ] Extend native tests to additional hardware-independent game/physics logic.
 - [ ] Define a small physical smoke-test checklist for releases.
 - [ ] Decide whether the board port should be proposed upstream to Zephyr.

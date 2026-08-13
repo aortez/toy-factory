@@ -47,6 +47,7 @@ struct picosystem_mono_sprite {
 };
 
 struct picosystem_graphics_stats {
+	int64_t last_present_start_uptime_ticks;
 	uint32_t framebuffer_bytes;
 	uint32_t transfer_buffer_bytes;
 	uint32_t full_present_time_us;
@@ -66,6 +67,7 @@ int picosystem_graphics_init(struct picosystem_graphics_stats *stats);
 /* Enable panel output after the caller has presented the initial frame. */
 int picosystem_graphics_enable_output(struct picosystem_graphics_stats *stats);
 
+/* Present immediately; higher layers own any panel-synchronization policy. */
 int picosystem_graphics_present_region(struct picosystem_graphics_stats *stats,
 				       const struct picosystem_rect *region);
 int picosystem_graphics_present_full(struct picosystem_graphics_stats *stats);

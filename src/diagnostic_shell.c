@@ -64,6 +64,7 @@ K_MSGQ_DEFINE(tone_requests, sizeof(struct picosystem_tone_request), 1U, 4U);
 static struct picosystem_diagnostic_snapshot latest_snapshot;
 static bool snapshot_available;
 static atomic_t selected_led_mode = ATOMIC_INIT(PICOSYSTEM_LED_MODE_AUTO);
+static atomic_t redraw_requested;
 
 static const char *led_mode_name(enum picosystem_led_mode mode)
 {
@@ -131,12 +132,12 @@ static int get_snapshot_or_report(const struct shell *shell,
 	return err;
 }
 
-static uint32_t game_frame_rate_tenths(const struct picosystem_game_demo_state *game,
-				       int64_t now_ms)
+static uint32_t measured_rate_tenths(uint32_t count, int64_t start_uptime_ms, int64_t now_ms)
 {
-	const int64_t elapsed_ms = MAX(now_ms - game->start_uptime_ms, INT64_C(1));
+	const int64_t elapsed_ms = MAX(now_ms - start_uptime_ms, INT64_C(1));
+	const uint64_t scaled_count = (uint64_t)count * 10U * MSEC_PER_SEC;
 	const uint64_t scaled_rate =
-		((uint64_t)game->presented_frame_count * 10U * MSEC_PER_SEC) / elapsed_ms;
+		(scaled_count + ((uint64_t)elapsed_ms / 2U)) / (uint64_t)elapsed_ms;
 
 	return (uint32_t)MIN(scaled_rate, UINT32_MAX);
 }
@@ -154,9 +155,14 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 
 	const int64_t now_ms = k_uptime_get();
 	const int64_t battery_age_ms = MAX(now_ms - snapshot.battery_sample_uptime_ms, INT64_C(0));
+	const int64_t metrics_time_ms = snapshot.snapshot_uptime_ms;
 	const char *const usb_name = snapshot.power.usb_power_present ? "present" : "absent";
 	const char *const charge_name = snapshot.power.charging ? "active" : "inactive";
-	const uint32_t frame_rate_tenths = game_frame_rate_tenths(&snapshot.game, now_ms);
+	const uint32_t simulation_rate_tenths = measured_rate_tenths(
+		snapshot.game.logic_tick_count, snapshot.game.start_uptime_ms, metrics_time_ms);
+	const uint32_t frame_rate_tenths =
+		measured_rate_tenths(snapshot.game.presented_frame_count,
+				     snapshot.game.start_uptime_ms, metrics_time_ms);
 
 	shell_print(shell, "uptime: %lld ms", now_ms);
 	print_buttons(shell, snapshot.buttons);
@@ -172,14 +178,30 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.graphics.last_present_height,
 		    snapshot.game.graphics.present_count);
 	shell_print(shell,
-		    "game: ticks=%u, frames=%u (%u.%u fps), skipped=%u, sprite=(%u,%u) "
-		    "velocity=(%d,%d)",
-		    snapshot.game.logic_tick_count, snapshot.game.presented_frame_count,
-		    frame_rate_tenths / 10U, frame_rate_tenths % 10U,
-		    snapshot.game.skipped_tick_count, snapshot.game.sprite_x,
-		    snapshot.game.sprite_y, snapshot.game.velocity_x, snapshot.game.velocity_y);
+		    "simulation: ticks=%u (%u.%u Hz), update=%u us (max=%u), backlog=%u, "
+		    "skipped=%u, over-budget=%u",
+		    snapshot.game.logic_tick_count, simulation_rate_tenths / 10U,
+		    simulation_rate_tenths % 10U, snapshot.game.last_update_time_us,
+		    snapshot.game.max_update_time_us, snapshot.game.max_backlog_ticks,
+		    snapshot.game.skipped_tick_count, snapshot.game.over_budget_tick_count);
+	shell_print(shell,
+		    "render: running=%s, frames=%u (%u.%u fps), snapshots=%u published/%u "
+		    "superseded, "
+		    "age=%u us (dirty max=%u)",
+		    snapshot.game.render_thread_running ? "yes" : "no",
+		    snapshot.game.presented_frame_count, frame_rate_tenths / 10U,
+		    frame_rate_tenths % 10U, snapshot.game.published_snapshot_count,
+		    snapshot.game.superseded_snapshot_count, snapshot.game.last_snapshot_age_us,
+		    snapshot.game.max_dirty_snapshot_age_us);
+	shell_print(shell, "sprite: simulation=(%u,%u), displayed=(%u,%u), velocity=(%d,%d) px/s",
+		    snapshot.game.sprite_x, snapshot.game.sprite_y,
+		    snapshot.game.presented_sprite_x, snapshot.game.presented_sprite_y,
+		    snapshot.game.velocity_x_pixels_per_second,
+		    snapshot.game.velocity_y_pixels_per_second);
 	shell_print(shell, "main stack high-water: %u/%u bytes",
 		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
+	shell_print(shell, "render stack high-water: %u/%u bytes",
+		    snapshot.game.render_stack_used_bytes, snapshot.game.render_stack_size_bytes);
 	shell_print(shell, "led: %s", led_mode_name(picosystem_diagnostic_shell_led_mode()));
 	return 0;
 }
@@ -272,9 +294,13 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		return err;
 	}
 
-	const struct picosystem_game_demo_state *const game = &snapshot.game;
+	const struct picosystem_game_demo_stats *const game = &snapshot.game;
 	const struct picosystem_graphics_stats *const graphics = &game->graphics;
-	const uint32_t frame_rate_tenths = game_frame_rate_tenths(game, k_uptime_get());
+	const int64_t metrics_time_ms = snapshot.snapshot_uptime_ms;
+	const uint32_t simulation_rate_tenths = measured_rate_tenths(
+		game->logic_tick_count, game->start_uptime_ms, metrics_time_ms);
+	const uint32_t frame_rate_tenths = measured_rate_tenths(
+		game->presented_frame_count, game->start_uptime_ms, metrics_time_ms);
 
 	shell_print(shell, "buffers: framebuffer=%u bytes, transfer=%u bytes",
 		    graphics->framebuffer_bytes, graphics->transfer_buffer_bytes);
@@ -286,15 +312,29 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    graphics->last_present_time_us,
 		    graphics->last_present_throughput_kib_per_second);
 	shell_print(shell,
-		    "game: ticks=%u, frames=%u (%u.%u fps), skipped=%u, render=%u us "
-		    "(dirty max=%u us)",
-		    game->logic_tick_count, game->presented_frame_count, frame_rate_tenths / 10U,
-		    frame_rate_tenths % 10U, game->skipped_tick_count, game->last_render_time_us,
-		    game->max_dirty_render_time_us);
-	shell_print(shell, "sprite: (%u,%u), velocity=(%d,%d)", game->sprite_x, game->sprite_y,
-		    game->velocity_x, game->velocity_y);
+		    "simulation: ticks=%u (%u.%u Hz), update=%u us (max=%u), backlog=%u, "
+		    "skipped=%u, over-budget=%u",
+		    game->logic_tick_count, simulation_rate_tenths / 10U,
+		    simulation_rate_tenths % 10U, game->last_update_time_us,
+		    game->max_update_time_us, game->max_backlog_ticks, game->skipped_tick_count,
+		    game->over_budget_tick_count);
+	shell_print(shell,
+		    "renderer: running=%s, frames=%u (%u.%u fps), render=%u us (dirty max=%u), "
+		    "full=%u, error=%d",
+		    game->render_thread_running ? "yes" : "no", game->presented_frame_count,
+		    frame_rate_tenths / 10U, frame_rate_tenths % 10U, game->last_render_time_us,
+		    game->max_dirty_render_time_us, game->full_redraw_count, game->render_error);
+	shell_print(shell, "snapshots: published=%u, superseded=%u, age=%u us (dirty max=%u us)",
+		    game->published_snapshot_count, game->superseded_snapshot_count,
+		    game->last_snapshot_age_us, game->max_dirty_snapshot_age_us);
+	shell_print(shell, "sprite: simulation=(%u,%u), displayed=(%u,%u), velocity=(%d,%d) px/s",
+		    game->sprite_x, game->sprite_y, game->presented_sprite_x,
+		    game->presented_sprite_y, game->velocity_x_pixels_per_second,
+		    game->velocity_y_pixels_per_second);
 	shell_print(shell, "main stack high-water: %u/%u bytes",
 		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
+	shell_print(shell, "render stack high-water: %u/%u bytes", game->render_stack_used_bytes,
+		    game->render_stack_size_bytes);
 	return 0;
 }
 
@@ -369,6 +409,16 @@ static int cmd_display_sync(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_game_redraw(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	atomic_set(&redraw_requested, 1);
+	shell_print(shell, "queued asynchronous full redraw");
+	return 0;
+}
+
 static int cmd_reboot_bootloader(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -395,6 +445,14 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      cmd_display_sync, 1, 1),
 	SHELL_SUBCMD_SET_END);
 
+SHELL_STATIC_SUBCMD_SET_CREATE(game_commands,
+			       SHELL_CMD_ARG(stats, NULL,
+					     "Show simulation, snapshot, and renderer metrics.",
+					     cmd_display_stats, 1, 0),
+			       SHELL_CMD_ARG(redraw, NULL, "Queue a renderer-owned full redraw.",
+					     cmd_game_redraw, 1, 0),
+			       SHELL_SUBCMD_SET_END);
+
 SHELL_STATIC_SUBCMD_SET_CREATE(reboot_commands,
 			       SHELL_CMD_ARG(bootloader, NULL,
 					     "Reboot into the RP2040 ROM USB bootloader.",
@@ -416,6 +474,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 				 "Frequency: 100-4000 Hz; duration: 1-1000 ms."),
 		      cmd_tone, 3, 0),
 	SHELL_CMD(display, &display_commands, "Display diagnostic commands.", NULL),
+	SHELL_CMD(game, &game_commands, "Game-loop diagnostic commands.", NULL),
 	SHELL_CMD(reboot, &reboot_commands, "Reboot commands.", NULL), SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(picosystem, &picosystem_commands, "PicoSystem diagnostics.", NULL);
@@ -449,4 +508,9 @@ int picosystem_diagnostic_shell_take_tone(struct picosystem_tone_request *reques
 	}
 
 	return k_msgq_get(&tone_requests, request, K_NO_WAIT);
+}
+
+bool picosystem_diagnostic_shell_take_redraw(void)
+{
+	return atomic_set(&redraw_requested, 0) != 0;
 }

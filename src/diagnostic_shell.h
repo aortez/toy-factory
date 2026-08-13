@@ -43,8 +43,9 @@ struct picosystem_runtime_metrics {
 struct picosystem_diagnostic_snapshot {
 	struct picosystem_battery_sample battery;
 	struct picosystem_power_status power;
-	struct picosystem_game_demo_state game;
+	struct picosystem_game_demo_stats game;
 	struct picosystem_runtime_metrics runtime;
+	int64_t snapshot_uptime_ms;
 	int64_t battery_sample_uptime_ms;
 	uint32_t buttons;
 };
@@ -62,5 +63,8 @@ enum picosystem_led_mode picosystem_diagnostic_shell_led_mode(void);
 
 /* Take the next shell tone request without waiting. */
 int picosystem_diagnostic_shell_take_tone(struct picosystem_tone_request *request);
+
+/* Take one coalesced asynchronous full-redraw request. */
+bool picosystem_diagnostic_shell_take_redraw(void);
 
 #endif /* PICOSYSTEM_DIAGNOSTIC_SHELL_H */

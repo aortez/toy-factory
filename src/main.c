@@ -18,6 +18,7 @@
 #include "battery.h"
 #include "diagnostic_shell.h"
 #include "display_sync.h"
+#include "fixed_rate_scheduler.h"
 #include "game_demo.h"
 #include "piezo.h"
 #include "power_status.h"
@@ -26,6 +27,7 @@ LOG_MODULE_REGISTER(picosystem_playground, LOG_LEVEL_INF);
 
 #define PIEZO_TEST_FREQUENCY_HZ  440U
 #define PIEZO_TEST_DURATION_MS   180U
+#define DIAGNOSTIC_INTERVAL_MS   100
 #define STACK_SAMPLE_INTERVAL_MS 1000
 #define STATUS_LOG_INTERVAL_MS   30000
 
@@ -282,7 +284,7 @@ static int sample_main_stack(struct picosystem_runtime_metrics *runtime)
 static int publish_diagnostic_snapshot(const struct picosystem_battery_sample *battery,
 				       int64_t battery_sample_uptime_ms,
 				       const struct picosystem_power_status *power,
-				       const struct picosystem_game_demo_state *game,
+				       const struct picosystem_game_demo_stats *game,
 				       const struct picosystem_runtime_metrics *runtime,
 				       uint32_t buttons_state)
 {
@@ -291,6 +293,7 @@ static int publish_diagnostic_snapshot(const struct picosystem_battery_sample *b
 		.power = *power,
 		.game = *game,
 		.runtime = *runtime,
+		.snapshot_uptime_ms = k_uptime_get(),
 		.battery_sample_uptime_ms = battery_sample_uptime_ms,
 		.buttons = buttons_state,
 	};
@@ -302,6 +305,7 @@ int main(void)
 {
 	struct picosystem_battery_sample battery_sample;
 	struct picosystem_game_demo_state game_state;
+	struct picosystem_game_demo_stats game_stats;
 	struct picosystem_power_status power_status;
 	struct picosystem_runtime_metrics runtime_metrics;
 
@@ -386,8 +390,14 @@ int main(void)
 		return err;
 	}
 
-	LOG_INF("PicoSystem game-oriented framebuffer baseline ready");
-	LOG_INF("D-pad steers the sprite; A forces a full redraw for comparison");
+	err = picosystem_game_demo_get_stats(&game_state, &game_stats);
+	if (err != 0) {
+		LOG_ERR("Failed to read initial game metrics (%d)", err);
+		return err;
+	}
+
+	LOG_INF("PicoSystem 120 Hz simulation and asynchronous renderer ready");
+	LOG_INF("D-pad steers the sprite; A queues a full redraw for comparison");
 	LOG_INF("B plays a short 440 Hz piezo tone");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 	LOG_INF("GP2 remains an input; the automatic red charge indicator is enabled");
@@ -395,18 +405,44 @@ int main(void)
 
 	uint32_t previous_state = 0U;
 	err = publish_diagnostic_snapshot(&battery_sample, battery_sample_uptime_ms, &power_status,
-					  &game_state, &runtime_metrics, previous_state);
+					  &game_stats, &runtime_metrics, previous_state);
 	if (err != 0) {
 		LOG_ERR("Failed to publish initial diagnostic snapshot (%d)", err);
 		return err;
 	}
 
+	struct picosystem_fixed_rate_scheduler game_scheduler;
+	err = picosystem_game_demo_start_simulation(&game_state);
+	if (err != 0) {
+		LOG_ERR("Failed to start the measured simulation interval (%d)", err);
+		return err;
+	}
+	err = picosystem_fixed_rate_scheduler_init(&game_scheduler, k_uptime_ticks(),
+						   CONFIG_SYS_CLOCK_TICKS_PER_SEC,
+						   PICOSYSTEM_GAME_TICK_RATE_HZ);
+	if (err != 0) {
+		LOG_ERR("Failed to initialize the game scheduler (%d)", err);
+		return err;
+	}
 	const int64_t scheduling_start_ms = k_uptime_get();
-	int64_t next_game_tick_ms = scheduling_start_ms + PICOSYSTEM_GAME_TICK_INTERVAL_MS;
+	int64_t next_diagnostic_ms = scheduling_start_ms + DIAGNOSTIC_INTERVAL_MS;
 	int64_t next_stack_sample_ms = scheduling_start_ms + STACK_SAMPLE_INTERVAL_MS;
 	int64_t next_status_time = scheduling_start_ms + STATUS_LOG_INTERVAL_MS;
 
 	while (true) {
+		const int64_t before_sleep_ticks = k_uptime_ticks();
+		const int64_t sleep_ticks = game_scheduler.next_deadline_ticks - before_sleep_ticks;
+		if (sleep_ticks > 0) {
+			k_sleep(K_TICKS(sleep_ticks));
+		}
+
+		const int64_t tick_start_ticks = k_uptime_ticks();
+		const uint32_t due_ticks =
+			picosystem_fixed_rate_scheduler_due(&game_scheduler, tick_start_ticks);
+		if (due_ticks == 0U) {
+			continue;
+		}
+
 		uint32_t state;
 		struct picosystem_power_status next_power_status;
 
@@ -432,44 +468,33 @@ int main(void)
 		log_button_changes(previous_state, state);
 
 		const struct picosystem_game_input game_input = game_input_from_buttons(state);
-		uint32_t catch_up_steps = 0U;
-		while ((now >= next_game_tick_ms) &&
-		       (catch_up_steps < PICOSYSTEM_GAME_MAX_CATCH_UP)) {
+		picosystem_game_demo_note_backlog(&game_state, due_ticks);
+		const uint32_t update_steps = MIN(due_ticks, PICOSYSTEM_GAME_MAX_CATCH_UP);
+		for (uint32_t step = 0U; step < update_steps; ++step) {
 			err = picosystem_game_demo_update(&game_state, &game_input);
 			if (err != 0) {
 				LOG_ERR("Game logic update failed (%d)", err);
 				return err;
 			}
 
-			next_game_tick_ms += PICOSYSTEM_GAME_TICK_INTERVAL_MS;
-			++catch_up_steps;
+			picosystem_fixed_rate_scheduler_advance(&game_scheduler, 1U);
 		}
 
-		if (now >= next_game_tick_ms) {
-			const int64_t skipped_ticks =
-				((now - next_game_tick_ms) / PICOSYSTEM_GAME_TICK_INTERVAL_MS) + 1;
-			const uint32_t bounded_skipped_ticks =
-				(skipped_ticks > UINT32_MAX) ? UINT32_MAX : (uint32_t)skipped_ticks;
-
-			picosystem_game_demo_note_skipped_ticks(&game_state, bounded_skipped_ticks);
-			next_game_tick_ms += skipped_ticks * PICOSYSTEM_GAME_TICK_INTERVAL_MS;
+		const uint32_t skipped_ticks = due_ticks - update_steps;
+		if (skipped_ticks != 0U) {
+			picosystem_game_demo_note_skipped_ticks(&game_state, skipped_ticks);
+			picosystem_fixed_rate_scheduler_advance(&game_scheduler, skipped_ticks);
 		}
 
-		if ((pressed & BIT(PICOSYSTEM_BUTTON_A)) != 0U) {
-			err = picosystem_game_demo_redraw(&game_state);
+		const bool redraw_requested = ((pressed & BIT(PICOSYSTEM_BUTTON_A)) != 0U) ||
+					      picosystem_diagnostic_shell_take_redraw();
+		if (redraw_requested) {
+			err = picosystem_game_demo_request_redraw(&game_state);
 			if (err != 0) {
-				LOG_ERR("Full framebuffer redraw failed (%d)", err);
+				LOG_ERR("Failed to queue full framebuffer redraw (%d)", err);
 				return err;
 			}
-			LOG_INF("Full framebuffer redraw: %u us present, %u us render",
-				game_state.graphics.full_present_time_us,
-				game_state.last_render_time_us);
-		} else if (catch_up_steps > 0U) {
-			err = picosystem_game_demo_present(&game_state);
-			if (err != 0) {
-				LOG_ERR("Dirty-region presentation failed (%d)", err);
-				return err;
-			}
+			LOG_INF("Queued asynchronous full framebuffer redraw");
 		}
 
 		if ((pressed & BIT(PICOSYSTEM_BUTTON_B)) != 0U) {
@@ -515,6 +540,12 @@ int main(void)
 			return err;
 		}
 
+		err = picosystem_game_demo_renderer_error();
+		if (err != 0) {
+			LOG_ERR("Asynchronous renderer stopped (%d)", err);
+			return err;
+		}
+
 		if (now >= next_stack_sample_ms) {
 			err = sample_main_stack(&runtime_metrics);
 			if (err != 0) {
@@ -524,39 +555,52 @@ int main(void)
 			next_stack_sample_ms = now + STACK_SAMPLE_INTERVAL_MS;
 		}
 
-		if (now >= next_status_time) {
+		const bool status_due = now >= next_status_time;
+		if (status_due) {
 			err = read_and_log_battery(&battery_sample);
 			if (err != 0) {
 				return err;
 			}
 			battery_sample_uptime_ms = k_uptime_get();
-
-			LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, power=%s, frame=%u, "
-				"present=%u us/%ux%u, skipped=%u, main-stack=%u/%u bytes",
-				now, state, picosystem_power_state_name(power_status.state),
-				game_state.presented_frame_count,
-				game_state.graphics.last_present_time_us,
-				game_state.graphics.last_present_width,
-				game_state.graphics.last_present_height,
-				game_state.skipped_tick_count,
-				runtime_metrics.main_stack_used_bytes,
-				runtime_metrics.main_stack_size_bytes);
-			next_status_time = now + STATUS_LOG_INTERVAL_MS;
 		}
 
-		err = publish_diagnostic_snapshot(&battery_sample, battery_sample_uptime_ms,
-						  &power_status, &game_state, &runtime_metrics,
-						  state);
-		if (err != 0) {
-			LOG_ERR("Failed to publish diagnostic snapshot (%d)", err);
-			return err;
-		}
+		const bool diagnostic_due = now >= next_diagnostic_ms;
+		if (diagnostic_due || status_due) {
+			err = picosystem_game_demo_get_stats(&game_state, &game_stats);
+			if (err != 0) {
+				LOG_ERR("Failed to read game metrics (%d)", err);
+				return err;
+			}
 
-		const int64_t sleep_ms = next_game_tick_ms - k_uptime_get();
-		if (sleep_ms > 0) {
-			k_msleep((int32_t)sleep_ms);
-		} else {
-			k_yield();
+			if (status_due) {
+				LOG_INF("alive: uptime=%lld ms, buttons=0x%02x, power=%s, "
+					"ticks=%u, frame=%u, present=%u us/%ux%u, skipped=%u, "
+					"stacks=%u/%u+%u/%u bytes",
+					now, state, picosystem_power_state_name(power_status.state),
+					game_stats.logic_tick_count,
+					game_stats.presented_frame_count,
+					game_stats.graphics.last_present_time_us,
+					game_stats.graphics.last_present_width,
+					game_stats.graphics.last_present_height,
+					game_stats.skipped_tick_count,
+					runtime_metrics.main_stack_used_bytes,
+					runtime_metrics.main_stack_size_bytes,
+					game_stats.render_stack_used_bytes,
+					game_stats.render_stack_size_bytes);
+				next_status_time = now + STATUS_LOG_INTERVAL_MS;
+			}
+
+			err = publish_diagnostic_snapshot(&battery_sample, battery_sample_uptime_ms,
+							  &power_status, &game_stats,
+							  &runtime_metrics, state);
+			if (err != 0) {
+				LOG_ERR("Failed to publish diagnostic snapshot (%d)", err);
+				return err;
+			}
+
+			if (diagnostic_due) {
+				next_diagnostic_ms = now + DIAGNOSTIC_INTERVAL_MS;
+			}
 		}
 	}
 

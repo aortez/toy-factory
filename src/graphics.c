@@ -20,8 +20,6 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
 
-#include "display_sync.h"
-
 LOG_MODULE_REGISTER(picosystem_graphics, LOG_LEVEL_INF);
 
 #define PICOSYSTEM_DISPLAY_NODE   DT_CHOSEN(zephyr_display)
@@ -279,13 +277,8 @@ int picosystem_graphics_present_region(struct picosystem_graphics_stats *stats,
 		return -EINVAL;
 	}
 
-	const bool full_display =
-		(region->width == DISPLAY_WIDTH) && (region->height == DISPLAY_HEIGHT);
-	if (!full_display) {
-		(void)picosystem_display_sync_wait_for_vblank();
-	}
-
 	const uint16_t rows_per_write = TRANSFER_BUFFER_PIXELS / region->width;
+	stats->last_present_start_uptime_ticks = k_uptime_ticks();
 	const uint32_t start_cycles = k_cycle_get_32();
 
 	for (uint16_t row_offset = 0U; row_offset < region->height;) {
@@ -340,6 +333,7 @@ int picosystem_graphics_present_full(struct picosystem_graphics_stats *stats)
 		.pitch = DISPLAY_WIDTH,
 		.frame_incomplete = false,
 	};
+	stats->last_present_start_uptime_ticks = k_uptime_ticks();
 	const uint32_t start_cycles = k_cycle_get_32();
 
 	/* Full frames are contiguous and already stored in the panel's RGB565X byte order. */
