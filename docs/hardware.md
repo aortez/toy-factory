@@ -44,11 +44,12 @@ Other board-level resources:
 The board target currently declares the physical flash size, USB device,
 buttons, RGB LED, SPI display, PWM backlight, PWM piezo, and battery ADC. The
 graphics baseline uses one 115,200-byte RGB565 framebuffer and a packed
-3,840-byte transfer buffer at 20 MHz; it deliberately does not use the
-tearing-effect signal yet. Before enabling settings, a filesystem, or unusually
-large images, audit the factory firmware's flash/data layout and define explicit
-storage partitions. A peripheral should be added to the device tree only when
-its driver milestone begins, keeping early failures easy to isolate.
+3,840-byte transfer buffer at 20 MHz. GP8 is now an interrupt-driven input for
+bounded tearing-effect synchronization. Before enabling settings, a filesystem,
+or unusually large images, audit the factory firmware's flash/data layout and
+define explicit storage partitions. A peripheral should be added to the device
+tree only when its driver milestone begins, keeping early failures easy to
+isolate.
 
 ## USB power and charging status
 
@@ -106,6 +107,32 @@ channel independently of the display loop, and initialization explicitly sets
 the pulse width to zero. On the tested PIM559, startup and idle remained silent,
 the tone was clearly audible, and rapid presses safely extended playback only
 until 180 ms after the final press.
+
+## LCD tearing-effect synchronization
+
+The Zephyr ST7789V driver does not enable the panel's tearing-effect output, and
+the generic MIPI DBI SPI synchronization path waits indefinitely for a missing
+pulse. The application therefore sends the standard `TEON` command in
+vertical-blank mode after display initialization, then captures both edges of
+the active-high GP8 signal. Timing accumulation is bounded inside the GPIO
+callback and copied under a spin lock for shell readers.
+
+Across hardware runs on the tested PIM559, GP8 measured about 59.64-59.67 Hz. A
+4,859-period stress sample had a 16,762 us mean period, 16,604-16,891 us range,
+and no GPIO read errors. The high blanking pulse averaged 1,151 us; the low
+active-scan interval averaged 15,610 us. `picosystem display sync` exposes these
+measurements and supports runtime `on` and `off` controls.
+
+Partial presentations wait for a fresh rising edge only after four periods
+qualify between 15 and 18.5 ms. Each wait is capped at 20 ms, stale signals are
+bypassed, and full-frame writes remain unsynchronized because their roughly
+77.7 ms transfer cannot fit in a panel refresh interval. In a synchronized
+4,581-present run, including twelve back-to-back USB status commands, the
+firmware recorded no timeout and no skipped logic tick. Presentation settled at
+the panel's roughly 59.65 Hz while the fixed game logic remained at 62.5 Hz.
+Routine 18 x 18 and catch-up 20 x 20 writes took about 0.80-0.95 ms; USB traffic
+occasionally extended the synchronous SPI call to 1.52-1.62 ms. Main-thread
+stack high-water was 988 of 2048 bytes.
 
 On the tested PIM559, sending the 115200-byte orientation frame in bounded
 eight-row chunks took 109393 us (1028 KiB/s). The earlier one-row baseline took

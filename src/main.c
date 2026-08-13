@@ -17,6 +17,7 @@
 
 #include "battery.h"
 #include "diagnostic_shell.h"
+#include "display_sync.h"
 #include "game_demo.h"
 #include "piezo.h"
 #include "power_status.h"
@@ -358,6 +359,12 @@ int main(void)
 			LOG_ERR("Failed to indicate graphics error on RGB LED (%d)", led_err);
 		}
 		return err;
+	}
+
+	err = picosystem_display_sync_init();
+	if (err != 0) {
+		LOG_WRN("Display TE measurement is unavailable (%d); continuing unsynchronized",
+			err);
 	}
 
 	err = read_and_log_battery(&battery_sample);

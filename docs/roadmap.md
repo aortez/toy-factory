@@ -55,7 +55,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Measure RAM, stack high-water marks, frame time, and USB logging impact.
 - [x] Add and benchmark a contiguous one-transfer full-frame path.
 - [x] Evaluate a preassembled PIO/DMA transfer path; retain PL022 for dirty updates.
-- [ ] Use the LCD tearing-effect signal for synchronized presentation.
+- [x] Use the LCD tearing-effect signal for synchronized presentation.
 - [ ] Evaluate 120 x 120 pixel-doubled rendering.
 
 ## 5. Automation and maintenance

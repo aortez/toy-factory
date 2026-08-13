@@ -9,7 +9,8 @@ PIO_DMA_UF2 := build-pio-dma/zephyr/zephyr.uf2
 SERIAL_PORT_HELPER := ./scripts/find-serial-port.sh
 
 .PHONY: help image setup build build-pio build-pio-dma format check check-pio-dma \
-	container-shell update update-pio update-pio-dma bootloader console status flash monitor shell
+	container-shell update update-pio update-pio-dma bootloader console status display-sync \
+	flash monitor shell
 
 ##@ General
 
@@ -78,6 +79,14 @@ status: image ## Print one device status snapshot and exit
 			--volume "$(CURDIR):/workspace/app:ro" \
 			"$(FIRMWARE_IMAGE)" \
 			python3 ./scripts/container/serial-command.py "$$port" picosystem status
+
+display-sync: image ## Print LCD tearing-effect timing and synchronization metrics
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py "$$port" picosystem display sync
 
 ##@ Compatibility aliases
 

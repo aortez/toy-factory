@@ -12,6 +12,7 @@ path:
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and presents packed dirty regions over SPI;
+- aligns partial display writes with the LCD's GP8 tearing-effect signal;
 - runs a fixed 16 ms game update with an automatically bouncing, D-pad-steered sprite;
 - plays a short, bounded piezo tone when B is pressed;
 - averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
@@ -23,8 +24,8 @@ been transferred, then enabled at 25%. The framebuffer consumes 115,200 bytes;
 a separate 3,840-byte staging buffer packs partial rows for efficient driver
 writes. The piezo starts silent and uses a conservative 25 us active pulse for
 the tone test. GP2 remains an input so the board's automatic red charging
-indicator continues to work. DMA/PIO display transfers are documented but not
-enabled yet.
+indicator continues to work. PIO and PIO/DMA display transports remain optional
+benchmark variants; the default uses SPI0/PL022.
 
 ## Build
 
@@ -134,10 +135,12 @@ For a non-interactive snapshot, run:
 
 ```sh
 make status
+make display-sync
 ```
 
 `status` briefly owns the same serial port as `console`, sends `picosystem
 status`, prints the response, and exits. Close the console before using it.
+`display-sync` reports the panel refresh signal and bounded-wait counters.
 
 The application adds these commands:
 
@@ -147,6 +150,7 @@ picosystem buttons
 picosystem led auto|off|red|green|blue|white
 picosystem tone <frequency_hz> <duration_ms>
 picosystem display stats
+picosystem display sync [on|off]
 picosystem reboot bootloader
 ```
 
@@ -155,6 +159,11 @@ coherent hardware snapshot containing buttons, USB/charger state, the most
 recent battery sample and its age, framebuffer/presentation timing, game-loop
 rate and skipped ticks, sprite state, and the main-thread stack high-water mark.
 `buttons` is a compact live-input view.
+`display sync` reports GP8 edge timing, refresh frequency, blanking-pulse width,
+qualification state, wait latency, and fallback counts. Passing `off` bypasses
+TE waits without disabling measurement; `on` restores automatic synchronization.
+Only partial presents wait for TE because a full frame cannot fit within one
+panel refresh interval.
 The LED override takes effect in the main hardware loop; `auto` restores the
 button colors and blue heartbeat. The independent hardware red charge indicator
 is not disabled by `led off`. Tone requests are constrained to 100-4000 Hz and
@@ -170,7 +179,7 @@ Expected messages include button press/release events and a periodic line like:
 <inf> picosystem_graphics: Framebuffer ready: 115200 bytes plus 3840-byte transfer buffer, SPI 20000000 Hz
 <inf> picosystem_playground: battery: 3850 mV (raw mean 1593)
 <inf> picosystem_playground: power: usb-charging (usb=present, charge=active)
-<inf> picosystem_playground: alive: uptime=30000 ms, buttons=0x00, power=usb-charging, frame=1875, present=820 us/18x18, skipped=0, main-stack=892/2048 bytes
+<inf> picosystem_playground: alive: uptime=30000 ms, buttons=0x00, power=usb-charging, frame=1789, present=820 us/18x18, skipped=0, main-stack=988/2048 bytes
 ```
 
 The animation deliberately avoids per-frame logging; use `picosystem display
@@ -207,16 +216,18 @@ the default hardware SPI0/PL022 dirty-update path and faster PIO/DMA full frames
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation. The framebuffer image currently links at 142,620 bytes of RAM
-(52.96% of the available region), including the 115,200-byte framebuffer and
-3,840-byte transfer buffer. Full frames bypass that staging buffer with one
+generation. The synchronized framebuffer image currently links at 142,804 bytes
+of RAM (53.03% of the available region), including the 115,200-byte framebuffer
+and 3,840-byte transfer buffer. Full frames bypass that staging buffer with one
 contiguous display write. On the tested PIM559, the initial PL022 full-frame
-transfer took 77,692-77,711 us (1447-1448 KiB/s). Normal 18 x 18 dirty transfers
-took about 820-840 us, and the worst complete dirty render observed during repeated USB
-shell traffic was 3,340 us. After 3,518 fixed updates the effective rate was
-62.5 fps with zero skipped ticks; main-thread stack high-water was 892 of 2048
-bytes. Twelve back-to-back status queries did not change the frame rate or skip
-count. USB CDC, all eight buttons, the RGB heartbeat,
+transfer took 77,692-77,711 us (1447-1448 KiB/s). GP8 measured about 59.65 Hz
+with a roughly 1.15 ms active-high blanking pulse. Partial writes now begin on a
+fresh rising edge after four plausible periods; missing or stale pulses bypass
+the wait, and an individual wait is limited to 20 ms. A 4,581-frame synchronized
+run, including twelve back-to-back status queries, had zero TE timeouts and zero
+skipped logic ticks. Normal display writes remained about 0.80-0.95 ms, with
+1.52-1.62 ms outliers during USB traffic; main-thread stack high-water was 988
+of 2048 bytes. USB CDC, all eight buttons, the RGB heartbeat,
 hold-X recovery, and the earlier asymmetric display target at 20 MHz and 25%
 backlight have been checked on one PIM559. Its bounded eight-row renderer
 measured 109393 us for the static target and about 116 ms with the movable

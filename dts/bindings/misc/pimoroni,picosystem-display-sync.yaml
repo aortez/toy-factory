@@ -1,0 +1,19 @@
+# Copyright (c) 2026 PicoSystem Playground contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: LCD tearing-effect signal on the Pimoroni PicoSystem
+
+compatible: "pimoroni,picosystem-display-sync"
+
+include: base.yaml
+
+properties:
+  te-gpios:
+    type: phandle-array
+    required: true
+    description: Active-high ST7789 tearing-effect output.
+
+  mipi-dbi:
+    type: phandle
+    required: true
+    description: MIPI DBI controller used to enable the panel signal.

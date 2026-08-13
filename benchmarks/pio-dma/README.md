@@ -18,6 +18,11 @@ make update          # restore the default PL022 image
 
 ## PIM559 results
 
+These transport measurements predate the application-owned GP8 tearing-effect
+synchronization layer. TE waiting occurs before the timed display call, so the
+relative transfer results remain applicable; current images are larger because
+they also include signal measurement, bounded waiting, and shell diagnostics.
+
 All variants used the same application, 20 MHz configured display frequency,
 240 x 240 RGB565 framebuffer, and 18 x 18 animated dirty region. Full frames
 are one contiguous 115,200-byte display write; partial regions continue to use

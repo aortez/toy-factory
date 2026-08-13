@@ -21,6 +21,7 @@
 #include <zephyr/sys/reboot.h>
 #include <zephyr/sys/util.h>
 
+#include "display_sync.h"
 #include "piezo.h"
 
 #define BOOTLOADER_REBOOT_DELAY_MS 100
@@ -297,6 +298,77 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 	return 0;
 }
 
+static void print_timing_range(const struct shell *shell, const char *name, uint32_t samples,
+			       uint32_t mean_us, uint32_t min_us, uint32_t max_us)
+{
+	if (samples == 0U) {
+		shell_print(shell, "%s: no samples", name);
+		return;
+	}
+
+	shell_print(shell, "%s: mean=%u us, min=%u us, max=%u us, jitter=%u us (#%u)", name,
+		    mean_us, min_us, max_us, max_us - min_us, samples);
+}
+
+static int cmd_display_sync(const struct shell *shell, size_t argc, char **argv)
+{
+	if (argc == 2U) {
+		bool enabled;
+		if (strcmp(argv[1], "on") == 0) {
+			enabled = true;
+		} else if (strcmp(argv[1], "off") == 0) {
+			enabled = false;
+		} else {
+			shell_error(shell, "Expected 'on' or 'off'");
+			return -EINVAL;
+		}
+
+		const int set_err = picosystem_display_sync_set_enabled(enabled);
+		if (set_err != 0) {
+			shell_error(shell, "Failed to %s display synchronization (%d)",
+				    enabled ? "enable" : "disable", set_err);
+			return set_err;
+		}
+	}
+
+	struct picosystem_display_sync_stats stats;
+	const int err = picosystem_display_sync_get_stats(&stats);
+	if (err != 0) {
+		shell_error(shell, "Display TE measurement is unavailable (%d)", err);
+		return err;
+	}
+
+	const uint32_t frequency_millihz =
+		(stats.period_mean_us == 0U)
+			? 0U
+			: (uint32_t)(UINT64_C(1000000000) / stats.period_mean_us);
+
+	shell_print(shell, "TE: panel=%s, GP8=%s, polarity=active-high blanking",
+		    stats.panel_te_enabled ? "enabled" : "disabled",
+		    stats.signal_high ? "high" : "low");
+	shell_print(shell, "edges: rising=%u, falling=%u, read-errors=%u, last=%u us ago",
+		    stats.rising_edges, stats.falling_edges, stats.gpio_read_errors,
+		    stats.last_edge_age_us);
+	if (frequency_millihz != 0U) {
+		shell_print(shell, "frequency: %u.%03u Hz", frequency_millihz / 1000U,
+			    frequency_millihz % 1000U);
+	}
+	print_timing_range(shell, "period", stats.period_samples, stats.period_mean_us,
+			   stats.period_min_us, stats.period_max_us);
+	print_timing_range(shell, "high", stats.high_samples, stats.high_mean_us, stats.high_min_us,
+			   stats.high_max_us);
+	print_timing_range(shell, "low", stats.low_samples, stats.low_mean_us, stats.low_min_us,
+			   stats.low_max_us);
+	shell_print(shell,
+		    "presentation sync: requested=%s, signal=%s, synchronized=%u, bypassed=%u, "
+		    "timeouts=%u, wait=%u us (max=%u us)",
+		    stats.synchronization_requested ? "on" : "off",
+		    stats.signal_qualified ? "qualified" : "unqualified",
+		    stats.synchronized_presents, stats.bypassed_presents, stats.timed_out_presents,
+		    stats.last_wait_us, stats.max_wait_us);
+	return 0;
+}
+
 static int cmd_reboot_bootloader(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -314,11 +386,14 @@ static int cmd_reboot_bootloader(const struct shell *shell, size_t argc, char **
 	sys_reboot(SYS_REBOOT_COLD);
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(display_commands,
-			       SHELL_CMD_ARG(stats, NULL,
-					     "Show framebuffer, timing, and game-loop metrics.",
-					     cmd_display_stats, 1, 0),
-			       SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	display_commands,
+	SHELL_CMD_ARG(stats, NULL, "Show framebuffer, timing, and game-loop metrics.",
+		      cmd_display_stats, 1, 0),
+	SHELL_CMD_ARG(sync, NULL,
+		      SHELL_HELP("Show or control LCD tearing-effect synchronization.", "[on|off]"),
+		      cmd_display_sync, 1, 1),
+	SHELL_SUBCMD_SET_END);
 
 SHELL_STATIC_SUBCMD_SET_CREATE(reboot_commands,
 			       SHELL_CMD_ARG(bootloader, NULL,

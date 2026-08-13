@@ -118,6 +118,13 @@
 		status = "okay";
 	};
 
+	lcd_sync: lcd-sync {
+		compatible = "pimoroni,picosystem-display-sync";
+		te-gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+		mipi-dbi = <&lcd_mipi_dbi>;
+		status = "okay";
+	};
+
 	power_status: power-status {
 		compatible = "pimoroni,picosystem-power-status";
 		vbus-detect-gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;

@@ -9,6 +9,7 @@ project(picosystem_playground)
 target_sources(app PRIVATE
 	src/battery.c
 	src/diagnostic_shell.c
+	src/display_sync.c
 	src/game_demo.c
 	src/graphics.c
 	src/main.c
