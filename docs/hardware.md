@@ -166,7 +166,11 @@ thread continued to simulate and publish; the renderer coalesced superseded
 snapshots, then resumed TE-driven dirty presentation with the latest state.
 Scheduler backlog and skipped-tick counters remained unchanged. The A button
 and `picosystem game redraw` both post this same coalesced request rather than
-calling graphics code from their requesting context.
+calling graphics code from their requesting context. The A-button path was
+visually confirmed without tearing. The sprite jumps forward when the transfer
+finishes because roughly ten pixels of 120 Hz simulation occur during the
+roughly 82 ms in which the renderer is occupied; those obsolete intermediate
+snapshots are intentionally not replayed.
 
 On the tested PIM559, sending the 115200-byte orientation frame in bounded
 eight-row chunks took 109393 us (1028 KiB/s). The earlier one-row baseline took

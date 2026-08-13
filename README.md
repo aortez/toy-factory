@@ -275,8 +275,10 @@ measured 109393 us for the static target and about 116 ms with the movable
 marker. Cardinal partial updates took 1.83-2.13 ms; diagonal updates took
 2.29-2.60 ms without visible corruption. The framebuffer animation, D-pad
 steering, and earlier synchronous full-redraw path were visually confirmed
-without corruption. The current asynchronous full-redraw path is
-counter-verified; final visual confirmation remains a physical smoke-test item.
+without corruption. The current asynchronous A-button full-redraw path was also
+visually confirmed without tearing. Its expected position jump reflects
+coalesced intermediate snapshots while the renderer is occupied, rather than a
+simulation pause.
 A cold power-on also showed no visible bright/white backlight flash before the
 completed target appeared. The 440 Hz piezo tone, silent startup/idle state,
 and rapid retrigger behavior have also been checked on the same unit. Flash-size

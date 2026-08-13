@@ -59,7 +59,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Run authoritative simulation on exact rational 120 Hz deadlines.
 - [x] Hand immutable snapshots to a lower-priority, TE-driven renderer.
 - [x] Confirm that full redraws and repeated USB queries do not skip simulation ticks.
-- [ ] Visually confirm the asynchronous A-button full-redraw path on hardware.
+- [x] Visually confirm the asynchronous A-button full-redraw path on hardware.
 - [ ] Evaluate 120 x 120 pixel-doubled rendering.
 
 ## 5. Automation and maintenance
