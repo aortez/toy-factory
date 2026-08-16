@@ -1,9 +1,6 @@
 # Toy Factory
 
-Toy Factory is an experimental game and physics firmware laboratory for the
-Pimoroni PicoSystem PIM559, built on an out-of-tree Zephyr port. The build runs
-entirely in Docker; the host needs only Git, Docker, and the Docker Compose
-plugin.
+Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:
