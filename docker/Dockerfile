@@ -83,5 +83,5 @@ RUN mkdir -p /workspace && chown ubuntu:ubuntu /workspace
 USER ubuntu
 WORKDIR /workspace/app
 
-LABEL org.opencontainers.image.title="PicoSystem Zephyr build environment"
-LABEL org.opencontainers.image.source="https://github.com/zephyrproject-rtos/sdk-ng"
+LABEL org.opencontainers.image.title="Toy Factory Zephyr build environment"
+LABEL org.opencontainers.image.source="https://github.com/aortez/toy-factory"

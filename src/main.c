@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 PicoSystem Playground contributors
+ * Copyright (c) 2026 Toy Factory contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -23,7 +23,7 @@
 #include "piezo.h"
 #include "power_status.h"
 
-LOG_MODULE_REGISTER(picosystem_playground, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(toy_factory, LOG_LEVEL_INF);
 
 #define PIEZO_TEST_FREQUENCY_HZ  440U
 #define PIEZO_TEST_DURATION_MS   180U

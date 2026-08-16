@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Run one command against the PicoSystem Zephyr shell over USB CDC ACM."""
+"""Run one command against the Toy Factory Zephyr shell over USB CDC ACM."""
 
 import argparse
 import re
@@ -10,8 +10,12 @@ import time
 import serial
 
 
-PROMPT = b"picosystem:~$ "
+PROMPTS = (b"toy-factory:~$ ", b"picosystem:~$ ")
 ANSI_ESCAPE = re.compile(rb"\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-_])")
+
+
+def find_prompt(data: bytes | bytearray) -> bytes | None:
+    return next((prompt for prompt in PROMPTS if prompt in data), None)
 
 
 def read_until_prompt(
@@ -28,7 +32,7 @@ def read_until_prompt(
         chunk = connection.read(max(connection.in_waiting, 1))
         if chunk:
             received.extend(chunk)
-            if PROMPT in received:
+            if find_prompt(received) is not None:
                 prompt_seen = True
                 quiet_deadline = time.monotonic() + settle_seconds
         elif prompt_seen and time.monotonic() >= quiet_deadline:
@@ -64,13 +68,17 @@ def clean_response(response: bytes, command: str) -> str:
     while lines and not lines[0]:
         lines.pop(0)
 
-    if lines and lines[0].startswith(PROMPT.decode()):
-        lines[0] = lines[0][len(PROMPT.decode()) :]
+    for prompt in PROMPTS:
+        decoded_prompt = prompt.decode()
+        if lines and lines[0].startswith(decoded_prompt):
+            lines[0] = lines[0][len(decoded_prompt) :]
+            break
 
     if lines and lines[0].strip() == command:
         lines.pop(0)
 
-    while lines and (not lines[-1] or lines[-1].strip() == PROMPT.decode().strip()):
+    prompt_texts = {prompt.decode().strip() for prompt in PROMPTS}
+    while lines and (not lines[-1] or lines[-1].strip() in prompt_texts):
         lines.pop()
 
     return "\n".join(lines)
@@ -109,8 +117,8 @@ def main() -> int:
             connection.flush()
 
             greeting = read_until_prompt(connection, args.timeout, settle_seconds=0.2)
-            if PROMPT not in greeting:
-                print(f"no PicoSystem shell prompt received from {args.port}", file=sys.stderr)
+            if find_prompt(greeting) is None:
+                print(f"no Toy Factory shell prompt received from {args.port}", file=sys.stderr)
                 return 1
 
             connection.reset_input_buffer()
@@ -139,7 +147,7 @@ def main() -> int:
                         file=sys.stderr,
                     )
                     return 1
-            elif PROMPT not in response:
+            elif find_prompt(response) is None:
                 print(f"timed out waiting for '{command}' on {args.port}", file=sys.stderr)
                 return 1
     except (OSError, serial.SerialException) as error:

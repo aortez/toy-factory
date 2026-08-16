@@ -2,7 +2,7 @@
 
 COMPOSE := docker compose
 DOCKER := docker
-FIRMWARE_IMAGE := picosystem-zephyr-builder:local
+FIRMWARE_IMAGE := toy-factory-builder:local
 UF2 := build/zephyr/zephyr.uf2
 PIO_UF2 := build-pio/zephyr/zephyr.uf2
 PIO_DMA_UF2 := build-pio-dma/zephyr/zephyr.uf2
@@ -16,7 +16,7 @@ SERIAL_PORT_HELPER := ./scripts/find-serial-port.sh
 ##@ General
 
 help: ## Show this list of targets
-	@printf 'PicoSystem Zephyr playground\n\n'
+	@printf 'Toy Factory\n\n'
 	@printf 'Usage:\n  make <target> [PORT=/dev/ttyACM0] [UF2_MOUNT=/path/to/RPI-RP2]\n'
 	@awk 'BEGIN { FS = ":.*## " } \
 		/^##@ / { printf "\n%s:\n", substr($$0, 5); next } \

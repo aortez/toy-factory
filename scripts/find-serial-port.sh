@@ -61,9 +61,11 @@ add_candidate()
 	candidate_ports+=("$resolved")
 }
 
-# A Zephyr by-id link is more specific than an arbitrary ACM device. Fall back
-# to all common ACM names when udev has not created persistent links.
-for candidate in /dev/serial/by-id/usb-Zephyr_Project_CDC_ACM*; do
+# A Toy Factory by-id link is more specific than an arbitrary ACM device. Keep
+# the generic Zephyr identity for upgrading older firmware, then fall back to
+# common ACM names when udev has not created persistent links.
+for candidate in /dev/serial/by-id/usb-Toy_Factory_Toy_Factory_PicoSystem* \
+	/dev/serial/by-id/usb-Zephyr_Project_CDC_ACM*; do
 	add_candidate "$candidate"
 done
 
@@ -75,7 +77,7 @@ fi
 
 case ${#candidate_ports[@]} in
 	0)
-		echo "no PicoSystem USB serial port found" >&2
+		echo "no Toy Factory USB serial port found" >&2
 		echo "boot the application and reconnect USB, or set PORT=/dev/ttyACM0" >&2
 		exit 1
 		;;
@@ -83,7 +85,7 @@ case ${#candidate_ports[@]} in
 		printf '%s\n' "${candidate_ports[0]}"
 		;;
 	*)
-		echo "multiple PicoSystem USB serial ports found:" >&2
+		echo "multiple Toy Factory USB serial ports found:" >&2
 		printf '  %s\n' "${candidate_ports[@]}" >&2
 		echo "select one with PORT=/dev/ttyACM0" >&2
 		exit 1

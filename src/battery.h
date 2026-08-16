@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 PicoSystem Playground contributors
+ * Copyright (c) 2026 Toy Factory contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  */

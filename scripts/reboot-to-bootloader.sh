@@ -12,7 +12,7 @@ readonly script_dir
 repository_dir=$(cd -- "$script_dir/.." && pwd -P)
 readonly repository_dir
 readonly requested_port=${1:-}
-readonly firmware_image=${2:-picosystem-zephyr-builder:local}
+readonly firmware_image=${2:-toy-factory-builder:local}
 
 port=$("$script_dir/find-serial-port.sh" "$requested_port")
 readonly port

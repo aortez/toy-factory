@@ -1,14 +1,16 @@
-# PicoSystem Zephyr playground
+# Toy Factory
 
-An experimental, out-of-tree Zephyr port for the Pimoroni PicoSystem PIM559.
-The build runs entirely in Docker; the host needs only Git, Docker, and the
-Docker Compose plugin.
+Toy Factory is an experimental game and physics firmware laboratory for the
+Pimoroni PicoSystem PIM559, built on an out-of-tree Zephyr port. The build runs
+entirely in Docker; the host needs only Git, Docker, and the Docker Compose
+plugin.
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:
 
 - boots a Zephyr 4.4.2 image from the RP2040 UF2 bootloader;
-- exposes an interactive Zephyr shell and log console over USB CDC ACM;
+- exposes an interactive Zephyr shell and log console as `Toy Factory PicoSystem`
+  over USB CDC ACM;
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and presents packed dirty regions over SPI;
@@ -130,7 +132,7 @@ than one matching port exists, select one with
 `make console PORT=/dev/ttyACM0`. `make monitor` remains as a compatibility
 alias. The port disconnects briefly each time the PicoSystem resets and may
 return with a different number. Press Enter after connecting to reveal the
-`picosystem:~$` prompt. Tab completion, command history, and asynchronous Zephyr
+`toy-factory:~$` prompt. Tab completion, command history, and asynchronous Zephyr
 logs share the same terminal.
 
 For a non-interactive snapshot, run:
@@ -189,9 +191,9 @@ Expected messages include button press/release events and a periodic line like:
 
 ```text
 <inf> picosystem_graphics: Framebuffer ready: 115200 bytes plus 3840-byte transfer buffer, SPI 20000000 Hz
-<inf> picosystem_playground: battery: 3850 mV (raw mean 1593)
-<inf> picosystem_playground: power: usb-charging (usb=present, charge=active)
-<inf> picosystem_playground: alive: uptime=30000 ms, buttons=0x00, power=usb-charging, ticks=3465, frame=1721, present=820 us/18x18, skipped=0, stacks=1184/2048+628/2048 bytes
+<inf> toy_factory: battery: 3850 mV (raw mean 1593)
+<inf> toy_factory: power: usb-charging (usb=present, charge=active)
+<inf> toy_factory: alive: uptime=30000 ms, buttons=0x00, power=usb-charging, ticks=3465, frame=1721, present=820 us/18x18, skipped=0, stacks=1184/2048+628/2048 bytes
 ```
 
 The animation deliberately avoids per-frame logging; use `picosystem display
@@ -249,7 +251,7 @@ world state.
 `make check` verifies configuration, device tree, compilation, linking, and UF2
 generation and also runs a native deadline-scheduler test against an iterative
 reference. The default decoupled-loop image uses 145,292 bytes of RAM (53.95%)
-and 124,644 bytes of flash, including the 115,200-byte framebuffer, 3,840-byte
+and 124,632 bytes of flash, including the 115,200-byte framebuffer, 3,840-byte
 transfer buffer, and two 24-byte render snapshots. Full frames bypass the
 staging buffer with one contiguous display write.
 

@@ -15,5 +15,6 @@ from pathlib import Path
 path = Path("scripts/container/serial-command.py")
 compile(path.read_text(), str(path), "exec")
 PY
+python3 scripts/tests/serial-command-test.py
 git diff --check
 ./scripts/container/build.sh --pristine

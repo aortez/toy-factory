@@ -3,6 +3,8 @@
 /build-pio-dma/
 /.cache/
 /.west/
+__pycache__/
+*.py[cod]
 *.swp
 *.swo
 .DS_Store

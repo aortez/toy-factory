@@ -1,6 +1,6 @@
 services:
   firmware:
-    image: picosystem-zephyr-builder:local
+    image: toy-factory-builder:local
     build:
       context: .
       dockerfile: docker/Dockerfile

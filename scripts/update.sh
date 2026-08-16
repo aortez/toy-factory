@@ -12,7 +12,7 @@ readonly script_dir
 readonly requested_mount=${1:-}
 readonly requested_port=${2:-}
 readonly artifact=${3:-build/zephyr/zephyr.uf2}
-readonly firmware_image=${4:-picosystem-zephyr-builder:local}
+readonly firmware_image=${4:-toy-factory-builder:local}
 readonly update_timeout_seconds=${PICOSYSTEM_UPDATE_TIMEOUT_SECONDS:-15}
 
 if [[ ! "$update_timeout_seconds" =~ ^[1-9][0-9]*$ ]]; then
