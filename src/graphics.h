@@ -83,6 +83,8 @@ void picosystem_graphics_draw_rect(int16_t x, int16_t y, uint16_t width, uint16_
 				   picosystem_color_t color);
 void picosystem_graphics_draw_line(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
 				   picosystem_color_t color);
+void picosystem_graphics_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
+				       int16_t y2, picosystem_color_t color);
 int picosystem_graphics_fill_circle(int16_t center_x, int16_t center_y, uint16_t radius,
 				    picosystem_color_t color);
 int picosystem_graphics_draw_mono_sprite(int16_t x, int16_t y,

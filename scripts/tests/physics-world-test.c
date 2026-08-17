@@ -25,6 +25,19 @@ static struct picosystem_physics_circle_config circle_config(uint16_t id, int32_
 	};
 }
 
+static struct picosystem_physics_box_config box_config(uint16_t id, int32_t x, int32_t y,
+						       int32_t half_width, int32_t half_height)
+{
+	return (struct picosystem_physics_box_config){
+		.center = {.x = FIXED(x), .y = FIXED(y)},
+		.half_extent = {.x = FIXED(half_width), .y = FIXED(half_height)},
+		.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
+		.restitution = RATIO(3, 4),
+		.friction = RATIO(1, 5),
+		.id = id,
+	};
+}
+
 static struct picosystem_physics_segment_config horizontal_segment(uint16_t id, int32_t y)
 {
 	return (struct picosystem_physics_segment_config){
@@ -62,6 +75,7 @@ static void test_initialization_and_add_boundaries(void)
 	init_world(&world, FIXED(2));
 
 	assert(picosystem_physics_world_add_circle(NULL, NULL) == -EINVAL);
+	assert(picosystem_physics_world_add_box(NULL, NULL) == -EINVAL);
 	assert(picosystem_physics_world_add_static_segment(NULL, NULL) == -EINVAL);
 
 	struct picosystem_physics_circle_config invalid = circle_config(1U, 0, 0, 1);
@@ -90,6 +104,20 @@ static void test_initialization_and_add_boundaries(void)
 	const struct picosystem_physics_segment_config excess_segment = horizontal_segment(99U, 30);
 	assert(picosystem_physics_world_add_static_segment(&world, &excess_segment) == -ENOSPC);
 	assert(world.static_segment_count == PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS);
+
+	struct picosystem_physics_world box_world;
+	init_world(&box_world, FIXED(2));
+	struct picosystem_physics_box_config invalid_box = box_config(1U, 0, 0, 1, 1);
+	invalid_box.half_extent.x = 0;
+	assert(picosystem_physics_world_add_box(&box_world, &invalid_box) == -ERANGE);
+	assert(box_world.body_count == 0U);
+	const struct picosystem_physics_box_config valid_box = box_config(1U, 0, 0, 1, 1);
+	assert(picosystem_physics_world_add_box(&box_world, &valid_box) == 0);
+	assert(picosystem_physics_world_add_box(&box_world, &valid_box) == -EEXIST);
+	assert(box_world.bodies[0].shape == PICOSYSTEM_PHYSICS_SHAPE_BOX);
+	assert(box_world.bodies[0].inverse_inertia > 0);
+	box_world.bodies[0].inverse_inertia = 0;
+	assert(picosystem_physics_world_step(&box_world, &no_acceleration) == -ERANGE);
 }
 
 static void test_duplicate_ids_and_invalid_segments(void)
@@ -104,11 +132,17 @@ static void test_duplicate_ids_and_invalid_segments(void)
 
 	struct picosystem_physics_segment_config segment = horizontal_segment(8U, 4);
 	assert(picosystem_physics_world_add_static_segment(&world, &segment) == 0);
+	assert(world.static_segments[0].normal.x == 0);
+	assert(world.static_segments[0].normal.y == PICOSYSTEM_PHYSICS_FIXED_ONE);
 	assert(picosystem_physics_world_add_static_segment(&world, &segment) == -EEXIST);
 	segment.id = 9U;
 	segment.end = segment.start;
 	assert(picosystem_physics_world_add_static_segment(&world, &segment) == -ERANGE);
 	assert(world.static_segment_count == 1U);
+
+	world.static_segments[0].normal.x = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	world.static_segments[0].normal.y = 0;
+	assert(picosystem_physics_world_step(&world, &no_acceleration) == -ERANGE);
 }
 
 static void test_integration_speed_clamp_and_invalid_step(void)
@@ -158,6 +192,48 @@ static void test_integration_speed_clamp_and_invalid_step(void)
 	assert(world.bodies[0].velocity_per_tick.x == body_before.velocity_per_tick.x);
 	assert(picosystem_physics_world_step(NULL, &no_acceleration) == -EINVAL);
 	assert(picosystem_physics_world_step(&world, NULL) == -EINVAL);
+}
+
+static void test_box_geometry_and_angular_integration(void)
+{
+	struct picosystem_physics_world world;
+	init_world(&world, FIXED(4));
+	struct picosystem_physics_box_config box = box_config(1U, 0, 0, 2, 1);
+	assert(picosystem_physics_world_add_box(&world, &box) == 0);
+
+	struct picosystem_physics_vector vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT];
+	assert(picosystem_physics_body_box_vertices(&world.bodies[0], vertices) == 0);
+	assert(vertices[0].x == FIXED(-2));
+	assert(vertices[0].y == FIXED(-1));
+	assert(vertices[1].x == FIXED(2));
+	assert(vertices[1].y == FIXED(-1));
+	assert(vertices[2].x == FIXED(2));
+	assert(vertices[2].y == FIXED(1));
+	assert(vertices[3].x == FIXED(-2));
+	assert(vertices[3].y == FIXED(1));
+
+	world.bodies[0].angle_turns = PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN;
+	assert(picosystem_physics_body_box_vertices(&world.bodies[0], vertices) == 0);
+	assert(vertices[0].x == FIXED(1));
+	assert(vertices[0].y == FIXED(-2));
+	assert(vertices[1].x == FIXED(1));
+	assert(vertices[1].y == FIXED(2));
+	assert(vertices[2].x == FIXED(-1));
+	assert(vertices[2].y == FIXED(2));
+	assert(vertices[3].x == FIXED(-1));
+	assert(vertices[3].y == FIXED(-2));
+
+	world.bodies[0].angle_turns = 0U;
+	world.bodies[0].angular_velocity_per_tick = RATIO(1, 8);
+	assert(picosystem_physics_world_step(&world, &no_acceleration) == 0);
+	assert(world.bodies[0].angle_turns != 0U);
+	assert(world.bodies[0].angular_velocity_per_tick == RATIO(1, 8));
+
+	struct picosystem_physics_circle_config circle = circle_config(2U, 8, 0, 1);
+	assert(picosystem_physics_world_add_circle(&world, &circle) == 0);
+	assert(picosystem_physics_body_box_vertices(&world.bodies[1], vertices) == -ENOTSUP);
+	assert(picosystem_physics_body_box_vertices(NULL, vertices) == -EINVAL);
+	assert(picosystem_physics_body_box_vertices(&world.bodies[0], NULL) == -EINVAL);
 }
 
 static void test_equal_mass_head_on_collision(void)
@@ -264,6 +340,90 @@ static void test_static_floor_and_diagonal_segment(void)
 	assert_fixed_close(endpoint_world.bodies[0].velocity_per_tick.x, RATIO(3, 4), 4);
 }
 
+static void test_box_floor_manifold_and_off_center_torque(void)
+{
+	struct picosystem_physics_world symmetric;
+	init_world(&symmetric, FIXED(4));
+	struct picosystem_physics_box_config falling = box_config(1U, 0, 0, 2, 1);
+	falling.velocity_per_tick.y = RATIO(1, 2);
+	falling.restitution = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	falling.friction = 0;
+	struct picosystem_physics_segment_config floor = horizontal_segment(1U, 1);
+	floor.start.y = FIXED(1) + RATIO(1, 4);
+	floor.end.y = floor.start.y;
+	floor.restitution = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	floor.friction = 0;
+	assert(picosystem_physics_world_add_box(&symmetric, &falling) == 0);
+	assert(picosystem_physics_world_add_static_segment(&symmetric, &floor) == 0);
+	assert(picosystem_physics_world_step(&symmetric, &no_acceleration) == 0);
+	assert(symmetric.contact_count == 2U);
+	assert_fixed_close(symmetric.bodies[0].velocity_per_tick.y, -RATIO(1, 2), RATIO(1, 32));
+	assert_fixed_close(symmetric.bodies[0].angular_velocity_per_tick, 0, RATIO(1, 128));
+
+	struct picosystem_physics_world off_center;
+	init_world(&off_center, FIXED(4));
+	falling.center = (struct picosystem_physics_vector){0};
+	falling.velocity_per_tick.y = RATIO(1, 2);
+	assert(picosystem_physics_world_add_box(&off_center, &falling) == 0);
+	floor.start.x = FIXED(1);
+	assert(picosystem_physics_world_add_static_segment(&off_center, &floor) == 0);
+	assert(picosystem_physics_world_step(&off_center, &no_acceleration) == 0);
+	assert(off_center.contact_count >= 1U);
+	assert(off_center.bodies[0].angular_velocity_per_tick != 0);
+}
+
+static void test_box_box_and_circle_box_collisions(void)
+{
+	struct picosystem_physics_world boxes;
+	init_world(&boxes, FIXED(4));
+	struct picosystem_physics_box_config left = box_config(1U, -1, 0, 1, 1);
+	struct picosystem_physics_box_config right = box_config(2U, 1, 0, 1, 1);
+	left.center.x = -RATIO(3, 4);
+	right.center.x = RATIO(3, 4);
+	left.velocity_per_tick.x = RATIO(1, 2);
+	right.velocity_per_tick.x = -RATIO(1, 2);
+	left.restitution = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	right.restitution = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	left.friction = 0;
+	right.friction = 0;
+	assert(picosystem_physics_world_add_box(&boxes, &left) == 0);
+	assert(picosystem_physics_world_add_box(&boxes, &right) == 0);
+	assert(picosystem_physics_world_step(&boxes, &no_acceleration) == 0);
+	assert(boxes.contact_count == 2U);
+	assert_fixed_close(boxes.bodies[0].velocity_per_tick.x, -RATIO(1, 2), RATIO(1, 32));
+	assert_fixed_close(boxes.bodies[1].velocity_per_tick.x, RATIO(1, 2), RATIO(1, 32));
+
+	struct picosystem_physics_world mixed;
+	init_world(&mixed, FIXED(4));
+	struct picosystem_physics_circle_config circle = circle_config(1U, -1, 0, 1);
+	struct picosystem_physics_box_config box = box_config(2U, 1, 0, 1, 1);
+	circle.center.x = -RATIO(5, 4);
+	circle.velocity_per_tick.x = RATIO(1, 2);
+	circle.restitution = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	circle.friction = 0;
+	box.restitution = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	box.friction = 0;
+	assert(picosystem_physics_world_add_circle(&mixed, &circle) == 0);
+	assert(picosystem_physics_world_add_box(&mixed, &box) == 0);
+	assert(picosystem_physics_world_step(&mixed, &no_acceleration) == 0);
+	assert(mixed.contact_count == 1U);
+	assert_fixed_close(mixed.bodies[0].velocity_per_tick.x, 0, RATIO(1, 32));
+	assert_fixed_close(mixed.bodies[1].velocity_per_tick.x, RATIO(1, 2), RATIO(1, 32));
+
+	struct picosystem_physics_world contained;
+	init_world(&contained, FIXED(4));
+	circle = circle_config(1U, 1, 0, 1);
+	box = box_config(2U, 0, 0, 2, 2);
+	circle.restitution = 0;
+	box.restitution = 0;
+	assert(picosystem_physics_world_add_circle(&contained, &circle) == 0);
+	assert(picosystem_physics_world_add_box(&contained, &box) == 0);
+	assert(picosystem_physics_world_step(&contained, &no_acceleration) == 0);
+	assert(contained.contact_count == 1U);
+	assert(contained.bodies[0].center.x > FIXED(1));
+	assert(contained.bodies[1].center.x < 0);
+}
+
 static void test_coincident_centers_are_stable(void)
 {
 	struct picosystem_physics_world world;
@@ -297,8 +457,8 @@ static void test_contact_storage_covers_all_candidates(void)
 	}
 
 	assert(picosystem_physics_world_step(&world, &no_acceleration) == 0);
-	assert(world.last_candidate_pair_count == PICOSYSTEM_PHYSICS_MAX_CONTACTS);
-	assert(world.contact_count == PICOSYSTEM_PHYSICS_MAX_CONTACTS);
+	assert(world.last_candidate_pair_count == PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS);
+	assert(world.contact_count == PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS);
 }
 
 static void test_hash_excludes_scratch_and_diagnostics(void)
@@ -327,9 +487,12 @@ int main(void)
 	test_initialization_and_add_boundaries();
 	test_duplicate_ids_and_invalid_segments();
 	test_integration_speed_clamp_and_invalid_step();
+	test_box_geometry_and_angular_integration();
 	test_equal_mass_head_on_collision();
 	test_unequal_mass_head_on_collision();
 	test_static_floor_and_diagonal_segment();
+	test_box_floor_manifold_and_off_center_torque();
+	test_box_box_and_circle_box_collisions();
 	test_coincident_centers_are_stable();
 	test_contact_storage_covers_all_candidates();
 	test_hash_excludes_scratch_and_diagnostics();
