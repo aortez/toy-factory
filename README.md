@@ -323,12 +323,20 @@ the default hardware SPI0/PL022 dirty-update path and faster PIO/DMA full frames
 
 ## Game-loop architecture
 
+The authoritative fixed-point state, canonical reset, one-tick update, collision
+response, input validation, and stable field-by-field hash live in
+[`src/game_world.c`](src/game_world.c). That module has no Zephyr, scheduler,
+renderer, USB, or wall-clock dependency. The firmware and native test suite
+compile the same C source, so host replay tests exercise the implementation that
+runs on the RP2040 rather than a second simulation model.
+
 The RP2040 build currently uses one core, so this is priority-based decoupling
 rather than parallel CPU execution. The priority-0 main thread owns all
-authoritative game state, samples input, and advances fixed 120 Hz ticks. It
-publishes a 24-byte immutable render snapshot into one of two slots under a
-short spin lock. A saturated semaphore wakes the priority-1 renderer, which
-coalesces obsolete snapshots instead of making simulation wait.
+authoritative game state, samples input, and asks the platform-neutral world to
+advance one fixed 120 Hz tick. It publishes a 24-byte immutable render snapshot
+into one of two slots under a short spin lock. A saturated semaphore wakes the
+priority-1 renderer, which coalesces obsolete snapshots instead of making
+simulation wait.
 
 For normal dirty updates, the renderer waits for a qualified TE rising edge,
 then late-latches the newest snapshot and immediately draws/presents it. This
@@ -351,12 +359,14 @@ framebuffer is allocated.
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation and also runs native deadline-scheduler, serial-shell, framebuffer
-protocol, RGB565 conversion, PNG-structure, and deterministic-sequence tests.
-The default remote-debug image uses 147,108 bytes of RAM (54.62%) and 129,932
-bytes of flash. This includes the 115,200-byte framebuffer, 3,840-byte transfer
-buffer, two 24-byte render snapshots, and a 1,024-byte shell TX ring. Full frames
-bypass the staging buffer with one contiguous display write.
+generation and also runs native game-world replay/boundary, deadline-scheduler,
+serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure, and
+deterministic-sequence tests. The game-world test uses the undefined-behavior
+sanitizer and treats the board-confirmed reset/right-30/up-15 hashes as native
+goldens. The default remote-debug image uses 147,108 bytes of RAM (54.62%) and
+130,092 bytes of flash. This includes the 115,200-byte framebuffer, 3,840-byte
+transfer buffer, two 24-byte render snapshots, and a 1,024-byte shell TX ring.
+Full frames bypass the staging buffer with one contiguous display write.
 
 On the tested PIM559, the exact 120 Hz scheduler ran with a maximum observed
 backlog of one, zero skipped ticks, and zero over-budget updates. The worst

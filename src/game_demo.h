@@ -10,24 +10,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "game_world.h"
 #include "graphics.h"
 
-#define PICOSYSTEM_GAME_TICK_RATE_HZ            120U
 #define PICOSYSTEM_GAME_MAX_CATCH_UP            4U
 #define PICOSYSTEM_GAME_FRAMEBUFFER_CHUNK_BYTES 384U
 
-struct picosystem_game_input {
-	int8_t horizontal;
-	int8_t vertical;
-};
-
-/* Main-thread-owned authoritative simulation state. */
+/* Main-thread-owned world plus scheduling and publication metrics. */
 struct picosystem_game_demo_state {
-	int32_t sprite_x_fixed;
-	int32_t sprite_y_fixed;
-	int32_t velocity_x_fixed_per_second;
-	int32_t velocity_y_fixed_per_second;
-	uint32_t logic_tick_count;
+	struct picosystem_game_world world;
 	uint32_t skipped_tick_count;
 	uint32_t over_budget_tick_count;
 	uint32_t last_update_time_us;

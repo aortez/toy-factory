@@ -5,9 +5,10 @@ set -euo pipefail
 readonly app_dir=/workspace/app
 
 cd "$app_dir"
-clang-format --dry-run --Werror src/*.c src/*.h
+clang-format --dry-run --Werror src/*.c src/*.h scripts/tests/*.c
 bash -n scripts/*.sh scripts/container/*.sh scripts/tests/*.sh
 ./scripts/tests/fixed-rate-scheduler-test.sh
+./scripts/tests/game-world-test.sh
 ./scripts/tests/mount-uf2-volume-test.sh
 python3 - <<'PY'
 from pathlib import Path

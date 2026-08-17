@@ -287,11 +287,11 @@ static int fill_game_control_state(const struct game_runtime_control *control,
 	}
 
 	*state = (struct picosystem_game_control_state){
-		.sprite_x_fixed = game->sprite_x_fixed,
-		.sprite_y_fixed = game->sprite_y_fixed,
-		.velocity_x_fixed_per_second = game->velocity_x_fixed_per_second,
-		.velocity_y_fixed_per_second = game->velocity_y_fixed_per_second,
-		.logic_tick_count = game->logic_tick_count,
+		.sprite_x_fixed = game->world.sprite_x_fixed,
+		.sprite_y_fixed = game->world.sprite_y_fixed,
+		.velocity_x_fixed_per_second = game->world.velocity_x_fixed_per_second,
+		.velocity_y_fixed_per_second = game->world.velocity_y_fixed_per_second,
+		.logic_tick_count = game->world.logic_tick_count,
 		.state_hash = picosystem_game_demo_state_hash(game),
 		.published_snapshot_sequence = game->snapshot_sequence,
 		.presented_snapshot_sequence = stats.presented_snapshot_sequence,

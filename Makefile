@@ -48,8 +48,8 @@ build-pio: ## Build the PIO SPI benchmark variant
 build-pio-dma: ## Build the PIO SPI plus DMA benchmark variant
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --variant pio-dma
 
-format: ## Format the application C source
-	$(COMPOSE) run --rm firmware clang-format -i src/*.c src/*.h
+format: ## Format application and native-test C source
+	$(COMPOSE) run --rm firmware clang-format -i src/*.c src/*.h scripts/tests/*.c
 
 check: ## Run checks and a pristine firmware build
 	$(COMPOSE) run --rm firmware ./scripts/container/check.sh

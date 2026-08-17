@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "game_demo.h"
+#include "game_world.h"
 
 #define PICOSYSTEM_GAME_CONTROL_MAX_STEPS 120U
 
