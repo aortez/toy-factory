@@ -2,6 +2,8 @@
 
 Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
+![Toy Factory physics lab](docs/images/physics-lab.png)
+
 The current baseline exercises the complete board and a game-oriented graphics
 path:
 
