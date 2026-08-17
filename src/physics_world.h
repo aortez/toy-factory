@@ -16,17 +16,22 @@
 #define PICOSYSTEM_PHYSICS_FIXED_RATIO(numerator, denominator)                                     \
 	((int32_t)(((int64_t)(numerator) * PICOSYSTEM_PHYSICS_FIXED_ONE) / (denominator)))
 
-#define PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT    4U
-#define PICOSYSTEM_PHYSICS_MAX_BODIES          12U
-#define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS 8U
-#define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS 2U
-#define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN  UINT32_C(0x40000000)
+#define PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT      4U
+#define PICOSYSTEM_PHYSICS_MAX_BODIES            12U
+#define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS   8U
+#define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS   2U
+#define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN    UINT32_C(0x40000000)
+#define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS 16U
+#define PICOSYSTEM_PHYSICS_GRID_COLUMNS          16U
+#define PICOSYSTEM_PHYSICS_GRID_ROWS             16U
+#define PICOSYSTEM_PHYSICS_GRID_CELL_COUNT                                                         \
+	(PICOSYSTEM_PHYSICS_GRID_COLUMNS * PICOSYSTEM_PHYSICS_GRID_ROWS)
 #define PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS                                                     \
 	(((PICOSYSTEM_PHYSICS_MAX_BODIES * (PICOSYSTEM_PHYSICS_MAX_BODIES - 1U)) / 2U) +           \
 	 (PICOSYSTEM_PHYSICS_MAX_BODIES * PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS))
 #define PICOSYSTEM_PHYSICS_MAX_CONTACTS                                                            \
 	(PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS * PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS)
-#define PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS 6U
+#define PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS 7U
 
 typedef int32_t picosystem_physics_fixed_t;
 
@@ -116,16 +121,27 @@ struct picosystem_physics_contact {
 	uint8_t type;
 };
 
+/* Scratch occupancy rebuilt on every update and excluded from authoritative hashes. */
+struct picosystem_physics_grid_cell {
+	uint16_t body_mask;
+	uint8_t static_segment_mask;
+};
+
 struct picosystem_physics_world {
 	struct picosystem_physics_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	struct picosystem_physics_static_segment
 		static_segments[PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS];
 	struct picosystem_physics_contact contacts[PICOSYSTEM_PHYSICS_MAX_CONTACTS];
+	struct picosystem_physics_grid_cell grid_cells[PICOSYSTEM_PHYSICS_GRID_CELL_COUNT];
 	picosystem_physics_fixed_t max_speed_per_tick;
 	uint32_t last_candidate_pair_count;
+	uint32_t last_possible_pair_count;
 	uint16_t body_count;
 	uint16_t static_segment_count;
 	uint16_t contact_count;
+	uint16_t last_occupied_grid_cell_count;
+	uint8_t last_broad_phase_fallback;
+	uint8_t last_solver_iteration_count;
 };
 
 /* Initialize an empty, caller-owned world with a bounded vector-speed limit. */
@@ -143,6 +159,11 @@ int picosystem_physics_world_add_static_segment(
 
 /* Advance exactly one tick with a global acceleration expressed in pixels/tick^2. */
 int picosystem_physics_world_step(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_vector *global_acceleration_per_tick);
+
+/* Advance with brute-force candidates as a deterministic validation oracle. */
+int picosystem_physics_world_step_reference(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_vector *global_acceleration_per_tick);
 

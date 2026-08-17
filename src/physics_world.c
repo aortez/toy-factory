@@ -35,19 +35,56 @@
 #define TRIG_QUARTER_SAMPLE_SHIFT       24U
 #define TRIG_QUARTER_SAMPLE_COUNT       64U
 #define TRIG_QUARTER_PHASE_MASK         UINT32_C(0x3fffffff)
+#define PHYSICS_GRID_CELL_SIZE_FIXED                                                               \
+	PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS)
+#define PHYSICS_GRID_WIDTH_FIXED                                                                   \
+	PICOSYSTEM_PHYSICS_FIXED_FROM_INT(                                                         \
+		PICOSYSTEM_PHYSICS_GRID_COLUMNS *PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS)
+#define PHYSICS_GRID_HEIGHT_FIXED                                                                  \
+	PICOSYSTEM_PHYSICS_FIXED_FROM_INT(                                                         \
+		PICOSYSTEM_PHYSICS_GRID_ROWS *PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS)
 
 _Static_assert(PICOSYSTEM_PHYSICS_MAX_BODIES <= UINT8_MAX, "body indices must fit in one byte");
+_Static_assert(PICOSYSTEM_PHYSICS_MAX_BODIES <= 16U, "body occupancy must fit in uint16_t");
 _Static_assert(PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS <= UINT8_MAX,
 	       "segment indices must fit in one byte");
+_Static_assert(PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS <= 8U,
+	       "segment occupancy must fit in uint8_t");
+_Static_assert(PICOSYSTEM_PHYSICS_GRID_COLUMNS <= UINT8_MAX,
+	       "grid columns must fit in a cell range");
+_Static_assert(PICOSYSTEM_PHYSICS_GRID_ROWS <= UINT8_MAX, "grid rows must fit in a cell range");
+_Static_assert(PICOSYSTEM_PHYSICS_GRID_CELL_COUNT <= UINT16_MAX,
+	       "occupied grid-cell count must fit in uint16_t");
 _Static_assert(PICOSYSTEM_PHYSICS_MAX_CONTACTS <= UINT16_MAX,
 	       "contact count must fit in the public world field");
 _Static_assert(PICOSYSTEM_PHYSICS_MAX_CONTACTS >= (PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS *
 						   PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS),
 	       "contact storage must cover every brute-force manifold");
+_Static_assert(PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS <= UINT8_MAX,
+	       "solver iteration diagnostics must fit in uint8_t");
 
 struct box_geometry {
 	struct picosystem_physics_vector axis_x;
 	struct picosystem_physics_vector axis_y;
+};
+
+struct physics_aabb {
+	picosystem_physics_fixed_t minimum_x;
+	picosystem_physics_fixed_t minimum_y;
+	picosystem_physics_fixed_t maximum_x;
+	picosystem_physics_fixed_t maximum_y;
+};
+
+struct physics_grid_range {
+	uint8_t minimum_column;
+	uint8_t minimum_row;
+	uint8_t maximum_column;
+	uint8_t maximum_row;
+};
+
+struct physics_candidate_sets {
+	uint16_t body_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	uint8_t static_segment_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 };
 
 struct contact_point_candidate {
@@ -1277,18 +1314,170 @@ static int generate_segment_contact(struct picosystem_physics_world *world, uint
 	return generate_box_segment_contact(world, body_index, segment_index, geometry);
 }
 
-static int build_contacts(struct picosystem_physics_world *world)
+static void body_aabb(const struct picosystem_physics_body *body,
+		      const struct box_geometry *geometry, struct physics_aabb *aabb)
+{
+	picosystem_physics_fixed_t extent_x = body->radius;
+	picosystem_physics_fixed_t extent_y = body->radius;
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
+		extent_x = fixed_multiply(fixed_absolute(geometry->axis_x.x), body->half_extent.x) +
+			   fixed_multiply(fixed_absolute(geometry->axis_y.x), body->half_extent.y);
+		extent_y = fixed_multiply(fixed_absolute(geometry->axis_x.y), body->half_extent.x) +
+			   fixed_multiply(fixed_absolute(geometry->axis_y.y), body->half_extent.y);
+	}
+
+	*aabb = (struct physics_aabb){
+		.minimum_x = body->center.x - extent_x,
+		.minimum_y = body->center.y - extent_y,
+		.maximum_x = body->center.x + extent_x,
+		.maximum_y = body->center.y + extent_y,
+	};
+}
+
+static void segment_aabb(const struct picosystem_physics_static_segment *segment,
+			 struct physics_aabb *aabb)
+{
+	*aabb = (struct physics_aabb){
+		.minimum_x = fixed_minimum(segment->start.x, segment->end.x),
+		.minimum_y = fixed_minimum(segment->start.y, segment->end.y),
+		.maximum_x = fixed_maximum(segment->start.x, segment->end.x),
+		.maximum_y = fixed_maximum(segment->start.y, segment->end.y),
+	};
+}
+
+static bool grid_range_from_aabb(const struct physics_aabb *aabb, struct physics_grid_range *range)
+{
+	if ((aabb->minimum_x < 0) || (aabb->minimum_y < 0) || (aabb->maximum_x < aabb->minimum_x) ||
+	    (aabb->maximum_y < aabb->minimum_y) || (aabb->maximum_x >= PHYSICS_GRID_WIDTH_FIXED) ||
+	    (aabb->maximum_y >= PHYSICS_GRID_HEIGHT_FIXED)) {
+		return false;
+	}
+
+	*range = (struct physics_grid_range){
+		.minimum_column = (uint8_t)(aabb->minimum_x / PHYSICS_GRID_CELL_SIZE_FIXED),
+		.minimum_row = (uint8_t)(aabb->minimum_y / PHYSICS_GRID_CELL_SIZE_FIXED),
+		.maximum_column = (uint8_t)(aabb->maximum_x / PHYSICS_GRID_CELL_SIZE_FIXED),
+		.maximum_row = (uint8_t)(aabb->maximum_y / PHYSICS_GRID_CELL_SIZE_FIXED),
+	};
+	return true;
+}
+
+static void clear_grid(struct picosystem_physics_world *world)
+{
+	memset(world->grid_cells, 0, sizeof(world->grid_cells));
+	world->last_occupied_grid_cell_count = 0U;
+}
+
+static void occupy_grid_range(struct picosystem_physics_world *world,
+			      const struct physics_grid_range *range, uint16_t body_mask,
+			      uint8_t static_segment_mask)
+{
+	for (uint16_t row = range->minimum_row; row <= range->maximum_row; ++row) {
+		for (uint16_t column = range->minimum_column; column <= range->maximum_column;
+		     ++column) {
+			const size_t index = (row * PICOSYSTEM_PHYSICS_GRID_COLUMNS) + column;
+			struct picosystem_physics_grid_cell *const cell = &world->grid_cells[index];
+			if ((cell->body_mask == 0U) && (cell->static_segment_mask == 0U)) {
+				++world->last_occupied_grid_cell_count;
+			}
+			cell->body_mask |= body_mask;
+			cell->static_segment_mask |= static_segment_mask;
+		}
+	}
+}
+
+static void collect_grid_candidates(const struct picosystem_physics_world *world,
+				    struct physics_candidate_sets *candidates)
+{
+	for (size_t cell_index = 0U; cell_index < PICOSYSTEM_PHYSICS_GRID_CELL_COUNT;
+	     ++cell_index) {
+		const struct picosystem_physics_grid_cell *const cell =
+			&world->grid_cells[cell_index];
+		for (uint8_t body_index = 0U; body_index < world->body_count; ++body_index) {
+			const uint16_t body_bit = (uint16_t)(UINT16_C(1) << body_index);
+			if ((cell->body_mask & body_bit) == 0U) {
+				continue;
+			}
+
+			const uint16_t through_current =
+				(uint16_t)((UINT32_C(1) << ((uint32_t)body_index + 1U)) - 1U);
+			candidates->body_masks[body_index] |=
+				cell->body_mask & (uint16_t)~through_current;
+			candidates->static_segment_masks[body_index] |= cell->static_segment_mask;
+		}
+	}
+}
+
+static bool
+build_grid_candidates(struct picosystem_physics_world *world,
+		      const struct box_geometry geometries[PICOSYSTEM_PHYSICS_MAX_BODIES],
+		      struct physics_candidate_sets *candidates)
+{
+	clear_grid(world);
+	memset(candidates, 0, sizeof(*candidates));
+
+	for (uint8_t body_index = 0U; body_index < world->body_count; ++body_index) {
+		struct physics_aabb aabb;
+		body_aabb(&world->bodies[body_index], &geometries[body_index], &aabb);
+		struct physics_grid_range range;
+		if (!grid_range_from_aabb(&aabb, &range)) {
+			clear_grid(world);
+			return false;
+		}
+		occupy_grid_range(world, &range, (uint16_t)(UINT16_C(1) << body_index), 0U);
+	}
+
+	for (uint8_t segment_index = 0U; segment_index < world->static_segment_count;
+	     ++segment_index) {
+		struct physics_aabb aabb;
+		segment_aabb(&world->static_segments[segment_index], &aabb);
+		struct physics_grid_range range;
+		if (!grid_range_from_aabb(&aabb, &range)) {
+			clear_grid(world);
+			return false;
+		}
+		occupy_grid_range(world, &range, 0U, (uint8_t)(UINT8_C(1) << segment_index));
+	}
+
+	collect_grid_candidates(world, candidates);
+	return true;
+}
+
+static uint32_t possible_pair_count(const struct picosystem_physics_world *world)
+{
+	const uint32_t body_count = world->body_count;
+	const uint32_t body_pair_count =
+		(body_count < 2U) ? 0U : (body_count * (body_count - 1U)) / 2U;
+	return body_pair_count + (body_count * world->static_segment_count);
+}
+
+static int build_contacts(struct picosystem_physics_world *world, bool force_brute_force)
 {
 	world->contact_count = 0U;
 	world->last_candidate_pair_count = 0U;
+	world->last_possible_pair_count = possible_pair_count(world);
 	struct box_geometry geometries[PICOSYSTEM_PHYSICS_MAX_BODIES] = {0};
 	for (uint8_t body_index = 0U; body_index < world->body_count; ++body_index) {
 		if (world->bodies[body_index].shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
 			box_geometry_from_body(&world->bodies[body_index], &geometries[body_index]);
 		}
 	}
+
+	struct physics_candidate_sets candidates = {0};
+	const bool use_brute_force =
+		force_brute_force || !build_grid_candidates(world, geometries, &candidates);
+	world->last_broad_phase_fallback = use_brute_force ? 1U : 0U;
+	if (force_brute_force) {
+		clear_grid(world);
+	}
+
 	for (uint8_t body_a = 0U; body_a < world->body_count; ++body_a) {
 		for (uint8_t body_b = body_a + 1U; body_b < world->body_count; ++body_b) {
+			const uint16_t body_b_mask = (uint16_t)(UINT16_C(1) << body_b);
+			if (!use_brute_force &&
+			    ((candidates.body_masks[body_a] & body_b_mask) == 0U)) {
+				continue;
+			}
 			++world->last_candidate_pair_count;
 			const int err = generate_body_contact(world, body_a, body_b, geometries);
 			if (err != 0) {
@@ -1297,6 +1486,11 @@ static int build_contacts(struct picosystem_physics_world *world)
 		}
 
 		for (uint8_t segment = 0U; segment < world->static_segment_count; ++segment) {
+			const uint8_t segment_mask = (uint8_t)(UINT8_C(1) << segment);
+			if (!use_brute_force &&
+			    ((candidates.static_segment_masks[body_a] & segment_mask) == 0U)) {
+				continue;
+			}
 			++world->last_candidate_pair_count;
 			const int err = generate_segment_contact(world, body_a, segment,
 								 &geometries[body_a]);
@@ -1367,7 +1561,7 @@ static void apply_contact_impulse(struct picosystem_physics_world *world,
 	}
 }
 
-static void solve_contact_velocity(struct picosystem_physics_world *world,
+static bool solve_contact_velocity(struct picosystem_physics_world *world,
 				   struct picosystem_physics_contact *contact)
 {
 	const picosystem_physics_fixed_t normal_inverse_mass =
@@ -1379,8 +1573,9 @@ static void solve_contact_velocity(struct picosystem_physics_world *world,
 	const picosystem_physics_fixed_t previous_normal = contact->accumulated_normal_impulse;
 	contact->accumulated_normal_impulse =
 		(previous_normal + normal_delta > 0) ? previous_normal + normal_delta : 0;
-	apply_contact_impulse(world, contact, &contact->normal,
-			      contact->accumulated_normal_impulse - previous_normal);
+	const picosystem_physics_fixed_t applied_normal =
+		contact->accumulated_normal_impulse - previous_normal;
+	apply_contact_impulse(world, contact, &contact->normal, applied_normal);
 
 	relative = contact_relative_velocity(world, contact);
 	const struct picosystem_physics_vector tangent = {
@@ -1397,8 +1592,10 @@ static void solve_contact_velocity(struct picosystem_physics_world *world,
 	const picosystem_physics_fixed_t previous_tangent = contact->accumulated_tangent_impulse;
 	contact->accumulated_tangent_impulse =
 		fixed_clamp(previous_tangent + tangent_delta, -maximum_friction, maximum_friction);
-	apply_contact_impulse(world, contact, &tangent,
-			      contact->accumulated_tangent_impulse - previous_tangent);
+	const picosystem_physics_fixed_t applied_tangent =
+		contact->accumulated_tangent_impulse - previous_tangent;
+	apply_contact_impulse(world, contact, &tangent, applied_tangent);
+	return (applied_normal != 0) || (applied_tangent != 0);
 }
 
 static uint32_t fnv1a_u32(uint32_t hash, uint32_t value)
@@ -1533,9 +1730,9 @@ int picosystem_physics_world_add_static_segment(
 	return 0;
 }
 
-int picosystem_physics_world_step(
-	struct picosystem_physics_world *world,
-	const struct picosystem_physics_vector *global_acceleration_per_tick)
+static int physics_world_step(struct picosystem_physics_world *world,
+			      const struct picosystem_physics_vector *global_acceleration_per_tick,
+			      bool force_brute_force)
 {
 	if ((world == NULL) || (global_acceleration_per_tick == NULL)) {
 		return -EINVAL;
@@ -1556,7 +1753,7 @@ int picosystem_physics_world_step(
 		clamp_body_position(body);
 	}
 
-	int err = build_contacts(world);
+	int err = build_contacts(world, force_brute_force);
 	if (err != 0) {
 		return err;
 	}
@@ -1564,19 +1761,39 @@ int picosystem_physics_world_step(
 	for (uint16_t index = 0U; index < world->contact_count; ++index) {
 		apply_position_correction(world, &world->contacts[index]);
 	}
-	for (uint32_t iteration = 0U; iteration < PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS;
+	world->last_solver_iteration_count = 0U;
+	for (uint8_t iteration = 0U;
+	     (iteration < PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS) && (world->contact_count > 0U);
 	     ++iteration) {
+		bool impulse_changed = false;
 		for (uint16_t index = 0U; index < world->contact_count; ++index) {
-			solve_contact_velocity(world, &world->contacts[index]);
+			impulse_changed |= solve_contact_velocity(world, &world->contacts[index]);
+		}
+		world->last_solver_iteration_count = iteration + 1U;
+		if (!impulse_changed) {
+			break;
 		}
 	}
-
 	for (uint16_t index = 0U; index < world->body_count; ++index) {
 		clamp_body_position(&world->bodies[index]);
 		clamp_body_speed(&world->bodies[index], world->max_speed_per_tick);
 		clamp_body_angular_speed(&world->bodies[index]);
 	}
 	return 0;
+}
+
+int picosystem_physics_world_step(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_vector *global_acceleration_per_tick)
+{
+	return physics_world_step(world, global_acceleration_per_tick, false);
+}
+
+int picosystem_physics_world_step_reference(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_vector *global_acceleration_per_tick)
+{
+	return physics_world_step(world, global_acceleration_per_tick, true);
 }
 
 const struct picosystem_physics_body *

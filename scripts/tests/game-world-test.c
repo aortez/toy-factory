@@ -10,10 +10,10 @@
 
 #include "game_world.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0x5d80846f)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xb0f8e409)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x908d238c)
-#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x70437154)
+#define EXPECTED_RESET_HASH          UINT32_C(0xb20aaf3a)
+#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xcb18185d)
+#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x7272656f)
+#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0xa64cb9ef)
 #define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
 
 static void assert_vector_equal(const struct picosystem_physics_vector *left,
@@ -32,6 +32,18 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 	assert(left->physics.static_segment_count == right->physics.static_segment_count);
 	assert(left->physics.contact_count == right->physics.contact_count);
 	assert(left->physics.last_candidate_pair_count == right->physics.last_candidate_pair_count);
+	assert(left->physics.last_possible_pair_count == right->physics.last_possible_pair_count);
+	assert(left->physics.last_occupied_grid_cell_count ==
+	       right->physics.last_occupied_grid_cell_count);
+	assert(left->physics.last_broad_phase_fallback == right->physics.last_broad_phase_fallback);
+	assert(left->physics.last_solver_iteration_count ==
+	       right->physics.last_solver_iteration_count);
+	for (size_t index = 0U; index < PICOSYSTEM_PHYSICS_GRID_CELL_COUNT; ++index) {
+		assert(left->physics.grid_cells[index].body_mask ==
+		       right->physics.grid_cells[index].body_mask);
+		assert(left->physics.grid_cells[index].static_segment_mask ==
+		       right->physics.grid_cells[index].static_segment_mask);
+	}
 
 	for (uint16_t index = 0U; index < left->physics.body_count; ++index) {
 		const struct picosystem_physics_body *const left_body =
@@ -206,6 +218,11 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	};
 	bool saw_body_contact = false;
 	bool saw_static_contact = false;
+	bool saw_candidate_reduction = false;
+	uint32_t minimum_candidate_count = UINT32_MAX;
+	uint32_t maximum_candidate_count = 0U;
+	uint16_t maximum_contact_count = 0U;
+	uint8_t maximum_solver_iteration_count = 0U;
 
 	for (uint32_t step = 0U; step < 10000U; ++step) {
 		const size_t input_index = (step / 250U) % (sizeof(inputs) / sizeof(inputs[0]));
@@ -222,7 +239,27 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 		}
 		assert(err == 0);
 		assert_bodies_inside_arena(&world);
-		assert(world.physics.last_candidate_pair_count == 51U);
+		assert(world.physics.last_possible_pair_count == 76U);
+		assert(world.physics.last_candidate_pair_count <=
+		       world.physics.last_possible_pair_count);
+		assert(world.physics.last_occupied_grid_cell_count > 0U);
+		assert(world.physics.last_broad_phase_fallback == 0U);
+		if (world.physics.last_candidate_pair_count <
+		    world.physics.last_possible_pair_count) {
+			saw_candidate_reduction = true;
+		}
+		if (world.physics.last_candidate_pair_count < minimum_candidate_count) {
+			minimum_candidate_count = world.physics.last_candidate_pair_count;
+		}
+		if (world.physics.last_candidate_pair_count > maximum_candidate_count) {
+			maximum_candidate_count = world.physics.last_candidate_pair_count;
+		}
+		if (world.physics.contact_count > maximum_contact_count) {
+			maximum_contact_count = world.physics.contact_count;
+		}
+		if (world.physics.last_solver_iteration_count > maximum_solver_iteration_count) {
+			maximum_solver_iteration_count = world.physics.last_solver_iteration_count;
+		}
 
 		for (uint16_t index = 0U; index < world.physics.contact_count; ++index) {
 			if (world.physics.contacts[index].type == PICOSYSTEM_PHYSICS_CONTACT_BODY) {
@@ -235,6 +272,10 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 
 	assert(saw_body_contact);
 	assert(saw_static_contact);
+	assert(saw_candidate_reduction);
+	fprintf(stderr, "candidate range: %u-%u/76, max contacts: %u, max solver: %u\n",
+		minimum_candidate_count, maximum_candidate_count, maximum_contact_count,
+		maximum_solver_iteration_count);
 
 	world.logic_tick_count = UINT32_MAX;
 	assert(picosystem_game_world_step(&world, &inputs[0]) == 0);
@@ -272,9 +313,9 @@ static void test_reset_replay_is_bit_exact(void)
 
 int main(void)
 {
+	test_bounded_motion_contacts_and_saturated_tick();
 	test_canonical_reset_and_golden_replay();
 	test_validation_preserves_state();
-	test_bounded_motion_contacts_and_saturated_tick();
 	test_reset_replay_is_bit_exact();
 	puts("game-world tests passed");
 	return 0;

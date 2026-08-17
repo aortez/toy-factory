@@ -136,8 +136,11 @@ consumption and TE-driven presentation without rebooting.
 ## Decoupled 120 Hz simulation and presentation
 
 Zephyr currently runs this RP2040 target on one core. The priority-0 main thread
-owns input and all authoritative simulation state; a preemptible priority-1
-worker owns the framebuffer and display after initialization. The scheduler
+owns input and all authoritative simulation state; the USB shell runs at
+priority 1 and a preemptible priority-2 worker owns the framebuffer and display
+after initialization. When simulation has already missed its next deadline,
+the main loop reserves a one-millisecond recovery window so the shell can still
+accept diagnostics or a bootloader request. The scheduler
 represents 120 Hz as rational kernel-tick deadlines rather than rounding it to
 an integer millisecond period. With the configured 10 kHz kernel tick, the
 deadline spacing repeats 83, 83, and 84 ticks, totaling exactly 250 ticks for
@@ -172,6 +175,17 @@ each static-segment normal is derived once when the scene is built. A clean
 over-budget updates, a 4.580 ms current update, and a 5.449 ms observed maximum.
 TE-driven presentation was 57.8 fps. Main and renderer stack high-water marks
 were 2,448/4,096 and 1,988/3,072 bytes.
+
+The uniform-grid lab expands the physical demo to four circles and four boxes
+while retaining capacity for 12 bodies. Its 14,968-byte physics world includes
+a 1,024-byte, 16 x 16 scratch grid. The PIM559 reproduced the native reset,
+right-30, and right-30/up-15 hashes (`b20aaf3a`, `cb18185d`, and `7272656f`) and
+the tick-45 framebuffer CRC-32 `11bbf436`. A reset 3,692-tick window ran at
+119.9 Hz with zero skipped ticks and one isolated over-budget update; the
+sampled update was 5.724 ms and the observed maximum was 19.848 ms. The sampled
+step retained 15 of 76 possible pairs, occupied 91 of 256 cells, and used no
+brute-force fallback. TE-driven presentation was 53.9 fps. Main and renderer
+stack high-water marks were 2,600/4,096 and 1,988/3,072 bytes.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.
