@@ -32,6 +32,9 @@ LOG_MODULE_REGISTER(toy_factory, LOG_LEVEL_INF);
 #define STACK_SAMPLE_INTERVAL_MS 1000
 #define STATUS_LOG_INTERVAL_MS   30000
 #define PAUSED_POLL_INTERVAL_MS  8
+#define OVERLOAD_RECOVERY_MS     1
+
+BUILD_ASSERT(CONFIG_MAIN_THREAD_PRIORITY < CONFIG_SHELL_THREAD_PRIORITY);
 
 struct named_gpio {
 	const char *name;
@@ -594,6 +597,10 @@ int main(void)
 				game_scheduler.next_deadline_ticks - before_sleep_ticks;
 			if (sleep_ticks > 0) {
 				k_sleep(K_TICKS(sleep_ticks));
+			} else if (sleep_ticks < 0) {
+				/* Preserve a control-plane window after the tick budget is
+				 * exhausted. */
+				k_msleep(OVERLOAD_RECOVERY_MS);
 			}
 		}
 

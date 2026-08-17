@@ -2,7 +2,7 @@
 
 Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
-![Toy Factory rigid-body lab](docs/images/rigid-body-lab.png)
+![Toy Factory broad-phase lab](docs/images/broad-phase-lab.png)
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:
@@ -13,8 +13,10 @@ path:
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and presents packed dirty regions over SPI;
-- runs a deterministic mixed circle-and-box rigid-body lab at an exact 120 Hz
-  fixed step with Q16.16 linear/angular motion, gravity, friction, and restitution;
+- runs a deterministic eight-body circle-and-box lab at an exact 120 Hz fixed
+  step with Q16.16 linear/angular motion, gravity, friction, and restitution;
+- filters collision candidates through a fixed 16 x 16 uniform grid while
+  retaining a deterministic brute-force fallback and native oracle;
 - publishes fixed-size state snapshots to an independent, lower-priority renderer;
 - late-latches the newest snapshot and aligns partial display writes with the LCD's GP8
   tearing-effect signal;
@@ -332,8 +334,9 @@ the default hardware SPI0/PL022 dirty-update path and faster PIO/DMA full frames
 
 ## Game-loop architecture
 
-The authoritative fixed-point bodies, static segments, contact generation,
-sequential-impulse response, and stable field-by-field hash live in
+The authoritative fixed-point bodies, static segments, uniform-grid candidate
+filter, contact generation, sequential-impulse response, and stable
+field-by-field hash live in
 [`src/physics_world.c`](src/physics_world.c). Canonical scene construction,
 input-to-acceleration mapping, game ticks, and the outer hash live in
 [`src/game_world.c`](src/game_world.c). Neither module has a Zephyr, scheduler,
@@ -344,10 +347,13 @@ that runs on the RP2040 rather than a second simulation model.
 The RP2040 build currently uses one core, so this is priority-based decoupling
 rather than parallel CPU execution. The priority-0 main thread owns all
 authoritative game state, samples input, and asks the platform-neutral world to
-advance one fixed 120 Hz tick. It publishes a 400-byte immutable render snapshot
-into one of two slots under a short spin lock. A saturated semaphore wakes the
-priority-1 renderer, which coalesces obsolete snapshots instead of making
-simulation wait.
+advance one fixed 120 Hz tick. The priority-1 USB shell runs only while the main
+thread is blocked; if simulation has already missed its next deadline, the main
+loop reserves a one-millisecond recovery window so diagnostics and the
+bootloader command cannot remain starved. The main thread publishes a 400-byte
+immutable render snapshot into one of two slots under a short spin lock. A
+saturated semaphore wakes the priority-2 renderer, which coalesces obsolete
+snapshots instead of making simulation wait.
 
 For normal dirty updates, the renderer waits for a qualified TE rising edge,
 then late-latches the newest snapshot and immediately draws/presents it. This
@@ -370,15 +376,15 @@ framebuffer is allocated.
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation and also runs native rigid-body collision/capacity, 10,000-tick
-game-world replay/boundary, deadline-scheduler,
+generation and also runs native rigid-body collision/capacity, 1,000-tick
+grid/brute-force oracle, 10,000-tick game-world replay/boundary, deadline-scheduler,
 serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure, and
 deterministic-sequence tests. The game-world test uses the undefined-behavior
-sanitizer and treats the board-confirmed reset/right-30/up-15 hashes as native
-goldens. The default rigid-body-lab image uses 164,972 bytes of RAM (61.26%) and
-145,708 bytes of flash. This includes the 115,200-byte framebuffer, 3,840-byte
-transfer buffer, 13,936-byte fixed-capacity physics world, two 400-byte render
-snapshots, and a 1,024-byte shell TX ring.
+sanitizer and treats the accepted reset/right-30/up-15 hashes as native goldens.
+The default uniform-grid image uses 166,012 bytes of RAM (61.64%) and 147,052
+bytes of flash. This includes the 115,200-byte framebuffer, 3,840-byte transfer
+buffer, 14,968-byte fixed-capacity physics world with a 1,024-byte scratch grid,
+two 400-byte render snapshots, and a 1,024-byte shell TX ring.
 Full frames bypass the staging buffer with one contiguous display write.
 
 GitHub Actions runs `make check` and builds the PIO and PIO/DMA variants for
@@ -470,11 +476,12 @@ sprite, and colors. During a running capture, logic advanced from tick 3,440 to
 over-budget updates, and a fully caught-up presented snapshot. Capture outputs
 and newly created artifact directories retain the invoking host user's ownership.
 
-The current oriented rigid-body image preserves the same deterministic control
-path. Canonical reset now hashes to `5d80846f`; right for 30 ticks reaches
-`b0f8e409`; and a further 15 up ticks reaches tick 45 at `908d238c`. The coherent
-framebuffer at that state is CRC-32 `31f48288`, matching the screenshot above.
-On the tested PIM559, cached box bases and static-segment normals held 120.0 Hz
-over a 4,136-tick sample with no skipped or over-budget ticks; the current update
-was 4.580 ms, the observed maximum was 5.449 ms, and TE-driven presentation was
-57.8 fps.
+The current uniform-grid rigid-body image preserves the same deterministic
+control path. Canonical reset hashes to `b20aaf3a`; right for 30 ticks reaches
+`cb18185d`; and a further 15 up ticks reaches tick 45 at `7272656f`. The coherent
+framebuffer at that state is CRC-32 `11bbf436`, matching the screenshot above.
+On the tested PIM559, a reset 3,692-tick window held 119.9 Hz with zero skipped
+ticks and one isolated over-budget update. The sampled update was 5.724 ms and
+the observed maximum was 19.848 ms. The grid retained 15 of 76 possible pairs,
+occupied 91 of 256 cells, and did not fall back; TE-driven presentation was
+53.9 fps.

@@ -231,9 +231,15 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    frame_rate_tenths % 10U, snapshot.game.published_snapshot_count,
 		    snapshot.game.superseded_snapshot_count, snapshot.game.last_snapshot_age_us,
 		    snapshot.game.max_dirty_snapshot_age_us);
-	shell_print(shell, "physics: bodies=%u, segments=%u, contacts=%u/%u candidates",
+	shell_print(shell,
+		    "physics: bodies=%u, segments=%u, contacts=%u, candidates=%u/%u, "
+		    "grid=%u/%u cells, solver=%u/%u, fallback=%s",
 		    snapshot.game.body_count, snapshot.game.static_segment_count,
-		    snapshot.game.contact_count, snapshot.game.candidate_pair_count);
+		    snapshot.game.contact_count, snapshot.game.candidate_pair_count,
+		    snapshot.game.possible_pair_count, snapshot.game.occupied_grid_cell_count,
+		    PICOSYSTEM_PHYSICS_GRID_CELL_COUNT, snapshot.game.solver_iteration_count,
+		    PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
+		    snapshot.game.broad_phase_fallback ? "yes" : "no");
 	shell_print(
 		shell,
 		"focus #%u %s: simulation=(%u,%u), displayed=(%u,%u), "
@@ -374,9 +380,14 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 	shell_print(shell, "snapshots: published=%u, superseded=%u, age=%u us (dirty max=%u us)",
 		    game->published_snapshot_count, game->superseded_snapshot_count,
 		    game->last_snapshot_age_us, game->max_dirty_snapshot_age_us);
-	shell_print(shell, "physics: bodies=%u, segments=%u, contacts=%u/%u candidates",
+	shell_print(shell,
+		    "physics: bodies=%u, segments=%u, contacts=%u, candidates=%u/%u, "
+		    "grid=%u/%u cells, solver=%u/%u, fallback=%s",
 		    game->body_count, game->static_segment_count, game->contact_count,
-		    game->candidate_pair_count);
+		    game->candidate_pair_count, game->possible_pair_count,
+		    game->occupied_grid_cell_count, PICOSYSTEM_PHYSICS_GRID_CELL_COUNT,
+		    game->solver_iteration_count, PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
+		    game->broad_phase_fallback ? "yes" : "no");
 	shell_print(shell,
 		    "focus #%u %s: simulation=(%u,%u), displayed=(%u,%u), "
 		    "velocity=(%d,%d) px/s, angle=%08x, angular=%d mrad/s",

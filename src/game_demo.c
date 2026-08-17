@@ -28,13 +28,13 @@ LOG_MODULE_REGISTER(picosystem_game_demo, LOG_LEVEL_INF);
 #define PLAYFIELD_WIDTH                (PLAYFIELD_RIGHT - PLAYFIELD_LEFT + 1U)
 #define PLAYFIELD_HEIGHT               (PLAYFIELD_BOTTOM - PLAYFIELD_TOP + 1U)
 #define BACKGROUND_TILE_SIZE           12U
-#define HEADER_TEXT                    "RIGID LAB 120HZ"
-#define HEADER_TEXT_X                  52
+#define HEADER_TEXT                    "GRID LAB 120HZ"
+#define HEADER_TEXT_X                  58
 #define HEADER_TEXT_Y                  7
 #define HEADER_TEXT_SCALE              2U
 #define MAX_DIRTY_REGIONS              (PICOSYSTEM_PHYSICS_MAX_BODIES * 2U)
 #define RENDER_THREAD_STACK_SIZE       3072U
-#define RENDER_THREAD_PRIORITY         1
+#define RENDER_THREAD_PRIORITY         2
 #define FRAMEBUFFER_CAPTURE_TIMEOUT_MS 2000
 
 struct game_render_body {
@@ -112,6 +112,7 @@ BUILD_ASSERT(PLAYFIELD_BOTTOM < PICOSYSTEM_GRAPHICS_HEIGHT);
 BUILD_ASSERT(PLAYFIELD_LEFT < PLAYFIELD_RIGHT);
 BUILD_ASSERT(PLAYFIELD_TOP < PLAYFIELD_BOTTOM);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_MAIN_THREAD_PRIORITY);
+BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_SHELL_THREAD_PRIORITY);
 BUILD_ASSERT(sizeof(struct game_render_snapshot) <= 512U);
 
 static void increment_saturated(uint32_t *value)
@@ -941,6 +942,7 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.render_stack_size_bytes = render_metrics.render_stack_size_bytes,
 		.render_stack_used_bytes = render_metrics.render_stack_used_bytes,
 		.candidate_pair_count = state->world.physics.last_candidate_pair_count,
+		.possible_pair_count = state->world.physics.last_possible_pair_count,
 		.focus_angle_turns = focus->angle_turns,
 		.focus_angular_velocity_milliradians_per_second =
 			angular_velocity_to_milliradians_per_second(
@@ -948,6 +950,7 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.body_count = state->world.physics.body_count,
 		.static_segment_count = state->world.physics.static_segment_count,
 		.contact_count = state->world.physics.contact_count,
+		.occupied_grid_cell_count = state->world.physics.last_occupied_grid_cell_count,
 		.focus_body_id = focus->id,
 		.focus_x = (uint16_t)fixed_to_pixel(focus->center.x),
 		.focus_y = (uint16_t)fixed_to_pixel(focus->center.y),
@@ -958,6 +961,8 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.focus_velocity_y_pixels_per_second =
 			velocity_to_pixels_per_second(focus->velocity_per_tick.y),
 		.focus_shape = focus->shape,
+		.solver_iteration_count = state->world.physics.last_solver_iteration_count,
+		.broad_phase_fallback = state->world.physics.last_broad_phase_fallback != 0U,
 		.start_uptime_ms = state->start_uptime_ms,
 		.render_error = render_metrics.render_error,
 		.render_thread_running = render_metrics.render_thread_running,

@@ -117,6 +117,34 @@ static const struct canonical_body_config canonical_bodies[] =
 				},
 			.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
 		},
+		{
+			.box =
+				{
+					.center = {.x = FIXED(35), .y = FIXED(112)},
+					.velocity_per_tick = {.x = RATIO(1, 4), .y = -RATIO(1, 8)},
+					.half_extent = {.x = FIXED(7), .y = FIXED(5)},
+					.inverse_mass = RATIO(5, 4),
+					.restitution = RATIO(7, 10),
+					.friction = RATIO(1, 9),
+					.angular_velocity_per_tick = RATIO(1, 72),
+					.angle_turns = UINT32_C(0x30000000),
+					.id = 7U,
+				},
+			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
+		},
+		{
+			.circle =
+				{
+					.center = {.x = FIXED(68), .y = FIXED(126)},
+					.velocity_per_tick = {.x = RATIO(3, 8), .y = -RATIO(1, 16)},
+					.radius = FIXED(6),
+					.inverse_mass = RATIO(3, 2),
+					.restitution = RATIO(4, 5),
+					.friction = RATIO(1, 6),
+					.id = 8U,
+				},
+			.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
+		},
 };
 
 static const struct picosystem_physics_segment_config canonical_segments[] = {
