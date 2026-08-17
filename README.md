@@ -15,6 +15,8 @@ path:
 - publishes compact state snapshots to an independent, lower-priority renderer;
 - late-latches the newest snapshot and aligns partial display writes with the LCD's GP8
   tearing-effect signal;
+- exposes acknowledged pause, exact-step, injected-input, state-hash, and framebuffer-capture
+  controls over USB;
 - plays a short, bounded piezo tone when B is pressed;
 - averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
 - classifies the GP2 VBUS and active-low GP24 charger-status inputs;
@@ -52,6 +54,9 @@ make setup    # explicitly refresh the pinned west dependencies
 make format   # format the application C source in the container
 make check    # formatting, whitespace, and a clean build
 make container-shell  # enter the build container (`make shell` also works)
+make sim-pause  # pause at a tick boundary and print exact simulation state
+make sim-step STEPS=1  # advance a paused simulation by exact 1/120-second ticks
+make screenshot  # save the coherent presented framebuffer as a PNG
 ```
 
 The Ubuntu base, SDK archives, Python dependencies, and Zephyr release are
@@ -139,13 +144,23 @@ make status
 make game-stats
 make game-redraw
 make display-sync
+make sim-pause
+make sim-input INPUT=right
+make sim-step STEPS=1
+make sim-state
+make screenshot OUT=artifacts/screenshot.png
+make sim-run
 ```
 
 `status` briefly owns the same serial port as `console`, sends `picosystem
 status`, prints the response, and exits. Close the console before using it.
 `game-stats` reports detailed simulation/renderer metrics, `game-redraw` queues
 the same asynchronous full redraw as the A button, and `display-sync` reports
-the panel refresh signal and bounded-wait counters.
+the panel refresh signal and bounded-wait counters. The `sim-*` targets provide
+acknowledged remote simulation control. `screenshot` validates and converts a
+coherent RGB565 transfer into a PNG beneath the checkout. Captures briefly own
+the same framebuffer mutex as the renderer, so pausing first is recommended
+when an exact stepped frame is required.
 
 The application adds these commands:
 
@@ -156,8 +171,15 @@ picosystem led auto|off|red|green|blue|white
 picosystem tone <frequency_hz> <duration_ms>
 picosystem display stats
 picosystem display sync [on|off]
+picosystem display checksum
+picosystem display capture
 picosystem game stats
 picosystem game redraw
+picosystem game pause
+picosystem game step [count]
+picosystem game input physical|none|up|down|left|right|up-left|up-right|down-left|down-right
+picosystem game state
+picosystem game run
 picosystem reboot bootloader
 ```
 
@@ -175,6 +197,23 @@ panel refresh interval. `game stats` exposes scheduler backlog and budget
 counters, published/coalesced snapshots, renderer health, state age at the SPI
 write, full-redraw count, and both stack high-water marks. `game redraw` only
 posts a coalesced request; the shell never touches the framebuffer or display.
+`game pause` is acknowledged only after the priority-0 simulation owner reaches
+a tick boundary. While paused, `game step` executes 1-120 exact fixed-duration
+updates without advancing wall-clock scheduling. `game run` starts a fresh
+rational deadline sequence, so time spent paused never becomes catch-up debt.
+`game input` selects either physical buttons or a persistent injected direction;
+`none` is a neutral remote input and `physical` restores the D-pad. Every
+control response includes the exact tick, Q16.16 state, input source,
+published/presented snapshot sequence, and a deterministic hash that excludes
+clocks and performance counters.
+
+`display checksum` reports the CRC-32 of one fully presented framebuffer.
+`display capture` waits for the current published snapshot to be presented,
+then streams the complete 240 x 240 RGB565 big-endian framebuffer in numbered
+base64 chunks with a final CRC-32. The host rejects missing, reordered, corrupt,
+or truncated chunks before writing a PNG. The capture represents the software
+framebuffer sent to the display. The PIM559 display bus is write-only, so it
+cannot prove that a faulty SPI transfer or physical LCD produced the same pixels.
 The LED override takes effect in the main hardware loop; `auto` restores the
 button colors and blue heartbeat. The independent hardware red charge indicator
 is not disabled by `led off`. Tone requests are constrained to 100-4000 Hz and
@@ -243,14 +282,21 @@ remain stable as the demo grows into heavier physics: simulation can later
 publish a richer read-only snapshot without giving rendering access to live
 world state.
 
+Remote game-control requests cross a bounded message queue and are completed by
+that same simulation-owning main thread. Framebuffer readers never mutate
+graphics state: they wait for a presented sequence and share a mutex with the
+renderer while visiting the existing framebuffer in small chunks. No second
+115,200-byte framebuffer is allocated.
+
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation and also runs a native deadline-scheduler test against an iterative
-reference. The default decoupled-loop image uses 145,292 bytes of RAM (53.95%)
-and 124,632 bytes of flash, including the 115,200-byte framebuffer, 3,840-byte
-transfer buffer, and two 24-byte render snapshots. Full frames bypass the
-staging buffer with one contiguous display write.
+generation and also runs native deadline-scheduler, serial-shell, framebuffer
+protocol, RGB565 conversion, and PNG-structure tests. The default remote-debug
+image uses 147,100 bytes of RAM (54.62%) and 129,356 bytes of flash, including
+the 115,200-byte framebuffer, 3,840-byte transfer buffer, two 24-byte render
+snapshots, and a 1,024-byte shell TX ring. Full frames bypass the staging buffer
+with one contiguous display write.
 
 On the tested PIM559, the exact 120 Hz scheduler ran with a maximum observed
 backlog of one, zero skipped ticks, and zero over-budget updates. The worst
@@ -294,3 +340,18 @@ help, status, display statistics, bounded tone parsing/playback, every software
 LED override with `auto` recovery, and a held-X snapshot (`0x40 X`) behaved as
 documented. A three-command input burst produced no RX overrun, and startup plus
 30-second heartbeat logs were preserved without dropped-message reports.
+
+The remote-debug controls have also been exercised against the physical board.
+A paused state remained bit-for-bit stable at tick 11,252; injected-right steps
+advanced it to ticks 11,253 and 11,263 exactly, with a new deterministic hash at
+each result. The renderer subsequently acknowledged snapshot 11,264, and its
+framebuffer CRC-32 was `74db97a8`. Invalid stepping while running now produces
+a nonzero host-tool exit instead of a false-positive automation result.
+
+CRC-validated PNG captures complete in roughly 8.0-8.6 seconds after increasing
+the interrupt-driven USB shell TX ring from 8 to 1,024 bytes. Captures were
+visually inspected and matched the on-device header, border, checkerboard,
+sprite, and colors. During a running capture, logic advanced from tick 3,440 to
+4,554; the subsequent metrics still reported 120.0 Hz, zero skipped ticks, zero
+over-budget updates, and a fully caught-up presented snapshot. Capture outputs
+and newly created artifact directories retain the invoking host user's ownership.

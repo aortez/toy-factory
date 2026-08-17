@@ -12,8 +12,9 @@
 
 #include "graphics.h"
 
-#define PICOSYSTEM_GAME_TICK_RATE_HZ 120U
-#define PICOSYSTEM_GAME_MAX_CATCH_UP 4U
+#define PICOSYSTEM_GAME_TICK_RATE_HZ            120U
+#define PICOSYSTEM_GAME_MAX_CATCH_UP            4U
+#define PICOSYSTEM_GAME_FRAMEBUFFER_CHUNK_BYTES 384U
 
 struct picosystem_game_input {
 	int8_t horizontal;
@@ -49,6 +50,7 @@ struct picosystem_game_demo_stats {
 	uint32_t max_backlog_ticks;
 	uint32_t published_snapshot_count;
 	uint32_t superseded_snapshot_count;
+	uint32_t presented_snapshot_sequence;
 	uint32_t presented_frame_count;
 	uint32_t full_redraw_count;
 	uint32_t last_render_time_us;
@@ -66,6 +68,14 @@ struct picosystem_game_demo_stats {
 	int64_t start_uptime_ms;
 	int render_error;
 	bool render_thread_running;
+};
+
+struct picosystem_game_framebuffer_capture {
+	uint32_t byte_count;
+	uint32_t crc32;
+	uint32_t presented_snapshot_sequence;
+	uint16_t width;
+	uint16_t height;
 };
 
 /* Initialize graphics, publish the initial state, and start the renderer. */
@@ -90,6 +100,14 @@ void picosystem_game_demo_note_skipped_ticks(struct picosystem_game_demo_state *
 /* Merge main-owned simulation and renderer-owned metrics into one snapshot. */
 int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *state,
 				   struct picosystem_game_demo_stats *stats);
+
+/* Hash only deterministic authoritative state, excluding clocks and performance metrics. */
+uint32_t picosystem_game_demo_state_hash(const struct picosystem_game_demo_state *state);
+
+/* Visit one coherent, fully presented framebuffer without allocating a second frame. */
+int picosystem_game_demo_capture_framebuffer(picosystem_graphics_framebuffer_visitor visitor,
+					     void *context,
+					     struct picosystem_game_framebuffer_capture *capture);
 
 /* Return a fatal renderer error, or zero while the worker remains healthy. */
 int picosystem_game_demo_renderer_error(void);

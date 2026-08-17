@@ -18,6 +18,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/crc.h>
 #include <zephyr/sys/util.h>
 
 LOG_MODULE_REGISTER(picosystem_graphics, LOG_LEVEL_INF);
@@ -480,5 +481,35 @@ int picosystem_graphics_draw_text(int16_t x, int16_t y, const char *text, uint8_
 		}
 	}
 
+	return 0;
+}
+
+int picosystem_graphics_visit_framebuffer(size_t chunk_bytes,
+					  picosystem_graphics_framebuffer_visitor visitor,
+					  void *context)
+{
+	if (!graphics_initialized || (chunk_bytes == 0U) || (visitor == NULL)) {
+		return -EINVAL;
+	}
+
+	const uint8_t *const bytes = (const uint8_t *)framebuffer;
+	for (size_t offset = 0U; offset < sizeof(framebuffer); offset += chunk_bytes) {
+		const size_t length = MIN(chunk_bytes, sizeof(framebuffer) - offset);
+		const int err = visitor(offset, &bytes[offset], length, context);
+		if (err != 0) {
+			return err;
+		}
+	}
+
+	return 0;
+}
+
+int picosystem_graphics_framebuffer_crc32(uint32_t *crc)
+{
+	if (!graphics_initialized || (crc == NULL)) {
+		return -EINVAL;
+	}
+
+	*crc = crc32_ieee((const uint8_t *)framebuffer, sizeof(framebuffer));
 	return 0;
 }

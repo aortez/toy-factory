@@ -45,6 +45,9 @@ LOG_MODULE_REGISTER(picosystem_game_demo, LOG_LEVEL_INF);
 #define FIXED_ONE                      (INT32_C(1) << FIXED_FRACTION_BITS)
 #define RENDER_THREAD_STACK_SIZE       2048U
 #define RENDER_THREAD_PRIORITY         1
+#define FRAMEBUFFER_CAPTURE_TIMEOUT_MS 2000
+#define FNV1A_OFFSET_BASIS             UINT32_C(2166136261)
+#define FNV1A_PRIME                    UINT32_C(16777619)
 
 struct game_render_snapshot {
 	int64_t published_uptime_ticks;
@@ -59,6 +62,7 @@ struct game_renderer_metrics {
 	struct picosystem_graphics_stats graphics;
 	uint32_t published_snapshot_count;
 	uint32_t superseded_snapshot_count;
+	uint32_t presented_snapshot_sequence;
 	uint32_t presented_frame_count;
 	uint32_t full_redraw_count;
 	uint32_t last_render_time_us;
@@ -76,6 +80,8 @@ struct game_renderer_metrics {
 struct game_renderer_context {
 	struct k_spinlock lock;
 	struct k_sem snapshot_ready;
+	struct k_sem frame_presented;
+	struct k_mutex framebuffer_mutex;
 	struct game_render_snapshot snapshots[2];
 	struct game_renderer_metrics metrics;
 	struct picosystem_graphics_stats live_graphics;
@@ -279,24 +285,24 @@ static uint32_t snapshot_age_us(const struct game_render_snapshot *snapshot)
 static int present_snapshot(const struct game_render_snapshot *snapshot, bool full_redraw,
 			    uint16_t presented_x, uint16_t presented_y)
 {
+	int err;
 	if (full_redraw) {
-		int err = render_full_scene(snapshot);
-		if (err != 0) {
-			return err;
+		err = render_full_scene(snapshot);
+		if (err == 0) {
+			err = picosystem_graphics_present_full(&renderer.live_graphics);
 		}
-
-		return picosystem_graphics_present_full(&renderer.live_graphics);
+	} else {
+		const struct picosystem_rect dirty_region =
+			sprite_movement_region(snapshot, presented_x, presented_y);
+		render_playfield_background(&dirty_region);
+		err = render_sprite(snapshot->sprite_x, snapshot->sprite_y);
+		if (err == 0) {
+			err = picosystem_graphics_present_region(&renderer.live_graphics,
+								 &dirty_region);
+		}
 	}
 
-	const struct picosystem_rect dirty_region =
-		sprite_movement_region(snapshot, presented_x, presented_y);
-	render_playfield_background(&dirty_region);
-	int err = render_sprite(snapshot->sprite_x, snapshot->sprite_y);
-	if (err != 0) {
-		return err;
-	}
-
-	return picosystem_graphics_present_region(&renderer.live_graphics, &dirty_region);
+	return err;
 }
 
 static void record_renderer_failure(int err)
@@ -321,6 +327,7 @@ static void record_presented_snapshot(const struct game_render_snapshot *snapsho
 
 	renderer.metrics.graphics = renderer.live_graphics;
 	add_saturated(&renderer.metrics.superseded_snapshot_count, superseded_count);
+	renderer.metrics.presented_snapshot_sequence = snapshot->sequence;
 	increment_saturated(&renderer.metrics.presented_frame_count);
 	if (full_redraw) {
 		increment_saturated(&renderer.metrics.full_redraw_count);
@@ -337,6 +344,7 @@ static void record_presented_snapshot(const struct game_render_snapshot *snapsho
 	renderer.metrics.presented_sprite_x = snapshot->sprite_x;
 	renderer.metrics.presented_sprite_y = snapshot->sprite_y;
 	k_spin_unlock(&renderer.lock, key);
+	k_sem_give(&renderer.frame_presented);
 }
 
 static void render_thread_entry(void *argument1, void *argument2, void *argument3)
@@ -377,14 +385,21 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 
 		const bool full_redraw_pending =
 			pending_snapshot.redraw_request_sequence != consumed_redraw_sequence;
+		int err = k_mutex_lock(&renderer.framebuffer_mutex, K_FOREVER);
+		if (err != 0) {
+			LOG_ERR("Renderer framebuffer lock failed (%d)", err);
+			record_renderer_failure(err);
+			return;
+		}
 		const uint32_t start_cycles = k_cycle_get_32();
 		if (!full_redraw_pending) {
 			(void)picosystem_display_sync_wait_for_vblank();
 		}
 
-		/* Late-latch the newest authoritative state after the TE wait. */
+		/* Late-latch only after capture contention and the TE wait have ended. */
 		struct game_render_snapshot snapshot;
 		if (!read_latest_snapshot(&snapshot) || (snapshot.sequence == consumed_sequence)) {
+			k_mutex_unlock(&renderer.framebuffer_mutex);
 			continue;
 		}
 
@@ -392,8 +407,10 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 		const uint32_t superseded_count = sequence_delta - 1U;
 		const bool full_redraw =
 			snapshot.redraw_request_sequence != consumed_redraw_sequence;
-		const int err = present_snapshot(&snapshot, full_redraw, presented_x, presented_y);
+
+		err = present_snapshot(&snapshot, full_redraw, presented_x, presented_y);
 		if (err != 0) {
+			k_mutex_unlock(&renderer.framebuffer_mutex);
 			LOG_ERR("Renderer failed to present snapshot %u (%d)", snapshot.sequence,
 				err);
 			record_renderer_failure(err);
@@ -406,6 +423,7 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 		presented_x = snapshot.sprite_x;
 		presented_y = snapshot.sprite_y;
 		record_presented_snapshot(&snapshot, full_redraw, superseded_count, render_time_us);
+		k_mutex_unlock(&renderer.framebuffer_mutex);
 
 		if (full_redraw) {
 			LOG_INF("Asynchronous full redraw: %u us present, %u us renderer wall time",
@@ -428,6 +446,8 @@ int picosystem_game_demo_init(struct picosystem_game_demo_state *state)
 	};
 	renderer = (struct game_renderer_context){0};
 	k_sem_init(&renderer.snapshot_ready, 0U, 1U);
+	k_sem_init(&renderer.frame_presented, 0U, 1U);
+	k_mutex_init(&renderer.framebuffer_mutex);
 
 	int err = picosystem_graphics_init(&renderer.live_graphics);
 	if (err != 0) {
@@ -457,6 +477,7 @@ int picosystem_game_demo_init(struct picosystem_game_demo_state *state)
 	renderer.metrics = (struct game_renderer_metrics){
 		.graphics = renderer.live_graphics,
 		.published_snapshot_count = 1U,
+		.presented_snapshot_sequence = initial_snapshot.sequence,
 		.render_stack_size_bytes = K_THREAD_STACK_SIZEOF(render_thread_stack),
 		.presented_sprite_x = initial_snapshot.sprite_x,
 		.presented_sprite_y = initial_snapshot.sprite_y,
@@ -573,6 +594,7 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.max_backlog_ticks = state->max_backlog_ticks,
 		.published_snapshot_count = render_metrics.published_snapshot_count,
 		.superseded_snapshot_count = render_metrics.superseded_snapshot_count,
+		.presented_snapshot_sequence = render_metrics.presented_snapshot_sequence,
 		.presented_frame_count = render_metrics.presented_frame_count,
 		.full_redraw_count = render_metrics.full_redraw_count,
 		.last_render_time_us = render_metrics.last_render_time_us,
@@ -594,6 +616,124 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.render_thread_running = render_metrics.render_thread_running,
 	};
 	return 0;
+}
+
+static uint32_t fnv1a_u32(uint32_t hash, uint32_t value)
+{
+	for (uint32_t shift = 0U; shift < 32U; shift += 8U) {
+		hash ^= (value >> shift) & UINT32_C(0xff);
+		hash *= FNV1A_PRIME;
+	}
+
+	return hash;
+}
+
+uint32_t picosystem_game_demo_state_hash(const struct picosystem_game_demo_state *state)
+{
+	if ((state == NULL) || !state->ready) {
+		return 0U;
+	}
+
+	uint32_t hash = fnv1a_u32(FNV1A_OFFSET_BASIS, 1U);
+	hash = fnv1a_u32(hash, state->logic_tick_count);
+	hash = fnv1a_u32(hash, (uint32_t)state->sprite_x_fixed);
+	hash = fnv1a_u32(hash, (uint32_t)state->sprite_y_fixed);
+	hash = fnv1a_u32(hash, (uint32_t)state->velocity_x_fixed_per_second);
+	return fnv1a_u32(hash, (uint32_t)state->velocity_y_fixed_per_second);
+}
+
+static bool sequence_reached(uint32_t current, uint32_t target)
+{
+	return (current - target) < UINT32_C(0x80000000);
+}
+
+static int wait_for_latest_frame(void)
+{
+	uint32_t target_sequence;
+	{
+		const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
+		if (!renderer.snapshot_available || !renderer.metrics.graphics.ready) {
+			k_spin_unlock(&renderer.lock, key);
+			return -EAGAIN;
+		}
+		target_sequence = renderer.snapshots[renderer.published_index].sequence;
+		k_spin_unlock(&renderer.lock, key);
+	}
+
+	const int64_t deadline_ms = k_uptime_get() + FRAMEBUFFER_CAPTURE_TIMEOUT_MS;
+	while (true) {
+		uint32_t presented_sequence;
+		int render_error;
+		{
+			const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
+			presented_sequence = renderer.metrics.presented_snapshot_sequence;
+			render_error = renderer.metrics.render_error;
+			k_spin_unlock(&renderer.lock, key);
+		}
+
+		if (render_error != 0) {
+			return render_error;
+		}
+		if (sequence_reached(presented_sequence, target_sequence)) {
+			return 0;
+		}
+
+		const int64_t remaining_ms = deadline_ms - k_uptime_get();
+		if (remaining_ms <= 0) {
+			return -ETIMEDOUT;
+		}
+
+		const int err = k_sem_take(&renderer.frame_presented, K_MSEC(remaining_ms));
+		if (err != 0) {
+			return err;
+		}
+	}
+}
+
+int picosystem_game_demo_capture_framebuffer(picosystem_graphics_framebuffer_visitor visitor,
+					     void *context,
+					     struct picosystem_game_framebuffer_capture *capture)
+{
+	if (capture == NULL) {
+		return -EINVAL;
+	}
+
+	int err = wait_for_latest_frame();
+	if (err != 0) {
+		return err;
+	}
+
+	err = k_mutex_lock(&renderer.framebuffer_mutex, K_FOREVER);
+	if (err != 0) {
+		return err;
+	}
+
+	uint32_t presented_sequence;
+	{
+		const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
+		presented_sequence = renderer.metrics.presented_snapshot_sequence;
+		k_spin_unlock(&renderer.lock, key);
+	}
+
+	uint32_t crc32;
+	err = picosystem_graphics_framebuffer_crc32(&crc32);
+	if ((err == 0) && (visitor != NULL)) {
+		err = picosystem_graphics_visit_framebuffer(PICOSYSTEM_GAME_FRAMEBUFFER_CHUNK_BYTES,
+							    visitor, context);
+	}
+
+	if (err == 0) {
+		*capture = (struct picosystem_game_framebuffer_capture){
+			.byte_count = PICOSYSTEM_GRAPHICS_FRAMEBUFFER_BYTES,
+			.crc32 = crc32,
+			.presented_snapshot_sequence = presented_sequence,
+			.width = PICOSYSTEM_GRAPHICS_WIDTH,
+			.height = PICOSYSTEM_GRAPHICS_HEIGHT,
+		};
+	}
+
+	k_mutex_unlock(&renderer.framebuffer_mutex);
+	return err;
 }
 
 int picosystem_game_demo_renderer_error(void)

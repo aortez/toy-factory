@@ -61,6 +61,9 @@ struct picosystem_graphics_stats {
 	bool ready;
 };
 
+typedef int (*picosystem_graphics_framebuffer_visitor)(size_t offset, const uint8_t *data,
+						       size_t length, void *context);
+
 /* Configure the panel while keeping both display output and backlight off. */
 int picosystem_graphics_init(struct picosystem_graphics_stats *stats);
 
@@ -83,5 +86,11 @@ int picosystem_graphics_draw_mono_sprite(int16_t x, int16_t y,
 					 picosystem_color_t color);
 int picosystem_graphics_draw_text(int16_t x, int16_t y, const char *text, uint8_t scale,
 				  picosystem_color_t color);
+
+/* Visit the native RGB565 big-endian framebuffer. The caller serializes rendering. */
+int picosystem_graphics_visit_framebuffer(size_t chunk_bytes,
+					  picosystem_graphics_framebuffer_visitor visitor,
+					  void *context);
+int picosystem_graphics_framebuffer_crc32(uint32_t *crc);
 
 #endif /* PICOSYSTEM_GRAPHICS_H_ */

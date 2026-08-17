@@ -18,10 +18,12 @@
 #include <zephyr/shell/shell.h>
 #include <zephyr/shell/shell_string_conv.h>
 #include <zephyr/sys/atomic.h>
+#include <zephyr/sys/base64.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/sys/util.h>
 
 #include "display_sync.h"
+#include "game_control.h"
 #include "piezo.h"
 
 #define BOOTLOADER_REBOOT_DELAY_MS 100
@@ -34,6 +36,12 @@ struct named_button {
 struct named_led_mode {
 	const char *name;
 	enum picosystem_led_mode mode;
+};
+
+struct named_game_input {
+	const char *name;
+	struct picosystem_game_input input;
+	bool remote_input_enabled;
 };
 
 static const struct named_button button_names[] = {
@@ -54,6 +62,27 @@ static const struct named_led_mode led_modes[] = {
 	{.name = "green", .mode = PICOSYSTEM_LED_MODE_GREEN},
 	{.name = "blue", .mode = PICOSYSTEM_LED_MODE_BLUE},
 	{.name = "white", .mode = PICOSYSTEM_LED_MODE_WHITE},
+};
+
+static const struct named_game_input game_inputs[] = {
+	{.name = "physical", .input = {0}, .remote_input_enabled = false},
+	{.name = "none", .input = {0}, .remote_input_enabled = true},
+	{.name = "up", .input = {.vertical = -1}, .remote_input_enabled = true},
+	{.name = "down", .input = {.vertical = 1}, .remote_input_enabled = true},
+	{.name = "left", .input = {.horizontal = -1}, .remote_input_enabled = true},
+	{.name = "right", .input = {.horizontal = 1}, .remote_input_enabled = true},
+	{.name = "up-left",
+	 .input = {.horizontal = -1, .vertical = -1},
+	 .remote_input_enabled = true},
+	{.name = "up-right",
+	 .input = {.horizontal = 1, .vertical = -1},
+	 .remote_input_enabled = true},
+	{.name = "down-left",
+	 .input = {.horizontal = -1, .vertical = 1},
+	 .remote_input_enabled = true},
+	{.name = "down-right",
+	 .input = {.horizontal = 1, .vertical = 1},
+	 .remote_input_enabled = true},
 };
 
 BUILD_ASSERT(ARRAY_SIZE(button_names) == PICOSYSTEM_BUTTON_COUNT);
@@ -409,6 +438,183 @@ static int cmd_display_sync(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+struct framebuffer_shell_capture {
+	const struct shell *shell;
+};
+
+static uint8_t
+	framebuffer_base64_buffer[((PICOSYSTEM_GAME_FRAMEBUFFER_CHUNK_BYTES + 2U) / 3U * 4U) + 1U];
+
+static int emit_framebuffer_chunk(size_t offset, const uint8_t *data, size_t length, void *context)
+{
+	if ((data == NULL) || (context == NULL) ||
+	    (length > PICOSYSTEM_GAME_FRAMEBUFFER_CHUNK_BYTES)) {
+		return -EINVAL;
+	}
+
+	struct framebuffer_shell_capture *const capture = context;
+	size_t encoded_length;
+	const int err = base64_encode(framebuffer_base64_buffer, sizeof(framebuffer_base64_buffer),
+				      &encoded_length, data, length);
+	if (err != 0) {
+		return err;
+	}
+
+	shell_print(capture->shell, "FRAMEBUFFER_DATA offset=%u data=%.*s", (uint32_t)offset,
+		    (int)encoded_length, (const char *)framebuffer_base64_buffer);
+	return 0;
+}
+
+static int cmd_display_checksum(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	struct picosystem_game_framebuffer_capture capture;
+	const int err = picosystem_game_demo_capture_framebuffer(NULL, NULL, &capture);
+	if (err != 0) {
+		shell_error(shell, "Failed to checksum the presented framebuffer (%d)", err);
+		return err;
+	}
+
+	shell_print(shell, "width=%u height=%u format=rgb565be bytes=%u sequence=%u crc32=%08x",
+		    capture.width, capture.height, capture.byte_count,
+		    capture.presented_snapshot_sequence, capture.crc32);
+	return 0;
+}
+
+static int cmd_display_capture(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	shell_print(shell, "FRAMEBUFFER_BEGIN width=%u height=%u format=rgb565be bytes=%u",
+		    PICOSYSTEM_GRAPHICS_WIDTH, PICOSYSTEM_GRAPHICS_HEIGHT,
+		    PICOSYSTEM_GRAPHICS_FRAMEBUFFER_BYTES);
+	struct framebuffer_shell_capture shell_capture = {.shell = shell};
+	struct picosystem_game_framebuffer_capture capture;
+	const int err = picosystem_game_demo_capture_framebuffer(emit_framebuffer_chunk,
+								 &shell_capture, &capture);
+	if (err != 0) {
+		shell_error(shell, "Failed to capture the presented framebuffer (%d)", err);
+		return err;
+	}
+
+	shell_print(shell, "FRAMEBUFFER_END sequence=%u crc32=%08x",
+		    capture.presented_snapshot_sequence, capture.crc32);
+	return 0;
+}
+
+static void print_game_control_state(const struct shell *shell,
+				     const struct picosystem_game_control_state *state)
+{
+	shell_print(shell, "mode=%s tick=%u hash=%08x", state->paused ? "paused" : "running",
+		    state->logic_tick_count, state->state_hash);
+	shell_print(shell, "input_source=%s input_x=%d input_y=%d",
+		    state->remote_input_enabled ? "remote" : "physical", state->input.horizontal,
+		    state->input.vertical);
+	shell_print(shell,
+		    "sprite_x_q16=%d sprite_y_q16=%d velocity_x_q16_per_s=%d "
+		    "velocity_y_q16_per_s=%d",
+		    state->sprite_x_fixed, state->sprite_y_fixed,
+		    state->velocity_x_fixed_per_second, state->velocity_y_fixed_per_second);
+	shell_print(shell, "published_snapshot=%u presented_snapshot=%u",
+		    state->published_snapshot_sequence, state->presented_snapshot_sequence);
+}
+
+static int submit_game_control(const struct shell *shell,
+			       const struct picosystem_game_control_request *request)
+{
+	struct picosystem_game_control_state state;
+	const int err = picosystem_game_control_submit(request, &state);
+	if (err == -EBUSY) {
+		shell_error(shell, "Pause the simulation before stepping");
+		return err;
+	}
+	if (err != 0) {
+		shell_error(shell, "Game-control request failed (%d)", err);
+		return err;
+	}
+
+	print_game_control_state(shell, &state);
+	return 0;
+}
+
+static int cmd_game_pause(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_PAUSE,
+	};
+	return submit_game_control(shell, &request);
+}
+
+static int cmd_game_run(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_RUN,
+	};
+	return submit_game_control(shell, &request);
+}
+
+static int cmd_game_step(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t step_count = 1U;
+	if (argc == 2U) {
+		const int err = parse_u32(shell, "step count", argv[1], &step_count);
+		if (err != 0) {
+			return err;
+		}
+	}
+	if ((step_count == 0U) || (step_count > PICOSYSTEM_GAME_CONTROL_MAX_STEPS)) {
+		shell_error(shell, "Step count must be 1-%u", PICOSYSTEM_GAME_CONTROL_MAX_STEPS);
+		return -ERANGE;
+	}
+
+	const struct picosystem_game_control_request request = {
+		.step_count = step_count,
+		.operation = PICOSYSTEM_GAME_CONTROL_STEP,
+	};
+	return submit_game_control(shell, &request);
+}
+
+static int cmd_game_input(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+
+	for (size_t i = 0U; i < ARRAY_SIZE(game_inputs); ++i) {
+		if (strcmp(argv[1], game_inputs[i].name) != 0) {
+			continue;
+		}
+
+		const struct picosystem_game_control_request request = {
+			.input = game_inputs[i].input,
+			.operation = PICOSYSTEM_GAME_CONTROL_SET_INPUT,
+			.remote_input_enabled = game_inputs[i].remote_input_enabled,
+		};
+		return submit_game_control(shell, &request);
+	}
+
+	shell_error(shell, "Unknown input '%s'", argv[1]);
+	return -EINVAL;
+}
+
+static int cmd_game_state(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
+	};
+	return submit_game_control(shell, &request);
+}
+
 static int cmd_game_redraw(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -438,6 +644,10 @@ static int cmd_reboot_bootloader(const struct shell *shell, size_t argc, char **
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	display_commands,
+	SHELL_CMD_ARG(capture, NULL, "Stream the coherent RGB565 framebuffer.", cmd_display_capture,
+		      1, 0),
+	SHELL_CMD_ARG(checksum, NULL, "Checksum the coherent presented framebuffer.",
+		      cmd_display_checksum, 1, 0),
 	SHELL_CMD_ARG(stats, NULL, "Show framebuffer, timing, and game-loop metrics.",
 		      cmd_display_stats, 1, 0),
 	SHELL_CMD_ARG(sync, NULL,
@@ -445,13 +655,24 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      cmd_display_sync, 1, 1),
 	SHELL_SUBCMD_SET_END);
 
-SHELL_STATIC_SUBCMD_SET_CREATE(game_commands,
-			       SHELL_CMD_ARG(stats, NULL,
-					     "Show simulation, snapshot, and renderer metrics.",
-					     cmd_display_stats, 1, 0),
-			       SHELL_CMD_ARG(redraw, NULL, "Queue a renderer-owned full redraw.",
-					     cmd_game_redraw, 1, 0),
-			       SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	game_commands,
+	SHELL_CMD_ARG(input, NULL,
+		      SHELL_HELP("Select physical or injected input.",
+				 "<physical|none|up|down|left|right|"
+				 "up-left|up-right|down-left|down-right>"),
+		      cmd_game_input, 2, 0),
+	SHELL_CMD_ARG(pause, NULL, "Pause at the next tick boundary.", cmd_game_pause, 1, 0),
+	SHELL_CMD_ARG(stats, NULL, "Show simulation, snapshot, and renderer metrics.",
+		      cmd_display_stats, 1, 0),
+	SHELL_CMD_ARG(state, NULL, "Show exact authoritative state.", cmd_game_state, 1, 0),
+	SHELL_CMD_ARG(step, NULL,
+		      SHELL_HELP("Advance a paused simulation exactly.",
+				 "[count] (default 1, maximum 120)"),
+		      cmd_game_step, 1, 1),
+	SHELL_CMD_ARG(run, NULL, "Resume real-time 120 Hz scheduling.", cmd_game_run, 1, 0),
+	SHELL_CMD_ARG(redraw, NULL, "Queue a renderer-owned full redraw.", cmd_game_redraw, 1, 0),
+	SHELL_SUBCMD_SET_END);
 
 SHELL_STATIC_SUBCMD_SET_CREATE(reboot_commands,
 			       SHELL_CMD_ARG(bootloader, NULL,

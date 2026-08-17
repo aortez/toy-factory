@@ -12,9 +12,10 @@ bash -n scripts/*.sh scripts/container/*.sh scripts/tests/*.sh
 python3 - <<'PY'
 from pathlib import Path
 
-path = Path("scripts/container/serial-command.py")
-compile(path.read_text(), str(path), "exec")
+for path in sorted(Path("scripts/container").glob("*.py")):
+    compile(path.read_text(), str(path), "exec")
 PY
+python3 scripts/tests/framebuffer-capture-test.py
 python3 scripts/tests/serial-command-test.py
 git diff --check
 ./scripts/container/build.sh --pristine

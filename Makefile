@@ -7,10 +7,14 @@ UF2 := build/zephyr/zephyr.uf2
 PIO_UF2 := build-pio/zephyr/zephyr.uf2
 PIO_DMA_UF2 := build-pio-dma/zephyr/zephyr.uf2
 SERIAL_PORT_HELPER := ./scripts/find-serial-port.sh
+STEPS ?= 1
+INPUT ?= none
+OUT ?= artifacts/screenshot.png
 
 .PHONY: help image setup build build-pio build-pio-dma format check check-pio-dma \
 	container-shell update update-pio update-pio-dma bootloader console status game-stats \
-	game-redraw display-sync \
+	game-redraw display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
+	sim-state \
 	flash monitor shell
 
 ##@ General
@@ -18,6 +22,7 @@ SERIAL_PORT_HELPER := ./scripts/find-serial-port.sh
 help: ## Show this list of targets
 	@printf 'Toy Factory\n\n'
 	@printf 'Usage:\n  make <target> [PORT=/dev/ttyACM0] [UF2_MOUNT=/path/to/RPI-RP2]\n'
+	@printf '                    [STEPS=1] [INPUT=none] [OUT=artifacts/screenshot.png]\n'
 	@awk 'BEGIN { FS = ":.*## " } \
 		/^##@ / { printf "\n%s:\n", substr($$0, 5); next } \
 		/^[a-zA-Z0-9_-]+:.*## / { printf "  %-18s %s\n", $$1, $$2 }' \
@@ -104,6 +109,70 @@ display-sync: image ## Print LCD tearing-effect timing and synchronization metri
 			--volume "$(CURDIR):/workspace/app:ro" \
 			"$(FIRMWARE_IMAGE)" \
 			python3 ./scripts/container/serial-command.py "$$port" picosystem display sync
+
+display-checksum: image ## Print the coherent presented-framebuffer checksum
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "width=" "$$port" \
+				picosystem display checksum
+
+screenshot: image ## Capture the coherent presented framebuffer as OUT=<relative PNG path>
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/framebuffer-capture.py \
+				--owner-uid "$$(id -u)" --owner-gid "$$(id -g)" \
+				"$$port" "/workspace/app/$(OUT)"
+
+sim-pause: image ## Pause simulation at a tick boundary and print exact state
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
+				picosystem game pause
+
+sim-run: image ## Resume exact real-time 120 Hz simulation scheduling
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
+				picosystem game run
+
+sim-step: image ## Advance a paused simulation by STEPS=<1-120> exact ticks
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
+				picosystem game step "$(STEPS)"
+
+sim-input: image ## Select INPUT=physical|none|up|down|left|right|<diagonal>
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
+				picosystem game input "$(INPUT)"
+
+sim-state: image ## Print exact simulation state and deterministic hash
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
+				picosystem game state
 
 ##@ Compatibility aliases
 

@@ -19,6 +19,7 @@
 #include "diagnostic_shell.h"
 #include "display_sync.h"
 #include "fixed_rate_scheduler.h"
+#include "game_control.h"
 #include "game_demo.h"
 #include "piezo.h"
 #include "power_status.h"
@@ -30,10 +31,17 @@ LOG_MODULE_REGISTER(toy_factory, LOG_LEVEL_INF);
 #define DIAGNOSTIC_INTERVAL_MS   100
 #define STACK_SAMPLE_INTERVAL_MS 1000
 #define STATUS_LOG_INTERVAL_MS   30000
+#define PAUSED_POLL_INTERVAL_MS  8
 
 struct named_gpio {
 	const char *name;
 	struct gpio_dt_spec gpio;
+};
+
+struct game_runtime_control {
+	struct picosystem_game_input remote_input;
+	bool paused;
+	bool remote_input_enabled;
 };
 
 static const struct named_gpio buttons[PICOSYSTEM_BUTTON_COUNT] = {
@@ -260,6 +268,129 @@ static struct picosystem_game_input game_input_from_buttons(uint32_t buttons_sta
 	return input;
 }
 
+static struct picosystem_game_input
+selected_game_input(const struct game_runtime_control *control,
+		    const struct picosystem_game_input *physical_input)
+{
+	return control->remote_input_enabled ? control->remote_input : *physical_input;
+}
+
+static int fill_game_control_state(const struct game_runtime_control *control,
+				   const struct picosystem_game_demo_state *game,
+				   const struct picosystem_game_input *physical_input,
+				   struct picosystem_game_control_state *state)
+{
+	struct picosystem_game_demo_stats stats;
+	const int err = picosystem_game_demo_get_stats(game, &stats);
+	if (err != 0) {
+		return err;
+	}
+
+	*state = (struct picosystem_game_control_state){
+		.sprite_x_fixed = game->sprite_x_fixed,
+		.sprite_y_fixed = game->sprite_y_fixed,
+		.velocity_x_fixed_per_second = game->velocity_x_fixed_per_second,
+		.velocity_y_fixed_per_second = game->velocity_y_fixed_per_second,
+		.logic_tick_count = game->logic_tick_count,
+		.state_hash = picosystem_game_demo_state_hash(game),
+		.published_snapshot_sequence = game->snapshot_sequence,
+		.presented_snapshot_sequence = stats.presented_snapshot_sequence,
+		.input = selected_game_input(control, physical_input),
+		.paused = control->paused,
+		.remote_input_enabled = control->remote_input_enabled,
+	};
+	return 0;
+}
+
+static int process_game_control_requests(struct game_runtime_control *control,
+					 struct picosystem_game_demo_state *game,
+					 struct picosystem_fixed_rate_scheduler *scheduler,
+					 const struct picosystem_game_input *physical_input)
+{
+	while (true) {
+		struct picosystem_game_control_request request;
+		const int take_err = picosystem_game_control_take(&request);
+		if (take_err == -ENOMSG) {
+			return 0;
+		}
+		if (take_err != 0) {
+			return take_err;
+		}
+
+		int result = 0;
+		switch (request.operation) {
+		case PICOSYSTEM_GAME_CONTROL_PAUSE:
+			control->paused = true;
+			break;
+		case PICOSYSTEM_GAME_CONTROL_RUN:
+			if (control->paused) {
+				result = picosystem_fixed_rate_scheduler_init(
+					scheduler, k_uptime_ticks(), CONFIG_SYS_CLOCK_TICKS_PER_SEC,
+					PICOSYSTEM_GAME_TICK_RATE_HZ);
+				if (result == 0) {
+					control->paused = false;
+				}
+			}
+			break;
+		case PICOSYSTEM_GAME_CONTROL_STEP:
+			if (!control->paused) {
+				result = -EBUSY;
+				break;
+			}
+			if ((request.step_count == 0U) ||
+			    (request.step_count > PICOSYSTEM_GAME_CONTROL_MAX_STEPS)) {
+				result = -ERANGE;
+				break;
+			}
+
+			for (uint32_t step = 0U; step < request.step_count; ++step) {
+				const struct picosystem_game_input input =
+					selected_game_input(control, physical_input);
+				result = picosystem_game_demo_update(game, &input);
+				if (result != 0) {
+					break;
+				}
+			}
+			break;
+		case PICOSYSTEM_GAME_CONTROL_SET_INPUT:
+			if ((request.input.horizontal < -1) || (request.input.horizontal > 1) ||
+			    (request.input.vertical < -1) || (request.input.vertical > 1)) {
+				result = -ERANGE;
+				break;
+			}
+			control->remote_input = request.input;
+			control->remote_input_enabled = request.remote_input_enabled;
+			break;
+		case PICOSYSTEM_GAME_CONTROL_GET_STATE:
+			break;
+		default:
+			result = -EINVAL;
+			break;
+		}
+
+		struct picosystem_game_control_state response_state = {0};
+		const int state_err =
+			fill_game_control_state(control, game, physical_input, &response_state);
+		if ((result == 0) && (state_err != 0)) {
+			result = state_err;
+		}
+
+		const int complete_err =
+			picosystem_game_control_complete(request.id, result, &response_state);
+		if (complete_err != 0) {
+			LOG_WRN("Failed to acknowledge game-control request %u (%d)", request.id,
+				complete_err);
+		}
+
+		if ((result != 0) &&
+		    ((request.operation == PICOSYSTEM_GAME_CONTROL_STEP) ||
+		     (request.operation == PICOSYSTEM_GAME_CONTROL_RUN)) &&
+		    (result != -EBUSY) && (result != -ERANGE)) {
+			return result;
+		}
+	}
+}
+
 static int sample_main_stack(struct picosystem_runtime_metrics *runtime)
 {
 	if (runtime == NULL) {
@@ -306,6 +437,7 @@ int main(void)
 	struct picosystem_battery_sample battery_sample;
 	struct picosystem_game_demo_state game_state;
 	struct picosystem_game_demo_stats game_stats;
+	struct game_runtime_control game_control = {0};
 	struct picosystem_power_status power_status;
 	struct picosystem_runtime_metrics runtime_metrics;
 
@@ -430,18 +562,18 @@ int main(void)
 	int64_t next_status_time = scheduling_start_ms + STATUS_LOG_INTERVAL_MS;
 
 	while (true) {
-		const int64_t before_sleep_ticks = k_uptime_ticks();
-		const int64_t sleep_ticks = game_scheduler.next_deadline_ticks - before_sleep_ticks;
-		if (sleep_ticks > 0) {
-			k_sleep(K_TICKS(sleep_ticks));
+		if (game_control.paused) {
+			k_msleep(PAUSED_POLL_INTERVAL_MS);
+		} else {
+			const int64_t before_sleep_ticks = k_uptime_ticks();
+			const int64_t sleep_ticks =
+				game_scheduler.next_deadline_ticks - before_sleep_ticks;
+			if (sleep_ticks > 0) {
+				k_sleep(K_TICKS(sleep_ticks));
+			}
 		}
 
 		const int64_t tick_start_ticks = k_uptime_ticks();
-		const uint32_t due_ticks =
-			picosystem_fixed_rate_scheduler_due(&game_scheduler, tick_start_ticks);
-		if (due_ticks == 0U) {
-			continue;
-		}
 
 		uint32_t state;
 		struct picosystem_power_status next_power_status;
@@ -467,10 +599,26 @@ int main(void)
 
 		log_button_changes(previous_state, state);
 
-		const struct picosystem_game_input game_input = game_input_from_buttons(state);
-		picosystem_game_demo_note_backlog(&game_state, due_ticks);
+		const struct picosystem_game_input physical_game_input =
+			game_input_from_buttons(state);
+		err = process_game_control_requests(&game_control, &game_state, &game_scheduler,
+						    &physical_game_input);
+		if (err != 0) {
+			LOG_ERR("Game-control request failed (%d)", err);
+			return err;
+		}
+
+		const uint32_t due_ticks =
+			game_control.paused ? 0U
+					    : picosystem_fixed_rate_scheduler_due(&game_scheduler,
+										  tick_start_ticks);
+		if (due_ticks != 0U) {
+			picosystem_game_demo_note_backlog(&game_state, due_ticks);
+		}
 		const uint32_t update_steps = MIN(due_ticks, PICOSYSTEM_GAME_MAX_CATCH_UP);
 		for (uint32_t step = 0U; step < update_steps; ++step) {
+			const struct picosystem_game_input game_input =
+				selected_game_input(&game_control, &physical_game_input);
 			err = picosystem_game_demo_update(&game_state, &game_input);
 			if (err != 0) {
 				LOG_ERR("Game logic update failed (%d)", err);
