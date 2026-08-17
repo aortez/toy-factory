@@ -92,6 +92,54 @@ struct contact_point_candidate {
 	picosystem_physics_fixed_t penetration;
 };
 
+struct physics_step_profiler {
+	const struct picosystem_physics_clock *clock;
+	struct picosystem_physics_step_profile *profile;
+	uint32_t total_start;
+};
+
+static bool profiler_is_active(const struct physics_step_profiler *profiler)
+{
+	return profiler->profile != NULL;
+}
+
+static uint32_t profiler_now(struct physics_step_profiler *profiler)
+{
+	++profiler->profile->clock_read_count;
+	return profiler->clock->now(profiler->clock->context);
+}
+
+static uint32_t profiler_section_begin(struct physics_step_profiler *profiler)
+{
+	return profiler_is_active(profiler) ? profiler_now(profiler) : 0U;
+}
+
+static void profiler_section_end(struct physics_step_profiler *profiler,
+				 enum picosystem_physics_profile_stage stage, uint32_t start)
+{
+	if (profiler_is_active(profiler)) {
+		profiler->profile->stage_cycles[stage] += profiler_now(profiler) - start;
+	}
+}
+
+static void profiler_finish(struct physics_step_profiler *profiler)
+{
+	if (!profiler_is_active(profiler)) {
+		return;
+	}
+
+	const uint32_t total = profiler_now(profiler) - profiler->total_start;
+	uint32_t attributed = 0U;
+	for (enum picosystem_physics_profile_stage stage =
+		     PICOSYSTEM_PHYSICS_PROFILE_FORCE_AND_INTEGRATE;
+	     stage < PICOSYSTEM_PHYSICS_PROFILE_OTHER; ++stage) {
+		attributed += profiler->profile->stage_cycles[stage];
+	}
+	profiler->profile->stage_cycles[PICOSYSTEM_PHYSICS_PROFILE_OTHER] =
+		(total >= attributed) ? total - attributed : 0U;
+	profiler->profile->stage_cycles[PICOSYSTEM_PHYSICS_PROFILE_TOTAL] = total;
+}
+
 static const picosystem_physics_fixed_t quarter_sine_samples[] = {
 	0,     1608,  3216,  4821,  6424,  8022,  9616,  11204, 12785, 14359, 15924, 17479, 19024,
 	20557, 22078, 23586, 25080, 26558, 28020, 29466, 30893, 32303, 33692, 35062, 36410, 37736,
@@ -1366,6 +1414,7 @@ static void clear_grid(struct picosystem_physics_world *world)
 {
 	memset(world->grid_cells, 0, sizeof(world->grid_cells));
 	world->last_occupied_grid_cell_count = 0U;
+	world->last_work.occupied_grid_cell_count = 0U;
 }
 
 static void occupy_grid_range(struct picosystem_physics_world *world,
@@ -1379,9 +1428,18 @@ static void occupy_grid_range(struct picosystem_physics_world *world,
 			struct picosystem_physics_grid_cell *const cell = &world->grid_cells[index];
 			if ((cell->body_mask == 0U) && (cell->static_segment_mask == 0U)) {
 				++world->last_occupied_grid_cell_count;
+				++world->last_work.occupied_grid_cell_count;
 			}
 			cell->body_mask |= body_mask;
 			cell->static_segment_mask |= static_segment_mask;
+			++world->last_work.grid_cell_insertion_count;
+			const uint32_t occupancy =
+				(uint32_t)__builtin_popcount((unsigned int)cell->body_mask) +
+				(uint32_t)__builtin_popcount(
+					(unsigned int)cell->static_segment_mask);
+			if (occupancy > world->last_work.maximum_grid_cell_occupancy) {
+				world->last_work.maximum_grid_cell_occupancy = occupancy;
+			}
 		}
 	}
 }
@@ -1451,27 +1509,36 @@ static uint32_t possible_pair_count(const struct picosystem_physics_world *world
 	return body_pair_count + (body_count * world->static_segment_count);
 }
 
-static int build_contacts(struct picosystem_physics_world *world, bool force_brute_force)
+static int build_contacts(struct picosystem_physics_world *world, bool force_brute_force,
+			  struct physics_step_profiler *profiler)
 {
 	world->contact_count = 0U;
 	world->last_candidate_pair_count = 0U;
 	world->last_possible_pair_count = possible_pair_count(world);
+	world->last_work.possible_pair_count = world->last_possible_pair_count;
+	uint32_t section_start = profiler_section_begin(profiler);
 	struct box_geometry geometries[PICOSYSTEM_PHYSICS_MAX_BODIES] = {0};
 	for (uint8_t body_index = 0U; body_index < world->body_count; ++body_index) {
 		if (world->bodies[body_index].shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
 			box_geometry_from_body(&world->bodies[body_index], &geometries[body_index]);
 		}
 	}
+	profiler_section_end(profiler, PICOSYSTEM_PHYSICS_PROFILE_BOX_GEOMETRY, section_start);
 
+	section_start = profiler_section_begin(profiler);
 	struct physics_candidate_sets candidates = {0};
 	const bool use_brute_force =
 		force_brute_force || !build_grid_candidates(world, geometries, &candidates);
 	world->last_broad_phase_fallback = use_brute_force ? 1U : 0U;
+	world->last_work.broad_phase_fallback_count =
+		(use_brute_force && !force_brute_force) ? 1U : 0U;
 	if (force_brute_force) {
 		clear_grid(world);
 	}
+	profiler_section_end(profiler, PICOSYSTEM_PHYSICS_PROFILE_BROAD_PHASE, section_start);
 
 	for (uint8_t body_a = 0U; body_a < world->body_count; ++body_a) {
+		section_start = profiler_section_begin(profiler);
 		for (uint8_t body_b = body_a + 1U; body_b < world->body_count; ++body_b) {
 			const uint16_t body_b_mask = (uint16_t)(UINT16_C(1) << body_b);
 			if (!use_brute_force &&
@@ -1479,12 +1546,24 @@ static int build_contacts(struct picosystem_physics_world *world, bool force_bru
 				continue;
 			}
 			++world->last_candidate_pair_count;
+			++world->last_work.candidate_pair_count;
+			++world->last_work.body_body_narrow_phase_test_count;
+			const uint16_t previous_contact_count = world->contact_count;
 			const int err = generate_body_contact(world, body_a, body_b, geometries);
 			if (err != 0) {
+				profiler_section_end(profiler,
+						     PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_BODY,
+						     section_start);
 				return err;
 			}
+			if (world->contact_count > previous_contact_count) {
+				++world->last_work.manifold_count;
+			}
 		}
+		profiler_section_end(profiler, PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_BODY,
+				     section_start);
 
+		section_start = profiler_section_begin(profiler);
 		for (uint8_t segment = 0U; segment < world->static_segment_count; ++segment) {
 			const uint8_t segment_mask = (uint8_t)(UINT8_C(1) << segment);
 			if (!use_brute_force &&
@@ -1492,13 +1571,25 @@ static int build_contacts(struct picosystem_physics_world *world, bool force_bru
 				continue;
 			}
 			++world->last_candidate_pair_count;
+			++world->last_work.candidate_pair_count;
+			++world->last_work.body_segment_narrow_phase_test_count;
+			const uint16_t previous_contact_count = world->contact_count;
 			const int err = generate_segment_contact(world, body_a, segment,
 								 &geometries[body_a]);
 			if (err != 0) {
+				profiler_section_end(profiler,
+						     PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_SEGMENT,
+						     section_start);
 				return err;
 			}
+			if (world->contact_count > previous_contact_count) {
+				++world->last_work.manifold_count;
+			}
 		}
+		profiler_section_end(profiler, PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_SEGMENT,
+				     section_start);
 	}
+	world->last_work.contact_point_count = world->contact_count;
 
 	return 0;
 }
@@ -1732,16 +1823,33 @@ int picosystem_physics_world_add_static_segment(
 
 static int physics_world_step(struct picosystem_physics_world *world,
 			      const struct picosystem_physics_vector *global_acceleration_per_tick,
-			      bool force_brute_force)
+			      bool force_brute_force, const struct picosystem_physics_clock *clock,
+			      struct picosystem_physics_step_profile *profile)
 {
 	if ((world == NULL) || (global_acceleration_per_tick == NULL)) {
 		return -EINVAL;
+	}
+	if (((clock == NULL) != (profile == NULL)) || ((clock != NULL) && (clock->now == NULL))) {
+		return -EINVAL;
+	}
+
+	if (profile != NULL) {
+		memset(profile, 0, sizeof(*profile));
+	}
+	struct physics_step_profiler profiler = {
+		.clock = clock,
+		.profile = profile,
+	};
+	if (profiler_is_active(&profiler)) {
+		profiler.total_start = profiler_now(&profiler);
 	}
 	if (!world_is_valid(world) ||
 	    !vector_is_bounded(global_acceleration_per_tick, PHYSICS_ACCELERATION_LIMIT)) {
 		return -ERANGE;
 	}
+	memset(&world->last_work, 0, sizeof(world->last_work));
 
+	uint32_t section_start = profiler_section_begin(&profiler);
 	for (uint16_t index = 0U; index < world->body_count; ++index) {
 		struct picosystem_physics_body *const body = &world->bodies[index];
 		body->velocity_per_tick.x += global_acceleration_per_tick->x;
@@ -1752,33 +1860,56 @@ static int physics_world_step(struct picosystem_physics_world *world,
 		integrate_body_angle(body);
 		clamp_body_position(body);
 	}
+	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_FORCE_AND_INTEGRATE,
+			     section_start);
 
-	int err = build_contacts(world, force_brute_force);
+	int err = build_contacts(world, force_brute_force, &profiler);
 	if (err != 0) {
 		return err;
 	}
 
+	section_start = profiler_section_begin(&profiler);
 	for (uint16_t index = 0U; index < world->contact_count; ++index) {
 		apply_position_correction(world, &world->contacts[index]);
+		++world->last_work.position_correction_visit_count;
 	}
+	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_POSITION_CORRECTION,
+			     section_start);
+
+	section_start = profiler_section_begin(&profiler);
 	world->last_solver_iteration_count = 0U;
 	for (uint8_t iteration = 0U;
 	     (iteration < PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS) && (world->contact_count > 0U);
 	     ++iteration) {
 		bool impulse_changed = false;
 		for (uint16_t index = 0U; index < world->contact_count; ++index) {
-			impulse_changed |= solve_contact_velocity(world, &world->contacts[index]);
+			const bool contact_changed =
+				solve_contact_velocity(world, &world->contacts[index]);
+			impulse_changed |= contact_changed;
+			++world->last_work.solver_contact_visit_count;
+			if (contact_changed) {
+				++world->last_work.solver_changed_contact_count;
+			}
 		}
 		world->last_solver_iteration_count = iteration + 1U;
+		++world->last_work.solver_iteration_count;
 		if (!impulse_changed) {
 			break;
 		}
 	}
+	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_VELOCITY_SOLVER, section_start);
+
+	section_start = profiler_section_begin(&profiler);
 	for (uint16_t index = 0U; index < world->body_count; ++index) {
 		clamp_body_position(&world->bodies[index]);
 		clamp_body_speed(&world->bodies[index], world->max_speed_per_tick);
 		clamp_body_angular_speed(&world->bodies[index]);
 	}
+	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_FINAL_CLAMP, section_start);
+	if (profile != NULL) {
+		profile->work = world->last_work;
+	}
+	profiler_finish(&profiler);
 	return 0;
 }
 
@@ -1786,14 +1917,29 @@ int picosystem_physics_world_step(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_vector *global_acceleration_per_tick)
 {
-	return physics_world_step(world, global_acceleration_per_tick, false);
+	return physics_world_step(world, global_acceleration_per_tick, false, NULL, NULL);
 }
 
 int picosystem_physics_world_step_reference(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_vector *global_acceleration_per_tick)
 {
-	return physics_world_step(world, global_acceleration_per_tick, true);
+	return physics_world_step(world, global_acceleration_per_tick, true, NULL, NULL);
+}
+
+int picosystem_physics_world_step_profiled(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_vector *global_acceleration_per_tick,
+	enum picosystem_physics_step_mode mode, const struct picosystem_physics_clock *clock,
+	struct picosystem_physics_step_profile *profile)
+{
+	if ((mode != PICOSYSTEM_PHYSICS_STEP_MODE_GRID) &&
+	    (mode != PICOSYSTEM_PHYSICS_STEP_MODE_REFERENCE)) {
+		return -EINVAL;
+	}
+
+	return physics_world_step(world, global_acceleration_per_tick,
+				  mode == PICOSYSTEM_PHYSICS_STEP_MODE_REFERENCE, clock, profile);
 }
 
 const struct picosystem_physics_body *

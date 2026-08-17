@@ -41,6 +41,13 @@ int picosystem_game_world_reset(struct picosystem_game_world *world);
 int picosystem_game_world_step(struct picosystem_game_world *world,
 			       const struct picosystem_game_input *input);
 
+/* Advance one profiled grid or reference tick using the normal game input mapping. */
+int picosystem_game_world_step_profiled(struct picosystem_game_world *world,
+					const struct picosystem_game_input *input,
+					enum picosystem_physics_step_mode mode,
+					const struct picosystem_physics_clock *clock,
+					struct picosystem_physics_step_profile *profile);
+
 /* Return the canonical focus body used by diagnostics and camera-independent controls. */
 const struct picosystem_physics_body *
 picosystem_game_world_focus_body(const struct picosystem_game_world *world);

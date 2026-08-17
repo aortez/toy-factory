@@ -261,8 +261,11 @@ int picosystem_game_world_reset(struct picosystem_game_world *world)
 	return 0;
 }
 
-int picosystem_game_world_step(struct picosystem_game_world *world,
-			       const struct picosystem_game_input *input)
+static int game_world_step(struct picosystem_game_world *world,
+			   const struct picosystem_game_input *input,
+			   enum picosystem_physics_step_mode mode,
+			   const struct picosystem_physics_clock *clock,
+			   struct picosystem_physics_step_profile *profile)
 {
 	if ((world == NULL) || (input == NULL)) {
 		return -EINVAL;
@@ -276,13 +279,29 @@ int picosystem_game_world_step(struct picosystem_game_world *world,
 		.x = input->horizontal * GAME_CONTROL_PER_TICK,
 		.y = GAME_GRAVITY_PER_TICK + (input->vertical * GAME_CONTROL_PER_TICK),
 	};
-	const int err = picosystem_physics_world_step(&world->physics, &acceleration);
+	const int err = picosystem_physics_world_step_profiled(&world->physics, &acceleration, mode,
+							       clock, profile);
 	if (err != 0) {
 		return err;
 	}
 
 	increment_saturated(&world->logic_tick_count);
 	return 0;
+}
+
+int picosystem_game_world_step(struct picosystem_game_world *world,
+			       const struct picosystem_game_input *input)
+{
+	return game_world_step(world, input, PICOSYSTEM_PHYSICS_STEP_MODE_GRID, NULL, NULL);
+}
+
+int picosystem_game_world_step_profiled(struct picosystem_game_world *world,
+					const struct picosystem_game_input *input,
+					enum picosystem_physics_step_mode mode,
+					const struct picosystem_physics_clock *clock,
+					struct picosystem_physics_step_profile *profile)
+{
+	return game_world_step(world, input, mode, clock, profile);
 }
 
 const struct picosystem_physics_body *

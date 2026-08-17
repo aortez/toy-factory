@@ -1,0 +1,466 @@
+/*
+ * Copyright (c) 2026 Toy Factory contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "physics_profile.h"
+
+#include <errno.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
+#include <zephyr/kernel.h>
+
+#include "game_world.h"
+
+#define PROFILE_YIELD_INTERVAL_TICKS 32U
+#define PROFILE_CLOCK_SAMPLE_COUNT   256U
+
+struct profile_stage_accumulator {
+	uint64_t total_cycles;
+	uint32_t histogram[PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_BIN_COUNT];
+	uint32_t sample_count;
+	uint32_t minimum_cycles;
+	uint32_t maximum_cycles;
+	uint32_t budget_violation_count;
+};
+
+struct authoritative_snapshot {
+	struct picosystem_physics_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	struct picosystem_physics_static_segment
+		static_segments[PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS];
+	picosystem_physics_fixed_t max_speed_per_tick;
+	uint32_t logic_tick_count;
+	uint16_t body_count;
+	uint16_t static_segment_count;
+};
+
+struct profile_workspace {
+	struct picosystem_game_world world;
+	struct authoritative_snapshot grid_final_state;
+	struct profile_stage_accumulator stages[PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT];
+};
+
+static struct profile_workspace workspace;
+K_MUTEX_DEFINE(profile_mutex);
+
+static const char *const mode_names[] = {
+	"grid",
+	"reference",
+};
+
+static const char *const stage_names[] = {
+	"force_integrate",
+	"box_geometry",
+	"broad_phase",
+	"narrow_body_body",
+	"narrow_body_segment",
+	"position_correction",
+	"velocity_solver",
+	"final_clamp",
+	"other",
+	"total",
+};
+
+static const char *const work_names[] = {
+	"possible_pairs",
+	"candidate_pairs",
+	"grid_cell_insertions",
+	"occupied_grid_cells",
+	"maximum_grid_cell_occupancy",
+	"body_body_tests",
+	"body_segment_tests",
+	"manifolds",
+	"contact_points",
+	"position_correction_visits",
+	"solver_iterations",
+	"solver_contact_visits",
+	"solver_changed_contacts",
+	"broad_phase_fallbacks",
+};
+
+_Static_assert(sizeof(mode_names) / sizeof(mode_names[0]) == PICOSYSTEM_PHYSICS_PROFILE_MODE_COUNT,
+	       "profile mode names must cover every mode");
+_Static_assert(sizeof(stage_names) / sizeof(stage_names[0]) ==
+		       PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT,
+	       "profile stage names must cover every stage");
+_Static_assert(sizeof(work_names) / sizeof(work_names[0]) ==
+		       PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT,
+	       "profile work names must cover every metric");
+
+const char *picosystem_physics_profile_mode_name(size_t mode_index)
+{
+	return (mode_index < PICOSYSTEM_PHYSICS_PROFILE_MODE_COUNT) ? mode_names[mode_index] : NULL;
+}
+
+const char *picosystem_physics_profile_stage_name(size_t stage_index)
+{
+	return (stage_index < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT) ? stage_names[stage_index]
+								      : NULL;
+}
+
+const char *picosystem_physics_profile_work_name(size_t metric_index)
+{
+	return (metric_index < PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT)
+		       ? work_names[metric_index]
+		       : NULL;
+}
+
+static uint32_t profile_clock_now(void *context)
+{
+	ARG_UNUSED(context);
+	return k_cycle_get_32();
+}
+
+static struct picosystem_game_input replay_input(uint32_t tick)
+{
+	static const struct picosystem_game_input inputs[] = {
+		{.horizontal = 1},
+		{.vertical = 1},
+		{.horizontal = -1},
+		{.vertical = -1},
+		{.horizontal = 1, .vertical = 1},
+		{.horizontal = -1, .vertical = -1},
+		{0},
+		{.horizontal = 1, .vertical = -1},
+	};
+	const size_t input_index = (tick / 120U) % ARRAY_SIZE(inputs);
+	return inputs[input_index];
+}
+
+static uint32_t work_value(const struct picosystem_physics_work_counters *work,
+			   enum picosystem_physics_profile_work_metric metric)
+{
+	switch (metric) {
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_POSSIBLE_PAIRS:
+		return work->possible_pair_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_CANDIDATE_PAIRS:
+		return work->candidate_pair_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_GRID_CELL_INSERTIONS:
+		return work->grid_cell_insertion_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_OCCUPIED_GRID_CELLS:
+		return work->occupied_grid_cell_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_MAXIMUM_GRID_CELL_OCCUPANCY:
+		return work->maximum_grid_cell_occupancy;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_BODY_BODY_TESTS:
+		return work->body_body_narrow_phase_test_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_BODY_SEGMENT_TESTS:
+		return work->body_segment_narrow_phase_test_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_MANIFOLDS:
+		return work->manifold_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_CONTACT_POINTS:
+		return work->contact_point_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_POSITION_CORRECTION_VISITS:
+		return work->position_correction_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SOLVER_ITERATIONS:
+		return work->solver_iteration_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SOLVER_CONTACT_VISITS:
+		return work->solver_contact_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SOLVER_CHANGED_CONTACTS:
+		return work->solver_changed_contact_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_BROAD_PHASE_FALLBACKS:
+		return work->broad_phase_fallback_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT:
+	default:
+		return 0U;
+	}
+}
+
+static void stage_accumulator_reset(struct profile_stage_accumulator *accumulator)
+{
+	memset(accumulator, 0, sizeof(*accumulator));
+	accumulator->minimum_cycles = UINT32_MAX;
+}
+
+static void accumulators_reset(void)
+{
+	for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
+		stage_accumulator_reset(&workspace.stages[stage]);
+	}
+}
+
+static void stage_accumulate(struct profile_stage_accumulator *accumulator, uint32_t cycles,
+			     uint32_t fine_bin_cycles, uint32_t coarse_bin_cycles,
+			     uint32_t budget_cycles)
+{
+	accumulator->total_cycles += cycles;
+	++accumulator->sample_count;
+	if (cycles < accumulator->minimum_cycles) {
+		accumulator->minimum_cycles = cycles;
+	}
+	if (cycles > accumulator->maximum_cycles) {
+		accumulator->maximum_cycles = cycles;
+	}
+	if ((budget_cycles != 0U) && (cycles > budget_cycles)) {
+		++accumulator->budget_violation_count;
+	}
+
+	const uint32_t fine_limit =
+		PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT * fine_bin_cycles;
+	uint32_t bin = cycles / fine_bin_cycles;
+	if (cycles >= fine_limit) {
+		bin = PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT +
+		      ((cycles - fine_limit) / coarse_bin_cycles);
+	}
+	if (bin >= PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_BIN_COUNT) {
+		bin = PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_BIN_COUNT - 1U;
+	}
+	++accumulator->histogram[bin];
+}
+
+static uint32_t histogram_percentile(const struct profile_stage_accumulator *accumulator,
+				     uint32_t fine_bin_cycles, uint32_t coarse_bin_cycles,
+				     uint32_t percentile)
+{
+	const uint32_t rank = ((accumulator->sample_count * percentile) + 99U) / 100U;
+	uint32_t cumulative = 0U;
+	for (uint32_t bin = 0U; bin < PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_BIN_COUNT; ++bin) {
+		cumulative += accumulator->histogram[bin];
+		if (cumulative < rank) {
+			continue;
+		}
+		if (bin == (PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_BIN_COUNT - 1U)) {
+			return accumulator->maximum_cycles;
+		}
+		if (bin < PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT) {
+			return (bin + 1U) * fine_bin_cycles;
+		}
+		const uint32_t coarse_bin =
+			bin - PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT;
+		return (PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT * fine_bin_cycles) +
+		       ((coarse_bin + 1U) * coarse_bin_cycles);
+	}
+	return accumulator->maximum_cycles;
+}
+
+static void summarize_stages(struct picosystem_physics_profile_mode_result *mode_result,
+			     uint32_t fine_bin_cycles, uint32_t coarse_bin_cycles)
+{
+	for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
+		const struct profile_stage_accumulator *const accumulator =
+			&workspace.stages[stage];
+		mode_result->stages[stage] = (struct picosystem_physics_profile_stage_summary){
+			.sample_count = accumulator->sample_count,
+			.mean_cycles =
+				(uint32_t)(accumulator->total_cycles / accumulator->sample_count),
+			.minimum_cycles = accumulator->minimum_cycles,
+			.percentile_50_cycles = histogram_percentile(accumulator, fine_bin_cycles,
+								     coarse_bin_cycles, 50U),
+			.percentile_95_cycles = histogram_percentile(accumulator, fine_bin_cycles,
+								     coarse_bin_cycles, 95U),
+			.percentile_99_cycles = histogram_percentile(accumulator, fine_bin_cycles,
+								     coarse_bin_cycles, 99U),
+			.maximum_cycles = accumulator->maximum_cycles,
+			.budget_violation_count = accumulator->budget_violation_count,
+		};
+	}
+}
+
+static void capture_authoritative_state(const struct picosystem_game_world *world,
+					struct authoritative_snapshot *snapshot)
+{
+	*snapshot = (struct authoritative_snapshot){
+		.max_speed_per_tick = world->physics.max_speed_per_tick,
+		.logic_tick_count = world->logic_tick_count,
+		.body_count = world->physics.body_count,
+		.static_segment_count = world->physics.static_segment_count,
+	};
+	memcpy(snapshot->bodies, world->physics.bodies,
+	       world->physics.body_count * sizeof(snapshot->bodies[0]));
+	memcpy(snapshot->static_segments, world->physics.static_segments,
+	       world->physics.static_segment_count * sizeof(snapshot->static_segments[0]));
+}
+
+static bool body_equal(const struct picosystem_physics_body *left,
+		       const struct picosystem_physics_body *right)
+{
+	return (left->center.x == right->center.x) && (left->center.y == right->center.y) &&
+	       (left->velocity_per_tick.x == right->velocity_per_tick.x) &&
+	       (left->velocity_per_tick.y == right->velocity_per_tick.y) &&
+	       (left->half_extent.x == right->half_extent.x) &&
+	       (left->half_extent.y == right->half_extent.y) && (left->radius == right->radius) &&
+	       (left->inverse_mass == right->inverse_mass) &&
+	       (left->inverse_inertia == right->inverse_inertia) &&
+	       (left->restitution == right->restitution) && (left->friction == right->friction) &&
+	       (left->angular_velocity_per_tick == right->angular_velocity_per_tick) &&
+	       (left->angle_turns == right->angle_turns) && (left->id == right->id) &&
+	       (left->shape == right->shape);
+}
+
+static bool segment_equal(const struct picosystem_physics_static_segment *left,
+			  const struct picosystem_physics_static_segment *right)
+{
+	return (left->start.x == right->start.x) && (left->start.y == right->start.y) &&
+	       (left->end.x == right->end.x) && (left->end.y == right->end.y) &&
+	       (left->normal.x == right->normal.x) && (left->normal.y == right->normal.y) &&
+	       (left->restitution == right->restitution) && (left->friction == right->friction) &&
+	       (left->id == right->id);
+}
+
+static bool authoritative_state_matches(const struct picosystem_game_world *world,
+					const struct authoritative_snapshot *snapshot)
+{
+	if ((world->logic_tick_count != snapshot->logic_tick_count) ||
+	    (world->physics.max_speed_per_tick != snapshot->max_speed_per_tick) ||
+	    (world->physics.body_count != snapshot->body_count) ||
+	    (world->physics.static_segment_count != snapshot->static_segment_count)) {
+		return false;
+	}
+	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
+		if (!body_equal(&world->physics.bodies[index], &snapshot->bodies[index])) {
+			return false;
+		}
+	}
+	for (uint16_t index = 0U; index < snapshot->static_segment_count; ++index) {
+		if (!segment_equal(&world->physics.static_segments[index],
+				   &snapshot->static_segments[index])) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static uint32_t measure_clock_delta(void)
+{
+	uint64_t total = 0U;
+	k_sched_lock();
+	for (uint32_t sample = 0U; sample < PROFILE_CLOCK_SAMPLE_COUNT; ++sample) {
+		const uint32_t start = k_cycle_get_32();
+		total += k_cycle_get_32() - start;
+	}
+	k_sched_unlock();
+	return (uint32_t)(total / PROFILE_CLOCK_SAMPLE_COUNT);
+}
+
+static int run_mode(size_t mode_index, uint32_t measured_tick_count, uint32_t fine_bin_cycles,
+		    uint32_t coarse_bin_cycles, uint32_t budget_cycles,
+		    struct picosystem_physics_profile_mode_result *mode_result)
+{
+	const enum picosystem_physics_step_mode mode =
+		(mode_index == 0U) ? PICOSYSTEM_PHYSICS_STEP_MODE_GRID
+				   : PICOSYSTEM_PHYSICS_STEP_MODE_REFERENCE;
+	int err = picosystem_game_world_reset(&workspace.world);
+	if (err != 0) {
+		return err;
+	}
+	memset(mode_result, 0, sizeof(*mode_result));
+	mode_result->minimum_clock_reads_per_step = UINT32_MAX;
+
+	for (uint32_t tick = 0U; tick < PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS; ++tick) {
+		const struct picosystem_game_input input = replay_input(tick);
+		k_sched_lock();
+		err = picosystem_game_world_step_profiled(&workspace.world, &input, mode, NULL,
+							  NULL);
+		k_sched_unlock();
+		if (err != 0) {
+			return err;
+		}
+	}
+
+	accumulators_reset();
+	const struct picosystem_physics_clock clock = {
+		.now = profile_clock_now,
+	};
+	for (uint32_t measured_tick = 0U; measured_tick < measured_tick_count; ++measured_tick) {
+		const uint32_t replay_tick =
+			PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS + measured_tick;
+		const struct picosystem_game_input input = replay_input(replay_tick);
+		struct picosystem_physics_step_profile profile;
+		k_sched_lock();
+		err = picosystem_game_world_step_profiled(&workspace.world, &input, mode, &clock,
+							  &profile);
+		k_sched_unlock();
+		if (err != 0) {
+			return err;
+		}
+
+		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
+			const uint32_t stage_budget =
+				(stage == PICOSYSTEM_PHYSICS_PROFILE_TOTAL) ? budget_cycles : 0U;
+			stage_accumulate(&workspace.stages[stage], profile.stage_cycles[stage],
+					 fine_bin_cycles, coarse_bin_cycles, stage_budget);
+		}
+		for (enum picosystem_physics_profile_work_metric metric =
+			     PICOSYSTEM_PHYSICS_PROFILE_WORK_POSSIBLE_PAIRS;
+		     metric < PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT; ++metric) {
+			const uint32_t value = work_value(&profile.work, metric);
+			mode_result->work[metric].total += value;
+			if (value > mode_result->work[metric].maximum) {
+				mode_result->work[metric].maximum = value;
+			}
+		}
+		if (profile.clock_read_count < mode_result->minimum_clock_reads_per_step) {
+			mode_result->minimum_clock_reads_per_step = profile.clock_read_count;
+		}
+		if (profile.clock_read_count > mode_result->maximum_clock_reads_per_step) {
+			mode_result->maximum_clock_reads_per_step = profile.clock_read_count;
+		}
+
+		if (((measured_tick + 1U) % PROFILE_YIELD_INTERVAL_TICKS) == 0U) {
+			k_yield();
+		}
+	}
+
+	summarize_stages(mode_result, fine_bin_cycles, coarse_bin_cycles);
+	mode_result->final_hash = picosystem_game_world_hash(&workspace.world);
+	return 0;
+}
+
+int picosystem_physics_profile_compare(uint32_t measured_tick_count,
+				       struct picosystem_physics_profile_result *result)
+{
+	if (result == NULL) {
+		return -EINVAL;
+	}
+	if ((measured_tick_count == 0U) ||
+	    (measured_tick_count > PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS)) {
+		return -ERANGE;
+	}
+
+	const int lock_err = k_mutex_lock(&profile_mutex, K_FOREVER);
+	if (lock_err != 0) {
+		return lock_err;
+	}
+
+	memset(result, 0, sizeof(*result));
+	result->schema_version = PICOSYSTEM_PHYSICS_PROFILE_SCHEMA_VERSION;
+	result->measured_tick_count = measured_tick_count;
+	result->warmup_tick_count = PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS;
+	result->clock_frequency_hz = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC;
+	result->histogram_fine_bin_cycles =
+		(uint32_t)(((uint64_t)result->clock_frequency_hz *
+				    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_US +
+			    999999U) /
+			   1000000U);
+	result->histogram_coarse_bin_cycles =
+		(uint32_t)(((uint64_t)result->clock_frequency_hz *
+				    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_US +
+			    999999U) /
+			   1000000U);
+	result->back_to_back_clock_delta_cycles = measure_clock_delta();
+	const uint32_t budget_cycles = result->clock_frequency_hz / PICOSYSTEM_GAME_TICK_RATE_HZ;
+
+	int err = run_mode(0U, measured_tick_count, result->histogram_fine_bin_cycles,
+			   result->histogram_coarse_bin_cycles, budget_cycles, &result->modes[0]);
+	if (err == 0) {
+		capture_authoritative_state(&workspace.world, &workspace.grid_final_state);
+		err = run_mode(1U, measured_tick_count, result->histogram_fine_bin_cycles,
+			       result->histogram_coarse_bin_cycles, budget_cycles,
+			       &result->modes[1]);
+	}
+	if (err == 0) {
+		result->hashes_match = result->modes[0].final_hash == result->modes[1].final_hash;
+		result->states_match =
+			authoritative_state_matches(&workspace.world, &workspace.grid_final_state);
+		if (!result->hashes_match || !result->states_match) {
+			err = -EILSEQ;
+		}
+	}
+
+	k_mutex_unlock(&profile_mutex);
+	return err;
+}

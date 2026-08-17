@@ -12,11 +12,14 @@ INPUT ?= none
 OUT ?= artifacts/screenshot.png
 SEQUENCE ?= scripts/sequences/deterministic-smoke.json
 FAIL_SCREENSHOT ?= artifacts/sequence-failure.png
+PROFILE_TICKS ?= 2000
+PROFILE_OUT ?= artifacts/physics-profile.json
 
 .PHONY: help image setup build build-pio build-pio-dma format check check-pio-dma \
 	container-shell update update-pio update-pio-dma bootloader console status game-stats \
 	game-redraw display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
 	sim-reset sim-state sim-test \
+	profile profile-ab \
 	flash monitor shell
 
 ##@ General
@@ -26,6 +29,7 @@ help: ## Show this list of targets
 	@printf 'Usage:\n  make <target> [PORT=/dev/ttyACM0] [UF2_MOUNT=/path/to/RPI-RP2]\n'
 	@printf '                    [STEPS=1] [INPUT=none] [OUT=artifacts/screenshot.png]\n'
 	@printf '                    [SEQUENCE=path.json] [FAIL_SCREENSHOT=artifacts/failure.png]\n'
+	@printf '                    [PROFILE_TICKS=2000] [PROFILE_OUT=artifacts/physics-profile.json]\n'
 	@awk 'BEGIN { FS = ":.*## " } \
 		/^##@ / { printf "\n%s:\n", substr($$0, 5); next } \
 		/^[a-zA-Z0-9_-]+:.*## / { printf "  %-18s %s\n", $$1, $$2 }' \
@@ -196,6 +200,19 @@ sim-test: image ## Run SEQUENCE=<JSON> with deterministic hash/CRC assertions
 				--failure-screenshot "/workspace/app/$(FAIL_SCREENSHOT)" \
 				--owner-uid "$$(id -u)" --owner-gid "$$(id -g)" \
 				"$$port" "/workspace/app/$(SEQUENCE)"
+
+profile-ab: image ## Compare isolated grid/reference physics and save PROFILE_OUT=<JSON>
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/profile_compare.py \
+				--ticks "$(PROFILE_TICKS)" \
+				--owner-uid "$$(id -u)" --owner-gid "$$(id -g)" \
+				"$$port" "/workspace/app/$(PROFILE_OUT)"
+
+profile: profile-ab ## Alias for profile-ab
 
 ##@ Compatibility aliases
 

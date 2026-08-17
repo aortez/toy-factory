@@ -24,9 +24,12 @@
 
 #include "display_sync.h"
 #include "game_control.h"
+#include "physics_profile.h"
 #include "piezo.h"
 
 #define BOOTLOADER_REBOOT_DELAY_MS 100
+
+static struct picosystem_physics_profile_result profile_result;
 
 struct named_button {
 	const char *name;
@@ -679,6 +682,129 @@ static int cmd_game_redraw(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+static uint32_t profile_cycles_to_microseconds(uint32_t cycles, uint32_t clock_frequency_hz)
+{
+	return (uint32_t)((((uint64_t)cycles * 1000000U) + (clock_frequency_hz / 2U)) /
+			  clock_frequency_hz);
+}
+
+static void print_profile_result(const struct shell *shell,
+				 const struct picosystem_physics_profile_result *result)
+{
+	shell_print(shell,
+		    "PROFILE_BEGIN schema=%u ticks=%u warmup=%u clock_hz=%u "
+		    "histogram_fine_bin_us=%u histogram_fine_bins=%u "
+		    "histogram_coarse_bin_us=%u histogram_coarse_bins=%u clock_delta_cycles=%u",
+		    result->schema_version, result->measured_tick_count, result->warmup_tick_count,
+		    result->clock_frequency_hz, PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_US,
+		    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT,
+		    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_US,
+		    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_COUNT,
+		    result->back_to_back_clock_delta_cycles);
+
+	for (size_t mode = 0U; mode < PICOSYSTEM_PHYSICS_PROFILE_MODE_COUNT; ++mode) {
+		const struct picosystem_physics_profile_mode_result *const mode_result =
+			&result->modes[mode];
+		const char *const mode_name = picosystem_physics_profile_mode_name(mode);
+		shell_print(shell,
+			    "PROFILE_MODE mode=%s hash=%08x clock_reads_min=%u clock_reads_max=%u",
+			    mode_name, mode_result->final_hash,
+			    mode_result->minimum_clock_reads_per_step,
+			    mode_result->maximum_clock_reads_per_step);
+
+		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
+			const struct picosystem_physics_profile_stage_summary *const summary =
+				&mode_result->stages[stage];
+			shell_print(
+				shell,
+				"PROFILE_STAGE mode=%s stage=%s samples=%u mean_us=%u min_us=%u "
+				"p50_us=%u p95_us=%u p99_us=%u max_us=%u budget_violations=%u",
+				mode_name, picosystem_physics_profile_stage_name(stage),
+				summary->sample_count,
+				profile_cycles_to_microseconds(summary->mean_cycles,
+							       result->clock_frequency_hz),
+				profile_cycles_to_microseconds(summary->minimum_cycles,
+							       result->clock_frequency_hz),
+				profile_cycles_to_microseconds(summary->percentile_50_cycles,
+							       result->clock_frequency_hz),
+				profile_cycles_to_microseconds(summary->percentile_95_cycles,
+							       result->clock_frequency_hz),
+				profile_cycles_to_microseconds(summary->percentile_99_cycles,
+							       result->clock_frequency_hz),
+				profile_cycles_to_microseconds(summary->maximum_cycles,
+							       result->clock_frequency_hz),
+				summary->budget_violation_count);
+		}
+
+		for (size_t metric = 0U; metric < PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT;
+		     ++metric) {
+			const struct picosystem_physics_profile_work_summary *const summary =
+				&mode_result->work[metric];
+			shell_print(shell, "PROFILE_WORK mode=%s metric=%s total=%llu max=%u",
+				    mode_name, picosystem_physics_profile_work_name(metric),
+				    (unsigned long long)summary->total, summary->maximum);
+		}
+	}
+}
+
+static int cmd_profile_compare(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t measured_tick_count = PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS;
+	if (argc == 2U) {
+		const int parse_err =
+			parse_u32(shell, "measured tick count", argv[1], &measured_tick_count);
+		if (parse_err != 0) {
+			return parse_err;
+		}
+	}
+	if ((measured_tick_count == 0U) ||
+	    (measured_tick_count > PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS)) {
+		shell_error(shell, "Measured tick count must be 1-%u",
+			    PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS);
+		return -ERANGE;
+	}
+
+	struct picosystem_game_control_state state;
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
+	};
+	int err = picosystem_game_control_submit(&request, &state);
+	if (err != 0) {
+		shell_error(shell, "Could not query simulation state (%d)", err);
+		return err;
+	}
+	if (!state.paused) {
+		shell_error(shell, "Pause the simulation before profiling");
+		return -EBUSY;
+	}
+
+	shell_print(shell, "Running isolated grid/reference replay for %u measured ticks per mode",
+		    measured_tick_count);
+	err = picosystem_physics_profile_compare(measured_tick_count, &profile_result);
+	if ((err == 0) || (err == -EILSEQ)) {
+		print_profile_result(shell, &profile_result);
+		size_t unused_stack_bytes;
+		const int stack_err =
+			k_thread_stack_space_get(k_current_get(), &unused_stack_bytes);
+		if (stack_err == 0) {
+			shell_print(shell,
+				    "PROFILE_RESOURCE shell_stack_used_bytes=%u "
+				    "shell_stack_size_bytes=%u",
+				    CONFIG_SHELL_STACK_SIZE - (uint32_t)unused_stack_bytes,
+				    CONFIG_SHELL_STACK_SIZE);
+		} else if (err == 0) {
+			err = stack_err;
+		}
+		shell_print(shell, "PROFILE_END hashes_match=%s states_match=%s",
+			    profile_result.hashes_match ? "yes" : "no",
+			    profile_result.states_match ? "yes" : "no");
+	}
+	if (err != 0) {
+		shell_error(shell, "Physics profile comparison failed (%d)", err);
+	}
+	return err;
+}
+
 static int cmd_reboot_bootloader(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -737,6 +863,15 @@ SHELL_STATIC_SUBCMD_SET_CREATE(reboot_commands,
 			       SHELL_SUBCMD_SET_END);
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
+	profile_commands,
+	SHELL_CMD_ARG(
+		compare, NULL,
+		SHELL_HELP("Compare isolated grid and brute-force physics replays.",
+			   "[ticks] (default 2000, maximum 10000; simulation must be paused)"),
+		cmd_profile_compare, 1, 1),
+	SHELL_SUBCMD_SET_END);
+
+SHELL_STATIC_SUBCMD_SET_CREATE(
 	picosystem_commands,
 	SHELL_CMD_ARG(status, NULL, "Show a coherent board-state snapshot.", cmd_status, 1, 0),
 	SHELL_CMD_ARG(buttons, NULL, "Show the currently pressed buttons.", cmd_buttons, 1, 0),
@@ -752,6 +887,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      cmd_tone, 3, 0),
 	SHELL_CMD(display, &display_commands, "Display diagnostic commands.", NULL),
 	SHELL_CMD(game, &game_commands, "Game-loop diagnostic commands.", NULL),
+	SHELL_CMD(profile, &profile_commands, "Physics profiling commands.", NULL),
 	SHELL_CMD(reboot, &reboot_commands, "Reboot commands.", NULL), SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(picosystem, &picosystem_commands, "PicoSystem diagnostics.", NULL);

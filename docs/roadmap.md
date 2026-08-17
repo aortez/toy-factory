@@ -78,6 +78,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Confirm deterministic state and framebuffer goldens on physical hardware.
 - [x] Add angular bodies, oriented boxes, and stable two-point contact manifolds.
 - [x] Add a deterministic broad phase proven against brute-force candidate sets.
+- [x] Add deterministic work counters and an isolated device grid/reference profiler.
 - [ ] Add joints, motors, conveyors, springs, sensors, and sleeping.
 - [ ] Add a bounded rope or soft-body subsystem.
 - [ ] Evaluate granular materials and approximate force fields.

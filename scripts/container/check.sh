@@ -17,7 +17,9 @@ from pathlib import Path
 for path in sorted(Path("scripts/container").glob("*.py")):
     compile(path.read_text(), str(path), "exec")
 PY
+python3 -m json.tool benchmarks/physics-profile/pim559-2026-08-17.json >/dev/null
 python3 scripts/tests/framebuffer-capture-test.py
+python3 scripts/tests/profile-compare-test.py
 python3 scripts/tests/sequence-runner-test.py
 python3 scripts/tests/serial-command-test.py
 git diff --check

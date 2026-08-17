@@ -165,6 +165,7 @@ make sim-state
 make screenshot OUT=artifacts/screenshot.png
 make sim-run
 make sim-test
+make profile-ab PROFILE_TICKS=2000 PROFILE_OUT=artifacts/physics-profile.json
 ```
 
 `status` briefly owns the same serial port as `console`, sends `picosystem
@@ -197,6 +198,7 @@ picosystem game step [count]
 picosystem game input physical|none|up|down|left|right|up-left|up-right|down-left|down-right
 picosystem game state
 picosystem game run
+picosystem profile compare [ticks]
 picosystem reboot bootloader
 ```
 
@@ -229,6 +231,25 @@ than “stop.” Every control response includes the exact tick, Q16.16 focus-bo
 state, input source,
 published/presented snapshot sequence, and a deterministic hash that excludes
 clocks and performance counters.
+
+`profile compare` requires a paused simulation and runs a separate canonical
+world, leaving the live world untouched. It warms up each implementation for
+120 ticks, measures the requested replay through the uniform grid and the
+brute-force reference, and rejects any final hash or field-by-field state
+mismatch. Timings are accumulated in fixed-size histograms instead of being
+logged per tick. The report separates integration, geometry, broad phase,
+body/body and body/segment narrow phase, position correction, velocity solving,
+final clamping, unattributed validation/instrumentation work, and the total.
+Deterministic counters report candidate filtering, grid population, manifolds,
+contacts, solver visits, and fallbacks.
+
+`make profile-ab` handles pause/resume around that command, prints a compact
+comparison, and writes a schema-versioned JSON artifact. It restores the
+original running/paused mode even after a failed benchmark. This is an isolated
+physics measurement: rendering and immutable snapshot publication are disabled,
+whereas `make game-stats` continues to describe the complete live game-update
+and renderer pipeline. The first tracked PIM559 result and its full JSON report
+are in [benchmarks/physics-profile](benchmarks/physics-profile/README.md).
 
 `display checksum` reports the CRC-32 of one fully presented framebuffer.
 `display capture` waits for the current published snapshot to be presented,
@@ -378,13 +399,16 @@ framebuffer is allocated.
 `make check` verifies configuration, device tree, compilation, linking, and UF2
 generation and also runs native rigid-body collision/capacity, 1,000-tick
 grid/brute-force oracle, 10,000-tick game-world replay/boundary, deadline-scheduler,
-serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure, and
-deterministic-sequence tests. The game-world test uses the undefined-behavior
-sanitizer and treats the accepted reset/right-30/up-15 hashes as native goldens.
-The default uniform-grid image uses 166,012 bytes of RAM (61.64%) and 147,052
-bytes of flash. This includes the 115,200-byte framebuffer, 3,840-byte transfer
-buffer, 14,968-byte fixed-capacity physics world with a 1,024-byte scratch grid,
-two 400-byte render snapshots, and a 1,024-byte shell TX ring.
+serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
+physics-profile protocol, and deterministic-sequence tests. The game-world test
+uses the undefined-behavior sanitizer and treats the accepted
+reset/right-30/up-15 hashes as native goldens.
+The profiling image uses 190,652 bytes of RAM (70.79%) and 151,952 bytes of
+flash. This includes the 115,200-byte framebuffer, 3,840-byte transfer buffer,
+15,024-byte fixed-capacity physics world with a 1,024-byte scratch grid and
+per-step deterministic counters, a 21,360-byte serialized benchmark workspace,
+two 400-byte render snapshots, a 4,096-byte shell stack, and a 1,024-byte shell
+TX ring. The linked image retains about 77 KiB of RAM headroom.
 Full frames bypass the staging buffer with one contiguous display write.
 
 GitHub Actions runs `make check` and builds the PIO and PIO/DMA variants for

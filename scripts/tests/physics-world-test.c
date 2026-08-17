@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "physics_world.h"
 
@@ -13,6 +14,13 @@
 #define RATIO(numerator, denominator) PICOSYSTEM_PHYSICS_FIXED_RATIO(numerator, denominator)
 
 static const struct picosystem_physics_vector no_acceleration = {0};
+
+static uint32_t fake_clock_now(void *context)
+{
+	uint32_t *const cycles = context;
+	*cycles += 10U;
+	return *cycles;
+}
 
 static struct picosystem_physics_circle_config circle_config(uint16_t id, int32_t x, int32_t y,
 							     int32_t radius)
@@ -115,6 +123,27 @@ static void assert_step_matches_reference(const struct picosystem_physics_world 
 	assert(grid->last_possible_pair_count == reference->last_possible_pair_count);
 	assert(reference->last_candidate_pair_count == reference->last_possible_pair_count);
 	assert(grid->last_solver_iteration_count == reference->last_solver_iteration_count);
+	assert(grid->last_work.possible_pair_count == reference->last_work.possible_pair_count);
+	assert(grid->last_work.candidate_pair_count == grid->last_candidate_pair_count);
+	assert(reference->last_work.candidate_pair_count ==
+	       reference->last_work.possible_pair_count);
+	assert(grid->last_work.body_body_narrow_phase_test_count +
+		       grid->last_work.body_segment_narrow_phase_test_count ==
+	       grid->last_work.candidate_pair_count);
+	assert(reference->last_work.body_body_narrow_phase_test_count +
+		       reference->last_work.body_segment_narrow_phase_test_count ==
+	       reference->last_work.candidate_pair_count);
+	assert(grid->last_work.manifold_count == reference->last_work.manifold_count);
+	assert(grid->last_work.contact_point_count == reference->last_work.contact_point_count);
+	assert(grid->last_work.position_correction_visit_count ==
+	       reference->last_work.position_correction_visit_count);
+	assert(grid->last_work.solver_iteration_count ==
+	       reference->last_work.solver_iteration_count);
+	assert(grid->last_work.solver_contact_visit_count ==
+	       reference->last_work.solver_contact_visit_count);
+	assert(grid->last_work.solver_changed_contact_count ==
+	       reference->last_work.solver_changed_contact_count);
+	assert(reference->last_work.broad_phase_fallback_count == 0U);
 	assert(picosystem_physics_world_hash(grid) == picosystem_physics_world_hash(reference));
 
 	for (uint16_t index = 0U; index < grid->body_count; ++index) {
@@ -517,6 +546,20 @@ static void test_uniform_grid_filter_and_fallback(void)
 	assert(separated.last_broad_phase_fallback == 0U);
 	assert(separated.last_solver_iteration_count == 0U);
 	assert(separated.contact_count == 0U);
+	assert(separated.last_work.possible_pair_count == 1U);
+	assert(separated.last_work.candidate_pair_count == 0U);
+	assert(separated.last_work.grid_cell_insertion_count == 2U);
+	assert(separated.last_work.occupied_grid_cell_count == 2U);
+	assert(separated.last_work.maximum_grid_cell_occupancy == 1U);
+	assert(separated.last_work.body_body_narrow_phase_test_count == 0U);
+	assert(separated.last_work.body_segment_narrow_phase_test_count == 0U);
+	assert(separated.last_work.manifold_count == 0U);
+	assert(separated.last_work.contact_point_count == 0U);
+	assert(separated.last_work.position_correction_visit_count == 0U);
+	assert(separated.last_work.solver_iteration_count == 0U);
+	assert(separated.last_work.solver_contact_visit_count == 0U);
+	assert(separated.last_work.solver_changed_contact_count == 0U);
+	assert(separated.last_work.broad_phase_fallback_count == 0U);
 
 	struct picosystem_physics_world boundary;
 	init_world(&boundary, FIXED(2));
@@ -531,6 +574,13 @@ static void test_uniform_grid_filter_and_fallback(void)
 	assert(boundary.last_broad_phase_fallback == 0U);
 	assert(boundary.contact_count == 1U);
 	assert(boundary.last_solver_iteration_count == 1U);
+	assert(boundary.last_work.candidate_pair_count == 1U);
+	assert(boundary.last_work.body_body_narrow_phase_test_count == 1U);
+	assert(boundary.last_work.manifold_count == 1U);
+	assert(boundary.last_work.contact_point_count == 1U);
+	assert(boundary.last_work.position_correction_visit_count == 1U);
+	assert(boundary.last_work.solver_iteration_count == 1U);
+	assert(boundary.last_work.solver_contact_visit_count == 1U);
 
 	struct picosystem_physics_world fallback;
 	init_world(&fallback, FIXED(2));
@@ -547,6 +597,62 @@ static void test_uniform_grid_filter_and_fallback(void)
 	assert(fallback.last_broad_phase_fallback == 1U);
 	assert(fallback.contact_count == 1U);
 	assert(fallback.last_solver_iteration_count == 1U);
+	assert(fallback.last_work.broad_phase_fallback_count == 1U);
+}
+
+static void test_profiled_step_and_reference_work(void)
+{
+	struct picosystem_physics_world grid;
+	init_world(&grid, FIXED(2));
+	const struct picosystem_physics_circle_config left = circle_config(1U, 8, 8, 2);
+	const struct picosystem_physics_circle_config right = circle_config(2U, 232, 232, 2);
+	assert(picosystem_physics_world_add_circle(&grid, &left) == 0);
+	assert(picosystem_physics_world_add_circle(&grid, &right) == 0);
+	struct picosystem_physics_world reference = grid;
+
+	uint32_t grid_cycles = 0U;
+	const struct picosystem_physics_clock grid_clock = {
+		.now = fake_clock_now,
+		.context = &grid_cycles,
+	};
+	struct picosystem_physics_step_profile grid_profile;
+	assert(picosystem_physics_world_step_profiled(&grid, &no_acceleration,
+						      PICOSYSTEM_PHYSICS_STEP_MODE_GRID,
+						      &grid_clock, &grid_profile) == 0);
+	assert(grid_profile.clock_read_count > 0U);
+	assert(grid_profile.stage_cycles[PICOSYSTEM_PHYSICS_PROFILE_TOTAL] > 0U);
+	uint32_t attributed_cycles = 0U;
+	for (size_t stage = PICOSYSTEM_PHYSICS_PROFILE_FORCE_AND_INTEGRATE;
+	     stage < PICOSYSTEM_PHYSICS_PROFILE_TOTAL; ++stage) {
+		attributed_cycles += grid_profile.stage_cycles[stage];
+	}
+	assert(attributed_cycles == grid_profile.stage_cycles[PICOSYSTEM_PHYSICS_PROFILE_TOTAL]);
+	assert(grid_profile.work.candidate_pair_count == 0U);
+	assert(grid_profile.work.grid_cell_insertion_count == 2U);
+
+	uint32_t reference_cycles = 0U;
+	const struct picosystem_physics_clock reference_clock = {
+		.now = fake_clock_now,
+		.context = &reference_cycles,
+	};
+	struct picosystem_physics_step_profile reference_profile;
+	assert(picosystem_physics_world_step_profiled(&reference, &no_acceleration,
+						      PICOSYSTEM_PHYSICS_STEP_MODE_REFERENCE,
+						      &reference_clock, &reference_profile) == 0);
+	assert(reference_profile.work.possible_pair_count == 1U);
+	assert(reference_profile.work.candidate_pair_count == 1U);
+	assert(reference_profile.work.body_body_narrow_phase_test_count == 1U);
+	assert(reference_profile.work.grid_cell_insertion_count == 0U);
+	assert(reference_profile.work.broad_phase_fallback_count == 0U);
+	assert(reference.last_broad_phase_fallback == 1U);
+	assert(picosystem_physics_world_hash(&grid) == picosystem_physics_world_hash(&reference));
+
+	assert(picosystem_physics_world_step_profiled(&grid, &no_acceleration,
+						      (enum picosystem_physics_step_mode)99,
+						      &grid_clock, &grid_profile) == -EINVAL);
+	assert(picosystem_physics_world_step_profiled(&grid, &no_acceleration,
+						      PICOSYSTEM_PHYSICS_STEP_MODE_GRID, NULL,
+						      &grid_profile) == -EINVAL);
 }
 
 static void add_grid_oracle_fixture(struct picosystem_physics_world *world)
@@ -683,6 +789,7 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	world.last_occupied_grid_cell_count = UINT16_MAX;
 	world.last_broad_phase_fallback = UINT8_MAX;
 	world.last_solver_iteration_count = UINT8_MAX;
+	memset(&world.last_work, UINT8_MAX, sizeof(world.last_work));
 	world.grid_cells[0].body_mask = UINT16_MAX;
 	world.grid_cells[0].static_segment_mask = UINT8_MAX;
 	world.contact_count = 1U;
@@ -710,6 +817,7 @@ int main(void)
 	test_box_box_and_circle_box_collisions();
 	test_coincident_centers_are_stable();
 	test_uniform_grid_filter_and_fallback();
+	test_profiled_step_and_reference_work();
 	test_uniform_grid_matches_brute_force_oracle();
 	test_contact_storage_covers_all_candidates();
 	test_hash_excludes_scratch_and_diagnostics();

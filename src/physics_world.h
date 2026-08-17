@@ -35,6 +35,57 @@
 
 typedef int32_t picosystem_physics_fixed_t;
 
+enum picosystem_physics_step_mode {
+	PICOSYSTEM_PHYSICS_STEP_MODE_GRID,
+	PICOSYSTEM_PHYSICS_STEP_MODE_REFERENCE,
+};
+
+enum picosystem_physics_profile_stage {
+	PICOSYSTEM_PHYSICS_PROFILE_FORCE_AND_INTEGRATE,
+	PICOSYSTEM_PHYSICS_PROFILE_BOX_GEOMETRY,
+	PICOSYSTEM_PHYSICS_PROFILE_BROAD_PHASE,
+	PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_BODY,
+	PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_SEGMENT,
+	PICOSYSTEM_PHYSICS_PROFILE_POSITION_CORRECTION,
+	PICOSYSTEM_PHYSICS_PROFILE_VELOCITY_SOLVER,
+	PICOSYSTEM_PHYSICS_PROFILE_FINAL_CLAMP,
+	PICOSYSTEM_PHYSICS_PROFILE_OTHER,
+	PICOSYSTEM_PHYSICS_PROFILE_TOTAL,
+	PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT,
+};
+
+typedef uint32_t (*picosystem_physics_clock_now_t)(void *context);
+
+struct picosystem_physics_clock {
+	picosystem_physics_clock_now_t now;
+	void *context;
+};
+
+/* Deterministic, per-step work excluded from authoritative state hashes. */
+struct picosystem_physics_work_counters {
+	uint32_t possible_pair_count;
+	uint32_t candidate_pair_count;
+	uint32_t grid_cell_insertion_count;
+	uint32_t occupied_grid_cell_count;
+	uint32_t maximum_grid_cell_occupancy;
+	uint32_t body_body_narrow_phase_test_count;
+	uint32_t body_segment_narrow_phase_test_count;
+	uint32_t manifold_count;
+	uint32_t contact_point_count;
+	uint32_t position_correction_visit_count;
+	uint32_t solver_iteration_count;
+	uint32_t solver_contact_visit_count;
+	uint32_t solver_changed_contact_count;
+	uint32_t broad_phase_fallback_count;
+};
+
+/* Optional elapsed-cycle sample for one step; the clock may wrap once per section. */
+struct picosystem_physics_step_profile {
+	uint32_t stage_cycles[PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT];
+	struct picosystem_physics_work_counters work;
+	uint32_t clock_read_count;
+};
+
 struct picosystem_physics_vector {
 	picosystem_physics_fixed_t x;
 	picosystem_physics_fixed_t y;
@@ -133,6 +184,7 @@ struct picosystem_physics_world {
 		static_segments[PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS];
 	struct picosystem_physics_contact contacts[PICOSYSTEM_PHYSICS_MAX_CONTACTS];
 	struct picosystem_physics_grid_cell grid_cells[PICOSYSTEM_PHYSICS_GRID_CELL_COUNT];
+	struct picosystem_physics_work_counters last_work;
 	picosystem_physics_fixed_t max_speed_per_tick;
 	uint32_t last_candidate_pair_count;
 	uint32_t last_possible_pair_count;
@@ -166,6 +218,13 @@ int picosystem_physics_world_step(
 int picosystem_physics_world_step_reference(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_vector *global_acceleration_per_tick);
+
+/* Advance one grid or reference step and collect optional platform-neutral timing. */
+int picosystem_physics_world_step_profiled(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_vector *global_acceleration_per_tick,
+	enum picosystem_physics_step_mode mode, const struct picosystem_physics_clock *clock,
+	struct picosystem_physics_step_profile *profile);
 
 const struct picosystem_physics_body *
 picosystem_physics_world_body_at(const struct picosystem_physics_world *world, size_t index);

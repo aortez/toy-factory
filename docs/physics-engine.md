@@ -11,13 +11,16 @@ must retain the ownership, determinism, and overload contracts defined here.
 
 ## Hardware and scheduling budget
 
-The uniform-grid build uses 166,012 bytes of the linker's 263 KiB RAM region and
-147,052 bytes of flash. Its 115,200-byte framebuffer and 3,840-byte display
+The profiling build uses 190,652 bytes of the linker's 263 KiB RAM region and
+151,952 bytes of flash. Its 115,200-byte framebuffer and 3,840-byte display
 transfer buffer dominate that footprint. The fixed-capacity physics world is
-14,968 bytes, including its 1,024-byte scratch grid, and the linked image retains
-roughly 97 KiB of RAM headroom. Physical timing acceptance is recorded after
-each candidate/solver configuration passes the native containment and oracle
-gates.
+15,024 bytes, including its 1,024-byte scratch grid and per-step deterministic
+work counters. The serialized A/B workspace is 21,360 bytes, is inactive during
+normal play, and avoids placing a second world on a thread stack. The profile
+command's 4,096-byte shell stack measured a 2,823-byte high-water mark. The
+linked image retains roughly 77 KiB of RAM headroom. Physical timing acceptance
+is recorded after each candidate/solver configuration passes the native
+containment and oracle gates.
 
 The initial engine targets are:
 
@@ -114,6 +117,47 @@ as the reference brute-force loops, preserving contact and solver order. Any
 geometry outside the grid causes an explicit whole-step brute-force fallback.
 The reference step remains callable by native tests, which compare every body,
 contact, and authoritative hash over mixed 12-body replays.
+
+## Profiling contract
+
+Every physics step publishes deterministic work counters for possible and
+retained pairs, cell insertions and occupancy, split narrow-phase tests,
+manifolds and contact points, positional-correction visits, solver iterations
+and visits, changed-contact impulses, and unexpected broad-phase fallbacks.
+These counters are fixed-size scratch diagnostics and do not participate in the
+authoritative hash.
+
+The platform-neutral step API optionally accepts a caller-provided wrapping
+32-bit cycle clock. No Zephyr header or clock is referenced by the physics or
+game-world modules. A profiled call divides elapsed cycles into force/integration,
+box geometry, grid/reference broad phase, body/body narrow phase, body/segment
+narrow phase, positional correction, velocity solving, and final clamping.
+`other` is the difference between the complete public step and those regions;
+it includes state validation plus timing-boundary overhead. `total` covers the
+complete valid physics step. The canonical eight-body scene performs 46 clock
+reads per measured step; the report includes a back-to-back clock-read delta so
+instrumentation cost remains visible rather than silently folded into a result.
+
+`picosystem profile compare [ticks]` operates only while the live simulation is
+paused. It resets a separate canonical world, runs 120 unmeasured warm-up ticks,
+then replays the same bounded input pattern for the grid and brute-force paths.
+Each individual measured call runs with Zephyr thread preemption locked, while
+interrupts remain enabled; the benchmark yields every 32 ticks outside the
+timed region so USB and board servicing remain responsive. Rendering and
+snapshot publication are absent by design. The two final worlds are checked by
+both authoritative hash and field-by-field persistent state comparison.
+
+Stage samples accumulate into 64 fine 32-microsecond bins followed by 64 coarse
+128-microsecond bins, covering tails through 10.24 milliseconds without
+increasing the fixed RAM footprint. The device reports count, mean, minimum,
+histogram-derived p50/p95/p99, exact maximum, and 1/120-second budget violations
+without per-tick logging. `make profile-ab` preserves the live run/pause mode,
+emits a concise comparison, and writes the complete version-1 JSON artifact.
+These isolated timings must not be compared directly with the live update value
+from `game stats`, which also contains game-demo and immutable-snapshot work and
+may be affected by renderer and scheduler activity. The first physical PIM559
+baseline is recorded in
+[`benchmarks/physics-profile`](../benchmarks/physics-profile/README.md).
 
 Contacts carry a stable point, normal, penetration depth, restitution target,
 and accumulated normal/tangent impulses. Box SAT selects from four face axes;
