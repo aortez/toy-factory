@@ -1,0 +1,17 @@
+{
+  "name": "deterministic-smoke",
+  "steps": [
+    {
+      "input": "right",
+      "ticks": 30
+    },
+    {
+      "input": "up",
+      "ticks": 15
+    }
+  ],
+  "expect": {
+    "hash": "e60b17ef",
+    "framebuffer_crc32": "3e08ecbb"
+  }
+}

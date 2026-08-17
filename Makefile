@@ -10,11 +10,13 @@ SERIAL_PORT_HELPER := ./scripts/find-serial-port.sh
 STEPS ?= 1
 INPUT ?= none
 OUT ?= artifacts/screenshot.png
+SEQUENCE ?= scripts/sequences/deterministic-smoke.json
+FAIL_SCREENSHOT ?= artifacts/sequence-failure.png
 
 .PHONY: help image setup build build-pio build-pio-dma format check check-pio-dma \
 	container-shell update update-pio update-pio-dma bootloader console status game-stats \
 	game-redraw display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
-	sim-state \
+	sim-reset sim-state sim-test \
 	flash monitor shell
 
 ##@ General
@@ -23,6 +25,7 @@ help: ## Show this list of targets
 	@printf 'Toy Factory\n\n'
 	@printf 'Usage:\n  make <target> [PORT=/dev/ttyACM0] [UF2_MOUNT=/path/to/RPI-RP2]\n'
 	@printf '                    [STEPS=1] [INPUT=none] [OUT=artifacts/screenshot.png]\n'
+	@printf '                    [SEQUENCE=path.json] [FAIL_SCREENSHOT=artifacts/failure.png]\n'
 	@awk 'BEGIN { FS = ":.*## " } \
 		/^##@ / { printf "\n%s:\n", substr($$0, 5); next } \
 		/^[a-zA-Z0-9_-]+:.*## / { printf "  %-18s %s\n", $$1, $$2 }' \
@@ -147,6 +150,15 @@ sim-run: image ## Resume exact real-time 120 Hz simulation scheduling
 			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
 				picosystem game run
 
+sim-reset: image ## Restore canonical tick-zero state while paused
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
+				picosystem game reset
+
 sim-step: image ## Advance a paused simulation by STEPS=<1-120> exact ticks
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
 		$(DOCKER) run --rm --user 0:0 \
@@ -173,6 +185,17 @@ sim-state: image ## Print exact simulation state and deterministic hash
 			"$(FIRMWARE_IMAGE)" \
 			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
 				picosystem game state
+
+sim-test: image ## Run SEQUENCE=<JSON> with deterministic hash/CRC assertions
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/sequence_runner.py \
+				--failure-screenshot "/workspace/app/$(FAIL_SCREENSHOT)" \
+				--owner-uid "$$(id -u)" --owner-gid "$$(id -g)" \
+				"$$port" "/workspace/app/$(SEQUENCE)"
 
 ##@ Compatibility aliases
 

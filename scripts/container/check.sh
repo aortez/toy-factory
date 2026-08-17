@@ -16,6 +16,7 @@ for path in sorted(Path("scripts/container").glob("*.py")):
     compile(path.read_text(), str(path), "exec")
 PY
 python3 scripts/tests/framebuffer-capture-test.py
+python3 scripts/tests/sequence-runner-test.py
 python3 scripts/tests/serial-command-test.py
 git diff --check
 ./scripts/container/build.sh --pristine

@@ -15,7 +15,7 @@ import zlib
 sys.dont_write_bytecode = True
 CONTAINER_DIR = Path(__file__).parents[1] / "container"
 sys.path.insert(0, str(CONTAINER_DIR))
-MODULE_PATH = CONTAINER_DIR / "framebuffer-capture.py"
+MODULE_PATH = CONTAINER_DIR / "framebuffer_capture.py"
 MODULE_SPEC = importlib.util.spec_from_file_location("framebuffer_capture", MODULE_PATH)
 if MODULE_SPEC is None or MODULE_SPEC.loader is None:
     raise RuntimeError(f"could not load {MODULE_PATH}")

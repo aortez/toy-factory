@@ -328,8 +328,22 @@ static int process_game_control_requests(struct game_runtime_control *control,
 					scheduler, k_uptime_ticks(), CONFIG_SYS_CLOCK_TICKS_PER_SEC,
 					PICOSYSTEM_GAME_TICK_RATE_HZ);
 				if (result == 0) {
+					result = picosystem_game_demo_restart_measurement(game);
+				}
+				if (result == 0) {
 					control->paused = false;
 				}
+			}
+			break;
+		case PICOSYSTEM_GAME_CONTROL_RESET:
+			if (!control->paused) {
+				result = -EBUSY;
+				break;
+			}
+			result = picosystem_game_demo_reset(game);
+			if (result == 0) {
+				control->remote_input = (struct picosystem_game_input){0};
+				control->remote_input_enabled = true;
 			}
 			break;
 		case PICOSYSTEM_GAME_CONTROL_STEP:
@@ -384,7 +398,8 @@ static int process_game_control_requests(struct game_runtime_control *control,
 
 		if ((result != 0) &&
 		    ((request.operation == PICOSYSTEM_GAME_CONTROL_STEP) ||
-		     (request.operation == PICOSYSTEM_GAME_CONTROL_RUN)) &&
+		     (request.operation == PICOSYSTEM_GAME_CONTROL_RUN) ||
+		     (request.operation == PICOSYSTEM_GAME_CONTROL_RESET)) &&
 		    (result != -EBUSY) && (result != -ERANGE)) {
 			return result;
 		}

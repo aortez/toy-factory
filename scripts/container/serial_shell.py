@@ -10,6 +10,7 @@ import serial
 
 PROMPTS = (b"toy-factory:~$ ", b"picosystem:~$ ")
 ANSI_ESCAPE = re.compile(rb"\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-_])")
+COMMAND_SETTLE_SECONDS = 0.1
 
 
 class SerialShellError(RuntimeError):
@@ -90,30 +91,79 @@ def has_line_prefix(output: str, prefix: str) -> bool:
     return any(line.startswith(prefix) for line in output.splitlines())
 
 
-def run_command(
-    port: str,
-    command: str,
-    timeout_seconds: float = 3.0,
-    expect_disconnect: bool = False,
-) -> str:
-    with serial.Serial(
-        port,
-        baudrate=115200,
-        timeout=0.05,
-        write_timeout=1.0,
-        exclusive=True,
-    ) as connection:
-        connection.reset_input_buffer()
-        # Abort any partially entered line, then wait for all pending shell
-        # redraws before sending the real command. Without the quiet period,
-        # a stale prompt can make a short-lived client exit too early.
-        connection.write(b"\x03\r")
-        connection.flush()
+class SerialShellSession:
+    """One exclusive serial connection supporting multiple shell commands."""
 
-        greeting = read_until_prompt(connection, timeout_seconds, settle_seconds=0.2)
-        if find_prompt(greeting) is None:
-            raise SerialShellError(f"no Toy Factory shell prompt received from {port}")
+    def __init__(self, port: str, default_timeout_seconds: float = 3.0) -> None:
+        if not port:
+            raise ValueError("serial port must not be empty")
+        if default_timeout_seconds <= 0.0:
+            raise ValueError("serial timeout must be positive")
 
+        self.port = port
+        self.default_timeout_seconds = default_timeout_seconds
+        self.connection: serial.Serial | None = None
+
+    def __enter__(self) -> "SerialShellSession":
+        self.open()
+        return self
+
+    def __exit__(self, _exception_type: object, _exception: object, _traceback: object) -> None:
+        self.close()
+
+    def open(self) -> None:
+        if self.connection is not None:
+            raise SerialShellError(f"serial session for {self.port} is already open")
+
+        connection = serial.Serial(
+            self.port,
+            baudrate=115200,
+            timeout=0.05,
+            write_timeout=1.0,
+            exclusive=True,
+        )
+        try:
+            # Abort any partially entered line, then wait for pending shell redraws.
+            connection.reset_input_buffer()
+            connection.write(b"\x03\r")
+            connection.flush()
+
+            greeting = read_until_prompt(
+                connection,
+                self.default_timeout_seconds,
+                settle_seconds=0.2,
+            )
+            if find_prompt(greeting) is None:
+                raise SerialShellError(
+                    f"no Toy Factory shell prompt received from {self.port}"
+                )
+        except BaseException:
+            connection.close()
+            raise
+
+        self.connection = connection
+
+    def close(self) -> None:
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None
+
+    def run(
+        self,
+        command: str,
+        timeout_seconds: float | None = None,
+        expect_disconnect: bool = False,
+    ) -> str:
+        if self.connection is None:
+            raise SerialShellError(f"serial session for {self.port} is not open")
+        if not command or ("\r" in command) or ("\n" in command):
+            raise ValueError("shell command must be one nonempty line")
+
+        timeout = self.default_timeout_seconds if timeout_seconds is None else timeout_seconds
+        if timeout <= 0.0:
+            raise ValueError("serial timeout must be positive")
+
+        connection = self.connection
         connection.reset_input_buffer()
         try:
             connection.write(command.encode("utf-8") + b"\r")
@@ -124,16 +174,30 @@ def run_command(
             raise
 
         if expect_disconnect:
-            response, disconnected = read_until_disconnect(connection, timeout_seconds)
+            response, disconnected = read_until_disconnect(connection, timeout)
         else:
-            response = read_until_prompt(connection, timeout_seconds)
+            response = read_until_prompt(
+                connection,
+                timeout,
+                settle_seconds=COMMAND_SETTLE_SECONDS,
+            )
             disconnected = False
 
         output = clean_response(response, command)
         if expect_disconnect:
             if not disconnected:
-                raise SerialShellError(f"'{command}' did not disconnect {port}")
+                raise SerialShellError(f"'{command}' did not disconnect {self.port}")
         elif find_prompt(response) is None:
-            raise SerialShellError(f"timed out waiting for '{command}' on {port}")
+            raise SerialShellError(f"timed out waiting for '{command}' on {self.port}")
 
         return output
+
+
+def run_command(
+    port: str,
+    command: str,
+    timeout_seconds: float = 3.0,
+    expect_disconnect: bool = False,
+) -> str:
+    with SerialShellSession(port, default_timeout_seconds=timeout_seconds) as session:
+        return session.run(command, expect_disconnect=expect_disconnect)

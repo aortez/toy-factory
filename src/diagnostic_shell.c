@@ -187,10 +187,11 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 	const int64_t metrics_time_ms = snapshot.snapshot_uptime_ms;
 	const char *const usb_name = snapshot.power.usb_power_present ? "present" : "absent";
 	const char *const charge_name = snapshot.power.charging ? "active" : "inactive";
-	const uint32_t simulation_rate_tenths = measured_rate_tenths(
-		snapshot.game.logic_tick_count, snapshot.game.start_uptime_ms, metrics_time_ms);
+	const uint32_t simulation_rate_tenths =
+		measured_rate_tenths(snapshot.game.measured_logic_tick_count,
+				     snapshot.game.start_uptime_ms, metrics_time_ms);
 	const uint32_t frame_rate_tenths =
-		measured_rate_tenths(snapshot.game.presented_frame_count,
+		measured_rate_tenths(snapshot.game.measured_presented_frame_count,
 				     snapshot.game.start_uptime_ms, metrics_time_ms);
 
 	shell_print(shell, "uptime: %lld ms", now_ms);
@@ -207,18 +208,21 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.graphics.last_present_height,
 		    snapshot.game.graphics.present_count);
 	shell_print(shell,
-		    "simulation: ticks=%u (%u.%u Hz), update=%u us (max=%u), backlog=%u, "
+		    "simulation: ticks=%u, window=%u (%u.%u Hz), update=%u us (max=%u), "
+		    "backlog=%u, "
 		    "skipped=%u, over-budget=%u",
-		    snapshot.game.logic_tick_count, simulation_rate_tenths / 10U,
-		    simulation_rate_tenths % 10U, snapshot.game.last_update_time_us,
-		    snapshot.game.max_update_time_us, snapshot.game.max_backlog_ticks,
-		    snapshot.game.skipped_tick_count, snapshot.game.over_budget_tick_count);
+		    snapshot.game.logic_tick_count, snapshot.game.measured_logic_tick_count,
+		    simulation_rate_tenths / 10U, simulation_rate_tenths % 10U,
+		    snapshot.game.last_update_time_us, snapshot.game.max_update_time_us,
+		    snapshot.game.max_backlog_ticks, snapshot.game.skipped_tick_count,
+		    snapshot.game.over_budget_tick_count);
 	shell_print(shell,
-		    "render: running=%s, frames=%u (%u.%u fps), snapshots=%u published/%u "
-		    "superseded, "
+		    "render: running=%s, frames=%u, window=%u (%u.%u fps), snapshots=%u "
+		    "published/%u superseded, "
 		    "age=%u us (dirty max=%u)",
 		    snapshot.game.render_thread_running ? "yes" : "no",
-		    snapshot.game.presented_frame_count, frame_rate_tenths / 10U,
+		    snapshot.game.presented_frame_count,
+		    snapshot.game.measured_presented_frame_count, frame_rate_tenths / 10U,
 		    frame_rate_tenths % 10U, snapshot.game.published_snapshot_count,
 		    snapshot.game.superseded_snapshot_count, snapshot.game.last_snapshot_age_us,
 		    snapshot.game.max_dirty_snapshot_age_us);
@@ -327,9 +331,9 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 	const struct picosystem_graphics_stats *const graphics = &game->graphics;
 	const int64_t metrics_time_ms = snapshot.snapshot_uptime_ms;
 	const uint32_t simulation_rate_tenths = measured_rate_tenths(
-		game->logic_tick_count, game->start_uptime_ms, metrics_time_ms);
+		game->measured_logic_tick_count, game->start_uptime_ms, metrics_time_ms);
 	const uint32_t frame_rate_tenths = measured_rate_tenths(
-		game->presented_frame_count, game->start_uptime_ms, metrics_time_ms);
+		game->measured_presented_frame_count, game->start_uptime_ms, metrics_time_ms);
 
 	shell_print(shell, "buffers: framebuffer=%u bytes, transfer=%u bytes",
 		    graphics->framebuffer_bytes, graphics->transfer_buffer_bytes);
@@ -341,17 +345,19 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    graphics->last_present_time_us,
 		    graphics->last_present_throughput_kib_per_second);
 	shell_print(shell,
-		    "simulation: ticks=%u (%u.%u Hz), update=%u us (max=%u), backlog=%u, "
+		    "simulation: ticks=%u, window=%u (%u.%u Hz), update=%u us (max=%u), "
+		    "backlog=%u, "
 		    "skipped=%u, over-budget=%u",
-		    game->logic_tick_count, simulation_rate_tenths / 10U,
-		    simulation_rate_tenths % 10U, game->last_update_time_us,
-		    game->max_update_time_us, game->max_backlog_ticks, game->skipped_tick_count,
-		    game->over_budget_tick_count);
+		    game->logic_tick_count, game->measured_logic_tick_count,
+		    simulation_rate_tenths / 10U, simulation_rate_tenths % 10U,
+		    game->last_update_time_us, game->max_update_time_us, game->max_backlog_ticks,
+		    game->skipped_tick_count, game->over_budget_tick_count);
 	shell_print(shell,
-		    "renderer: running=%s, frames=%u (%u.%u fps), render=%u us (dirty max=%u), "
-		    "full=%u, error=%d",
+		    "renderer: running=%s, frames=%u, window=%u (%u.%u fps), render=%u us "
+		    "(dirty max=%u), full=%u, error=%d",
 		    game->render_thread_running ? "yes" : "no", game->presented_frame_count,
-		    frame_rate_tenths / 10U, frame_rate_tenths % 10U, game->last_render_time_us,
+		    game->measured_presented_frame_count, frame_rate_tenths / 10U,
+		    frame_rate_tenths % 10U, game->last_render_time_us,
 		    game->max_dirty_render_time_us, game->full_redraw_count, game->render_error);
 	shell_print(shell, "snapshots: published=%u, superseded=%u, age=%u us (dirty max=%u us)",
 		    game->published_snapshot_count, game->superseded_snapshot_count,
@@ -528,7 +534,11 @@ static int submit_game_control(const struct shell *shell,
 	struct picosystem_game_control_state state;
 	const int err = picosystem_game_control_submit(request, &state);
 	if (err == -EBUSY) {
-		shell_error(shell, "Pause the simulation before stepping");
+		if (request->operation == PICOSYSTEM_GAME_CONTROL_RESET) {
+			shell_error(shell, "Pause the simulation before resetting");
+		} else {
+			shell_error(shell, "Pause the simulation before stepping");
+		}
 		return err;
 	}
 	if (err != 0) {
@@ -558,6 +568,17 @@ static int cmd_game_run(const struct shell *shell, size_t argc, char **argv)
 
 	const struct picosystem_game_control_request request = {
 		.operation = PICOSYSTEM_GAME_CONTROL_RUN,
+	};
+	return submit_game_control(shell, &request);
+}
+
+static int cmd_game_reset(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_RESET,
 	};
 	return submit_game_control(shell, &request);
 }
@@ -663,6 +684,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 				 "up-left|up-right|down-left|down-right>"),
 		      cmd_game_input, 2, 0),
 	SHELL_CMD_ARG(pause, NULL, "Pause at the next tick boundary.", cmd_game_pause, 1, 0),
+	SHELL_CMD_ARG(reset, NULL, "Restore canonical tick-zero state while paused.",
+		      cmd_game_reset, 1, 0),
 	SHELL_CMD_ARG(stats, NULL, "Show simulation, snapshot, and renderer metrics.",
 		      cmd_display_stats, 1, 0),
 	SHELL_CMD_ARG(state, NULL, "Show exact authoritative state.", cmd_game_state, 1, 0),

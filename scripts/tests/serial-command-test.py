@@ -61,6 +61,53 @@ class SerialCommandTest(unittest.TestCase):
             "Rebooting into the RP2040 ROM USB bootloader",
         )
 
+    def test_session_reuses_one_open_connection(self) -> None:
+        class FakeConnection:
+            def __init__(self) -> None:
+                self.response = bytearray()
+                self.commands = []
+                self.closed = False
+
+            @property
+            def in_waiting(self) -> int:
+                return len(self.response)
+
+            def reset_input_buffer(self) -> None:
+                self.response.clear()
+
+            def write(self, data: bytes) -> None:
+                command = data.decode().strip()
+                self.commands.append(command)
+                self.response.extend(
+                    f"{command}\r\nresult={len(self.commands)}\r\ntoy-factory:~$ ".encode()
+                )
+
+            def flush(self) -> None:
+                pass
+
+            def read(self, size: int) -> bytes:
+                chunk = bytes(self.response[:size])
+                del self.response[:size]
+                return chunk
+
+            def close(self) -> None:
+                self.closed = True
+
+        connection = FakeConnection()
+        session = serial_shell.SerialShellSession("/dev/fake")
+        session.connection = connection
+        original_settle = serial_shell.COMMAND_SETTLE_SECONDS
+        serial_shell.COMMAND_SETTLE_SECONDS = 0.0
+        try:
+            self.assertEqual(session.run("first"), "result=1")
+            self.assertEqual(session.run("second"), "result=2")
+            session.close()
+        finally:
+            serial_shell.COMMAND_SETTLE_SECONDS = original_settle
+
+        self.assertEqual(connection.commands, ["first", "second"])
+        self.assertTrue(connection.closed)
+
 
 if __name__ == "__main__":
     unittest.main()
