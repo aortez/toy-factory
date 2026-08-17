@@ -368,6 +368,10 @@ goldens. The default remote-debug image uses 147,108 bytes of RAM (54.62%) and
 transfer buffer, two 24-byte render snapshots, and a 1,024-byte shell TX ring.
 Full frames bypass the staging buffer with one contiguous display write.
 
+GitHub Actions runs `make check` and builds the PIO and PIO/DMA variants for
+every pull request and push to `main`. Tests that need a connected PicoSystem
+remain part of the physical smoke-test boundary rather than hosted CI.
+
 On the tested PIM559, the exact 120 Hz scheduler ran with a maximum observed
 backlog of one, zero skipped ticks, and zero over-budget updates. The worst
 simulation update during the run was 1,149 us of its 8,333 us budget. Normal
