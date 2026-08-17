@@ -21,6 +21,7 @@ path:
 - exposes acknowledged reset, pause, exact-step, injected-input, state-hash, and
   framebuffer-capture controls over USB;
 - runs declarative deterministic device sequences with state/framebuffer assertions;
+- resets the physics world to its canonical starting state when Y is pressed;
 - plays a short, bounded piezo tone when B is pressed;
 - averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
 - classifies the GP2 VBUS and active-low GP24 charger-status inputs;
@@ -115,10 +116,11 @@ moved circle's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
 empty swept area between distant footprints.
 The D-pad tilts the global acceleration field while neutral input retains
-downward gravity. Press A to queue a full-screen redraw for comparison and B to
-play a 440 Hz tone for 180 ms. A full transfer still occupies the panel for
-roughly 80 ms, but it runs on the renderer thread: physics and input sampling
-continue at 120 Hz and newer snapshots coalesce while the renderer is busy.
+downward gravity. Press A to queue a full-screen redraw for comparison, B to
+play a 440 Hz tone for 180 ms, and Y to reset the world. A full transfer still
+occupies the panel for roughly 80 ms, but it runs on the renderer thread:
+physics and input sampling continue at 120 Hz and newer snapshots coalesce
+while the renderer is busy.
 
 The RGB LED shows red, green, and blue in sequence at startup, then blinks blue.
 A/B/X illuminate red/green/blue respectively; Y illuminates all three channels.
