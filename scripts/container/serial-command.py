@@ -3,85 +3,11 @@
 """Run one command against the Toy Factory Zephyr shell over USB CDC ACM."""
 
 import argparse
-import re
 import sys
-import time
 
 import serial
 
-
-PROMPTS = (b"toy-factory:~$ ", b"picosystem:~$ ")
-ANSI_ESCAPE = re.compile(rb"\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-_])")
-
-
-def find_prompt(data: bytes | bytearray) -> bytes | None:
-    return next((prompt for prompt in PROMPTS if prompt in data), None)
-
-
-def read_until_prompt(
-    connection: serial.Serial,
-    timeout_seconds: float,
-    settle_seconds: float = 0.0,
-) -> bytes:
-    deadline = time.monotonic() + timeout_seconds
-    quiet_deadline = deadline
-    received = bytearray()
-    prompt_seen = False
-
-    while time.monotonic() < deadline:
-        chunk = connection.read(max(connection.in_waiting, 1))
-        if chunk:
-            received.extend(chunk)
-            if find_prompt(received) is not None:
-                prompt_seen = True
-                quiet_deadline = time.monotonic() + settle_seconds
-        elif prompt_seen and time.monotonic() >= quiet_deadline:
-            break
-
-    return bytes(received)
-
-
-def read_until_disconnect(
-    connection: serial.Serial,
-    timeout_seconds: float,
-) -> tuple[bytes, bool]:
-    deadline = time.monotonic() + timeout_seconds
-    received = bytearray()
-
-    while time.monotonic() < deadline:
-        try:
-            chunk = connection.read(max(connection.in_waiting, 1))
-        except (OSError, serial.SerialException):
-            return bytes(received), True
-
-        if chunk:
-            received.extend(chunk)
-
-    return bytes(received), False
-
-
-def clean_response(response: bytes, command: str) -> str:
-    text = ANSI_ESCAPE.sub(b"", response).decode("utf-8", errors="replace")
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    lines = [line.rstrip() for line in text.splitlines()]
-
-    while lines and not lines[0]:
-        lines.pop(0)
-
-    for prompt in PROMPTS:
-        decoded_prompt = prompt.decode()
-        if lines and lines[0].startswith(decoded_prompt):
-            lines[0] = lines[0][len(decoded_prompt) :]
-            break
-
-    if lines and lines[0].strip() == command:
-        lines.pop(0)
-
-    prompt_texts = {prompt.decode().strip() for prompt in PROMPTS}
-    while lines and (not lines[-1] or lines[-1].strip() in prompt_texts):
-        lines.pop()
-
-    return "\n".join(lines)
+from serial_shell import SerialShellError, has_line_prefix, run_command
 
 
 def parse_args() -> argparse.Namespace:
@@ -94,6 +20,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("port", help="USB CDC ACM device")
     parser.add_argument("command", nargs="+", help="shell command and arguments")
     parser.add_argument("--timeout", type=float, default=3.0, help="response timeout in seconds")
+    parser.add_argument(
+        "--require-prefix",
+        help="fail unless one response line starts with this success marker",
+    )
     return parser.parse_args()
 
 
@@ -102,55 +32,21 @@ def main() -> int:
     command = " ".join(args.command)
 
     try:
-        with serial.Serial(
+        output = run_command(
             args.port,
-            baudrate=115200,
-            timeout=0.05,
-            write_timeout=1.0,
-            exclusive=True,
-        ) as connection:
-            connection.reset_input_buffer()
-            # Abort any partially entered line, then wait for all pending shell
-            # redraws before sending the real command. Without the quiet period,
-            # a stale prompt can make a short-lived client exit too early.
-            connection.write(b"\x03\r")
-            connection.flush()
-
-            greeting = read_until_prompt(connection, args.timeout, settle_seconds=0.2)
-            if find_prompt(greeting) is None:
-                print(f"no Toy Factory shell prompt received from {args.port}", file=sys.stderr)
-                return 1
-
-            connection.reset_input_buffer()
-            try:
-                connection.write(command.encode("utf-8") + b"\r")
-                connection.flush()
-            except (OSError, serial.SerialException):
-                if args.expect_disconnect:
-                    return 0
-                raise
-
-            if args.expect_disconnect:
-                response, disconnected = read_until_disconnect(connection, args.timeout)
-            else:
-                response = read_until_prompt(connection, args.timeout)
-                disconnected = False
-
-            output = clean_response(response, command)
-            if output:
-                print(output)
-
-            if args.expect_disconnect:
-                if not disconnected:
-                    print(
-                        f"'{command}' did not disconnect {args.port}",
-                        file=sys.stderr,
-                    )
-                    return 1
-            elif find_prompt(response) is None:
-                print(f"timed out waiting for '{command}' on {args.port}", file=sys.stderr)
-                return 1
-    except (OSError, serial.SerialException) as error:
+            command,
+            timeout_seconds=args.timeout,
+            expect_disconnect=args.expect_disconnect,
+        )
+        if output:
+            print(output)
+        if args.require_prefix and not has_line_prefix(output, args.require_prefix):
+            print(
+                f"'{command}' did not return the expected '{args.require_prefix}' marker",
+                file=sys.stderr,
+            )
+            return 1
+    except (OSError, serial.SerialException, SerialShellError) as error:
         print(f"could not use {args.port}: {error}", file=sys.stderr)
         return 1
 

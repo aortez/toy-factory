@@ -11,7 +11,9 @@ target_sources(app PRIVATE
 	src/diagnostic_shell.c
 	src/display_sync.c
 	src/fixed_rate_scheduler.c
+	src/game_control.c
 	src/game_demo.c
+	src/game_world.c
 	src/graphics.c
 	src/main.c
 	src/piezo.c

@@ -1,6 +1,7 @@
 /build/
 /build-pio/
 /build-pio-dma/
+/artifacts/
 /.cache/
 /.west/
 __pycache__/

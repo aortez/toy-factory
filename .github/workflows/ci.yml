@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Native tests and firmware builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build pinned development image
+        run: make image
+
+      # The image deliberately builds as its unprivileged UID 1000 user. GitHub's
+      # checkout may use a different UID, so give that user ownership before the
+      # container creates build directories in the bind-mounted repository.
+      - name: Prepare checkout for the build container
+        run: sudo chown -R 1000:1000 "$GITHUB_WORKSPACE"
+
+      - name: Run native tests and build default firmware
+        run: make check
+
+      - name: Build PIO firmware variant
+        run: make build-pio
+
+      - name: Build PIO and DMA firmware variant
+        run: make check-pio-dma

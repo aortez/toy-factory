@@ -26,25 +26,21 @@ LOG_MODULE_REGISTER(picosystem_game_demo, LOG_LEVEL_INF);
 #define PLAYFIELD_BOTTOM               (PICOSYSTEM_GRAPHICS_HEIGHT - 1U)
 #define PLAYFIELD_WIDTH                (PLAYFIELD_RIGHT - PLAYFIELD_LEFT)
 #define PLAYFIELD_HEIGHT               (PLAYFIELD_BOTTOM - PLAYFIELD_TOP)
-#define SPRITE_WIDTH                   16U
-#define SPRITE_HEIGHT                  16U
+#define SPRITE_WIDTH                   PICOSYSTEM_GAME_SPRITE_WIDTH_PIXELS
+#define SPRITE_HEIGHT                  PICOSYSTEM_GAME_SPRITE_HEIGHT_PIXELS
 #define SPRITE_STRIDE_BYTES            2U
-#define SPRITE_SPEED_PIXELS_PER_SECOND 125
-#define SPRITE_MIN_X                   PLAYFIELD_LEFT
-#define SPRITE_MAX_X                   (PLAYFIELD_RIGHT - SPRITE_WIDTH)
-#define SPRITE_MIN_Y                   (PLAYFIELD_TOP + 1U)
-#define SPRITE_MAX_Y                   (PLAYFIELD_BOTTOM - SPRITE_HEIGHT)
-#define SPRITE_START_X                 ((SPRITE_MIN_X + SPRITE_MAX_X) / 2U)
-#define SPRITE_START_Y                 ((SPRITE_MIN_Y + SPRITE_MAX_Y) / 2U)
+#define SPRITE_MIN_X                   PICOSYSTEM_GAME_SPRITE_MIN_X_PIXELS
+#define SPRITE_MAX_X                   PICOSYSTEM_GAME_SPRITE_MAX_X_PIXELS
+#define SPRITE_MIN_Y                   PICOSYSTEM_GAME_SPRITE_MIN_Y_PIXELS
+#define SPRITE_MAX_Y                   PICOSYSTEM_GAME_SPRITE_MAX_Y_PIXELS
 #define BACKGROUND_TILE_SIZE           12U
 #define HEADER_TEXT                    "SIM 120HZ TE DISPLAY"
 #define HEADER_TEXT_X                  8
 #define HEADER_TEXT_Y                  7
 #define HEADER_TEXT_SCALE              2U
-#define FIXED_FRACTION_BITS            16U
-#define FIXED_ONE                      (INT32_C(1) << FIXED_FRACTION_BITS)
 #define RENDER_THREAD_STACK_SIZE       2048U
 #define RENDER_THREAD_PRIORITY         1
+#define FRAMEBUFFER_CAPTURE_TIMEOUT_MS 2000
 
 struct game_render_snapshot {
 	int64_t published_uptime_ticks;
@@ -59,6 +55,7 @@ struct game_renderer_metrics {
 	struct picosystem_graphics_stats graphics;
 	uint32_t published_snapshot_count;
 	uint32_t superseded_snapshot_count;
+	uint32_t presented_snapshot_sequence;
 	uint32_t presented_frame_count;
 	uint32_t full_redraw_count;
 	uint32_t last_render_time_us;
@@ -76,6 +73,8 @@ struct game_renderer_metrics {
 struct game_renderer_context {
 	struct k_spinlock lock;
 	struct k_sem snapshot_ready;
+	struct k_sem frame_presented;
+	struct k_mutex framebuffer_mutex;
 	struct game_render_snapshot snapshots[2];
 	struct game_renderer_metrics metrics;
 	struct picosystem_graphics_stats live_graphics;
@@ -105,9 +104,10 @@ BUILD_ASSERT(SPRITE_WIDTH <= PLAYFIELD_WIDTH);
 BUILD_ASSERT(SPRITE_HEIGHT < PLAYFIELD_HEIGHT);
 BUILD_ASSERT(SPRITE_STRIDE_BYTES >= DIV_ROUND_UP(SPRITE_WIDTH, 8U));
 BUILD_ASSERT(sizeof(sprite_data) == (SPRITE_HEIGHT * SPRITE_STRIDE_BYTES));
-BUILD_ASSERT((SPRITE_MAX_X * FIXED_ONE) <= INT32_MAX);
-BUILD_ASSERT((SPRITE_MAX_Y * FIXED_ONE) <= INT32_MAX);
-BUILD_ASSERT((SPRITE_SPEED_PIXELS_PER_SECOND * FIXED_ONE) <= INT32_MAX);
+BUILD_ASSERT(SPRITE_MIN_X == PLAYFIELD_LEFT);
+BUILD_ASSERT(SPRITE_MAX_X == (PLAYFIELD_RIGHT - SPRITE_WIDTH));
+BUILD_ASSERT(SPRITE_MIN_Y == (PLAYFIELD_TOP + 1U));
+BUILD_ASSERT(SPRITE_MAX_Y == (PLAYFIELD_BOTTOM - SPRITE_HEIGHT));
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_MAIN_THREAD_PRIORITY);
 BUILD_ASSERT(sizeof(struct game_render_snapshot) == 24U);
 
@@ -134,7 +134,7 @@ static uint32_t cycles_to_us(uint32_t cycles)
 
 static uint16_t fixed_to_pixel(int32_t value)
 {
-	return (uint16_t)(value >> FIXED_FRACTION_BITS);
+	return (uint16_t)(value >> PICOSYSTEM_GAME_FIXED_FRACTION_BITS);
 }
 
 static picosystem_color_t background_color(uint16_t x, uint16_t y)
@@ -205,32 +205,16 @@ static struct picosystem_rect sprite_movement_region(const struct game_render_sn
 	};
 }
 
-static int32_t move_coordinate(int32_t current, int32_t *velocity, int32_t minimum, int32_t maximum)
-{
-	const int32_t speed = (*velocity < 0) ? -*velocity : *velocity;
-	int32_t requested = current + (*velocity / (int32_t)PICOSYSTEM_GAME_TICK_RATE_HZ);
-
-	if (requested < minimum) {
-		requested = minimum;
-		*velocity = speed;
-	} else if (requested > maximum) {
-		requested = maximum;
-		*velocity = -speed;
-	}
-
-	return requested;
-}
-
 static struct game_render_snapshot
 snapshot_from_state(const struct picosystem_game_demo_state *state)
 {
 	return (struct game_render_snapshot){
 		.published_uptime_ticks = k_uptime_ticks(),
 		.sequence = state->snapshot_sequence,
-		.logic_tick_count = state->logic_tick_count,
+		.logic_tick_count = state->world.logic_tick_count,
 		.redraw_request_sequence = state->redraw_request_sequence,
-		.sprite_x = fixed_to_pixel(state->sprite_x_fixed),
-		.sprite_y = fixed_to_pixel(state->sprite_y_fixed),
+		.sprite_x = fixed_to_pixel(state->world.sprite_x_fixed),
+		.sprite_y = fixed_to_pixel(state->world.sprite_y_fixed),
 	};
 }
 
@@ -279,24 +263,24 @@ static uint32_t snapshot_age_us(const struct game_render_snapshot *snapshot)
 static int present_snapshot(const struct game_render_snapshot *snapshot, bool full_redraw,
 			    uint16_t presented_x, uint16_t presented_y)
 {
+	int err;
 	if (full_redraw) {
-		int err = render_full_scene(snapshot);
-		if (err != 0) {
-			return err;
+		err = render_full_scene(snapshot);
+		if (err == 0) {
+			err = picosystem_graphics_present_full(&renderer.live_graphics);
 		}
-
-		return picosystem_graphics_present_full(&renderer.live_graphics);
+	} else {
+		const struct picosystem_rect dirty_region =
+			sprite_movement_region(snapshot, presented_x, presented_y);
+		render_playfield_background(&dirty_region);
+		err = render_sprite(snapshot->sprite_x, snapshot->sprite_y);
+		if (err == 0) {
+			err = picosystem_graphics_present_region(&renderer.live_graphics,
+								 &dirty_region);
+		}
 	}
 
-	const struct picosystem_rect dirty_region =
-		sprite_movement_region(snapshot, presented_x, presented_y);
-	render_playfield_background(&dirty_region);
-	int err = render_sprite(snapshot->sprite_x, snapshot->sprite_y);
-	if (err != 0) {
-		return err;
-	}
-
-	return picosystem_graphics_present_region(&renderer.live_graphics, &dirty_region);
+	return err;
 }
 
 static void record_renderer_failure(int err)
@@ -321,6 +305,7 @@ static void record_presented_snapshot(const struct game_render_snapshot *snapsho
 
 	renderer.metrics.graphics = renderer.live_graphics;
 	add_saturated(&renderer.metrics.superseded_snapshot_count, superseded_count);
+	renderer.metrics.presented_snapshot_sequence = snapshot->sequence;
 	increment_saturated(&renderer.metrics.presented_frame_count);
 	if (full_redraw) {
 		increment_saturated(&renderer.metrics.full_redraw_count);
@@ -337,6 +322,7 @@ static void record_presented_snapshot(const struct game_render_snapshot *snapsho
 	renderer.metrics.presented_sprite_x = snapshot->sprite_x;
 	renderer.metrics.presented_sprite_y = snapshot->sprite_y;
 	k_spin_unlock(&renderer.lock, key);
+	k_sem_give(&renderer.frame_presented);
 }
 
 static void render_thread_entry(void *argument1, void *argument2, void *argument3)
@@ -377,14 +363,21 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 
 		const bool full_redraw_pending =
 			pending_snapshot.redraw_request_sequence != consumed_redraw_sequence;
+		int err = k_mutex_lock(&renderer.framebuffer_mutex, K_FOREVER);
+		if (err != 0) {
+			LOG_ERR("Renderer framebuffer lock failed (%d)", err);
+			record_renderer_failure(err);
+			return;
+		}
 		const uint32_t start_cycles = k_cycle_get_32();
 		if (!full_redraw_pending) {
 			(void)picosystem_display_sync_wait_for_vblank();
 		}
 
-		/* Late-latch the newest authoritative state after the TE wait. */
+		/* Late-latch only after capture contention and the TE wait have ended. */
 		struct game_render_snapshot snapshot;
 		if (!read_latest_snapshot(&snapshot) || (snapshot.sequence == consumed_sequence)) {
+			k_mutex_unlock(&renderer.framebuffer_mutex);
 			continue;
 		}
 
@@ -392,8 +385,10 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 		const uint32_t superseded_count = sequence_delta - 1U;
 		const bool full_redraw =
 			snapshot.redraw_request_sequence != consumed_redraw_sequence;
-		const int err = present_snapshot(&snapshot, full_redraw, presented_x, presented_y);
+
+		err = present_snapshot(&snapshot, full_redraw, presented_x, presented_y);
 		if (err != 0) {
+			k_mutex_unlock(&renderer.framebuffer_mutex);
 			LOG_ERR("Renderer failed to present snapshot %u (%d)", snapshot.sequence,
 				err);
 			record_renderer_failure(err);
@@ -406,6 +401,7 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 		presented_x = snapshot.sprite_x;
 		presented_y = snapshot.sprite_y;
 		record_presented_snapshot(&snapshot, full_redraw, superseded_count, render_time_us);
+		k_mutex_unlock(&renderer.framebuffer_mutex);
 
 		if (full_redraw) {
 			LOG_INF("Asynchronous full redraw: %u us present, %u us renderer wall time",
@@ -420,16 +416,21 @@ int picosystem_game_demo_init(struct picosystem_game_demo_state *state)
 		return -EINVAL;
 	}
 
+	struct picosystem_game_world initial_world;
+	int err = picosystem_game_world_reset(&initial_world);
+	if (err != 0) {
+		return err;
+	}
 	*state = (struct picosystem_game_demo_state){
-		.sprite_x_fixed = SPRITE_START_X * FIXED_ONE,
-		.sprite_y_fixed = SPRITE_START_Y * FIXED_ONE,
-		.velocity_x_fixed_per_second = SPRITE_SPEED_PIXELS_PER_SECOND * FIXED_ONE,
-		.velocity_y_fixed_per_second = SPRITE_SPEED_PIXELS_PER_SECOND * FIXED_ONE,
+		.world = initial_world,
 	};
+
 	renderer = (struct game_renderer_context){0};
 	k_sem_init(&renderer.snapshot_ready, 0U, 1U);
+	k_sem_init(&renderer.frame_presented, 0U, 1U);
+	k_mutex_init(&renderer.framebuffer_mutex);
 
-	int err = picosystem_graphics_init(&renderer.live_graphics);
+	err = picosystem_graphics_init(&renderer.live_graphics);
 	if (err != 0) {
 		return err;
 	}
@@ -457,6 +458,7 @@ int picosystem_game_demo_init(struct picosystem_game_demo_state *state)
 	renderer.metrics = (struct game_renderer_metrics){
 		.graphics = renderer.live_graphics,
 		.published_snapshot_count = 1U,
+		.presented_snapshot_sequence = initial_snapshot.sequence,
 		.render_stack_size_bytes = K_THREAD_STACK_SIZEOF(render_thread_stack),
 		.presented_sprite_x = initial_snapshot.sprite_x,
 		.presented_sprite_y = initial_snapshot.sprite_y,
@@ -477,11 +479,57 @@ int picosystem_game_demo_start_simulation(struct picosystem_game_demo_state *sta
 	if ((state == NULL) || !state->ready) {
 		return -EINVAL;
 	}
-	if ((state->start_uptime_ms != 0) || (state->logic_tick_count != 0U)) {
+	if ((state->start_uptime_ms != 0) || (state->world.logic_tick_count != 0U)) {
 		return -EALREADY;
 	}
 
+	return picosystem_game_demo_restart_measurement(state);
+}
+
+int picosystem_game_demo_restart_measurement(struct picosystem_game_demo_state *state)
+{
+	if ((state == NULL) || !state->ready) {
+		return -EINVAL;
+	}
+
+	uint32_t presented_frame_count;
+	{
+		const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
+		presented_frame_count = renderer.metrics.presented_frame_count;
+		k_spin_unlock(&renderer.lock, key);
+	}
+
+	state->measurement_start_logic_tick_count = state->world.logic_tick_count;
+	state->measurement_start_presented_frame_count = presented_frame_count;
 	state->start_uptime_ms = k_uptime_get();
+	return 0;
+}
+
+int picosystem_game_demo_reset(struct picosystem_game_demo_state *state)
+{
+	if ((state == NULL) || !state->ready) {
+		return -EINVAL;
+	}
+
+	const uint32_t snapshot_sequence = state->snapshot_sequence;
+	const uint32_t redraw_request_sequence = state->redraw_request_sequence + 1U;
+	struct picosystem_game_world reset_world;
+	int err = picosystem_game_world_reset(&reset_world);
+	if (err != 0) {
+		return err;
+	}
+
+	*state = (struct picosystem_game_demo_state){
+		.world = reset_world,
+		.redraw_request_sequence = redraw_request_sequence,
+		.snapshot_sequence = snapshot_sequence,
+		.ready = true,
+	};
+	err = picosystem_game_demo_restart_measurement(state);
+	if (err != 0) {
+		return err;
+	}
+	publish_snapshot(state, true);
 	return 0;
 }
 
@@ -492,27 +540,12 @@ int picosystem_game_demo_update(struct picosystem_game_demo_state *state,
 		return -EINVAL;
 	}
 
-	if ((input->horizontal < -1) || (input->horizontal > 1) || (input->vertical < -1) ||
-	    (input->vertical > 1)) {
-		return -ERANGE;
-	}
-
 	const uint32_t start_cycles = k_cycle_get_32();
-	const int32_t speed_fixed = SPRITE_SPEED_PIXELS_PER_SECOND * FIXED_ONE;
-	if (input->horizontal != 0) {
-		state->velocity_x_fixed_per_second = input->horizontal * speed_fixed;
-	}
-	if (input->vertical != 0) {
-		state->velocity_y_fixed_per_second = input->vertical * speed_fixed;
+	const int err = picosystem_game_world_step(&state->world, input);
+	if (err != 0) {
+		return err;
 	}
 
-	state->sprite_x_fixed =
-		move_coordinate(state->sprite_x_fixed, &state->velocity_x_fixed_per_second,
-				SPRITE_MIN_X * FIXED_ONE, SPRITE_MAX_X * FIXED_ONE);
-	state->sprite_y_fixed =
-		move_coordinate(state->sprite_y_fixed, &state->velocity_y_fixed_per_second,
-				SPRITE_MIN_Y * FIXED_ONE, SPRITE_MAX_Y * FIXED_ONE);
-	increment_saturated(&state->logic_tick_count);
 	publish_snapshot(state, true);
 
 	const uint32_t elapsed_us = cycles_to_us(k_cycle_get_32() - start_cycles);
@@ -565,7 +598,9 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 
 	*stats = (struct picosystem_game_demo_stats){
 		.graphics = render_metrics.graphics,
-		.logic_tick_count = state->logic_tick_count,
+		.logic_tick_count = state->world.logic_tick_count,
+		.measured_logic_tick_count =
+			state->world.logic_tick_count - state->measurement_start_logic_tick_count,
 		.skipped_tick_count = state->skipped_tick_count,
 		.over_budget_tick_count = state->over_budget_tick_count,
 		.last_update_time_us = state->last_update_time_us,
@@ -573,7 +608,10 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.max_backlog_ticks = state->max_backlog_ticks,
 		.published_snapshot_count = render_metrics.published_snapshot_count,
 		.superseded_snapshot_count = render_metrics.superseded_snapshot_count,
+		.presented_snapshot_sequence = render_metrics.presented_snapshot_sequence,
 		.presented_frame_count = render_metrics.presented_frame_count,
+		.measured_presented_frame_count = render_metrics.presented_frame_count -
+						  state->measurement_start_presented_frame_count,
 		.full_redraw_count = render_metrics.full_redraw_count,
 		.last_render_time_us = render_metrics.last_render_time_us,
 		.max_dirty_render_time_us = render_metrics.max_dirty_render_time_us,
@@ -581,19 +619,122 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.max_dirty_snapshot_age_us = render_metrics.max_dirty_snapshot_age_us,
 		.render_stack_size_bytes = render_metrics.render_stack_size_bytes,
 		.render_stack_used_bytes = render_metrics.render_stack_used_bytes,
-		.sprite_x = fixed_to_pixel(state->sprite_x_fixed),
-		.sprite_y = fixed_to_pixel(state->sprite_y_fixed),
+		.sprite_x = fixed_to_pixel(state->world.sprite_x_fixed),
+		.sprite_y = fixed_to_pixel(state->world.sprite_y_fixed),
 		.presented_sprite_x = render_metrics.presented_sprite_x,
 		.presented_sprite_y = render_metrics.presented_sprite_y,
-		.velocity_x_pixels_per_second =
-			(int16_t)(state->velocity_x_fixed_per_second / FIXED_ONE),
-		.velocity_y_pixels_per_second =
-			(int16_t)(state->velocity_y_fixed_per_second / FIXED_ONE),
+		.velocity_x_pixels_per_second = (int16_t)(state->world.velocity_x_fixed_per_second /
+							  PICOSYSTEM_GAME_FIXED_ONE),
+		.velocity_y_pixels_per_second = (int16_t)(state->world.velocity_y_fixed_per_second /
+							  PICOSYSTEM_GAME_FIXED_ONE),
 		.start_uptime_ms = state->start_uptime_ms,
 		.render_error = render_metrics.render_error,
 		.render_thread_running = render_metrics.render_thread_running,
 	};
 	return 0;
+}
+
+uint32_t picosystem_game_demo_state_hash(const struct picosystem_game_demo_state *state)
+{
+	if ((state == NULL) || !state->ready) {
+		return 0U;
+	}
+
+	return picosystem_game_world_hash(&state->world);
+}
+
+static bool sequence_reached(uint32_t current, uint32_t target)
+{
+	return (current - target) < UINT32_C(0x80000000);
+}
+
+static int wait_for_latest_frame(void)
+{
+	uint32_t target_sequence;
+	{
+		const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
+		if (!renderer.snapshot_available || !renderer.metrics.graphics.ready) {
+			k_spin_unlock(&renderer.lock, key);
+			return -EAGAIN;
+		}
+		target_sequence = renderer.snapshots[renderer.published_index].sequence;
+		k_spin_unlock(&renderer.lock, key);
+	}
+
+	const int64_t deadline_ms = k_uptime_get() + FRAMEBUFFER_CAPTURE_TIMEOUT_MS;
+	while (true) {
+		uint32_t presented_sequence;
+		int render_error;
+		{
+			const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
+			presented_sequence = renderer.metrics.presented_snapshot_sequence;
+			render_error = renderer.metrics.render_error;
+			k_spin_unlock(&renderer.lock, key);
+		}
+
+		if (render_error != 0) {
+			return render_error;
+		}
+		if (sequence_reached(presented_sequence, target_sequence)) {
+			return 0;
+		}
+
+		const int64_t remaining_ms = deadline_ms - k_uptime_get();
+		if (remaining_ms <= 0) {
+			return -ETIMEDOUT;
+		}
+
+		const int err = k_sem_take(&renderer.frame_presented, K_MSEC(remaining_ms));
+		if (err != 0) {
+			return err;
+		}
+	}
+}
+
+int picosystem_game_demo_capture_framebuffer(picosystem_graphics_framebuffer_visitor visitor,
+					     void *context,
+					     struct picosystem_game_framebuffer_capture *capture)
+{
+	if (capture == NULL) {
+		return -EINVAL;
+	}
+
+	int err = wait_for_latest_frame();
+	if (err != 0) {
+		return err;
+	}
+
+	err = k_mutex_lock(&renderer.framebuffer_mutex, K_FOREVER);
+	if (err != 0) {
+		return err;
+	}
+
+	uint32_t presented_sequence;
+	{
+		const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
+		presented_sequence = renderer.metrics.presented_snapshot_sequence;
+		k_spin_unlock(&renderer.lock, key);
+	}
+
+	uint32_t crc32;
+	err = picosystem_graphics_framebuffer_crc32(&crc32);
+	if ((err == 0) && (visitor != NULL)) {
+		err = picosystem_graphics_visit_framebuffer(PICOSYSTEM_GAME_FRAMEBUFFER_CHUNK_BYTES,
+							    visitor, context);
+	}
+
+	if (err == 0) {
+		*capture = (struct picosystem_game_framebuffer_capture){
+			.byte_count = PICOSYSTEM_GRAPHICS_FRAMEBUFFER_BYTES,
+			.crc32 = crc32,
+			.presented_snapshot_sequence = presented_sequence,
+			.width = PICOSYSTEM_GRAPHICS_WIDTH,
+			.height = PICOSYSTEM_GRAPHICS_HEIGHT,
+		};
+	}
+
+	k_mutex_unlock(&renderer.framebuffer_mutex);
+	return err;
 }
 
 int picosystem_game_demo_renderer_error(void)

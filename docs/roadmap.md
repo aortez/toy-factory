@@ -64,9 +64,9 @@ enough to mark hardware-dependent acceptance items complete.
 
 ## 5. Automation and maintenance
 
-- [ ] Add hosted CI after selecting the repository host.
+- [x] Add hosted CI for native checks and reproducible firmware builds.
 - [ ] Archive UF2 and size reports for tagged builds.
 - [x] Add a native unit test for the hardware-independent fixed-rate scheduler.
-- [ ] Extend native tests to additional hardware-independent game/physics logic.
+- [x] Extract and natively test deterministic hardware-independent game-world logic.
 - [ ] Define a small physical smoke-test checklist for releases.
 - [ ] Decide whether the board port should be proposed upstream to Zephyr.
