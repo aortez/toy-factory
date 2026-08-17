@@ -145,9 +145,9 @@ three updates and 10,000 ticks for 120 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes a 184-byte immutable snapshot of
-up to 12 circles and eight static segments on every update. Two slots and a
-short spin-lock-protected copy prevent the
+Simulation uses Q16.16 positions and publishes a 400-byte immutable snapshot of
+up to 12 circle or oriented-box bodies and eight static segments on every
+update. Two slots and a short spin-lock-protected copy prevent the
 renderer from observing partially updated state. A saturated semaphore is only
 a wake-up hint: if two or more simulation states arrive during a panel period,
 the renderer deliberately coalesces the older ones. The main thread never waits
@@ -162,6 +162,16 @@ observed maximum was 6.269 ms. Main and renderer stack high-water marks were
 and new footprints reduced the observed worst dirty-render wall time from
 77.591 ms to 33.808 ms, including the TE wait; a routine 21 x 22 region took
 1.125 ms.
+
+The subsequent mixed rigid-body lab adds three oriented boxes, angular state,
+SAT/clipping narrow phase, and angular impulse response while retaining three
+circles. Its fixed-capacity world is 13,936 bytes and its two render snapshots
+are 400 bytes each. Each dynamic box basis is cached once per contact pass, and
+each static-segment normal is derived once when the scene is built. A clean
+4,136-tick window held 120.0 Hz with backlog one, zero skipped ticks, zero
+over-budget updates, a 4.580 ms current update, and a 5.449 ms observed maximum.
+TE-driven presentation was 57.8 fps. Main and renderer stack high-water marks
+were 2,448/4,096 and 1,988/3,072 bytes.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.

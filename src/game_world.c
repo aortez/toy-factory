@@ -16,68 +16,107 @@
 #define GAME_CONTROL_PER_TICK   PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 64)
 #define GAME_RESTITUTION        PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 4)
 #define GAME_FRICTION           PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
-#define GAME_WORLD_HASH_VERSION UINT32_C(2)
+#define GAME_WORLD_HASH_VERSION UINT32_C(3)
 #define FNV1A_OFFSET_BASIS      UINT32_C(2166136261)
 #define FNV1A_PRIME             UINT32_C(16777619)
 
 #define FIXED(value)                  PICOSYSTEM_PHYSICS_FIXED_FROM_INT(value)
 #define RATIO(numerator, denominator) PICOSYSTEM_PHYSICS_FIXED_RATIO(numerator, denominator)
 
-static const struct picosystem_physics_circle_config canonical_bodies[] = {
+struct canonical_body_config {
+	union {
+		struct picosystem_physics_circle_config circle;
+		struct picosystem_physics_box_config box;
+	};
+	uint8_t shape;
+};
+
+static const struct canonical_body_config canonical_bodies[] =
 	{
-		.center = {.x = FIXED(55), .y = FIXED(55)},
-		.velocity_per_tick = {.x = RATIO(3, 4)},
-		.radius = FIXED(9),
-		.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
-		.restitution = GAME_RESTITUTION,
-		.friction = GAME_FRICTION,
-		.id = 1U,
-	},
-	{
-		.center = {.x = FIXED(88), .y = FIXED(68)},
-		.velocity_per_tick = {.x = -RATIO(1, 4), .y = RATIO(1, 8)},
-		.radius = FIXED(7),
-		.inverse_mass = RATIO(5, 4),
-		.restitution = RATIO(2, 3),
-		.friction = RATIO(1, 6),
-		.id = 2U,
-	},
-	{
-		.center = {.x = FIXED(125), .y = FIXED(50)},
-		.velocity_per_tick = {.x = RATIO(1, 8)},
-		.radius = FIXED(11),
-		.inverse_mass = RATIO(3, 4),
-		.restitution = RATIO(4, 5),
-		.friction = RATIO(1, 10),
-		.id = 3U,
-	},
-	{
-		.center = {.x = FIXED(162), .y = FIXED(72)},
-		.velocity_per_tick = {.x = -RATIO(1, 2), .y = -RATIO(1, 8)},
-		.radius = FIXED(8),
-		.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
-		.restitution = RATIO(7, 10),
-		.friction = RATIO(1, 5),
-		.id = 4U,
-	},
-	{
-		.center = {.x = FIXED(200), .y = FIXED(52)},
-		.velocity_per_tick = {.x = -RATIO(1, 8), .y = RATIO(1, 4)},
-		.radius = FIXED(6),
-		.inverse_mass = RATIO(3, 2),
-		.restitution = RATIO(5, 6),
-		.friction = RATIO(1, 12),
-		.id = 5U,
-	},
-	{
-		.center = {.x = FIXED(120), .y = FIXED(105)},
-		.velocity_per_tick = {.x = RATIO(3, 8), .y = -RATIO(1, 8)},
-		.radius = FIXED(10),
-		.inverse_mass = RATIO(4, 5),
-		.restitution = RATIO(3, 4),
-		.friction = RATIO(1, 7),
-		.id = 6U,
-	},
+		{
+			.box =
+				{
+					.center = {.x = FIXED(55), .y = FIXED(55)},
+					.velocity_per_tick = {.x = RATIO(3, 4)},
+					.half_extent = {.x = FIXED(10), .y = FIXED(7)},
+					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
+					.restitution = GAME_RESTITUTION,
+					.friction = GAME_FRICTION,
+					.angular_velocity_per_tick = RATIO(1, 80),
+					.angle_turns = UINT32_C(0x08000000),
+					.id = 1U,
+				},
+			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
+		},
+		{
+			.circle =
+				{
+					.center = {.x = FIXED(88), .y = FIXED(68)},
+					.velocity_per_tick = {.x = -RATIO(1, 4), .y = RATIO(1, 8)},
+					.radius = FIXED(7),
+					.inverse_mass = RATIO(5, 4),
+					.restitution = RATIO(2, 3),
+					.friction = RATIO(1, 6),
+					.id = 2U,
+				},
+			.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
+		},
+		{
+			.box =
+				{
+					.center = {.x = FIXED(125), .y = FIXED(50)},
+					.velocity_per_tick = {.x = RATIO(1, 8)},
+					.half_extent = {.x = FIXED(12), .y = FIXED(7)},
+					.inverse_mass = RATIO(3, 4),
+					.restitution = RATIO(4, 5),
+					.friction = RATIO(1, 10),
+					.angular_velocity_per_tick = -RATIO(1, 96),
+					.angle_turns = UINT32_C(0xf0000000),
+					.id = 3U,
+				},
+			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
+		},
+		{
+			.circle =
+				{
+					.center = {.x = FIXED(162), .y = FIXED(72)},
+					.velocity_per_tick = {.x = -RATIO(1, 2), .y = -RATIO(1, 8)},
+					.radius = FIXED(8),
+					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
+					.restitution = RATIO(7, 10),
+					.friction = RATIO(1, 5),
+					.id = 4U,
+				},
+			.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
+		},
+		{
+			.box =
+				{
+					.center = {.x = FIXED(200), .y = FIXED(52)},
+					.velocity_per_tick = {.x = -RATIO(1, 8), .y = RATIO(1, 4)},
+					.half_extent = {.x = FIXED(7), .y = FIXED(5)},
+					.inverse_mass = RATIO(3, 2),
+					.restitution = RATIO(5, 6),
+					.friction = RATIO(1, 12),
+					.angular_velocity_per_tick = RATIO(1, 64),
+					.angle_turns = UINT32_C(0x20000000),
+					.id = 5U,
+				},
+			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
+		},
+		{
+			.circle =
+				{
+					.center = {.x = FIXED(120), .y = FIXED(105)},
+					.velocity_per_tick = {.x = RATIO(3, 8), .y = -RATIO(1, 8)},
+					.radius = FIXED(10),
+					.inverse_mass = RATIO(4, 5),
+					.restitution = RATIO(3, 4),
+					.friction = RATIO(1, 7),
+					.id = 6U,
+				},
+			.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
+		},
 };
 
 static const struct picosystem_physics_segment_config canonical_segments[] = {
@@ -172,8 +211,13 @@ int picosystem_game_world_reset(struct picosystem_game_world *world)
 	world->logic_tick_count = 0U;
 
 	for (size_t index = 0U; index < PICOSYSTEM_GAME_BODY_COUNT; ++index) {
-		err = picosystem_physics_world_add_circle(&world->physics,
-							  &canonical_bodies[index]);
+		if (canonical_bodies[index].shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
+			err = picosystem_physics_world_add_circle(&world->physics,
+								  &canonical_bodies[index].circle);
+		} else {
+			err = picosystem_physics_world_add_box(&world->physics,
+							       &canonical_bodies[index].box);
+		}
 		if (err != 0) {
 			return err;
 		}

@@ -76,7 +76,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Define numeric, ownership, memory, timing, overload, and validation contracts.
 - [x] Add a fixed-point circle/static-segment collision lab with native tests.
 - [x] Confirm deterministic state and framebuffer goldens on physical hardware.
-- [ ] Add angular bodies, oriented boxes, and stable contact manifolds.
+- [x] Add angular bodies, oriented boxes, and stable two-point contact manifolds.
 - [ ] Add a deterministic broad phase proven against brute-force candidate sets.
 - [ ] Add joints, motors, conveyors, springs, sensors, and sleeping.
 - [ ] Add a bounded rope or soft-body subsystem.

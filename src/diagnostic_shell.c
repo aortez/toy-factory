@@ -171,6 +171,11 @@ static uint32_t measured_rate_tenths(uint32_t count, int64_t start_uptime_ms, in
 	return (uint32_t)MIN(scaled_rate, UINT32_MAX);
 }
 
+static const char *physics_shape_name(uint8_t shape)
+{
+	return (shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) ? "box" : "circle";
+}
+
 static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -229,12 +234,15 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 	shell_print(shell, "physics: bodies=%u, segments=%u, contacts=%u/%u candidates",
 		    snapshot.game.body_count, snapshot.game.static_segment_count,
 		    snapshot.game.contact_count, snapshot.game.candidate_pair_count);
-	shell_print(shell,
-		    "focus #%u: simulation=(%u,%u), displayed=(%u,%u), velocity=(%d,%d) px/s",
-		    snapshot.game.focus_body_id, snapshot.game.focus_x, snapshot.game.focus_y,
-		    snapshot.game.presented_focus_x, snapshot.game.presented_focus_y,
-		    snapshot.game.focus_velocity_x_pixels_per_second,
-		    snapshot.game.focus_velocity_y_pixels_per_second);
+	shell_print(
+		shell,
+		"focus #%u %s: simulation=(%u,%u), displayed=(%u,%u), "
+		"velocity=(%d,%d) px/s, angle=%08x, angular=%d mrad/s",
+		snapshot.game.focus_body_id, physics_shape_name(snapshot.game.focus_shape),
+		snapshot.game.focus_x, snapshot.game.focus_y, snapshot.game.presented_focus_x,
+		snapshot.game.presented_focus_y, snapshot.game.focus_velocity_x_pixels_per_second,
+		snapshot.game.focus_velocity_y_pixels_per_second, snapshot.game.focus_angle_turns,
+		snapshot.game.focus_angular_velocity_milliradians_per_second);
 	shell_print(shell, "main stack high-water: %u/%u bytes",
 		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
 	shell_print(shell, "render stack high-water: %u/%u bytes",
@@ -370,10 +378,13 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->body_count, game->static_segment_count, game->contact_count,
 		    game->candidate_pair_count);
 	shell_print(shell,
-		    "focus #%u: simulation=(%u,%u), displayed=(%u,%u), velocity=(%d,%d) px/s",
-		    game->focus_body_id, game->focus_x, game->focus_y, game->presented_focus_x,
-		    game->presented_focus_y, game->focus_velocity_x_pixels_per_second,
-		    game->focus_velocity_y_pixels_per_second);
+		    "focus #%u %s: simulation=(%u,%u), displayed=(%u,%u), "
+		    "velocity=(%d,%d) px/s, angle=%08x, angular=%d mrad/s",
+		    game->focus_body_id, physics_shape_name(game->focus_shape), game->focus_x,
+		    game->focus_y, game->presented_focus_x, game->presented_focus_y,
+		    game->focus_velocity_x_pixels_per_second,
+		    game->focus_velocity_y_pixels_per_second, game->focus_angle_turns,
+		    game->focus_angular_velocity_milliradians_per_second);
 	shell_print(shell, "main stack high-water: %u/%u bytes",
 		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
 	shell_print(shell, "render stack high-water: %u/%u bytes", game->render_stack_used_bytes,
@@ -528,10 +539,13 @@ static void print_game_control_state(const struct shell *shell,
 		    state->remote_input_enabled ? "remote" : "physical", state->input.horizontal,
 		    state->input.vertical);
 	shell_print(shell,
-		    "focus_id=%u focus_x_q16=%d focus_y_q16=%d "
+		    "focus_id=%u focus_shape=%s focus_x_q16=%d focus_y_q16=%d "
 		    "velocity_x_q16_per_tick=%d velocity_y_q16_per_tick=%d",
-		    state->focus_body_id, state->focus_x_fixed, state->focus_y_fixed,
+		    state->focus_body_id, physics_shape_name(state->focus_shape),
+		    state->focus_x_fixed, state->focus_y_fixed,
 		    state->focus_velocity_x_fixed_per_tick, state->focus_velocity_y_fixed_per_tick);
+	shell_print(shell, "angle_turns=%08x angular_velocity_q16_per_tick=%d",
+		    state->focus_angle_turns, state->focus_angular_velocity_fixed_per_tick);
 	shell_print(shell, "published_snapshot=%u presented_snapshot=%u",
 		    state->published_snapshot_sequence, state->presented_snapshot_sequence);
 }

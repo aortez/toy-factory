@@ -436,6 +436,56 @@ void picosystem_graphics_draw_line(int16_t start_x, int16_t start_y, int16_t end
 	}
 }
 
+static int64_t triangle_edge(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
+			     int32_t point_x, int32_t point_y)
+{
+	return ((int64_t)end_x - start_x) * (point_y - start_y) -
+	       ((int64_t)end_y - start_y) * (point_x - start_x);
+}
+
+void picosystem_graphics_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
+				       int16_t y2, picosystem_color_t color)
+{
+	const int32_t left = MAX(MIN(x0, MIN(x1, x2)), 0);
+	const int32_t top = MAX(MIN(y0, MIN(y1, y2)), 0);
+	const int32_t right = MIN(MAX(x0, MAX(x1, x2)), DISPLAY_WIDTH - 1);
+	const int32_t bottom = MIN(MAX(y0, MAX(y1, y2)), DISPLAY_HEIGHT - 1);
+	const int64_t area = triangle_edge(x0, y0, x1, y1, x2, y2);
+	if ((left > right) || (top > bottom) || (area == 0)) {
+		return;
+	}
+
+	const bool positive = area > 0;
+	const uint16_t converted = native_color(color);
+	int64_t row_edge_0 = triangle_edge(x0, y0, x1, y1, left, top);
+	int64_t row_edge_1 = triangle_edge(x1, y1, x2, y2, left, top);
+	int64_t row_edge_2 = triangle_edge(x2, y2, x0, y0, left, top);
+	const int32_t x_step_0 = -((int32_t)y1 - y0);
+	const int32_t x_step_1 = -((int32_t)y2 - y1);
+	const int32_t x_step_2 = -((int32_t)y0 - y2);
+	const int32_t y_step_0 = (int32_t)x1 - x0;
+	const int32_t y_step_1 = (int32_t)x2 - x1;
+	const int32_t y_step_2 = (int32_t)x0 - x2;
+	for (int32_t y = top; y <= bottom; ++y) {
+		const size_t row_start = (size_t)y * DISPLAY_WIDTH;
+		int64_t edge_0 = row_edge_0;
+		int64_t edge_1 = row_edge_1;
+		int64_t edge_2 = row_edge_2;
+		for (int32_t x = left; x <= right; ++x) {
+			if (positive ? ((edge_0 >= 0) && (edge_1 >= 0) && (edge_2 >= 0))
+				     : ((edge_0 <= 0) && (edge_1 <= 0) && (edge_2 <= 0))) {
+				framebuffer[row_start + (size_t)x] = converted;
+			}
+			edge_0 += x_step_0;
+			edge_1 += x_step_1;
+			edge_2 += x_step_2;
+		}
+		row_edge_0 += y_step_0;
+		row_edge_1 += y_step_1;
+		row_edge_2 += y_step_2;
+	}
+}
+
 static void fill_circle_span(int32_t left, int32_t right, int32_t y, picosystem_color_t color)
 {
 	if ((y < 0) || (y >= DISPLAY_HEIGHT) || (right < 0) || (left >= DISPLAY_WIDTH)) {

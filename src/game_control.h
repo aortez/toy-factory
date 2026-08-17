@@ -37,12 +37,15 @@ struct picosystem_game_control_state {
 	int32_t focus_y_fixed;
 	int32_t focus_velocity_x_fixed_per_tick;
 	int32_t focus_velocity_y_fixed_per_tick;
+	int32_t focus_angular_velocity_fixed_per_tick;
 	uint32_t logic_tick_count;
 	uint32_t state_hash;
 	uint32_t published_snapshot_sequence;
 	uint32_t presented_snapshot_sequence;
+	uint32_t focus_angle_turns;
 	struct picosystem_game_input input;
 	uint16_t focus_body_id;
+	uint8_t focus_shape;
 	bool paused;
 	bool remote_input_enabled;
 };

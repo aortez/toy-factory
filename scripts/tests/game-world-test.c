@@ -10,10 +10,10 @@
 
 #include "game_world.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0xf5250cf4)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0x82f2e46c)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x6a25b6d6)
-#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x255c20c6)
+#define EXPECTED_RESET_HASH          UINT32_C(0x5d80846f)
+#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xb0f8e409)
+#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x908d238c)
+#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x70437154)
 #define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
 
 static void assert_vector_equal(const struct picosystem_physics_vector *left,
@@ -40,11 +40,17 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 			&right->physics.bodies[index];
 		assert_vector_equal(&left_body->center, &right_body->center);
 		assert_vector_equal(&left_body->velocity_per_tick, &right_body->velocity_per_tick);
+		assert_vector_equal(&left_body->half_extent, &right_body->half_extent);
 		assert(left_body->radius == right_body->radius);
 		assert(left_body->inverse_mass == right_body->inverse_mass);
+		assert(left_body->inverse_inertia == right_body->inverse_inertia);
 		assert(left_body->restitution == right_body->restitution);
 		assert(left_body->friction == right_body->friction);
+		assert(left_body->angular_velocity_per_tick ==
+		       right_body->angular_velocity_per_tick);
+		assert(left_body->angle_turns == right_body->angle_turns);
 		assert(left_body->id == right_body->id);
+		assert(left_body->shape == right_body->shape);
 	}
 
 	for (uint16_t index = 0U; index < left->physics.static_segment_count; ++index) {
@@ -54,6 +60,7 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 			&right->physics.static_segments[index];
 		assert_vector_equal(&left_segment->start, &right_segment->start);
 		assert_vector_equal(&left_segment->end, &right_segment->end);
+		assert_vector_equal(&left_segment->normal, &right_segment->normal);
 		assert(left_segment->restitution == right_segment->restitution);
 		assert(left_segment->friction == right_segment->friction);
 		assert(left_segment->id == right_segment->id);
@@ -91,7 +98,9 @@ static void test_canonical_reset_and_golden_replay(void)
 	assert(focus->id == 1U);
 	assert(focus->center.x == PICOSYSTEM_PHYSICS_FIXED_FROM_INT(55));
 	assert(focus->center.y == PICOSYSTEM_PHYSICS_FIXED_FROM_INT(55));
-	assert(focus->radius == PICOSYSTEM_PHYSICS_FIXED_FROM_INT(9));
+	assert(focus->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX);
+	assert(focus->half_extent.x == PICOSYSTEM_PHYSICS_FIXED_FROM_INT(10));
+	assert(focus->half_extent.y == PICOSYSTEM_PHYSICS_FIXED_FROM_INT(7));
 	assert_hash("reset", picosystem_game_world_hash(&world), EXPECTED_RESET_HASH);
 
 	const struct picosystem_game_input right = {.horizontal = 1};
@@ -157,18 +166,31 @@ static void assert_bodies_inside_arena(const struct picosystem_game_world *world
 
 	for (uint16_t index = 0U; index < world->physics.body_count; ++index) {
 		const struct picosystem_physics_body *const body = &world->physics.bodies[index];
-		if ((body->center.x < (left + body->radius - BOUNDARY_TOLERANCE)) ||
-		    (body->center.x > (right - body->radius + BOUNDARY_TOLERANCE)) ||
-		    (body->center.y < (top + body->radius - BOUNDARY_TOLERANCE)) ||
-		    (body->center.y > (bottom - body->radius + BOUNDARY_TOLERANCE))) {
-			fprintf(stderr, "body %u escaped at tick %u: center=(%d,%d) radius=%d\n",
-				index, world->logic_tick_count, body->center.x, body->center.y,
-				body->radius);
+		if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
+			assert(body->center.x >= (left + body->radius - BOUNDARY_TOLERANCE));
+			assert(body->center.x <= (right - body->radius + BOUNDARY_TOLERANCE));
+			assert(body->center.y >= (top + body->radius - BOUNDARY_TOLERANCE));
+			assert(body->center.y <= (bottom - body->radius + BOUNDARY_TOLERANCE));
+			continue;
 		}
-		assert(body->center.x >= (left + body->radius - BOUNDARY_TOLERANCE));
-		assert(body->center.x <= (right - body->radius + BOUNDARY_TOLERANCE));
-		assert(body->center.y >= (top + body->radius - BOUNDARY_TOLERANCE));
-		assert(body->center.y <= (bottom - body->radius + BOUNDARY_TOLERANCE));
+
+		struct picosystem_physics_vector vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT];
+		assert(picosystem_physics_body_box_vertices(body, vertices) == 0);
+		for (size_t vertex = 0U; vertex < PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT; ++vertex) {
+			if ((vertices[vertex].x < (left - BOUNDARY_TOLERANCE)) ||
+			    (vertices[vertex].x > (right + BOUNDARY_TOLERANCE)) ||
+			    (vertices[vertex].y < (top - BOUNDARY_TOLERANCE)) ||
+			    (vertices[vertex].y > (bottom + BOUNDARY_TOLERANCE))) {
+				fprintf(stderr,
+					"box %u vertex %u escaped at tick %u: point=(%d,%d)\n",
+					index, (unsigned int)vertex, world->logic_tick_count,
+					vertices[vertex].x, vertices[vertex].y);
+			}
+			assert(vertices[vertex].x >= (left - BOUNDARY_TOLERANCE));
+			assert(vertices[vertex].x <= (right + BOUNDARY_TOLERANCE));
+			assert(vertices[vertex].y >= (top - BOUNDARY_TOLERANCE));
+			assert(vertices[vertex].y <= (bottom + BOUNDARY_TOLERANCE));
+		}
 	}
 }
 

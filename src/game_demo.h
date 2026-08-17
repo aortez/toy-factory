@@ -55,6 +55,8 @@ struct picosystem_game_demo_stats {
 	uint32_t render_stack_size_bytes;
 	uint32_t render_stack_used_bytes;
 	uint32_t candidate_pair_count;
+	uint32_t focus_angle_turns;
+	int32_t focus_angular_velocity_milliradians_per_second;
 	uint16_t body_count;
 	uint16_t static_segment_count;
 	uint16_t contact_count;
@@ -65,6 +67,7 @@ struct picosystem_game_demo_stats {
 	uint16_t presented_focus_y;
 	int16_t focus_velocity_x_pixels_per_second;
 	int16_t focus_velocity_y_pixels_per_second;
+	uint8_t focus_shape;
 	int64_t start_uptime_ms;
 	int render_error;
 	bool render_thread_running;
