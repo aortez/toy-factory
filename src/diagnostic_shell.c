@@ -226,11 +226,15 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    frame_rate_tenths % 10U, snapshot.game.published_snapshot_count,
 		    snapshot.game.superseded_snapshot_count, snapshot.game.last_snapshot_age_us,
 		    snapshot.game.max_dirty_snapshot_age_us);
-	shell_print(shell, "sprite: simulation=(%u,%u), displayed=(%u,%u), velocity=(%d,%d) px/s",
-		    snapshot.game.sprite_x, snapshot.game.sprite_y,
-		    snapshot.game.presented_sprite_x, snapshot.game.presented_sprite_y,
-		    snapshot.game.velocity_x_pixels_per_second,
-		    snapshot.game.velocity_y_pixels_per_second);
+	shell_print(shell, "physics: bodies=%u, segments=%u, contacts=%u/%u candidates",
+		    snapshot.game.body_count, snapshot.game.static_segment_count,
+		    snapshot.game.contact_count, snapshot.game.candidate_pair_count);
+	shell_print(shell,
+		    "focus #%u: simulation=(%u,%u), displayed=(%u,%u), velocity=(%d,%d) px/s",
+		    snapshot.game.focus_body_id, snapshot.game.focus_x, snapshot.game.focus_y,
+		    snapshot.game.presented_focus_x, snapshot.game.presented_focus_y,
+		    snapshot.game.focus_velocity_x_pixels_per_second,
+		    snapshot.game.focus_velocity_y_pixels_per_second);
 	shell_print(shell, "main stack high-water: %u/%u bytes",
 		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
 	shell_print(shell, "render stack high-water: %u/%u bytes",
@@ -362,10 +366,14 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 	shell_print(shell, "snapshots: published=%u, superseded=%u, age=%u us (dirty max=%u us)",
 		    game->published_snapshot_count, game->superseded_snapshot_count,
 		    game->last_snapshot_age_us, game->max_dirty_snapshot_age_us);
-	shell_print(shell, "sprite: simulation=(%u,%u), displayed=(%u,%u), velocity=(%d,%d) px/s",
-		    game->sprite_x, game->sprite_y, game->presented_sprite_x,
-		    game->presented_sprite_y, game->velocity_x_pixels_per_second,
-		    game->velocity_y_pixels_per_second);
+	shell_print(shell, "physics: bodies=%u, segments=%u, contacts=%u/%u candidates",
+		    game->body_count, game->static_segment_count, game->contact_count,
+		    game->candidate_pair_count);
+	shell_print(shell,
+		    "focus #%u: simulation=(%u,%u), displayed=(%u,%u), velocity=(%d,%d) px/s",
+		    game->focus_body_id, game->focus_x, game->focus_y, game->presented_focus_x,
+		    game->presented_focus_y, game->focus_velocity_x_pixels_per_second,
+		    game->focus_velocity_y_pixels_per_second);
 	shell_print(shell, "main stack high-water: %u/%u bytes",
 		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
 	shell_print(shell, "render stack high-water: %u/%u bytes", game->render_stack_used_bytes,
@@ -520,10 +528,10 @@ static void print_game_control_state(const struct shell *shell,
 		    state->remote_input_enabled ? "remote" : "physical", state->input.horizontal,
 		    state->input.vertical);
 	shell_print(shell,
-		    "sprite_x_q16=%d sprite_y_q16=%d velocity_x_q16_per_s=%d "
-		    "velocity_y_q16_per_s=%d",
-		    state->sprite_x_fixed, state->sprite_y_fixed,
-		    state->velocity_x_fixed_per_second, state->velocity_y_fixed_per_second);
+		    "focus_id=%u focus_x_q16=%d focus_y_q16=%d "
+		    "velocity_x_q16_per_tick=%d velocity_y_q16_per_tick=%d",
+		    state->focus_body_id, state->focus_x_fixed, state->focus_y_fixed,
+		    state->focus_velocity_x_fixed_per_tick, state->focus_velocity_y_fixed_per_tick);
 	shell_print(shell, "published_snapshot=%u presented_snapshot=%u",
 		    state->published_snapshot_sequence, state->presented_snapshot_sequence);
 }

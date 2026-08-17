@@ -145,14 +145,26 @@ three updates and 10,000 ticks for 120 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes a 24-byte immutable snapshot on
-every update. Two slots and a short spin-lock-protected copy prevent the
+Simulation uses Q16.16 positions and publishes a 184-byte immutable snapshot of
+up to 12 circles and eight static segments on every update. Two slots and a
+short spin-lock-protected copy prevent the
 renderer from observing partially updated state. A saturated semaphore is only
 a wake-up hint: if two or more simulation states arrive during a panel period,
 the renderer deliberately coalesces the older ones. The main thread never waits
 for TE, framebuffer work, or SPI, and the renderer never reads live simulation
 state.
 
+The six-body collision lab held 120.0 Hz simulation and 59.3 fps presentation
+over a clean 20-second physical run, with backlog one and zero skipped or
+over-budget updates. Routine sampled physics updates took 1.9-2.1 ms; the
+observed maximum was 6.269 ms. Main and renderer stack high-water marks were
+1,392/2,048 and 1,340/2,048 bytes. Splitting coalesced motion into separate old
+and new footprints reduced the observed worst dirty-render wall time from
+77.591 ms to 33.808 ms, including the TE wait; a routine 21 x 22 region took
+1.125 ms.
+
+The following physical measurements describe the preceding single-sprite
+snapshot and remain the scheduling/display baseline for the new collision lab.
 On hardware, normal presentation remained about 59.6 fps while the simulation
 advanced at 120 Hz. Snapshot state was typically 2.8-6.4 ms old at the start of
 the SPI write, with a 10.0 ms observed dirty-update maximum. The maximum
@@ -168,9 +180,10 @@ Scheduler backlog and skipped-tick counters remained unchanged. The A button
 and `picosystem game redraw` both post this same coalesced request rather than
 calling graphics code from their requesting context. The A-button path was
 visually confirmed without tearing. The sprite jumps forward when the transfer
-finishes because roughly ten pixels of 120 Hz simulation occur during the
+finishes because roughly ten pixels of 120 Hz simulation occurred during the
 roughly 82 ms in which the renderer is occupied; those obsolete intermediate
-snapshots are intentionally not replayed.
+snapshots were intentionally not replayed. The collision lab preserves that
+coalescing contract but presents several merged body regions per panel period.
 
 On the tested PIM559, sending the 115200-byte orientation frame in bounded
 eight-row chunks took 109393 us (1028 KiB/s). The earlier one-row baseline took

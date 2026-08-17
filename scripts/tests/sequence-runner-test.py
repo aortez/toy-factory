@@ -47,8 +47,8 @@ class FakeSession:
             (
                 f"mode={self.mode} tick={self.tick} hash={self.state_hash():08x}",
                 f"input_source={self.input_source} input_x={input_x} input_y={input_y}",
-                "sprite_x_q16=1 sprite_y_q16=2 velocity_x_q16_per_s=3 "
-                "velocity_y_q16_per_s=4",
+                "focus_id=1 focus_x_q16=1 focus_y_q16=2 "
+                "velocity_x_q16_per_tick=3 velocity_y_q16_per_tick=4",
                 "published_snapshot=5 presented_snapshot=5",
             )
         )

@@ -8,38 +8,140 @@
 
 #include <errno.h>
 #include <limits.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#define SPRITE_SPEED_PIXELS_PER_SECOND INT32_C(125)
-#define SPRITE_START_X_PIXELS                                                                      \
-	((PICOSYSTEM_GAME_SPRITE_MIN_X_PIXELS + PICOSYSTEM_GAME_SPRITE_MAX_X_PIXELS) / 2U)
-#define SPRITE_START_Y_PIXELS                                                                      \
-	((PICOSYSTEM_GAME_SPRITE_MIN_Y_PIXELS + PICOSYSTEM_GAME_SPRITE_MAX_Y_PIXELS) / 2U)
-#define SPRITE_SPEED_FIXED (SPRITE_SPEED_PIXELS_PER_SECOND * PICOSYSTEM_GAME_FIXED_ONE)
-#define SPRITE_STEP_FIXED  (SPRITE_SPEED_FIXED / (int32_t)PICOSYSTEM_GAME_TICK_RATE_HZ)
-#define SPRITE_MIN_X_FIXED                                                                         \
-	((int32_t)PICOSYSTEM_GAME_SPRITE_MIN_X_PIXELS * PICOSYSTEM_GAME_FIXED_ONE)
-#define SPRITE_MAX_X_FIXED                                                                         \
-	((int32_t)PICOSYSTEM_GAME_SPRITE_MAX_X_PIXELS * PICOSYSTEM_GAME_FIXED_ONE)
-#define SPRITE_MIN_Y_FIXED                                                                         \
-	((int32_t)PICOSYSTEM_GAME_SPRITE_MIN_Y_PIXELS * PICOSYSTEM_GAME_FIXED_ONE)
-#define SPRITE_MAX_Y_FIXED                                                                         \
-	((int32_t)PICOSYSTEM_GAME_SPRITE_MAX_Y_PIXELS * PICOSYSTEM_GAME_FIXED_ONE)
-
-/* Change this whenever authoritative hash field order or meaning changes. */
-#define GAME_WORLD_HASH_VERSION UINT32_C(1)
+#define GAME_MAX_SPEED_PER_TICK PICOSYSTEM_PHYSICS_FIXED_RATIO(5, 2)
+#define GAME_GRAVITY_PER_TICK   PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 32)
+#define GAME_CONTROL_PER_TICK   PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 64)
+#define GAME_RESTITUTION        PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 4)
+#define GAME_FRICTION           PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
+#define GAME_WORLD_HASH_VERSION UINT32_C(2)
 #define FNV1A_OFFSET_BASIS      UINT32_C(2166136261)
 #define FNV1A_PRIME             UINT32_C(16777619)
 
-_Static_assert(SPRITE_MIN_X_FIXED >= 0, "minimum sprite X must be nonnegative");
-_Static_assert(SPRITE_MAX_X_FIXED <= (INT32_MAX - SPRITE_STEP_FIXED),
-	       "maximum sprite X plus one step must fit in Q16.16");
-_Static_assert(SPRITE_MIN_Y_FIXED >= 0, "minimum sprite Y must be nonnegative");
-_Static_assert(SPRITE_MAX_Y_FIXED <= (INT32_MAX - SPRITE_STEP_FIXED),
-	       "maximum sprite Y plus one step must fit in Q16.16");
-_Static_assert(SPRITE_SPEED_FIXED <= INT32_MAX, "sprite speed must fit in Q16.16");
+#define FIXED(value)                  PICOSYSTEM_PHYSICS_FIXED_FROM_INT(value)
+#define RATIO(numerator, denominator) PICOSYSTEM_PHYSICS_FIXED_RATIO(numerator, denominator)
+
+static const struct picosystem_physics_circle_config canonical_bodies[] = {
+	{
+		.center = {.x = FIXED(55), .y = FIXED(55)},
+		.velocity_per_tick = {.x = RATIO(3, 4)},
+		.radius = FIXED(9),
+		.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
+		.restitution = GAME_RESTITUTION,
+		.friction = GAME_FRICTION,
+		.id = 1U,
+	},
+	{
+		.center = {.x = FIXED(88), .y = FIXED(68)},
+		.velocity_per_tick = {.x = -RATIO(1, 4), .y = RATIO(1, 8)},
+		.radius = FIXED(7),
+		.inverse_mass = RATIO(5, 4),
+		.restitution = RATIO(2, 3),
+		.friction = RATIO(1, 6),
+		.id = 2U,
+	},
+	{
+		.center = {.x = FIXED(125), .y = FIXED(50)},
+		.velocity_per_tick = {.x = RATIO(1, 8)},
+		.radius = FIXED(11),
+		.inverse_mass = RATIO(3, 4),
+		.restitution = RATIO(4, 5),
+		.friction = RATIO(1, 10),
+		.id = 3U,
+	},
+	{
+		.center = {.x = FIXED(162), .y = FIXED(72)},
+		.velocity_per_tick = {.x = -RATIO(1, 2), .y = -RATIO(1, 8)},
+		.radius = FIXED(8),
+		.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
+		.restitution = RATIO(7, 10),
+		.friction = RATIO(1, 5),
+		.id = 4U,
+	},
+	{
+		.center = {.x = FIXED(200), .y = FIXED(52)},
+		.velocity_per_tick = {.x = -RATIO(1, 8), .y = RATIO(1, 4)},
+		.radius = FIXED(6),
+		.inverse_mass = RATIO(3, 2),
+		.restitution = RATIO(5, 6),
+		.friction = RATIO(1, 12),
+		.id = 5U,
+	},
+	{
+		.center = {.x = FIXED(120), .y = FIXED(105)},
+		.velocity_per_tick = {.x = RATIO(3, 8), .y = -RATIO(1, 8)},
+		.radius = FIXED(10),
+		.inverse_mass = RATIO(4, 5),
+		.restitution = RATIO(3, 4),
+		.friction = RATIO(1, 7),
+		.id = 6U,
+	},
+};
+
+static const struct picosystem_physics_segment_config canonical_segments[] = {
+	{
+		.start = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS),
+			  .y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS)},
+		.end = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS),
+			.y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS)},
+		.restitution = GAME_RESTITUTION,
+		.friction = GAME_FRICTION,
+		.id = 101U,
+	},
+	{
+		.start = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS),
+			  .y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS)},
+		.end = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS),
+			.y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS)},
+		.restitution = GAME_RESTITUTION,
+		.friction = GAME_FRICTION,
+		.id = 102U,
+	},
+	{
+		.start = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS),
+			  .y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS)},
+		.end = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS),
+			.y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS)},
+		.restitution = GAME_RESTITUTION,
+		.friction = GAME_FRICTION,
+		.id = 103U,
+	},
+	{
+		.start = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS),
+			  .y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS)},
+		.end = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS),
+			.y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS)},
+		.restitution = GAME_RESTITUTION,
+		.friction = GAME_FRICTION,
+		.id = 104U,
+	},
+	{
+		.start = {.x = FIXED(34), .y = FIXED(160)},
+		.end = {.x = FIXED(103), .y = FIXED(188)},
+		.restitution = RATIO(2, 3),
+		.friction = RATIO(1, 4),
+		.id = 105U,
+	},
+	{
+		.start = {.x = FIXED(137), .y = FIXED(145)},
+		.end = {.x = FIXED(210), .y = FIXED(112)},
+		.restitution = RATIO(4, 5),
+		.friction = RATIO(1, 12),
+		.id = 106U,
+	},
+};
+
+_Static_assert(sizeof(canonical_bodies) / sizeof(canonical_bodies[0]) == PICOSYSTEM_GAME_BODY_COUNT,
+	       "canonical body count must match the public contract");
+_Static_assert(sizeof(canonical_segments) / sizeof(canonical_segments[0]) ==
+		       PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT,
+	       "canonical segment count must match the public contract");
+_Static_assert(PICOSYSTEM_GAME_BODY_COUNT <= PICOSYSTEM_PHYSICS_MAX_BODIES,
+	       "canonical bodies must fit physics storage");
+_Static_assert(PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT <= PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS,
+	       "canonical segments must fit physics storage");
 
 static void increment_saturated(uint32_t *value)
 {
@@ -48,44 +150,12 @@ static void increment_saturated(uint32_t *value)
 	}
 }
 
-static bool velocity_is_valid(int32_t velocity)
-{
-	return (velocity == SPRITE_SPEED_FIXED) || (velocity == -SPRITE_SPEED_FIXED);
-}
-
-static bool world_is_valid(const struct picosystem_game_world *world)
-{
-	return (world->sprite_x_fixed >= SPRITE_MIN_X_FIXED) &&
-	       (world->sprite_x_fixed <= SPRITE_MAX_X_FIXED) &&
-	       (world->sprite_y_fixed >= SPRITE_MIN_Y_FIXED) &&
-	       (world->sprite_y_fixed <= SPRITE_MAX_Y_FIXED) &&
-	       velocity_is_valid(world->velocity_x_fixed_per_second) &&
-	       velocity_is_valid(world->velocity_y_fixed_per_second);
-}
-
-static int32_t move_coordinate(int32_t current, int32_t *velocity, int32_t minimum, int32_t maximum)
-{
-	const int32_t speed = (*velocity < 0) ? -*velocity : *velocity;
-	int32_t requested = current + (*velocity / (int32_t)PICOSYSTEM_GAME_TICK_RATE_HZ);
-
-	if (requested < minimum) {
-		requested = minimum;
-		*velocity = speed;
-	} else if (requested > maximum) {
-		requested = maximum;
-		*velocity = -speed;
-	}
-
-	return requested;
-}
-
 static uint32_t fnv1a_u32(uint32_t hash, uint32_t value)
 {
 	for (uint32_t shift = 0U; shift < 32U; shift += 8U) {
 		hash ^= (value >> shift) & UINT32_C(0xff);
 		hash *= FNV1A_PRIME;
 	}
-
 	return hash;
 }
 
@@ -95,12 +165,27 @@ int picosystem_game_world_reset(struct picosystem_game_world *world)
 		return -EINVAL;
 	}
 
-	*world = (struct picosystem_game_world){
-		.sprite_x_fixed = (int32_t)SPRITE_START_X_PIXELS * PICOSYSTEM_GAME_FIXED_ONE,
-		.sprite_y_fixed = (int32_t)SPRITE_START_Y_PIXELS * PICOSYSTEM_GAME_FIXED_ONE,
-		.velocity_x_fixed_per_second = SPRITE_SPEED_FIXED,
-		.velocity_y_fixed_per_second = SPRITE_SPEED_FIXED,
-	};
+	int err = picosystem_physics_world_init(&world->physics, GAME_MAX_SPEED_PER_TICK);
+	if (err != 0) {
+		return err;
+	}
+	world->logic_tick_count = 0U;
+
+	for (size_t index = 0U; index < PICOSYSTEM_GAME_BODY_COUNT; ++index) {
+		err = picosystem_physics_world_add_circle(&world->physics,
+							  &canonical_bodies[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (size_t index = 0U; index < PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT; ++index) {
+		err = picosystem_physics_world_add_static_segment(&world->physics,
+								  &canonical_segments[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+
 	return 0;
 }
 
@@ -111,37 +196,40 @@ int picosystem_game_world_step(struct picosystem_game_world *world,
 		return -EINVAL;
 	}
 	if ((input->horizontal < -1) || (input->horizontal > 1) || (input->vertical < -1) ||
-	    (input->vertical > 1) || !world_is_valid(world)) {
+	    (input->vertical > 1)) {
 		return -ERANGE;
 	}
 
-	if (input->horizontal != 0) {
-		world->velocity_x_fixed_per_second = input->horizontal * SPRITE_SPEED_FIXED;
-	}
-	if (input->vertical != 0) {
-		world->velocity_y_fixed_per_second = input->vertical * SPRITE_SPEED_FIXED;
+	const struct picosystem_physics_vector acceleration = {
+		.x = input->horizontal * GAME_CONTROL_PER_TICK,
+		.y = GAME_GRAVITY_PER_TICK + (input->vertical * GAME_CONTROL_PER_TICK),
+	};
+	const int err = picosystem_physics_world_step(&world->physics, &acceleration);
+	if (err != 0) {
+		return err;
 	}
 
-	world->sprite_x_fixed =
-		move_coordinate(world->sprite_x_fixed, &world->velocity_x_fixed_per_second,
-				SPRITE_MIN_X_FIXED, SPRITE_MAX_X_FIXED);
-	world->sprite_y_fixed =
-		move_coordinate(world->sprite_y_fixed, &world->velocity_y_fixed_per_second,
-				SPRITE_MIN_Y_FIXED, SPRITE_MAX_Y_FIXED);
 	increment_saturated(&world->logic_tick_count);
 	return 0;
 }
 
-uint32_t picosystem_game_world_hash(const struct picosystem_game_world *world)
+const struct picosystem_physics_body *
+picosystem_game_world_focus_body(const struct picosystem_game_world *world)
 {
 	if (world == NULL) {
+		return NULL;
+	}
+	return picosystem_physics_world_body_at(&world->physics, PICOSYSTEM_GAME_FOCUS_BODY_INDEX);
+}
+
+uint32_t picosystem_game_world_hash(const struct picosystem_game_world *world)
+{
+	if ((world == NULL) || (world->physics.body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
+	    (world->physics.static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS)) {
 		return 0U;
 	}
 
 	uint32_t hash = fnv1a_u32(FNV1A_OFFSET_BASIS, GAME_WORLD_HASH_VERSION);
 	hash = fnv1a_u32(hash, world->logic_tick_count);
-	hash = fnv1a_u32(hash, (uint32_t)world->sprite_x_fixed);
-	hash = fnv1a_u32(hash, (uint32_t)world->sprite_y_fixed);
-	hash = fnv1a_u32(hash, (uint32_t)world->velocity_x_fixed_per_second);
-	return fnv1a_u32(hash, (uint32_t)world->velocity_y_fixed_per_second);
+	return fnv1a_u32(hash, picosystem_physics_world_hash(&world->physics));
 }

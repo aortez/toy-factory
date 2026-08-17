@@ -9,15 +9,19 @@
 
 #include <stdint.h>
 
-#define PICOSYSTEM_GAME_TICK_RATE_HZ         120U
-#define PICOSYSTEM_GAME_FIXED_FRACTION_BITS  16U
-#define PICOSYSTEM_GAME_FIXED_ONE            (INT32_C(1) << PICOSYSTEM_GAME_FIXED_FRACTION_BITS)
-#define PICOSYSTEM_GAME_SPRITE_WIDTH_PIXELS  16U
-#define PICOSYSTEM_GAME_SPRITE_HEIGHT_PIXELS 16U
-#define PICOSYSTEM_GAME_SPRITE_MIN_X_PIXELS  1U
-#define PICOSYSTEM_GAME_SPRITE_MAX_X_PIXELS  223U
-#define PICOSYSTEM_GAME_SPRITE_MIN_Y_PIXELS  25U
-#define PICOSYSTEM_GAME_SPRITE_MAX_Y_PIXELS  223U
+#include "physics_world.h"
+
+#define PICOSYSTEM_GAME_TICK_RATE_HZ        120U
+#define PICOSYSTEM_GAME_FIXED_FRACTION_BITS PICOSYSTEM_PHYSICS_FIXED_FRACTION_BITS
+#define PICOSYSTEM_GAME_FIXED_ONE           PICOSYSTEM_PHYSICS_FIXED_ONE
+
+#define PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS   5U
+#define PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS  234U
+#define PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS    31U
+#define PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS 234U
+#define PICOSYSTEM_GAME_BODY_COUNT              6U
+#define PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT    6U
+#define PICOSYSTEM_GAME_FOCUS_BODY_INDEX        0U
 
 struct picosystem_game_input {
 	int8_t horizontal;
@@ -26,19 +30,20 @@ struct picosystem_game_input {
 
 /* Caller-owned authoritative state; production code mutates it only through this API. */
 struct picosystem_game_world {
-	int32_t sprite_x_fixed;
-	int32_t sprite_y_fixed;
-	int32_t velocity_x_fixed_per_second;
-	int32_t velocity_y_fixed_per_second;
+	struct picosystem_physics_world physics;
 	uint32_t logic_tick_count;
 };
 
-/* Restore the canonical deterministic tick-zero state. */
+/* Restore the canonical deterministic collision-lab scene at tick zero. */
 int picosystem_game_world_reset(struct picosystem_game_world *world);
 
 /* Advance exactly one fixed 1/120-second tick. */
 int picosystem_game_world_step(struct picosystem_game_world *world,
 			       const struct picosystem_game_input *input);
+
+/* Return the canonical focus body used by diagnostics and camera-independent controls. */
+const struct picosystem_physics_body *
+picosystem_game_world_focus_body(const struct picosystem_game_world *world);
 
 /* Hash authoritative fields in a stable order without hashing structure padding. */
 uint32_t picosystem_game_world_hash(const struct picosystem_game_world *world);

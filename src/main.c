@@ -285,17 +285,23 @@ static int fill_game_control_state(const struct game_runtime_control *control,
 	if (err != 0) {
 		return err;
 	}
+	const struct picosystem_physics_body *const focus =
+		picosystem_game_world_focus_body(&game->world);
+	if (focus == NULL) {
+		return -EIO;
+	}
 
 	*state = (struct picosystem_game_control_state){
-		.sprite_x_fixed = game->world.sprite_x_fixed,
-		.sprite_y_fixed = game->world.sprite_y_fixed,
-		.velocity_x_fixed_per_second = game->world.velocity_x_fixed_per_second,
-		.velocity_y_fixed_per_second = game->world.velocity_y_fixed_per_second,
+		.focus_x_fixed = focus->center.x,
+		.focus_y_fixed = focus->center.y,
+		.focus_velocity_x_fixed_per_tick = focus->velocity_per_tick.x,
+		.focus_velocity_y_fixed_per_tick = focus->velocity_per_tick.y,
 		.logic_tick_count = game->world.logic_tick_count,
 		.state_hash = picosystem_game_demo_state_hash(game),
 		.published_snapshot_sequence = game->snapshot_sequence,
 		.presented_snapshot_sequence = stats.presented_snapshot_sequence,
 		.input = selected_game_input(control, physical_input),
+		.focus_body_id = focus->id,
 		.paused = control->paused,
 		.remote_input_enabled = control->remote_input_enabled,
 	};
@@ -450,7 +456,7 @@ static int publish_diagnostic_snapshot(const struct picosystem_battery_sample *b
 int main(void)
 {
 	struct picosystem_battery_sample battery_sample;
-	struct picosystem_game_demo_state game_state;
+	static struct picosystem_game_demo_state game_state;
 	struct picosystem_game_demo_stats game_stats;
 	struct game_runtime_control game_control = {0};
 	struct picosystem_power_status power_status;
@@ -543,8 +549,8 @@ int main(void)
 		return err;
 	}
 
-	LOG_INF("PicoSystem 120 Hz simulation and asynchronous renderer ready");
-	LOG_INF("D-pad steers the sprite; A queues a full redraw for comparison");
+	LOG_INF("PicoSystem 120 Hz physics lab and asynchronous renderer ready");
+	LOG_INF("D-pad tilts gravity for all bodies; A queues a full redraw for comparison");
 	LOG_INF("B plays a short 440 Hz piezo tone");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 	LOG_INF("GP2 remains an input; the automatic red charge indicator is enabled");

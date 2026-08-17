@@ -407,6 +407,80 @@ void picosystem_graphics_draw_rect(int16_t x, int16_t y, uint16_t width, uint16_
 	}
 }
 
+void picosystem_graphics_draw_line(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
+				   picosystem_color_t color)
+{
+	int32_t x = start_x;
+	int32_t y = start_y;
+	const int32_t delta_x = (end_x >= start_x) ? end_x - start_x : start_x - end_x;
+	const int32_t delta_y = (end_y >= start_y) ? start_y - end_y : end_y - start_y;
+	const int32_t step_x = (start_x < end_x) ? 1 : -1;
+	const int32_t step_y = (start_y < end_y) ? 1 : -1;
+	int32_t error = delta_x + delta_y;
+
+	while (true) {
+		picosystem_graphics_draw_pixel((int16_t)x, (int16_t)y, color);
+		if ((x == end_x) && (y == end_y)) {
+			break;
+		}
+
+		const int32_t doubled_error = 2 * error;
+		if (doubled_error >= delta_y) {
+			error += delta_y;
+			x += step_x;
+		}
+		if (doubled_error <= delta_x) {
+			error += delta_x;
+			y += step_y;
+		}
+	}
+}
+
+static void fill_circle_span(int32_t left, int32_t right, int32_t y, picosystem_color_t color)
+{
+	if ((y < 0) || (y >= DISPLAY_HEIGHT) || (right < 0) || (left >= DISPLAY_WIDTH)) {
+		return;
+	}
+
+	left = MAX(left, 0);
+	right = MIN(right, DISPLAY_WIDTH - 1);
+	picosystem_graphics_fill_rect((int16_t)left, (int16_t)y, (uint16_t)(right - left + 1), 1U,
+				      color);
+}
+
+int picosystem_graphics_fill_circle(int16_t center_x, int16_t center_y, uint16_t radius,
+				    picosystem_color_t color)
+{
+	if (radius > MAX(DISPLAY_WIDTH, DISPLAY_HEIGHT)) {
+		return -ERANGE;
+	}
+
+	int32_t x = radius;
+	int32_t y = 0;
+	int32_t decision = 1 - x;
+
+	while (y <= x) {
+		fill_circle_span((int32_t)center_x - x, (int32_t)center_x + x,
+				 (int32_t)center_y + y, color);
+		fill_circle_span((int32_t)center_x - x, (int32_t)center_x + x,
+				 (int32_t)center_y - y, color);
+		fill_circle_span((int32_t)center_x - y, (int32_t)center_x + y,
+				 (int32_t)center_y + x, color);
+		fill_circle_span((int32_t)center_x - y, (int32_t)center_x + y,
+				 (int32_t)center_y - x, color);
+
+		++y;
+		if (decision <= 0) {
+			decision += (2 * y) + 1;
+		} else {
+			--x;
+			decision += (2 * (y - x)) + 1;
+		}
+	}
+
+	return 0;
+}
+
 int picosystem_graphics_draw_mono_sprite(int16_t x, int16_t y,
 					 const struct picosystem_mono_sprite *sprite,
 					 picosystem_color_t color)

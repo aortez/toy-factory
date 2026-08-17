@@ -11,8 +11,9 @@ path:
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and presents packed dirty regions over SPI;
-- runs exact 120 Hz fixed-step game logic with Q16.16 positions;
-- publishes compact state snapshots to an independent, lower-priority renderer;
+- runs a deterministic six-circle physics lab at an exact 120 Hz fixed step with
+  Q16.16 positions, per-tick velocity, gravity, friction, and restitution;
+- publishes fixed-size state snapshots to an independent, lower-priority renderer;
 - late-latches the newest snapshot and aligns partial display writes with the LCD's GP8
   tearing-effect signal;
 - exposes acknowledged reset, pause, exact-step, injected-input, state-hash, and
@@ -105,14 +106,17 @@ The physical gesture remains the recovery path for a blank or broken image:
 4. Run `make update` again.
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
-show a dark checkerboard playfield, cyan border, white `SIM 120HZ TE DISPLAY`
-heading, and a moving yellow sprite. The sprite advances on exact rational
-120 Hz deadlines and each normal presentation covers only the union of its old
-and new bounds. The D-pad steers its horizontal and vertical velocity. Press A
-to queue a full-screen redraw for comparison and B to play a 440 Hz tone for
-180 ms. A full transfer still occupies the panel for roughly 80 ms, but it runs
-on the renderer thread: game logic and input sampling continue at 120 Hz and
-newer snapshots coalesce while the renderer is busy.
+show a dark checkerboard arena, six differently sized circles, two diagonal
+ramps, cyan boundaries, and a white `PHYSICS LAB 120HZ` heading. The world
+advances on exact rational 120 Hz deadlines. Normal presentation restores each
+moved circle's old and new footprints and merges touching regions before sending
+them. Small moves become one rectangle; coalesced jumps do not transfer the
+empty swept area between distant footprints.
+The D-pad tilts the global acceleration field while neutral input retains
+downward gravity. Press A to queue a full-screen redraw for comparison and B to
+play a 440 Hz tone for 180 ms. A full transfer still occupies the panel for
+roughly 80 ms, but it runs on the renderer thread: physics and input sampling
+continue at 120 Hz and newer snapshots coalesce while the renderer is busy.
 
 The RGB LED shows red, green, and blue in sequence at startup, then blinks blue.
 A/B/X illuminate red/green/blue respectively; Y illuminates all three channels.
@@ -193,7 +197,7 @@ picosystem reboot bootloader
 `picosystem status` returns current uptime and software LED mode alongside one
 coherent hardware snapshot containing buttons, USB/charger state, the most
 recent battery sample and its age, framebuffer/presentation timing, game-loop
-rate and skipped ticks, snapshot age, simulation/displayed sprite state, and
+rate and skipped ticks, snapshot age, body/contact counts, focus-body state, and
 both application-thread stack high-water marks.
 `buttons` is a compact live-input view.
 `display sync` reports GP8 edge timing, refresh frequency, blanking-pulse width,
@@ -206,7 +210,7 @@ write, full-redraw count, and both stack high-water marks. `game redraw` only
 posts a coalesced request; the shell never touches the framebuffer or display.
 `game pause` is acknowledged only after the priority-0 simulation owner reaches
 a tick boundary. `game reset` is accepted only while paused; it restores the
-canonical tick-zero position and velocity, selects neutral remote input, and
+canonical tick-zero scene, selects neutral remote input, and
 publishes a full-redraw snapshot without rewinding renderer sequence numbers.
 While paused, `game step` executes 1-120 exact fixed-duration updates without
 advancing wall-clock scheduling. `game run` starts a fresh rational deadline
@@ -214,8 +218,9 @@ sequence and performance-measurement epoch, so time and exact steps spent paused
 never become catch-up debt or distort subsequent real-time rate reporting.
 `game input` selects either physical buttons or a persistent injected direction;
 `none` is a neutral remote input and `physical` restores the D-pad. In the
-current demo, neutral means “do not change velocity,” rather than “stop.” Every
-control response includes the exact tick, Q16.16 state, input source,
+current demo, neutral means “apply gravity without directional tilt,” rather
+than “stop.” Every control response includes the exact tick, Q16.16 focus-body
+state, input source,
 published/presented snapshot sequence, and a deterministic hash that excludes
 clocks and performance counters.
 
@@ -251,8 +256,8 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "e60b17ef",
-    "framebuffer_crc32": "3e08ecbb"
+    "hash": "6a25b6d6",
+    "framebuffer_crc32": "c62eb3a0"
   }
 }
 ```
@@ -291,7 +296,7 @@ Expected messages include button press/release events and a periodic line like:
 The animation deliberately avoids per-frame logging; use `picosystem display
 stats` or `picosystem game stats` for current buffer sizes, full and dirty
 presentation timing, simulation and presentation rates, skipped ticks, render
-time, snapshot age, sprite state, and stack usage.
+time, snapshot age, physics/contact counts, focus-body state, and stack usage.
 Pressing B logs the start of the tone and confirms when the delayed shutoff has
 returned the PWM output to silence. Battery readings are averaged over 16 raw
 samples. They are diagnostic voltage measurements, not a charge-percentage
@@ -323,17 +328,19 @@ the default hardware SPI0/PL022 dirty-update path and faster PIO/DMA full frames
 
 ## Game-loop architecture
 
-The authoritative fixed-point state, canonical reset, one-tick update, collision
-response, input validation, and stable field-by-field hash live in
-[`src/game_world.c`](src/game_world.c). That module has no Zephyr, scheduler,
-renderer, USB, or wall-clock dependency. The firmware and native test suite
-compile the same C source, so host replay tests exercise the implementation that
-runs on the RP2040 rather than a second simulation model.
+The authoritative fixed-point bodies, static segments, contact generation,
+sequential-impulse response, and stable field-by-field hash live in
+[`src/physics_world.c`](src/physics_world.c). Canonical scene construction,
+input-to-acceleration mapping, game ticks, and the outer hash live in
+[`src/game_world.c`](src/game_world.c). Neither module has a Zephyr, scheduler,
+renderer, USB, or wall-clock dependency. The firmware and native test suites
+compile these same C sources, so host replay tests exercise the implementation
+that runs on the RP2040 rather than a second simulation model.
 
 The RP2040 build currently uses one core, so this is priority-based decoupling
 rather than parallel CPU execution. The priority-0 main thread owns all
 authoritative game state, samples input, and asks the platform-neutral world to
-advance one fixed 120 Hz tick. It publishes a 24-byte immutable render snapshot
+advance one fixed 120 Hz tick. It publishes a 184-byte immutable render snapshot
 into one of two slots under a short spin lock. A saturated semaphore wakes the
 priority-1 renderer, which coalesces obsolete snapshots instead of making
 simulation wait.
@@ -359,20 +366,23 @@ framebuffer is allocated.
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation and also runs native game-world replay/boundary, deadline-scheduler,
+generation and also runs native physics collision/capacity, 10,000-tick
+game-world replay/boundary, deadline-scheduler,
 serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure, and
 deterministic-sequence tests. The game-world test uses the undefined-behavior
 sanitizer and treats the board-confirmed reset/right-30/up-15 hashes as native
-goldens. The default remote-debug image uses 147,108 bytes of RAM (54.62%) and
-130,092 bytes of flash. This includes the 115,200-byte framebuffer, 3,840-byte
-transfer buffer, two 24-byte render snapshots, and a 1,024-byte shell TX ring.
+goldens. The default collision-lab image uses 152,716 bytes of RAM (56.71%) and
+136,660 bytes of flash. This includes the 115,200-byte framebuffer, 3,840-byte
+transfer buffer, 5,208-byte fixed-capacity physics world, two 184-byte render
+snapshots, and a 1,024-byte shell TX ring.
 Full frames bypass the staging buffer with one contiguous display write.
 
 GitHub Actions runs `make check` and builds the PIO and PIO/DMA variants for
 every pull request and push to `main`. Tests that need a connected PicoSystem
 remain part of the physical smoke-test boundary rather than hosted CI.
 
-On the tested PIM559, the exact 120 Hz scheduler ran with a maximum observed
+The following scheduler and display results describe the preceding single-sprite
+baseline. On the tested PIM559, the exact 120 Hz scheduler ran with a maximum observed
 backlog of one, zero skipped ticks, and zero over-budget updates. The worst
 simulation update during the run was 1,149 us of its 8,333 us budget. Normal
 TE-driven presentation settled at about 59.6 fps with dirty state typically
@@ -422,7 +432,8 @@ each result. The renderer subsequently acknowledged snapshot 11,264, and its
 framebuffer CRC-32 was `74db97a8`. Invalid stepping while running now produces
 a nonzero host-tool exit instead of a false-positive automation result.
 
-Canonical reset was also rejected while running and repeatedly produced tick 0,
+In the preceding single-sprite image, canonical reset was also rejected while
+running and repeatedly produced tick 0,
 neutral remote input, and hash `482ffd98` while paused. Three consecutive runs
 of the committed right-30/up-15 sequence each reached tick 45, hash `e60b17ef`,
 and framebuffer CRC-32 `3e08ecbb`. The intentional mismatch path returned
@@ -430,6 +441,22 @@ nonzero, captured the expected 240 x 240 frame before cleanup, and restored
 physical input plus real-time scheduling. Rebased post-test metrics returned to
 120.0 Hz simulation and approximately 59.5 fps instead of counting exact manual
 steps against wall time.
+
+The first collision-lab image was then checked through the same physical-board
+path. Native and RP2040 reset both produced hash `f5250cf4`; right for 30 ticks
+produced `82f2e46c`; and a further 15 up ticks produced tick 45 and hash
+`6a25b6d6`. The coherently presented tick-45 framebuffer had CRC-32 `c62eb3a0`.
+Its captured PNG showed all six colored circles, both diagonal ramps, the arena
+boundaries, and intact checkerboard restoration without stale trails.
+
+A clean 20-second collision-lab run then held 120.0 Hz simulation and 59.3 fps
+presentation with scheduler backlog one, zero skipped ticks, and zero
+over-budget updates. Routine sampled updates took 1.9-2.1 ms; the observed
+maximum was 6.269 ms of the 8.333 ms budget. The last 21 x 22 transfer took
+1.125 ms. Separating old and new body footprints for coalesced jumps reduced
+the observed worst dirty-render wall time from 77.591 ms to 33.808 ms; that
+metric includes the bounded TE wait. Main and renderer stack high-water marks
+were 1,392/2,048 and 1,340/2,048 bytes respectively.
 
 CRC-validated PNG captures complete in roughly 8.0-8.6 seconds after increasing
 the interrupt-driven USB shell TX ring from 8 to 1,024 bytes. Captures were
