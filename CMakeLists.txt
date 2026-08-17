@@ -16,6 +16,7 @@ target_sources(app PRIVATE
 	src/game_world.c
 	src/graphics.c
 	src/main.c
+	src/physics_world.c
 	src/piezo.c
 	src/power_status.c
 )

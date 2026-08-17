@@ -10,27 +10,62 @@
 
 #include "game_world.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0x482ffd98)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xb8f03552)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0xe60b17ef)
-#define SPRITE_SPEED_FIXED           (INT32_C(125) * PICOSYSTEM_GAME_FIXED_ONE)
-#define SPRITE_MIN_X_FIXED                                                                         \
-	((int32_t)PICOSYSTEM_GAME_SPRITE_MIN_X_PIXELS * PICOSYSTEM_GAME_FIXED_ONE)
-#define SPRITE_MAX_X_FIXED                                                                         \
-	((int32_t)PICOSYSTEM_GAME_SPRITE_MAX_X_PIXELS * PICOSYSTEM_GAME_FIXED_ONE)
-#define SPRITE_MIN_Y_FIXED                                                                         \
-	((int32_t)PICOSYSTEM_GAME_SPRITE_MIN_Y_PIXELS * PICOSYSTEM_GAME_FIXED_ONE)
-#define SPRITE_MAX_Y_FIXED                                                                         \
-	((int32_t)PICOSYSTEM_GAME_SPRITE_MAX_Y_PIXELS * PICOSYSTEM_GAME_FIXED_ONE)
+#define EXPECTED_RESET_HASH          UINT32_C(0xf5250cf4)
+#define EXPECTED_RIGHT_30_HASH       UINT32_C(0x82f2e46c)
+#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x6a25b6d6)
+#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x255c20c6)
+#define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
+
+static void assert_vector_equal(const struct picosystem_physics_vector *left,
+				const struct picosystem_physics_vector *right)
+{
+	assert(left->x == right->x);
+	assert(left->y == right->y);
+}
 
 static void assert_world_equal(const struct picosystem_game_world *left,
 			       const struct picosystem_game_world *right)
 {
-	assert(left->sprite_x_fixed == right->sprite_x_fixed);
-	assert(left->sprite_y_fixed == right->sprite_y_fixed);
-	assert(left->velocity_x_fixed_per_second == right->velocity_x_fixed_per_second);
-	assert(left->velocity_y_fixed_per_second == right->velocity_y_fixed_per_second);
 	assert(left->logic_tick_count == right->logic_tick_count);
+	assert(left->physics.max_speed_per_tick == right->physics.max_speed_per_tick);
+	assert(left->physics.body_count == right->physics.body_count);
+	assert(left->physics.static_segment_count == right->physics.static_segment_count);
+	assert(left->physics.contact_count == right->physics.contact_count);
+	assert(left->physics.last_candidate_pair_count == right->physics.last_candidate_pair_count);
+
+	for (uint16_t index = 0U; index < left->physics.body_count; ++index) {
+		const struct picosystem_physics_body *const left_body =
+			&left->physics.bodies[index];
+		const struct picosystem_physics_body *const right_body =
+			&right->physics.bodies[index];
+		assert_vector_equal(&left_body->center, &right_body->center);
+		assert_vector_equal(&left_body->velocity_per_tick, &right_body->velocity_per_tick);
+		assert(left_body->radius == right_body->radius);
+		assert(left_body->inverse_mass == right_body->inverse_mass);
+		assert(left_body->restitution == right_body->restitution);
+		assert(left_body->friction == right_body->friction);
+		assert(left_body->id == right_body->id);
+	}
+
+	for (uint16_t index = 0U; index < left->physics.static_segment_count; ++index) {
+		const struct picosystem_physics_static_segment *const left_segment =
+			&left->physics.static_segments[index];
+		const struct picosystem_physics_static_segment *const right_segment =
+			&right->physics.static_segments[index];
+		assert_vector_equal(&left_segment->start, &right_segment->start);
+		assert_vector_equal(&left_segment->end, &right_segment->end);
+		assert(left_segment->restitution == right_segment->restitution);
+		assert(left_segment->friction == right_segment->friction);
+		assert(left_segment->id == right_segment->id);
+	}
+}
+
+static void assert_hash(const char *label, uint32_t actual, uint32_t expected)
+{
+	if (actual != expected) {
+		fprintf(stderr, "%s hash: %08x\n", label, actual);
+	}
+	assert(actual == expected);
 }
 
 static void step_many(struct picosystem_game_world *world,
@@ -43,34 +78,35 @@ static void step_many(struct picosystem_game_world *world,
 
 static void test_canonical_reset_and_golden_replay(void)
 {
-	struct picosystem_game_world world = {
-		.sprite_x_fixed = -1,
-		.sprite_y_fixed = -1,
-		.velocity_x_fixed_per_second = -1,
-		.velocity_y_fixed_per_second = -1,
-		.logic_tick_count = UINT32_MAX,
-	};
-
+	struct picosystem_game_world world;
 	assert(picosystem_game_world_reset(&world) == 0);
-	assert(world.sprite_x_fixed == (INT32_C(112) * PICOSYSTEM_GAME_FIXED_ONE));
-	assert(world.sprite_y_fixed == (INT32_C(124) * PICOSYSTEM_GAME_FIXED_ONE));
-	assert(world.velocity_x_fixed_per_second == SPRITE_SPEED_FIXED);
-	assert(world.velocity_y_fixed_per_second == SPRITE_SPEED_FIXED);
 	assert(world.logic_tick_count == 0U);
-	assert(picosystem_game_world_hash(&world) == EXPECTED_RESET_HASH);
+	assert(world.physics.body_count == PICOSYSTEM_GAME_BODY_COUNT);
+	assert(world.physics.static_segment_count == PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT);
+	assert(world.physics.contact_count == 0U);
+
+	const struct picosystem_physics_body *const focus =
+		picosystem_game_world_focus_body(&world);
+	assert(focus != NULL);
+	assert(focus->id == 1U);
+	assert(focus->center.x == PICOSYSTEM_PHYSICS_FIXED_FROM_INT(55));
+	assert(focus->center.y == PICOSYSTEM_PHYSICS_FIXED_FROM_INT(55));
+	assert(focus->radius == PICOSYSTEM_PHYSICS_FIXED_FROM_INT(9));
+	assert_hash("reset", picosystem_game_world_hash(&world), EXPECTED_RESET_HASH);
 
 	const struct picosystem_game_input right = {.horizontal = 1};
 	step_many(&world, &right, 30U);
 	assert(world.logic_tick_count == 30U);
-	assert(picosystem_game_world_hash(&world) == EXPECTED_RIGHT_30_HASH);
+	assert_hash("right-30", picosystem_game_world_hash(&world), EXPECTED_RIGHT_30_HASH);
 
 	const struct picosystem_game_input up = {.vertical = -1};
 	step_many(&world, &up, 15U);
 	assert(world.logic_tick_count == 45U);
-	assert(picosystem_game_world_hash(&world) == EXPECTED_RIGHT_30_UP_15_HASH);
+	assert_hash("right-30-up-15", picosystem_game_world_hash(&world),
+		    EXPECTED_RIGHT_30_UP_15_HASH);
 
 	assert(picosystem_game_world_reset(&world) == 0);
-	assert(picosystem_game_world_hash(&world) == EXPECTED_RESET_HASH);
+	assert_hash("reset-after-replay", picosystem_game_world_hash(&world), EXPECTED_RESET_HASH);
 }
 
 static void test_validation_preserves_state(void)
@@ -88,65 +124,98 @@ static void test_validation_preserves_state(void)
 	assert_world_equal(&world, &baseline);
 
 	const struct picosystem_game_input neutral = {0};
-	world.sprite_x_fixed = SPRITE_MIN_X_FIXED - 1;
-	const struct picosystem_game_world invalid_world = world;
+	world.physics.max_speed_per_tick = 0;
+	const struct picosystem_game_world invalid_speed = world;
 	assert(picosystem_game_world_step(&world, &neutral) == -ERANGE);
-	assert_world_equal(&world, &invalid_world);
+	assert_world_equal(&world, &invalid_speed);
 
 	assert(picosystem_game_world_reset(&world) == 0);
-	world.sprite_y_fixed = SPRITE_MAX_Y_FIXED + 1;
-	const struct picosystem_game_world past_maximum = world;
+	world.physics.bodies[0].id = 0U;
+	const struct picosystem_game_world invalid_id = world;
 	assert(picosystem_game_world_step(&world, &neutral) == -ERANGE);
-	assert_world_equal(&world, &past_maximum);
-
-	assert(picosystem_game_world_reset(&world) == 0);
-	world.velocity_x_fixed_per_second = INT32_MIN;
-	const struct picosystem_game_world invalid_velocity = world;
-	assert(picosystem_game_world_step(&world, &neutral) == -ERANGE);
-	assert_world_equal(&world, &invalid_velocity);
+	assert_world_equal(&world, &invalid_id);
 
 	assert(picosystem_game_world_reset(NULL) == -EINVAL);
 	assert(picosystem_game_world_step(NULL, &neutral) == -EINVAL);
 	assert(picosystem_game_world_step(&world, NULL) == -EINVAL);
+	assert(picosystem_game_world_focus_body(NULL) == NULL);
 	assert(picosystem_game_world_hash(NULL) == 0U);
+	assert(picosystem_game_world_reset(&world) == 0);
+	world.physics.body_count = PICOSYSTEM_PHYSICS_MAX_BODIES + 1U;
+	assert(picosystem_game_world_hash(&world) == 0U);
 }
 
-static void test_bounded_motion_and_saturated_tick(void)
+static void assert_bodies_inside_arena(const struct picosystem_game_world *world)
+{
+	const int32_t left =
+		PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS);
+	const int32_t right =
+		PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS);
+	const int32_t top = PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS);
+	const int32_t bottom =
+		PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS);
+
+	for (uint16_t index = 0U; index < world->physics.body_count; ++index) {
+		const struct picosystem_physics_body *const body = &world->physics.bodies[index];
+		if ((body->center.x < (left + body->radius - BOUNDARY_TOLERANCE)) ||
+		    (body->center.x > (right - body->radius + BOUNDARY_TOLERANCE)) ||
+		    (body->center.y < (top + body->radius - BOUNDARY_TOLERANCE)) ||
+		    (body->center.y > (bottom - body->radius + BOUNDARY_TOLERANCE))) {
+			fprintf(stderr, "body %u escaped at tick %u: center=(%d,%d) radius=%d\n",
+				index, world->logic_tick_count, body->center.x, body->center.y,
+				body->radius);
+		}
+		assert(body->center.x >= (left + body->radius - BOUNDARY_TOLERANCE));
+		assert(body->center.x <= (right - body->radius + BOUNDARY_TOLERANCE));
+		assert(body->center.y >= (top + body->radius - BOUNDARY_TOLERANCE));
+		assert(body->center.y <= (bottom - body->radius + BOUNDARY_TOLERANCE));
+	}
+}
+
+static void test_bounded_motion_contacts_and_saturated_tick(void)
 {
 	struct picosystem_game_world world;
 	assert(picosystem_game_world_reset(&world) == 0);
-	const struct picosystem_game_input neutral = {0};
-	bool saw_negative_x = false;
-	bool saw_positive_x_after_bounce = false;
-	bool saw_negative_y = false;
-	bool saw_positive_y_after_bounce = false;
+	const struct picosystem_game_input inputs[] = {
+		{0},
+		{.horizontal = 1},
+		{.vertical = -1},
+		{.horizontal = -1, .vertical = 1},
+	};
+	bool saw_body_contact = false;
+	bool saw_static_contact = false;
 
-	for (uint32_t step = 0U; step < 2000U; ++step) {
-		assert(picosystem_game_world_step(&world, &neutral) == 0);
-		assert(world.sprite_x_fixed >= SPRITE_MIN_X_FIXED);
-		assert(world.sprite_x_fixed <= SPRITE_MAX_X_FIXED);
-		assert(world.sprite_y_fixed >= SPRITE_MIN_Y_FIXED);
-		assert(world.sprite_y_fixed <= SPRITE_MAX_Y_FIXED);
-
-		if (world.velocity_x_fixed_per_second < 0) {
-			saw_negative_x = true;
-		} else if (saw_negative_x) {
-			saw_positive_x_after_bounce = true;
+	for (uint32_t step = 0U; step < 10000U; ++step) {
+		const size_t input_index = (step / 250U) % (sizeof(inputs) / sizeof(inputs[0]));
+		const int err = picosystem_game_world_step(&world, &inputs[input_index]);
+		if (err != 0) {
+			fprintf(stderr, "bounded replay failed at step %u: %d\n", step, err);
+			for (uint16_t index = 0U; index < world.physics.body_count; ++index) {
+				const struct picosystem_physics_body *const body =
+					&world.physics.bodies[index];
+				fprintf(stderr, "body %u p=(%d,%d) v=(%d,%d)\n", index,
+					body->center.x, body->center.y, body->velocity_per_tick.x,
+					body->velocity_per_tick.y);
+			}
 		}
-		if (world.velocity_y_fixed_per_second < 0) {
-			saw_negative_y = true;
-		} else if (saw_negative_y) {
-			saw_positive_y_after_bounce = true;
+		assert(err == 0);
+		assert_bodies_inside_arena(&world);
+		assert(world.physics.last_candidate_pair_count == 51U);
+
+		for (uint16_t index = 0U; index < world.physics.contact_count; ++index) {
+			if (world.physics.contacts[index].type == PICOSYSTEM_PHYSICS_CONTACT_BODY) {
+				saw_body_contact = true;
+			} else {
+				saw_static_contact = true;
+			}
 		}
 	}
 
-	assert(saw_negative_x);
-	assert(saw_positive_x_after_bounce);
-	assert(saw_negative_y);
-	assert(saw_positive_y_after_bounce);
+	assert(saw_body_contact);
+	assert(saw_static_contact);
 
 	world.logic_tick_count = UINT32_MAX;
-	assert(picosystem_game_world_step(&world, &neutral) == 0);
+	assert(picosystem_game_world_step(&world, &inputs[0]) == 0);
 	assert(world.logic_tick_count == UINT32_MAX);
 }
 
@@ -176,14 +245,14 @@ static void test_reset_replay_is_bit_exact(void)
 	replay_pattern(&second);
 
 	assert_world_equal(&first, &second);
-	assert(picosystem_game_world_hash(&first) == picosystem_game_world_hash(&second));
+	assert_hash("replay-10000", picosystem_game_world_hash(&first), EXPECTED_REPLAY_10000_HASH);
 }
 
 int main(void)
 {
 	test_canonical_reset_and_golden_replay();
 	test_validation_preserves_state();
-	test_bounded_motion_and_saturated_tick();
+	test_bounded_motion_contacts_and_saturated_tick();
 	test_reset_replay_is_bit_exact();
 	puts("game-world tests passed");
 	return 0;

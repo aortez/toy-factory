@@ -285,17 +285,23 @@ static int fill_game_control_state(const struct game_runtime_control *control,
 	if (err != 0) {
 		return err;
 	}
+	const struct picosystem_physics_body *const focus =
+		picosystem_game_world_focus_body(&game->world);
+	if (focus == NULL) {
+		return -EIO;
+	}
 
 	*state = (struct picosystem_game_control_state){
-		.sprite_x_fixed = game->world.sprite_x_fixed,
-		.sprite_y_fixed = game->world.sprite_y_fixed,
-		.velocity_x_fixed_per_second = game->world.velocity_x_fixed_per_second,
-		.velocity_y_fixed_per_second = game->world.velocity_y_fixed_per_second,
+		.focus_x_fixed = focus->center.x,
+		.focus_y_fixed = focus->center.y,
+		.focus_velocity_x_fixed_per_tick = focus->velocity_per_tick.x,
+		.focus_velocity_y_fixed_per_tick = focus->velocity_per_tick.y,
 		.logic_tick_count = game->world.logic_tick_count,
 		.state_hash = picosystem_game_demo_state_hash(game),
 		.published_snapshot_sequence = game->snapshot_sequence,
 		.presented_snapshot_sequence = stats.presented_snapshot_sequence,
 		.input = selected_game_input(control, physical_input),
+		.focus_body_id = focus->id,
 		.paused = control->paused,
 		.remote_input_enabled = control->remote_input_enabled,
 	};
@@ -450,7 +456,7 @@ static int publish_diagnostic_snapshot(const struct picosystem_battery_sample *b
 int main(void)
 {
 	struct picosystem_battery_sample battery_sample;
-	struct picosystem_game_demo_state game_state;
+	static struct picosystem_game_demo_state game_state;
 	struct picosystem_game_demo_stats game_stats;
 	struct game_runtime_control game_control = {0};
 	struct picosystem_power_status power_status;
@@ -543,9 +549,9 @@ int main(void)
 		return err;
 	}
 
-	LOG_INF("PicoSystem 120 Hz simulation and asynchronous renderer ready");
-	LOG_INF("D-pad steers the sprite; A queues a full redraw for comparison");
-	LOG_INF("B plays a short 440 Hz piezo tone");
+	LOG_INF("PicoSystem 120 Hz physics lab and asynchronous renderer ready");
+	LOG_INF("D-pad tilts gravity for all bodies; A queues a full redraw for comparison");
+	LOG_INF("B plays a short 440 Hz piezo tone; Y resets the physics world");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 	LOG_INF("GP2 remains an input; the automatic red charge indicator is enabled");
 	LOG_INF("USB diagnostics ready; enter 'picosystem -h'");
@@ -621,6 +627,27 @@ int main(void)
 		if (err != 0) {
 			LOG_ERR("Game-control request failed (%d)", err);
 			return err;
+		}
+
+		if ((pressed & BIT(PICOSYSTEM_BUTTON_Y)) != 0U) {
+			err = picosystem_game_demo_reset(&game_state);
+			if (err != 0) {
+				LOG_ERR("Failed to reset physics world (%d)", err);
+				return err;
+			}
+
+			if (!game_control.paused) {
+				err = picosystem_fixed_rate_scheduler_init(
+					&game_scheduler, tick_start_ticks,
+					CONFIG_SYS_CLOCK_TICKS_PER_SEC,
+					PICOSYSTEM_GAME_TICK_RATE_HZ);
+				if (err != 0) {
+					LOG_ERR("Failed to restart game scheduler after reset (%d)",
+						err);
+					return err;
+				}
+			}
+			LOG_INF("Reset physics world from Y button");
 		}
 
 		const uint32_t due_ticks =
