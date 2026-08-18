@@ -45,6 +45,14 @@ static uint16_t framebuffer[DISPLAY_WIDTH * DISPLAY_HEIGHT] __aligned(4);
 static uint16_t transfer_buffer[TRANSFER_BUFFER_PIXELS] __aligned(4);
 static bool graphics_initialized;
 
+#if defined(CONFIG_SPI_RPI_PICO_PIO_DMA)
+#define DISPLAY_TRANSPORT PICOSYSTEM_GRAPHICS_TRANSPORT_PIO_DMA
+#elif defined(CONFIG_SPI_RPI_PICO_PIO)
+#define DISPLAY_TRANSPORT PICOSYSTEM_GRAPHICS_TRANSPORT_PIO_POLLING
+#else
+#define DISPLAY_TRANSPORT PICOSYSTEM_GRAPHICS_TRANSPORT_PL022
+#endif
+
 static const uint8_t digit_glyphs[10][FONT_HEIGHT] = {
 	{0x7U, 0x5U, 0x5U, 0x5U, 0x7U}, {0x2U, 0x6U, 0x2U, 0x2U, 0x7U},
 	{0x7U, 0x1U, 0x7U, 0x4U, 0x7U}, {0x7U, 0x1U, 0x7U, 0x1U, 0x7U},
@@ -124,8 +132,16 @@ static uint32_t throughput_kib_per_second(size_t byte_count, uint32_t elapsed_us
 			  ((uint64_t)MAX(elapsed_us, 1U) * 1024U));
 }
 
+static void increment_saturated(uint32_t *value)
+{
+	if (*value < UINT32_MAX) {
+		++*value;
+	}
+}
+
 static void record_present_stats(struct picosystem_graphics_stats *stats, uint16_t width,
-				 uint16_t height, size_t byte_count, uint32_t start_cycles)
+				 uint16_t height, size_t byte_count, uint16_t write_count,
+				 uint32_t start_cycles)
 {
 	const uint32_t elapsed_cycles = k_cycle_get_32() - start_cycles;
 	const uint32_t elapsed_us = MAX(k_cyc_to_us_floor32(elapsed_cycles), 1U);
@@ -133,19 +149,17 @@ static void record_present_stats(struct picosystem_graphics_stats *stats, uint16
 	stats->last_present_time_us = elapsed_us;
 	stats->last_present_throughput_kib_per_second =
 		throughput_kib_per_second(byte_count, elapsed_us);
+	stats->last_present_byte_count = (uint32_t)byte_count;
 	stats->last_present_width = width;
 	stats->last_present_height = height;
-	if (stats->present_count < UINT32_MAX) {
-		++stats->present_count;
-	}
+	stats->last_present_write_count = write_count;
+	increment_saturated(&stats->present_count);
 
 	if ((width == DISPLAY_WIDTH) && (height == DISPLAY_HEIGHT)) {
 		stats->full_present_time_us = elapsed_us;
 		stats->full_present_throughput_kib_per_second =
 			throughput_kib_per_second(byte_count, elapsed_us);
-		if (stats->full_present_count < UINT32_MAX) {
-			++stats->full_present_count;
-		}
+		increment_saturated(&stats->full_present_count);
 	}
 }
 
@@ -193,6 +207,8 @@ int picosystem_graphics_init(struct picosystem_graphics_stats *stats)
 	*stats = (struct picosystem_graphics_stats){
 		.framebuffer_bytes = sizeof(framebuffer),
 		.transfer_buffer_bytes = sizeof(transfer_buffer),
+		.configured_spi_frequency_hz = DISPLAY_SPI_HZ,
+		.transport = DISPLAY_TRANSPORT,
 	};
 	graphics_initialized = false;
 
@@ -240,8 +256,9 @@ int picosystem_graphics_init(struct picosystem_graphics_stats *stats)
 	}
 
 	graphics_initialized = true;
-	LOG_INF("Framebuffer ready: %u bytes plus %u-byte transfer buffer, SPI %u Hz",
-		stats->framebuffer_bytes, stats->transfer_buffer_bytes, DISPLAY_SPI_HZ);
+	LOG_INF("Framebuffer ready: %u bytes plus %u-byte transfer buffer, %s at %u Hz",
+		stats->framebuffer_bytes, stats->transfer_buffer_bytes,
+		picosystem_graphics_transport_name(stats->transport), DISPLAY_SPI_HZ);
 	return 0;
 }
 
@@ -279,6 +296,7 @@ int picosystem_graphics_present_region(struct picosystem_graphics_stats *stats,
 	}
 
 	const uint16_t rows_per_write = TRANSFER_BUFFER_PIXELS / region->width;
+	uint16_t write_count = 0U;
 	stats->last_present_start_uptime_ticks = k_uptime_ticks();
 	const uint32_t start_cycles = k_cycle_get_32();
 
@@ -311,13 +329,16 @@ int picosystem_graphics_present_region(struct picosystem_graphics_stats *stats,
 				region->height, region->x, region->y, err);
 			return err;
 		}
+		increment_saturated(&stats->display_write_count);
+		++write_count;
 
 		row_offset += write_rows;
 	}
 
 	const size_t byte_count = (size_t)region->width * region->height * sizeof(framebuffer[0]);
 
-	record_present_stats(stats, region->width, region->height, byte_count, start_cycles);
+	record_present_stats(stats, region->width, region->height, byte_count, write_count,
+			     start_cycles);
 	return 0;
 }
 
@@ -343,10 +364,25 @@ int picosystem_graphics_present_full(struct picosystem_graphics_stats *stats)
 		LOG_ERR("Full-frame display write failed (%d)", err);
 		return err;
 	}
+	increment_saturated(&stats->display_write_count);
 
-	record_present_stats(stats, DISPLAY_WIDTH, DISPLAY_HEIGHT, sizeof(framebuffer),
+	record_present_stats(stats, DISPLAY_WIDTH, DISPLAY_HEIGHT, sizeof(framebuffer), 1U,
 			     start_cycles);
 	return 0;
+}
+
+const char *picosystem_graphics_transport_name(uint8_t transport)
+{
+	switch (transport) {
+	case PICOSYSTEM_GRAPHICS_TRANSPORT_PL022:
+		return "pl022";
+	case PICOSYSTEM_GRAPHICS_TRANSPORT_PIO_POLLING:
+		return "pio-polling";
+	case PICOSYSTEM_GRAPHICS_TRANSPORT_PIO_DMA:
+		return "pio-dma";
+	default:
+		return "unknown";
+	}
 }
 
 void picosystem_graphics_clear(picosystem_color_t color)

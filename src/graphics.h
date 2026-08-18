@@ -18,6 +18,12 @@
 
 typedef uint16_t picosystem_color_t;
 
+enum picosystem_graphics_transport {
+	PICOSYSTEM_GRAPHICS_TRANSPORT_PL022,
+	PICOSYSTEM_GRAPHICS_TRANSPORT_PIO_POLLING,
+	PICOSYSTEM_GRAPHICS_TRANSPORT_PIO_DMA,
+};
+
 enum picosystem_color {
 	PICOSYSTEM_COLOR_BLACK = 0x0000U,
 	PICOSYSTEM_COLOR_DARK_BLUE = 0x0842U,
@@ -50,14 +56,19 @@ struct picosystem_graphics_stats {
 	int64_t last_present_start_uptime_ticks;
 	uint32_t framebuffer_bytes;
 	uint32_t transfer_buffer_bytes;
+	uint32_t configured_spi_frequency_hz;
 	uint32_t full_present_time_us;
 	uint32_t full_present_throughput_kib_per_second;
 	uint32_t last_present_time_us;
 	uint32_t last_present_throughput_kib_per_second;
+	uint32_t last_present_byte_count;
 	uint32_t present_count;
 	uint32_t full_present_count;
+	uint32_t display_write_count;
 	uint16_t last_present_width;
 	uint16_t last_present_height;
+	uint16_t last_present_write_count;
+	uint8_t transport;
 	bool ready;
 };
 
@@ -74,6 +85,8 @@ int picosystem_graphics_enable_output(struct picosystem_graphics_stats *stats);
 int picosystem_graphics_present_region(struct picosystem_graphics_stats *stats,
 				       const struct picosystem_rect *region);
 int picosystem_graphics_present_full(struct picosystem_graphics_stats *stats);
+
+const char *picosystem_graphics_transport_name(uint8_t transport);
 
 void picosystem_graphics_clear(picosystem_color_t color);
 void picosystem_graphics_draw_pixel(int16_t x, int16_t y, picosystem_color_t color);

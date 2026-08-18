@@ -14,12 +14,19 @@ SEQUENCE ?= scripts/sequences/deterministic-smoke.json
 FAIL_SCREENSHOT ?= artifacts/sequence-failure.png
 PROFILE_TICKS ?= 2000
 PROFILE_OUT ?= artifacts/physics-profile.json
+RENDER_PROFILE_SAMPLES ?= 16
+RENDER_PROFILE_OUT ?= artifacts/render-profile.json
+DISPLAY_TRANSPORT ?= pio-dma
+DISPLAY_HZ ?= 20000000
+RENDER_PROFILE_BUILD_DIR = build-render-profile-$(DISPLAY_TRANSPORT)-$(DISPLAY_HZ)
+RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 
-.PHONY: help image setup build build-pio build-pio-dma format check check-pio-dma \
+.PHONY: help image setup build build-pio build-pio-dma build-render-profile format check \
+	check-pio-dma check-render-profile \
 	container-shell update update-pio update-pio-dma bootloader console status game-stats \
 	game-redraw display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
 	sim-reset sim-state sim-test \
-	profile profile-ab \
+	profile profile-ab render-profile update-render-profile \
 	flash monitor shell
 
 ##@ General
@@ -30,6 +37,8 @@ help: ## Show this list of targets
 	@printf '                    [STEPS=1] [INPUT=none] [OUT=artifacts/screenshot.png]\n'
 	@printf '                    [SEQUENCE=path.json] [FAIL_SCREENSHOT=artifacts/failure.png]\n'
 	@printf '                    [PROFILE_TICKS=2000] [PROFILE_OUT=artifacts/physics-profile.json]\n'
+	@printf '                    [RENDER_PROFILE_SAMPLES=16] [RENDER_PROFILE_OUT=artifacts/render-profile.json]\n'
+	@printf '                    [DISPLAY_TRANSPORT=pio-dma] [DISPLAY_HZ=20000000]\n'
 	@awk 'BEGIN { FS = ":.*## " } \
 		/^##@ / { printf "\n%s:\n", substr($$0, 5); next } \
 		/^[a-zA-Z0-9_-]+:.*## / { printf "  %-18s %s\n", $$1, $$2 }' \
@@ -52,6 +61,10 @@ build-pio: ## Build the PIO SPI benchmark variant
 build-pio-dma: ## Build the PIO SPI plus DMA benchmark variant
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --variant pio-dma
 
+build-render-profile: ## Build DISPLAY_TRANSPORT=<default|pio|pio-dma> at DISPLAY_HZ=<Hz>
+	$(COMPOSE) run --rm firmware ./scripts/container/build.sh \
+		--variant "$(DISPLAY_TRANSPORT)" --display-frequency "$(DISPLAY_HZ)"
+
 format: ## Format application and native-test C source
 	$(COMPOSE) run --rm firmware clang-format -i src/*.c src/*.h scripts/tests/*.c
 
@@ -60,6 +73,10 @@ check: ## Run checks and a pristine firmware build
 
 check-pio-dma: ## Pristine-build the PIO SPI plus DMA benchmark
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --pristine --variant pio-dma
+
+check-render-profile: ## Pristine-build the selected display transport/frequency image
+	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --pristine \
+		--variant "$(DISPLAY_TRANSPORT)" --display-frequency "$(DISPLAY_HZ)"
 
 container-shell: ## Open a shell in the builder container
 	$(COMPOSE) run --rm firmware bash
@@ -74,6 +91,9 @@ update-pio: build-pio ## Build and flash the PIO SPI benchmark
 
 update-pio-dma: build-pio-dma ## Build and flash the PIO SPI plus DMA benchmark
 	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(PIO_DMA_UF2)" "$(FIRMWARE_IMAGE)"
+
+update-render-profile: build-render-profile ## Build and flash selected display profile image
+	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(RENDER_PROFILE_UF2)" "$(FIRMWARE_IMAGE)"
 
 bootloader: image ## Reboot the running app into the RP2040 ROM bootloader
 	./scripts/reboot-to-bootloader.sh "$(PORT)" "$(FIRMWARE_IMAGE)"
@@ -213,6 +233,17 @@ profile-ab: image ## Compare isolated grid/reference physics and save PROFILE_OU
 				"$$port" "/workspace/app/$(PROFILE_OUT)"
 
 profile: profile-ab ## Alias for profile-ab
+
+render-profile: image ## Profile dense display workloads and save RENDER_PROFILE_OUT=<JSON>
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/render_profile.py \
+				--samples "$(RENDER_PROFILE_SAMPLES)" \
+				--owner-uid "$$(id -u)" --owner-gid "$$(id -g)" \
+				"$$port" "/workspace/app/$(RENDER_PROFILE_OUT)"
 
 ##@ Compatibility aliases
 

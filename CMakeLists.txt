@@ -9,6 +9,7 @@ project(toy_factory)
 target_sources(app PRIVATE
 	src/battery.c
 	src/diagnostic_shell.c
+	src/display_profile.c
 	src/display_sync.c
 	src/fixed_rate_scheduler.c
 	src/game_control.c

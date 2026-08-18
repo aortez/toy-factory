@@ -1313,6 +1313,87 @@ int picosystem_game_demo_capture_framebuffer(picosystem_graphics_framebuffer_vis
 	return err;
 }
 
+int picosystem_game_demo_profile_display(uint32_t measured_sample_count,
+					 struct picosystem_display_profile_result *result)
+{
+	if (result == NULL) {
+		return -EINVAL;
+	}
+	*result = (struct picosystem_display_profile_result){0};
+
+	int err = wait_for_latest_frame();
+	if (err != 0) {
+		return err;
+	}
+
+	err = k_mutex_lock(&renderer.framebuffer_mutex, K_FOREVER);
+	if (err != 0) {
+		return err;
+	}
+
+	struct game_render_snapshot restore_snapshot;
+	uint32_t presented_sequence;
+	{
+		const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
+		restore_snapshot = renderer.snapshots[renderer.published_index];
+		presented_sequence = renderer.metrics.presented_snapshot_sequence;
+		k_spin_unlock(&renderer.lock, key);
+	}
+	if (restore_snapshot.sequence != presented_sequence) {
+		err = -EBUSY;
+		goto unlock;
+	}
+
+	/* Establish a reproducible full-scene baseline without allocating a second frame. */
+	err = render_full_scene(&restore_snapshot);
+	if (err == 0) {
+		err = picosystem_graphics_present_full(&renderer.live_graphics);
+	}
+	uint32_t original_crc32;
+	if (err == 0) {
+		err = picosystem_graphics_framebuffer_crc32(&original_crc32);
+	}
+	if (err != 0) {
+		goto unlock;
+	}
+
+	err = picosystem_display_profile_run(&renderer.live_graphics, measured_sample_count,
+					     result);
+	const int profile_err = err;
+
+	int restore_err = render_full_scene(&restore_snapshot);
+	if (restore_err == 0) {
+		restore_err = picosystem_graphics_present_full(&renderer.live_graphics);
+	}
+	uint32_t restored_crc32 = 0U;
+	if (restore_err == 0) {
+		restore_err = picosystem_graphics_framebuffer_crc32(&restored_crc32);
+	}
+
+	result->original_framebuffer_crc32 = original_crc32;
+	result->restored_framebuffer_crc32 = restored_crc32;
+	result->framebuffer_restored = (restore_err == 0) && (original_crc32 == restored_crc32);
+	{
+		const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
+		renderer.metrics.graphics = renderer.live_graphics;
+		k_spin_unlock(&renderer.lock, key);
+	}
+
+	if (profile_err != 0) {
+		err = profile_err;
+	} else if (restore_err != 0) {
+		err = restore_err;
+	} else if (!result->framebuffer_restored) {
+		err = -EILSEQ;
+	} else {
+		err = 0;
+	}
+
+unlock:
+	k_mutex_unlock(&renderer.framebuffer_mutex);
+	return err;
+}
+
 int picosystem_game_demo_renderer_error(void)
 {
 	const k_spinlock_key_t key = k_spin_lock(&renderer.lock);

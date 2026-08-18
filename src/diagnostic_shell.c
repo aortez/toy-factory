@@ -23,6 +23,7 @@
 #include <zephyr/sys/util.h>
 
 #include "display_sync.h"
+#include "display_profile.h"
 #include "game_control.h"
 #include "physics_profile.h"
 #include "piezo.h"
@@ -30,6 +31,7 @@
 #define BOOTLOADER_REBOOT_DELAY_MS 100
 
 static struct picosystem_physics_profile_result profile_result;
+static struct picosystem_display_profile_result display_profile_result;
 
 struct named_button {
 	const char *name;
@@ -690,6 +692,114 @@ static uint32_t profile_cycles_to_microseconds(uint32_t cycles, uint32_t clock_f
 			  clock_frequency_hz);
 }
 
+static void print_display_profile_result(const struct shell *shell,
+					 const struct picosystem_display_profile_result *result)
+{
+	shell_print(shell,
+		    "DISPLAY_PROFILE_BEGIN schema=%u samples=%u warmup=%u clock_hz=%u "
+		    "configured_spi_hz=%u width=%u height=%u bpp=%u transport=%s cases=%u",
+		    result->schema_version, result->measured_sample_count,
+		    result->warmup_sample_count, result->clock_frequency_hz,
+		    result->configured_spi_frequency_hz, result->width, result->height,
+		    result->bytes_per_pixel, picosystem_graphics_transport_name(result->transport),
+		    PICOSYSTEM_DISPLAY_PROFILE_CASE_COUNT);
+
+	for (size_t case_index = 0U; case_index < PICOSYSTEM_DISPLAY_PROFILE_CASE_COUNT;
+	     ++case_index) {
+		const struct picosystem_display_profile_case_result *const case_result =
+			&result->cases[case_index];
+		const char *const case_name = picosystem_display_profile_case_name(case_index);
+		shell_print(shell,
+			    "DISPLAY_PROFILE_CASE name=%s coverage=%u payload_bytes=%u regions=%u "
+			    "writes=%u synchronized=%u",
+			    case_name, case_result->coverage_percent, case_result->payload_bytes,
+			    case_result->region_count, case_result->display_write_count,
+			    case_result->synchronized_wait_count);
+
+		for (size_t stage = 0U; stage < PICOSYSTEM_DISPLAY_PROFILE_STAGE_COUNT; ++stage) {
+			const struct picosystem_display_profile_stage_summary *const summary =
+				&case_result->stages[stage];
+			shell_print(shell,
+				    "DISPLAY_PROFILE_STAGE name=%s stage=%s samples=%u mean_us=%u "
+				    "min_us=%u p50_us=%u p95_us=%u p99_us=%u max_us=%u",
+				    case_name, picosystem_display_profile_stage_name(stage),
+				    summary->sample_count,
+				    profile_cycles_to_microseconds(summary->mean_cycles,
+								   result->clock_frequency_hz),
+				    profile_cycles_to_microseconds(summary->minimum_cycles,
+								   result->clock_frequency_hz),
+				    profile_cycles_to_microseconds(summary->percentile_50_cycles,
+								   result->clock_frequency_hz),
+				    profile_cycles_to_microseconds(summary->percentile_95_cycles,
+								   result->clock_frequency_hz),
+				    profile_cycles_to_microseconds(summary->percentile_99_cycles,
+								   result->clock_frequency_hz),
+				    profile_cycles_to_microseconds(summary->maximum_cycles,
+								   result->clock_frequency_hz));
+		}
+	}
+
+	shell_print(shell,
+		    "DISPLAY_PROFILE_VERIFY original_crc32=%08x restored_crc32=%08x "
+		    "framebuffer_restored=%s",
+		    result->original_framebuffer_crc32, result->restored_framebuffer_crc32,
+		    result->framebuffer_restored ? "yes" : "no");
+}
+
+static int cmd_display_profile(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t measured_sample_count = PICOSYSTEM_DISPLAY_PROFILE_DEFAULT_SAMPLES;
+	if (argc == 2U) {
+		const int parse_err =
+			parse_u32(shell, "measured sample count", argv[1], &measured_sample_count);
+		if (parse_err != 0) {
+			return parse_err;
+		}
+	}
+	if ((measured_sample_count == 0U) ||
+	    (measured_sample_count > PICOSYSTEM_DISPLAY_PROFILE_MAX_SAMPLES)) {
+		shell_error(shell, "Measured sample count must be 1-%u",
+			    PICOSYSTEM_DISPLAY_PROFILE_MAX_SAMPLES);
+		return -ERANGE;
+	}
+
+	struct picosystem_game_control_state state;
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
+	};
+	int err = picosystem_game_control_submit(&request, &state);
+	if (err != 0) {
+		shell_error(shell, "Could not query simulation state (%d)", err);
+		return err;
+	}
+	if (!state.paused) {
+		shell_error(shell, "Pause the simulation before profiling the display");
+		return -EBUSY;
+	}
+
+	err = picosystem_game_demo_profile_display(measured_sample_count, &display_profile_result);
+	if ((err == 0) || (err == -EILSEQ)) {
+		print_display_profile_result(shell, &display_profile_result);
+		size_t unused_stack_bytes;
+		const int stack_err =
+			k_thread_stack_space_get(k_current_get(), &unused_stack_bytes);
+		if (stack_err == 0) {
+			shell_print(shell,
+				    "DISPLAY_PROFILE_RESOURCE shell_stack_used_bytes=%u "
+				    "shell_stack_size_bytes=%u",
+				    CONFIG_SHELL_STACK_SIZE - (uint32_t)unused_stack_bytes,
+				    CONFIG_SHELL_STACK_SIZE);
+		} else if (err == 0) {
+			err = stack_err;
+		}
+		shell_print(shell, "DISPLAY_PROFILE_END status=%s", (err == 0) ? "ok" : "failed");
+	}
+	if (err != 0) {
+		shell_error(shell, "Display profile failed (%d)", err);
+	}
+	return err;
+}
+
 static void print_profile_result(const struct shell *shell,
 				 const struct picosystem_physics_profile_result *result)
 {
@@ -830,6 +940,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      1, 0),
 	SHELL_CMD_ARG(checksum, NULL, "Checksum the coherent presented framebuffer.",
 		      cmd_display_checksum, 1, 0),
+	SHELL_CMD_ARG(profile, NULL,
+		      SHELL_HELP("Profile dense display workloads.",
+				 "[samples] (default 16, maximum 64; simulation must be paused)"),
+		      cmd_display_profile, 1, 1),
 	SHELL_CMD_ARG(stats, NULL, "Show framebuffer, timing, and game-loop metrics.",
 		      cmd_display_stats, 1, 0),
 	SHELL_CMD_ARG(sync, NULL,

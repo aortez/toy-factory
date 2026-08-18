@@ -1,6 +1,7 @@
 /build/
 /build-pio/
 /build-pio-dma/
+/build-render-profile-*/
 /artifacts/
 /.cache/
 /.west/

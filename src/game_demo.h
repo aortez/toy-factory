@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "display_profile.h"
 #include "game_world.h"
 #include "graphics.h"
 
@@ -125,6 +126,10 @@ uint32_t picosystem_game_demo_state_hash(const struct picosystem_game_demo_state
 int picosystem_game_demo_capture_framebuffer(picosystem_graphics_framebuffer_visitor visitor,
 					     void *context,
 					     struct picosystem_game_framebuffer_capture *capture);
+
+/* Profile destructive display workloads, then restore the coherent presented game frame. */
+int picosystem_game_demo_profile_display(uint32_t measured_sample_count,
+					 struct picosystem_display_profile_result *result);
 
 /* Return a fatal renderer error, or zero while the worker remains healthy. */
 int picosystem_game_demo_renderer_error(void);
