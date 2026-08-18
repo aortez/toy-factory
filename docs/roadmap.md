@@ -55,6 +55,9 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Measure RAM, stack high-water marks, frame time, and USB logging impact.
 - [x] Add and benchmark a contiguous one-transfer full-frame path.
 - [x] Evaluate a preassembled PIO/DMA transfer path; retain PL022 for dirty updates.
+- [x] Add deterministic dense-update profiling across PL022, PIO/DMA, and PL022/DMA.
+- [ ] Add a direct one-write path for contiguous full-width partial updates.
+- [ ] Evaluate a size-aware polling/DMA transport policy.
 - [x] Use the LCD tearing-effect signal for synchronized presentation.
 - [x] Run authoritative simulation on exact rational 120 Hz deadlines.
 - [x] Hand immutable snapshots to a lower-priority, TE-driven renderer.

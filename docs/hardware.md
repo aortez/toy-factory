@@ -256,5 +256,15 @@ workloads should reconsider PIO/DMA. The direct full-frame output was visually
 confirmed on the physical PIM559. Full results and reproduction targets are in
 [the benchmark report](../benchmarks/pio-dma/README.md).
 
+The later dense-update matrix measures deterministic full-width bands,
+scattered tiles, and contiguous frames at several configured clocks. Stock
+PIO/DMA reaches 95.2% payload efficiency at its 31.25 MHz program limit and
+presents a full frame in 30.972 ms. PL022/DMA at 62.5 MHz is faster for the same
+contiguous frame at 18.361 ms, but repeated DMA/window setup makes 100 tiles
+take 102.914 ms. Polling PL022 barely improves when configured above 20 MHz.
+These results favor a size- and shape-aware transport policy; the current
+dirty-first image remains on polling PL022. Full distributions and reproduction
+commands are in [the dense-display report](../benchmarks/display-throughput/README.md).
+
 On a cold power-on, the backlight remained visually dark until the completed
 frame appeared; no bright or white startup flash was observed.

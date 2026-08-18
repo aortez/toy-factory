@@ -33,7 +33,7 @@ while (( $# > 0 )); do
 			shift 2
 			;;
 		*)
-			echo "usage: $0 [--pristine] [--variant default|pio|pio-dma]" \
+			echo "usage: $0 [--pristine] [--variant default|pio|pio-dma|pl022-dma]" \
 				"[--display-frequency 20000000|31250000|41666667|62500000]" >&2
 			exit 2
 			;;
@@ -60,6 +60,11 @@ case "$variant" in
 		display_transport_overlay=$app_dir/benchmarks/pio-dma/picosystem-pio-dma.overlay
 		cmake_options+=(-DEXTRA_CONF_FILE=$app_dir/benchmarks/pio-dma/pio-dma.conf)
 		;;
+	pl022-dma)
+		build_dir=$app_dir/build-pl022-dma
+		display_transport_overlay=$app_dir/benchmarks/pl022-dma/picosystem-pl022-dma.overlay
+		cmake_options+=(-DEXTRA_CONF_FILE=$app_dir/benchmarks/pl022-dma/pl022-dma.conf)
+		;;
 	*)
 		echo "unknown build variant: $variant" >&2
 		exit 2
@@ -76,7 +81,8 @@ if [[ -n "$display_frequency" ]]; then
 			exit 2
 			;;
 	esac
-	if [[ "$variant" != default ]] && (( display_frequency > 31250000 )); then
+	if [[ "$variant" == pio || "$variant" == pio-dma ]] &&
+		(( display_frequency > 31250000 )); then
 		echo "PIO SPI is limited to 31250000 Hz by its four-cycle transfer program" >&2
 		exit 2
 	fi

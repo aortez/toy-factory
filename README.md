@@ -36,8 +36,8 @@ been transferred, then enabled at 25%. The framebuffer consumes 115,200 bytes;
 a separate 3,840-byte staging buffer packs partial rows for efficient driver
 writes. The piezo starts silent and uses a conservative 25 us active pulse for
 the tone test. GP2 remains an input so the board's automatic red charging
-indicator continues to work. PIO and PIO/DMA display transports remain optional
-benchmark variants; the default uses SPI0/PL022.
+indicator continues to work. PIO/DMA and PL022/DMA display transports remain
+optional benchmark variants; the default uses polling SPI0/PL022.
 
 ## Build
 
@@ -59,6 +59,7 @@ Useful commands:
 make          # show all available targets (`make help` also works)
 make build    # build the firmware
 make build-pio-dma  # build the optional PIO/DMA display benchmark
+make build-pl022-dma  # build the optional PL022/DMA display benchmark
 make setup    # explicitly refresh the pinned west dependencies
 make format   # format the application C source in the container
 make check    # formatting, whitespace, and a clean build
@@ -67,7 +68,7 @@ make sim-pause  # pause at a tick boundary and print exact simulation state
 make sim-reset  # restore canonical tick-zero state while paused
 make sim-step STEPS=1  # advance a paused simulation by exact 1/120-second ticks
 make sim-test  # run the default deterministic hardware sequence
-make screenshot  # save the coherent presented framebuffer as a PNG
+make screenshot  # save the renderer-owned software framebuffer as a PNG
 ```
 
 The Ubuntu base, SDK archives, Python dependencies, and Zephyr release are
@@ -169,6 +170,7 @@ make screenshot OUT=artifacts/screenshot.png
 make sim-run
 make sim-test
 make profile-ab PROFILE_TICKS=2000 PROFILE_OUT=artifacts/physics-profile.json
+make render-profile RENDER_PROFILE_OUT=artifacts/render-profile.json
 ```
 
 `status` briefly owns the same serial port as `console`, sends `picosystem
@@ -177,7 +179,7 @@ status`, prints the response, and exits. Close the console before using it.
 the same asynchronous full redraw as the A button, and `display-sync` reports
 the panel refresh signal and bounded-wait counters. The `sim-*` targets provide
 acknowledged remote simulation control and deterministic sequence testing.
-`screenshot` validates and converts a coherent RGB565 transfer into a PNG
+`screenshot` validates and converts a complete RGB565 transfer into a PNG
 beneath the checkout. Captures briefly own the same framebuffer mutex as the
 renderer, so pausing first is recommended when an exact stepped frame is
 required.
@@ -193,6 +195,7 @@ picosystem display stats
 picosystem display sync [on|off]
 picosystem display checksum
 picosystem display capture
+picosystem display profile [samples]
 picosystem game stats
 picosystem game redraw
 picosystem game pause
@@ -254,13 +257,27 @@ whereas `make game-stats` continues to describe the complete live game-update
 and renderer pipeline. Tracked PIM559 results and their full JSON reports are in
 [benchmarks/physics-profile](benchmarks/physics-profile/README.md).
 
-`display checksum` reports the CRC-32 of one fully presented framebuffer.
+`display profile` requires a paused simulation and runs deterministic 10%,
+25%, 50%, 75%, and 100% dense-update workloads. It separates framebuffer draw,
+TE wait, and display-present time; reports application regions and actual
+display writes; and verifies that the canonical game frame is restored. The
+`make render-profile` wrapper pauses and resumes the game, validates the
+machine-readable response, and writes JSON. Reproduction commands and PIM559
+transport results are in
+[benchmarks/display-throughput](benchmarks/display-throughput/README.md).
+
+`display checksum` reports the CRC-32 of the renderer-owned software framebuffer.
 `display capture` waits for the current published snapshot to be presented,
 then streams the complete 240 x 240 RGB565 big-endian framebuffer in numbered
 base64 chunks with a final CRC-32. The host rejects missing, reordered, corrupt,
-or truncated chunks before writing a PNG. The capture represents the software
-framebuffer sent to the display. The PIM559 display bus is write-only, so it
-cannot prove that a faulty SPI transfer or physical LCD produced the same pixels.
+or truncated chunks before writing a PNG. The PIM559 display bus is write-only,
+so capture cannot prove that a faulty SPI transfer or physical LCD produced the
+same pixels. The dense-render investigation also found that the current
+intersection-based dirty renderer can modify pixels outside the rectangle it
+transfers. Until drawing is strictly clip-contained, a capture after partial
+updates is deterministic but is not guaranteed to be an exact reconstruction
+of the LCD. Full redraws and the display profiler establish a canonical
+framebuffer before checksumming.
 The LED override takes effect in the main hardware loop; `auto` restores the
 button colors and blue heartbeat. The independent hardware red charge indicator
 is not disabled by `led off`. Tone requests are constrained to 100-4000 Hz and
@@ -308,7 +325,7 @@ new baseline is being authored, but committed regression sequences should use
 both.
 
 On success, the runner restores physical input and resumes real-time scheduling.
-On failure, it first saves a coherent diagnostic image to
+On failure, it first saves a software-framebuffer diagnostic image to
 `artifacts/sequence-failure.png`, then performs the same cleanup and returns a
 nonzero status. Override that path with
 `FAIL_SCREENSHOT=artifacts/another-name.png`. Close `make console` before running
@@ -347,14 +364,15 @@ docs/                        Hardware notes and staged bring-up plan
 scripts/container/           Dependency, build, and validation automation
 scripts/sequences/           Declarative deterministic device tests
 src/                         Firmware application
+benchmarks/                  Reproducible device measurements and build variants
 compose.yaml                 Isolated workspace and persistent dependencies
 west.yml                     Pinned Zephyr/module manifest
 ```
 
 See [the hardware map](docs/hardware.md) before adding peripherals and
 [the bring-up roadmap](docs/roadmap.md) for the next milestones. The measured
-[PIO/DMA comparison](benchmarks/pio-dma/README.md) shows the tradeoff between
-the default hardware SPI0/PL022 dirty-update path and faster PIO/DMA full frames.
+[dense-display report](benchmarks/display-throughput/README.md) compares update
+shape, configured bus frequency, PL022/PIO polling behavior, and both DMA paths.
 
 ## Game-loop architecture
 
@@ -406,18 +424,18 @@ serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The profiling image uses 193,012 bytes of RAM (71.67%) and 156,524 bytes of
-flash. This includes the 115,200-byte framebuffer, 3,840-byte transfer buffer,
+The default profiling image uses 195,500 bytes of RAM (72.59%) and 160,204 bytes
+of flash. This includes the 115,200-byte framebuffer, 3,840-byte transfer buffer,
 15,520-byte fixed-capacity physics world with a 1,024-byte scratch grid, eight
 distance-joint slots, and per-step deterministic counters, a 22,344-byte
 serialized benchmark workspace, two 504-byte render snapshots, a 4,096-byte
-shell stack, a 3,584-byte renderer stack, and a 1,024-byte shell TX ring. The
-linked image retains about 75 KiB of RAM headroom.
+shell stack, a 3,584-byte renderer stack, display-profile result storage, and a
+1,024-byte shell TX ring. The linked image retains about 72 KiB of RAM headroom.
 Full frames bypass the staging buffer with one contiguous display write.
 
-GitHub Actions runs `make check` and builds the PIO and PIO/DMA variants for
-every pull request and push to `main`. Tests that need a connected PicoSystem
-remain part of the physical smoke-test boundary rather than hosted CI.
+GitHub Actions runs `make check` and builds the PIO, PIO/DMA, and PL022/DMA
+variants for every pull request and push to `main`. Tests that need a connected
+PicoSystem remain part of the physical smoke-test boundary rather than hosted CI.
 
 The following scheduler and display results describe the preceding single-sprite
 baseline. On the tested PIM559, the exact 120 Hz scheduler ran with a maximum observed

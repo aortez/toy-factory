@@ -1,0 +1,620 @@
+{
+  "benchmark": "dense-display-throughput",
+  "cases": {
+    "band-10": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 10,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 1475,
+        "mean_configured_bus_efficiency_percent": 16.376,
+        "mean_te_paced_frames_per_second": 59.709,
+        "mean_time_above_configured_bus_ideal_us": 7532,
+        "mean_unpaced_draw_plus_present_us": 9344,
+        "mean_unpaced_frames_per_second": 107.021
+      },
+      "display_writes_per_frame": 3,
+      "payload_bytes": 11520,
+      "stages": {
+        "draw": {
+          "maximum_us": 337,
+          "mean_us": 337,
+          "minimum_us": 335,
+          "p50_us": 337,
+          "p95_us": 337,
+          "p99_us": 337,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 9207,
+          "mean_us": 9007,
+          "minimum_us": 8945,
+          "p50_us": 8982,
+          "p95_us": 9207,
+          "p99_us": 9207,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 7464,
+          "mean_us": 7400,
+          "minimum_us": 7240,
+          "p50_us": 7417,
+          "p95_us": 7464,
+          "p99_us": 7464,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 16998,
+          "mean_us": 16748,
+          "minimum_us": 16574,
+          "p50_us": 16742,
+          "p95_us": 16998,
+          "p99_us": 16998,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "band-100": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 100,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 14746,
+        "mean_configured_bus_efficiency_percent": 16.475,
+        "mean_te_paced_frames_per_second": 9.935,
+        "mean_time_above_configured_bus_ideal_us": 74761,
+        "mean_unpaced_draw_plus_present_us": 93000,
+        "mean_unpaced_frames_per_second": 10.753
+      },
+      "display_writes_per_frame": 30,
+      "payload_bytes": 115200,
+      "stages": {
+        "draw": {
+          "maximum_us": 3654,
+          "mean_us": 3493,
+          "minimum_us": 3260,
+          "p50_us": 3620,
+          "p95_us": 3654,
+          "p99_us": 3654,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 89826,
+          "mean_us": 89507,
+          "minimum_us": 89255,
+          "p50_us": 89368,
+          "p95_us": 89826,
+          "p99_us": 89826,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 7758,
+          "mean_us": 7647,
+          "minimum_us": 7145,
+          "p50_us": 7676,
+          "p95_us": 7758,
+          "p99_us": 7758,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 101092,
+          "mean_us": 100652,
+          "minimum_us": 100498,
+          "p50_us": 100623,
+          "p95_us": 101092,
+          "p99_us": 101092,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "band-25": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 25,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 3687,
+        "mean_configured_bus_efficiency_percent": 16.395,
+        "mean_te_paced_frames_per_second": 29.81,
+        "mean_time_above_configured_bus_ideal_us": 18801,
+        "mean_unpaced_draw_plus_present_us": 23311,
+        "mean_unpaced_frames_per_second": 42.898
+      },
+      "display_writes_per_frame": 8,
+      "payload_bytes": 28800,
+      "stages": {
+        "draw": {
+          "maximum_us": 824,
+          "mean_us": 823,
+          "minimum_us": 823,
+          "p50_us": 823,
+          "p95_us": 824,
+          "p99_us": 824,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 22898,
+          "mean_us": 22488,
+          "minimum_us": 22177,
+          "p50_us": 22506,
+          "p95_us": 22898,
+          "p99_us": 22898,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 10536,
+          "mean_us": 10230,
+          "minimum_us": 9819,
+          "p50_us": 10178,
+          "p95_us": 10536,
+          "p99_us": 10536,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 33856,
+          "mean_us": 33546,
+          "minimum_us": 33153,
+          "p50_us": 33523,
+          "p95_us": 33856,
+          "p99_us": 33856,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "band-50": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 50,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 7373,
+        "mean_configured_bus_efficiency_percent": 16.494,
+        "mean_te_paced_frames_per_second": 19.88,
+        "mean_time_above_configured_bus_ideal_us": 37328,
+        "mean_unpaced_draw_plus_present_us": 46382,
+        "mean_unpaced_frames_per_second": 21.56
+      },
+      "display_writes_per_frame": 15,
+      "payload_bytes": 57600,
+      "stages": {
+        "draw": {
+          "maximum_us": 2007,
+          "mean_us": 1681,
+          "minimum_us": 1635,
+          "p50_us": 1635,
+          "p95_us": 2007,
+          "p99_us": 2007,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 44925,
+          "mean_us": 44701,
+          "minimum_us": 44468,
+          "p50_us": 44639,
+          "p95_us": 44925,
+          "p99_us": 44925,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 4193,
+          "mean_us": 3914,
+          "minimum_us": 3381,
+          "p50_us": 3851,
+          "p95_us": 4193,
+          "p99_us": 4193,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 50710,
+          "mean_us": 50301,
+          "minimum_us": 49934,
+          "p50_us": 49981,
+          "p95_us": 50710,
+          "p99_us": 50710,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "band-75": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 75,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 11060,
+        "mean_configured_bus_efficiency_percent": 16.465,
+        "mean_te_paced_frames_per_second": 11.921,
+        "mean_time_above_configured_bus_ideal_us": 56112,
+        "mean_unpaced_draw_plus_present_us": 69653,
+        "mean_unpaced_frames_per_second": 14.357
+      },
+      "display_writes_per_frame": 23,
+      "payload_bytes": 86400,
+      "stages": {
+        "draw": {
+          "maximum_us": 2505,
+          "mean_us": 2481,
+          "minimum_us": 2469,
+          "p50_us": 2474,
+          "p95_us": 2505,
+          "p99_us": 2505,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 67375,
+          "mean_us": 67172,
+          "minimum_us": 66904,
+          "p50_us": 67255,
+          "p95_us": 67375,
+          "p99_us": 67375,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 14523,
+          "mean_us": 14224,
+          "minimum_us": 14032,
+          "p50_us": 14131,
+          "p95_us": 14523,
+          "p99_us": 14523,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 84211,
+          "mean_us": 83883,
+          "minimum_us": 83425,
+          "p50_us": 83912,
+          "p95_us": 84211,
+          "p99_us": 84211,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "full-100": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 100,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 14746,
+        "mean_configured_bus_efficiency_percent": 19.205,
+        "mean_te_paced_frames_per_second": 11.924,
+        "mean_time_above_configured_bus_ideal_us": 62036,
+        "mean_unpaced_draw_plus_present_us": 80131,
+        "mean_unpaced_frames_per_second": 12.48
+      },
+      "display_writes_per_frame": 1,
+      "payload_bytes": 115200,
+      "stages": {
+        "draw": {
+          "maximum_us": 3791,
+          "mean_us": 3349,
+          "minimum_us": 3228,
+          "p50_us": 3229,
+          "p95_us": 3791,
+          "p99_us": 3791,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 76912,
+          "mean_us": 76782,
+          "minimum_us": 76524,
+          "p50_us": 76831,
+          "p95_us": 76912,
+          "p99_us": 76912,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 4101,
+          "mean_us": 3725,
+          "minimum_us": 3357,
+          "p50_us": 3744,
+          "p95_us": 4101,
+          "p99_us": 4101,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 84171,
+          "mean_us": 83861,
+          "minimum_us": 83497,
+          "p50_us": 83861,
+          "p95_us": 84171,
+          "p99_us": 84171,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "tiles-10": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 10,
+      "coverage_percent": 10,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 1475,
+        "mean_configured_bus_efficiency_percent": 14.991,
+        "mean_te_paced_frames_per_second": 59.68,
+        "mean_time_above_configured_bus_ideal_us": 8364,
+        "mean_unpaced_draw_plus_present_us": 10221,
+        "mean_unpaced_frames_per_second": 97.838
+      },
+      "display_writes_per_frame": 10,
+      "payload_bytes": 11520,
+      "stages": {
+        "draw": {
+          "maximum_us": 383,
+          "mean_us": 382,
+          "minimum_us": 379,
+          "p50_us": 382,
+          "p95_us": 383,
+          "p99_us": 383,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 10046,
+          "mean_us": 9839,
+          "minimum_us": 9775,
+          "p50_us": 9805,
+          "p95_us": 10046,
+          "p99_us": 10046,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 6600,
+          "mean_us": 6531,
+          "minimum_us": 6352,
+          "p50_us": 6563,
+          "p95_us": 6600,
+          "p99_us": 6600,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 17007,
+          "mean_us": 16756,
+          "minimum_us": 16578,
+          "p50_us": 16746,
+          "p95_us": 17007,
+          "p99_us": 17007,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "tiles-100": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 100,
+      "coverage_percent": 100,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 14746,
+        "mean_configured_bus_efficiency_percent": 15.007,
+        "mean_te_paced_frames_per_second": 8.517,
+        "mean_time_above_configured_bus_ideal_us": 83517,
+        "mean_unpaced_draw_plus_present_us": 102332,
+        "mean_unpaced_frames_per_second": 9.772
+      },
+      "display_writes_per_frame": 100,
+      "payload_bytes": 115200,
+      "stages": {
+        "draw": {
+          "maximum_us": 4331,
+          "mean_us": 4069,
+          "minimum_us": 3811,
+          "p50_us": 4184,
+          "p95_us": 4331,
+          "p99_us": 4331,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 98558,
+          "mean_us": 98263,
+          "minimum_us": 98006,
+          "p50_us": 98145,
+          "p95_us": 98558,
+          "p99_us": 98558,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 15294,
+          "mean_us": 15076,
+          "minimum_us": 14686,
+          "p50_us": 15108,
+          "p95_us": 15294,
+          "p99_us": 15294,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 117714,
+          "mean_us": 117414,
+          "minimum_us": 117009,
+          "p50_us": 117411,
+          "p95_us": 117714,
+          "p99_us": 117714,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "tiles-25": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 25,
+      "coverage_percent": 25,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 3687,
+        "mean_configured_bus_efficiency_percent": 14.931,
+        "mean_te_paced_frames_per_second": 29.82,
+        "mean_time_above_configured_bus_ideal_us": 21007,
+        "mean_unpaced_draw_plus_present_us": 25637,
+        "mean_unpaced_frames_per_second": 39.006
+      },
+      "display_writes_per_frame": 25,
+      "payload_bytes": 28800,
+      "stages": {
+        "draw": {
+          "maximum_us": 943,
+          "mean_us": 943,
+          "minimum_us": 942,
+          "p50_us": 942,
+          "p95_us": 943,
+          "p99_us": 943,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 24954,
+          "mean_us": 24694,
+          "minimum_us": 24550,
+          "p50_us": 24606,
+          "p95_us": 24954,
+          "p99_us": 24954,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 8050,
+          "mean_us": 7893,
+          "minimum_us": 7640,
+          "p50_us": 7962,
+          "p95_us": 8050,
+          "p99_us": 8050,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 33899,
+          "mean_us": 33535,
+          "minimum_us": 33203,
+          "p50_us": 33501,
+          "p95_us": 33899,
+          "p99_us": 33899,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "tiles-50": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 50,
+      "coverage_percent": 50,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 7373,
+        "mean_configured_bus_efficiency_percent": 15.021,
+        "mean_te_paced_frames_per_second": 14.903,
+        "mean_time_above_configured_bus_ideal_us": 41710,
+        "mean_unpaced_draw_plus_present_us": 51231,
+        "mean_unpaced_frames_per_second": 19.519
+      },
+      "display_writes_per_frame": 50,
+      "payload_bytes": 57600,
+      "stages": {
+        "draw": {
+          "maximum_us": 2545,
+          "mean_us": 2148,
+          "minimum_us": 1909,
+          "p50_us": 1935,
+          "p95_us": 2545,
+          "p99_us": 2545,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 49451,
+          "mean_us": 49083,
+          "minimum_us": 48671,
+          "p50_us": 49080,
+          "p95_us": 49451,
+          "p99_us": 49451,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 16193,
+          "mean_us": 15865,
+          "minimum_us": 15385,
+          "p50_us": 15846,
+          "p95_us": 16193,
+          "p99_us": 16193,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 67532,
+          "mean_us": 67100,
+          "minimum_us": 66613,
+          "p50_us": 67156,
+          "p95_us": 67532,
+          "p99_us": 67532,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "tiles-75": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 75,
+      "coverage_percent": 75,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 11060,
+        "mean_configured_bus_efficiency_percent": 15.0,
+        "mean_te_paced_frames_per_second": 11.926,
+        "mean_time_above_configured_bus_ideal_us": 62675,
+        "mean_unpaced_draw_plus_present_us": 76715,
+        "mean_unpaced_frames_per_second": 13.035
+      },
+      "display_writes_per_frame": 75,
+      "payload_bytes": 86400,
+      "stages": {
+        "draw": {
+          "maximum_us": 3406,
+          "mean_us": 2980,
+          "minimum_us": 2822,
+          "p50_us": 2822,
+          "p95_us": 3406,
+          "p99_us": 3406,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 74054,
+          "mean_us": 73735,
+          "minimum_us": 73189,
+          "p50_us": 73753,
+          "p95_us": 74054,
+          "p99_us": 74054,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 7621,
+          "mean_us": 7129,
+          "minimum_us": 6614,
+          "p50_us": 7143,
+          "p95_us": 7621,
+          "p99_us": 7621,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 84388,
+          "mean_us": 83849,
+          "minimum_us": 83414,
+          "p50_us": 83836,
+          "p95_us": 84388,
+          "p99_us": 84388,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    }
+  },
+  "clock_frequency_hz": 125000000,
+  "display": {
+    "bytes_per_pixel": 2,
+    "configured_spi_frequency_hz": 62500000,
+    "framebuffer_bytes": 115200,
+    "height": 240,
+    "transport": "pl022",
+    "width": 240
+  },
+  "resources": {
+    "shell_stack_size_bytes": 4096,
+    "shell_stack_used_bytes": 1816
+  },
+  "samples_per_case": 16,
+  "schema_version": 1,
+  "verification": {
+    "framebuffer_restored": true,
+    "original_framebuffer_crc32": "eedd04ad",
+    "restored_framebuffer_crc32": "eedd04ad"
+  },
+  "warmup_samples_per_case": 2
+}

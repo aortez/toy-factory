@@ -6,6 +6,7 @@ FIRMWARE_IMAGE := toy-factory-builder:local
 UF2 := build/zephyr/zephyr.uf2
 PIO_UF2 := build-pio/zephyr/zephyr.uf2
 PIO_DMA_UF2 := build-pio-dma/zephyr/zephyr.uf2
+PL022_DMA_UF2 := build-pl022-dma/zephyr/zephyr.uf2
 SERIAL_PORT_HELPER := ./scripts/find-serial-port.sh
 STEPS ?= 1
 INPUT ?= none
@@ -21,9 +22,9 @@ DISPLAY_HZ ?= 20000000
 RENDER_PROFILE_BUILD_DIR = build-render-profile-$(DISPLAY_TRANSPORT)-$(DISPLAY_HZ)
 RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 
-.PHONY: help image setup build build-pio build-pio-dma build-render-profile format check \
-	check-pio-dma check-render-profile \
-	container-shell update update-pio update-pio-dma bootloader console status game-stats \
+.PHONY: help image setup build build-pio build-pio-dma build-pl022-dma \
+	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
+	container-shell update update-pio update-pio-dma update-pl022-dma bootloader console status game-stats \
 	game-redraw display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
 	sim-reset sim-state sim-test \
 	profile profile-ab render-profile update-render-profile \
@@ -61,7 +62,10 @@ build-pio: ## Build the PIO SPI benchmark variant
 build-pio-dma: ## Build the PIO SPI plus DMA benchmark variant
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --variant pio-dma
 
-build-render-profile: ## Build DISPLAY_TRANSPORT=<default|pio|pio-dma> at DISPLAY_HZ=<Hz>
+build-pl022-dma: ## Build the hardware SPI0/PL022 plus DMA benchmark variant
+	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --variant pl022-dma
+
+build-render-profile: ## Build DISPLAY_TRANSPORT=<default|pio|pio-dma|pl022-dma> at DISPLAY_HZ=<Hz>
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh \
 		--variant "$(DISPLAY_TRANSPORT)" --display-frequency "$(DISPLAY_HZ)"
 
@@ -73,6 +77,9 @@ check: ## Run checks and a pristine firmware build
 
 check-pio-dma: ## Pristine-build the PIO SPI plus DMA benchmark
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --pristine --variant pio-dma
+
+check-pl022-dma: ## Pristine-build the hardware SPI0/PL022 plus DMA benchmark
+	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --pristine --variant pl022-dma
 
 check-render-profile: ## Pristine-build the selected display transport/frequency image
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --pristine \
@@ -91,6 +98,9 @@ update-pio: build-pio ## Build and flash the PIO SPI benchmark
 
 update-pio-dma: build-pio-dma ## Build and flash the PIO SPI plus DMA benchmark
 	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(PIO_DMA_UF2)" "$(FIRMWARE_IMAGE)"
+
+update-pl022-dma: build-pl022-dma ## Build and flash the hardware SPI0/PL022 plus DMA benchmark
+	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(PL022_DMA_UF2)" "$(FIRMWARE_IMAGE)"
 
 update-render-profile: build-render-profile ## Build and flash selected display profile image
 	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(RENDER_PROFILE_UF2)" "$(FIRMWARE_IMAGE)"

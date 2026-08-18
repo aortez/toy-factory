@@ -29,7 +29,7 @@ CASE_NAMES = {
     "full-100",
 }
 STAGE_NAMES = {"draw", "te_wait", "present", "total"}
-TRANSPORT_NAMES = {"pl022", "pio-polling", "pio-dma"}
+TRANSPORT_NAMES = {"pl022", "pl022-dma", "pio-polling", "pio-dma"}
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 
 

@@ -70,6 +70,13 @@ class RenderProfileTest(unittest.TestCase):
         )
         self.assertTrue(result["verification"]["framebuffer_restored"])
 
+    def test_accepts_pl022_dma_transport(self) -> None:
+        output = profile_output().replace("transport=pio-dma", "transport=pl022-dma")
+
+        result = render_profile.parse_profile(output)
+
+        self.assertEqual(result["display"]["transport"], "pl022-dma")
+
     def test_rejects_missing_stage(self) -> None:
         with self.assertRaisesRegex(render_profile.RenderProfileError, "every timing stage"):
             render_profile.parse_profile(profile_output(include_total=False))
