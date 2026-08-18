@@ -16,7 +16,7 @@
 #define GAME_CONTROL_PER_TICK   PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 64)
 #define GAME_RESTITUTION        PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 4)
 #define GAME_FRICTION           PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
-#define GAME_WORLD_HASH_VERSION UINT32_C(3)
+#define GAME_WORLD_HASH_VERSION UINT32_C(4)
 #define FNV1A_OFFSET_BASIS      UINT32_C(2166136261)
 #define FNV1A_PRIME             UINT32_C(16777619)
 
@@ -200,15 +200,30 @@ static const struct picosystem_physics_segment_config canonical_segments[] = {
 	},
 };
 
+static const struct picosystem_physics_distance_joint_config canonical_distance_joints[] = {
+	{
+		.anchor_b = {.x = FIXED(120), .y = FIXED(64)},
+		.target_distance = FIXED(41),
+		.id = 201U,
+		.body_a_id = 6U,
+		.body_b_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
+	},
+};
+
 _Static_assert(sizeof(canonical_bodies) / sizeof(canonical_bodies[0]) == PICOSYSTEM_GAME_BODY_COUNT,
 	       "canonical body count must match the public contract");
 _Static_assert(sizeof(canonical_segments) / sizeof(canonical_segments[0]) ==
 		       PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT,
 	       "canonical segment count must match the public contract");
+_Static_assert(sizeof(canonical_distance_joints) / sizeof(canonical_distance_joints[0]) ==
+		       PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT,
+	       "canonical joint count must match the public contract");
 _Static_assert(PICOSYSTEM_GAME_BODY_COUNT <= PICOSYSTEM_PHYSICS_MAX_BODIES,
 	       "canonical bodies must fit physics storage");
 _Static_assert(PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT <= PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS,
 	       "canonical segments must fit physics storage");
+_Static_assert(PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT <= PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS,
+	       "canonical joints must fit physics storage");
 
 static void increment_saturated(uint32_t *value)
 {
@@ -253,6 +268,13 @@ int picosystem_game_world_reset(struct picosystem_game_world *world)
 	for (size_t index = 0U; index < PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT; ++index) {
 		err = picosystem_physics_world_add_static_segment(&world->physics,
 								  &canonical_segments[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (size_t index = 0U; index < PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT; ++index) {
+		err = picosystem_physics_world_add_distance_joint(
+			&world->physics, &canonical_distance_joints[index]);
 		if (err != 0) {
 			return err;
 		}
@@ -316,7 +338,8 @@ picosystem_game_world_focus_body(const struct picosystem_game_world *world)
 uint32_t picosystem_game_world_hash(const struct picosystem_game_world *world)
 {
 	if ((world == NULL) || (world->physics.body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
-	    (world->physics.static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS)) {
+	    (world->physics.static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||
+	    (world->physics.distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS)) {
 		return 0U;
 	}
 

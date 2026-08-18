@@ -2,7 +2,7 @@
 
 Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
-![Toy Factory broad-phase lab](docs/images/broad-phase-lab.png)
+![Toy Factory distance-joint lab](docs/images/joint-lab.png)
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:
@@ -17,6 +17,8 @@ path:
   step with Q16.16 linear/angular motion, gravity, friction, and restitution;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
+- supports bounded bilateral distance joints between two bodies or a body and a
+  fixed world anchor, with one pendulum constraint in the canonical lab;
 - publishes fixed-size state snapshots to an independent, lower-priority renderer;
 - late-latches the newest snapshot and aligns partial display writes with the LCD's GP8
   tearing-effect signal;
@@ -111,8 +113,9 @@ The physical gesture remains the recovery path for a blank or broken image:
 4. Run `make update` again.
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
-show a dark checkerboard arena, three circles, three spinning boxes, two diagonal
-ramps, cyan boundaries, and a white `RIGID LAB 120HZ` heading. The world
+show a dark checkerboard arena, four circles, four spinning boxes, two diagonal
+ramps, cyan boundaries, a yellow pendulum-radius guide, and a white
+`JOINT LAB 120HZ` heading. The world
 advances on exact rational 120 Hz deadlines. Normal presentation restores each
 moved body's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
@@ -241,15 +244,15 @@ logged per tick. The report separates integration, geometry, broad phase,
 body/body and body/segment narrow phase, position correction, velocity solving,
 final clamping, unattributed validation/instrumentation work, and the total.
 Deterministic counters report candidate filtering, grid population, manifolds,
-contacts, solver visits, and fallbacks.
+contacts, distance-joint correction/solver visits, and fallbacks.
 
 `make profile-ab` handles pause/resume around that command, prints a compact
 comparison, and writes a schema-versioned JSON artifact. It restores the
 original running/paused mode even after a failed benchmark. This is an isolated
 physics measurement: rendering and immutable snapshot publication are disabled,
 whereas `make game-stats` continues to describe the complete live game-update
-and renderer pipeline. The first tracked PIM559 result and its full JSON report
-are in [benchmarks/physics-profile](benchmarks/physics-profile/README.md).
+and renderer pipeline. Tracked PIM559 results and their full JSON reports are in
+[benchmarks/physics-profile](benchmarks/physics-profile/README.md).
 
 `display checksum` reports the CRC-32 of one fully presented framebuffer.
 `display capture` waits for the current published snapshot to be presented,
@@ -283,8 +286,8 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "6a25b6d6",
-    "framebuffer_crc32": "c62eb3a0"
+    "hash": "4e8d1ac6",
+    "framebuffer_crc32": "bc0cfa77"
   }
 }
 ```
@@ -355,9 +358,9 @@ the default hardware SPI0/PL022 dirty-update path and faster PIO/DMA full frames
 
 ## Game-loop architecture
 
-The authoritative fixed-point bodies, static segments, uniform-grid candidate
-filter, contact generation, sequential-impulse response, and stable
-field-by-field hash live in
+The authoritative fixed-point bodies, static segments, distance joints,
+uniform-grid candidate filter, contact generation, sequential-impulse response,
+and stable field-by-field hash live in
 [`src/physics_world.c`](src/physics_world.c). Canonical scene construction,
 input-to-acceleration mapping, game ticks, and the outer hash live in
 [`src/game_world.c`](src/game_world.c). Neither module has a Zephyr, scheduler,
@@ -371,7 +374,7 @@ authoritative game state, samples input, and asks the platform-neutral world to
 advance one fixed 120 Hz tick. The priority-1 USB shell runs only while the main
 thread is blocked; if simulation has already missed its next deadline, the main
 loop reserves a one-millisecond recovery window so diagnostics and the
-bootloader command cannot remain starved. The main thread publishes a 400-byte
+bootloader command cannot remain starved. The main thread publishes a 504-byte
 immutable render snapshot into one of two slots under a short spin lock. A
 saturated semaphore wakes the priority-2 renderer, which coalesces obsolete
 snapshots instead of making simulation wait.
@@ -403,12 +406,13 @@ serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The profiling image uses 190,652 bytes of RAM (70.79%) and 151,952 bytes of
+The profiling image uses 193,012 bytes of RAM (71.67%) and 156,524 bytes of
 flash. This includes the 115,200-byte framebuffer, 3,840-byte transfer buffer,
-15,024-byte fixed-capacity physics world with a 1,024-byte scratch grid and
-per-step deterministic counters, a 21,360-byte serialized benchmark workspace,
-two 400-byte render snapshots, a 4,096-byte shell stack, and a 1,024-byte shell
-TX ring. The linked image retains about 77 KiB of RAM headroom.
+15,520-byte fixed-capacity physics world with a 1,024-byte scratch grid, eight
+distance-joint slots, and per-step deterministic counters, a 22,344-byte
+serialized benchmark workspace, two 504-byte render snapshots, a 4,096-byte
+shell stack, a 3,584-byte renderer stack, and a 1,024-byte shell TX ring. The
+linked image retains about 75 KiB of RAM headroom.
 Full frames bypass the staging buffer with one contiguous display write.
 
 GitHub Actions runs `make check` and builds the PIO and PIO/DMA variants for
@@ -500,12 +504,22 @@ sprite, and colors. During a running capture, logic advanced from tick 3,440 to
 over-budget updates, and a fully caught-up presented snapshot. Capture outputs
 and newly created artifact directories retain the invoking host user's ownership.
 
-The current uniform-grid rigid-body image preserves the same deterministic
+The preceding uniform-grid rigid-body image preserves the same deterministic
 control path. Canonical reset hashes to `b20aaf3a`; right for 30 ticks reaches
 `cb18185d`; and a further 15 up ticks reaches tick 45 at `7272656f`. The coherent
-framebuffer at that state is CRC-32 `11bbf436`, matching the screenshot above.
+framebuffer at that state is CRC-32 `11bbf436`.
 On the tested PIM559, a reset 3,692-tick window held 119.9 Hz with zero skipped
 ticks and one isolated over-budget update. The sampled update was 5.724 ms and
 the observed maximum was 19.848 ms. The grid retained 15 of 76 possible pairs,
 occupied 91 of 256 cells, and did not fall back; TE-driven presentation was
 53.9 fps.
+
+The current distance-joint image canonically constrains body 6 to a fixed world
+pivot. Native and RP2040 reset both hash to `695073bd`; right for 30 ticks reaches
+`ba22ef24`; and a further 15 up ticks reaches tick 45 at `4e8d1ac6`. The coherent
+tick-45 framebuffer is CRC-32 `bc0cfa77`; the reset frame shown above is
+`dd0c0ea1`. A clean 2,934-tick opening window held 119.9 Hz with zero skipped
+ticks and two over-budget updates, while TE-driven presentation averaged
+48.9 fps. The isolated 2,000-tick device profile averaged 2.173 ms for the grid
+path and 2.382 ms for the brute-force reference, with no budget violations and
+exact final state agreement.

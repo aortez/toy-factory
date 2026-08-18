@@ -33,10 +33,13 @@ struct authoritative_snapshot {
 	struct picosystem_physics_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	struct picosystem_physics_static_segment
 		static_segments[PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS];
+	struct picosystem_physics_distance_joint
+		distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
 	picosystem_physics_fixed_t max_speed_per_tick;
 	uint32_t logic_tick_count;
 	uint16_t body_count;
 	uint16_t static_segment_count;
+	uint16_t distance_joint_count;
 };
 
 struct profile_workspace {
@@ -80,6 +83,10 @@ static const char *const work_names[] = {
 	"solver_iterations",
 	"solver_contact_visits",
 	"solver_changed_contacts",
+	"distance_joints",
+	"joint_position_correction_visits",
+	"joint_solver_visits",
+	"joint_solver_changes",
 	"broad_phase_fallbacks",
 };
 
@@ -162,6 +169,14 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 		return work->solver_contact_visit_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SOLVER_CHANGED_CONTACTS:
 		return work->solver_changed_contact_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_DISTANCE_JOINTS:
+		return work->distance_joint_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_POSITION_CORRECTION_VISITS:
+		return work->joint_position_correction_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_SOLVER_VISITS:
+		return work->joint_solver_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_SOLVER_CHANGES:
+		return work->joint_solver_changed_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_BROAD_PHASE_FALLBACKS:
 		return work->broad_phase_fallback_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT:
@@ -268,11 +283,14 @@ static void capture_authoritative_state(const struct picosystem_game_world *worl
 		.logic_tick_count = world->logic_tick_count,
 		.body_count = world->physics.body_count,
 		.static_segment_count = world->physics.static_segment_count,
+		.distance_joint_count = world->physics.distance_joint_count,
 	};
 	memcpy(snapshot->bodies, world->physics.bodies,
 	       world->physics.body_count * sizeof(snapshot->bodies[0]));
 	memcpy(snapshot->static_segments, world->physics.static_segments,
 	       world->physics.static_segment_count * sizeof(snapshot->static_segments[0]));
+	memcpy(snapshot->distance_joints, world->physics.distance_joints,
+	       world->physics.distance_joint_count * sizeof(snapshot->distance_joints[0]));
 }
 
 static bool body_equal(const struct picosystem_physics_body *left,
@@ -301,13 +319,26 @@ static bool segment_equal(const struct picosystem_physics_static_segment *left,
 	       (left->id == right->id);
 }
 
+static bool distance_joint_equal(const struct picosystem_physics_distance_joint *left,
+				 const struct picosystem_physics_distance_joint *right)
+{
+	return (left->local_anchor_a.x == right->local_anchor_a.x) &&
+	       (left->local_anchor_a.y == right->local_anchor_a.y) &&
+	       (left->anchor_b.x == right->anchor_b.x) && (left->anchor_b.y == right->anchor_b.y) &&
+	       (left->target_distance == right->target_distance) && (left->id == right->id) &&
+	       (left->body_a_id == right->body_a_id) && (left->body_b_id == right->body_b_id) &&
+	       (left->body_a_index == right->body_a_index) &&
+	       (left->body_b_index == right->body_b_index);
+}
+
 static bool authoritative_state_matches(const struct picosystem_game_world *world,
 					const struct authoritative_snapshot *snapshot)
 {
 	if ((world->logic_tick_count != snapshot->logic_tick_count) ||
 	    (world->physics.max_speed_per_tick != snapshot->max_speed_per_tick) ||
 	    (world->physics.body_count != snapshot->body_count) ||
-	    (world->physics.static_segment_count != snapshot->static_segment_count)) {
+	    (world->physics.static_segment_count != snapshot->static_segment_count) ||
+	    (world->physics.distance_joint_count != snapshot->distance_joint_count)) {
 		return false;
 	}
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
@@ -318,6 +349,12 @@ static bool authoritative_state_matches(const struct picosystem_game_world *worl
 	for (uint16_t index = 0U; index < snapshot->static_segment_count; ++index) {
 		if (!segment_equal(&world->physics.static_segments[index],
 				   &snapshot->static_segments[index])) {
+			return false;
+		}
+	}
+	for (uint16_t index = 0U; index < snapshot->distance_joint_count; ++index) {
+		if (!distance_joint_equal(&world->physics.distance_joints[index],
+					  &snapshot->distance_joints[index])) {
 			return false;
 		}
 	}

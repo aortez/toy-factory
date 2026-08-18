@@ -148,9 +148,10 @@ three updates and 10,000 ticks for 120 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes a 400-byte immutable snapshot of
-up to 12 circle or oriented-box bodies and eight static segments on every
-update. Two slots and a short spin-lock-protected copy prevent the
+Simulation uses Q16.16 positions and publishes a 504-byte immutable snapshot of
+up to 12 circle or oriented-box bodies, eight static segments, and eight
+distance-joint render records on every update. Two slots and a short
+spin-lock-protected copy prevent the
 renderer from observing partially updated state. A saturated semaphore is only
 a wake-up hint: if two or more simulation states arrive during a panel period,
 the renderer deliberately coalesces the older ones. The main thread never waits
@@ -186,6 +187,18 @@ sampled update was 5.724 ms and the observed maximum was 19.848 ms. The sampled
 step retained 15 of 76 possible pairs, occupied 91 of 256 cells, and used no
 brute-force fallback. TE-driven presentation was 53.9 fps. Main and renderer
 stack high-water marks were 2,600/4,096 and 1,988/3,072 bytes.
+
+The distance-joint lab adds eight fixed-capacity joint slots and canonically
+constrains one circle to a world pivot. Its physics world is 15,520 bytes, its
+two render snapshots are 504 bytes each, and the complete image uses 193,012
+bytes of RAM. Native and RP2040 reset/right-30/right-30-up-15 hashes are
+`695073bd`, `ba22ef24`, and `4e8d1ac6`; the tick-45 framebuffer CRC-32 is
+`bc0cfa77`. A clean opening window ran 2,934 ticks at 119.9 Hz with zero skipped
+ticks and two over-budget updates; presentation averaged 48.9 fps. The isolated
+2,000-tick device profile measured 2.173 ms mean and 6.816 ms maximum for the
+grid path, with no 8.333 ms budget violations. The brute-force path averaged
+2.382 ms, and both paths ended in exactly matching state. Main and renderer
+stack high-water marks were 2,752/4,096 and 2,676/3,584 bytes.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.

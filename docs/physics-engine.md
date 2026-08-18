@@ -5,20 +5,22 @@ RP2040. Every milestone must run through the same platform-neutral C code on the
 host and device, remain remotely stepable at exact tick boundaries, and produce
 stable authoritative hashes.
 
-This document describes the intended architecture and the current uniform-grid
+This document describes the intended architecture and the current distance-joint
 rigid-body milestone. Later milestones may revise measured capacities, but they
 must retain the ownership, determinism, and overload contracts defined here.
 
 ## Hardware and scheduling budget
 
-The profiling build uses 190,652 bytes of the linker's 263 KiB RAM region and
-151,952 bytes of flash. Its 115,200-byte framebuffer and 3,840-byte display
+The profiling build uses 193,012 bytes of the linker's 263 KiB RAM region and
+156,524 bytes of flash. Its 115,200-byte framebuffer and 3,840-byte display
 transfer buffer dominate that footprint. The fixed-capacity physics world is
-15,024 bytes, including its 1,024-byte scratch grid and per-step deterministic
-work counters. The serialized A/B workspace is 21,360 bytes, is inactive during
+15,520 bytes, including its 1,024-byte scratch grid, eight distance-joint slots,
+and per-step deterministic work counters. The serialized A/B workspace is
+22,344 bytes, is inactive during
 normal play, and avoids placing a second world on a thread stack. The profile
-command's 4,096-byte shell stack measured a 2,823-byte high-water mark. The
-linked image retains roughly 77 KiB of RAM headroom. Physical timing acceptance
+command's 4,096-byte shell stack measured a 2,896-byte high-water mark; the
+renderer measured 2,676 of its 3,584-byte stack. The linked image retains
+roughly 75 KiB of RAM headroom. Physical timing acceptance
 is recorded after each candidate/solver configuration passes the native
 containment and oracle gates.
 
@@ -35,7 +37,7 @@ The initial engine targets are:
 Physics quality never changes in response to elapsed wall time. Presentation
 may coalesce snapshots, but simulation does not skip contacts or silently select
 a cheaper model when the device is busy. The solver may stop before its fixed
-iteration ceiling only after a complete pass applies no normal or tangent
+iteration ceiling only after a complete pass applies no contact or joint
 impulse, which is an exact deterministic fixed point rather than a timing
 decision.
 
@@ -80,12 +82,14 @@ platform-neutral layers are:
 game input -> game world -> physics world -> immutable render snapshot
 ```
 
-The physics world owns fixed-capacity body, static-segment, and contact arrays.
+The physics world owns fixed-capacity body, static-segment, distance-joint, and
+contact arrays.
 It is stored in static RAM because the application's main and renderer stacks
 are deliberately bounded. Contacts are scratch results from the current update
 and are excluded from the authoritative hash; body state, static geometry,
-numeric configuration, and game tick count are hashed field by field in stable
-order.
+persistent joint configuration, numeric configuration, and game tick count are
+hashed field by field in stable order. Per-step joint endpoints, normals,
+effective mass, and accumulated impulse are rebuilt scratch state and excluded.
 
 Bodies and shapes receive stable numeric identifiers. Array order is never
 derived from addresses, hash tables, allocation order, or unstable sorting.
@@ -105,8 +109,9 @@ Each update performs these bounded phases in order:
 6. enumerate those candidates in stable body/segment index order;
 7. generate circle-circle, circle-box, box-box, circle-segment, and box-segment
    contacts;
-8. apply bounded positional correction;
-9. run at most seven sequential-impulse velocity iterations; and
+8. apply bounded contact and distance-joint positional correction;
+9. run at most seven sequential-impulse contact and joint velocity iterations;
+   and
 10. publish counters and the newest immutable state.
 
 Production uses a 16 x 16 screen-space grid of 16-pixel cells covering the
@@ -123,7 +128,8 @@ contact, and authoritative hash over mixed 12-body replays.
 Every physics step publishes deterministic work counters for possible and
 retained pairs, cell insertions and occupancy, split narrow-phase tests,
 manifolds and contact points, positional-correction visits, solver iterations
-and visits, changed-contact impulses, and unexpected broad-phase fallbacks.
+and visits, changed contact/joint impulses, joint counts, and unexpected
+broad-phase fallbacks.
 These counters are fixed-size scratch diagnostics and do not participate in the
 authoritative hash.
 
@@ -152,11 +158,11 @@ Stage samples accumulate into 64 fine 32-microsecond bins followed by 64 coarse
 increasing the fixed RAM footprint. The device reports count, mean, minimum,
 histogram-derived p50/p95/p99, exact maximum, and 1/120-second budget violations
 without per-tick logging. `make profile-ab` preserves the live run/pause mode,
-emits a concise comparison, and writes the complete version-1 JSON artifact.
+emits a concise comparison, and writes the complete version-2 JSON artifact.
 These isolated timings must not be compared directly with the live update value
 from `game stats`, which also contains game-demo and immutable-snapshot work and
-may be affected by renderer and scheduler activity. The first physical PIM559
-baseline is recorded in
+may be affected by renderer and scheduler activity. Physical PIM559 baselines
+are recorded in
 [`benchmarks/physics-profile`](../benchmarks/physics-profile/README.md).
 
 Contacts carry a stable point, normal, penetration depth, restitution target,
@@ -167,7 +173,15 @@ impulse application include inverse inertia. The solver applies friction and
 restitution without allocating per-pair vectors. Exactly coincident centers use
 an explicit identifier-based normal instead of random jitter.
 
-## Current milestone: uniform-grid rigid-body lab
+Distance joints are bilateral constraints with a positive target length. Anchor
+A is body-local; anchor B is either local to a second body or fixed in world
+space when body ID zero is selected. Anchors on bodies must lie inside their
+circle or box. One bounded positional correction runs before the velocity pass;
+the shared seven-pass sequential solver then removes relative anchor velocity,
+including angular effective mass and off-center torque. Joint array order is
+solver order, and coincident endpoints use a stable joint-ID-derived axis.
+
+## Current milestone: distance-joint rigid-body lab
 
 The flashable rigid-body lab contains:
 
@@ -180,12 +194,15 @@ The flashable rigid-body lab contains:
 - restitution, friction, positional correction, and a seven-pass-ceiling impulse
   solver with exact no-change termination;
 - deterministic 16 x 16 grid filtering with brute-force fallback and oracle;
+- one world-anchored pendulum in the canonical scene, with body-to-body links
+  covered by the same solver and native oracle;
 - old/new dirty footprints for every moved body, merged when they overlap; and
 - body, filtered/possible-pair, grid occupancy, fallback, contact, solver,
   timing, and deterministic-hash diagnostics.
 
 The milestone compile-time capacities are 12 dynamic bodies, eight static
-segments, two contact points per candidate manifold, and 324 contact slots:
+segments, eight distance joints, two contact points per candidate manifold, and
+324 contact slots:
 enough for every possible body-body and body-segment combination at those
 limits. The native oracle fills all 12 body slots while the flashable lab uses
 eight to preserve its 120 Hz device budget. The capacities are deliberately
@@ -194,9 +211,11 @@ partially update a valid world. These are milestone
 limits, not the eventual product scale.
 
 The D-pad tilts the acceleration field while preserving neutral downward
-gravity. A still performs the asynchronous full-redraw comparison and B keeps
-the bounded piezo test. Remote directional input has the same physics meaning
-as the physical D-pad.
+gravity. The fixed pivot and yellow radius guide make the canonical constraint
+visible without redrawing a long moving tether on every partial display update.
+A still performs the asynchronous full-redraw comparison and B keeps the
+bounded piezo test. Remote directional input has the same physics meaning as the
+physical D-pad.
 
 ## Validation scenarios
 
@@ -212,6 +231,10 @@ The native suite covers:
 - symmetric two-point box-floor manifolds and off-center angular impulse;
 - box-box, circle-box, contained-circle, and box-segment response;
 - stable coincident-center handling;
+- validation, capacity, world/body endpoints, and stable coincident-endpoint
+  handling for distance joints;
+- world pendulum, body-to-body link, and off-center angular response over long
+  replay;
 - cell-boundary collisions and distant-pair rejection;
 - explicit out-of-grid brute-force fallback;
 - exact grid/reference equality for bodies and contacts over 1,000 mixed ticks;
@@ -220,15 +243,15 @@ The native suite covers:
 - authoritative hash changes and reset recovery; and
 - undefined-behavior sanitizer execution.
 
-The native canonical reset is `b20aaf3a`, right-30 is `cb18185d`, the mixed-shape
-right-30/up-15 sequence reaches tick 45 at `7272656f`, and a 10,000-tick replay
-is `a64cb9ef`. The bounded replay reduces 76 possible pairs to between one and
-29 grid candidates, reaches 22 contacts, never falls back, and preserves the
-three-pixel arena tolerance. The PIM559 reproduced the tick-45 hash and a
-coherently presented framebuffer CRC-32 of `11bbf436`. A reset 3,692-tick
-physical window ran at 119.9 Hz with zero skipped ticks and one isolated
-over-budget update; the sampled update was 5.724 ms and the observed maximum was
-19.848 ms.
+The native canonical reset is `695073bd`, right-30 is `ba22ef24`, the
+right-30/up-15 sequence reaches tick 45 at `4e8d1ac6`, and a 10,000-tick replay
+is `a5fd5beb`. The bounded replay reduces 76 possible pairs to between one and
+26 grid candidates, reaches 22 contacts, never falls back, keeps the joint
+within three pixels of its target, and preserves the three-pixel arena
+tolerance. The PIM559 reproduced the tick-45 hash and a coherently presented
+framebuffer CRC-32 of `bc0cfa77`. Its isolated 2,000-tick profile averaged
+2.173 ms for the grid path and 2.382 ms for the brute-force reference, with
+zero budget violations and exact state agreement.
 
 Scenario shapes and measurement discipline are informed by the earlier
 [allan.pizza physics work](https://github.com/aortez/aortez.github.io/pull/14):

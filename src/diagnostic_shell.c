@@ -235,13 +235,13 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.superseded_snapshot_count, snapshot.game.last_snapshot_age_us,
 		    snapshot.game.max_dirty_snapshot_age_us);
 	shell_print(shell,
-		    "physics: bodies=%u, segments=%u, contacts=%u, candidates=%u/%u, "
+		    "physics: bodies=%u, segments=%u, joints=%u, contacts=%u, candidates=%u/%u, "
 		    "grid=%u/%u cells, solver=%u/%u, fallback=%s",
 		    snapshot.game.body_count, snapshot.game.static_segment_count,
-		    snapshot.game.contact_count, snapshot.game.candidate_pair_count,
-		    snapshot.game.possible_pair_count, snapshot.game.occupied_grid_cell_count,
-		    PICOSYSTEM_PHYSICS_GRID_CELL_COUNT, snapshot.game.solver_iteration_count,
-		    PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
+		    snapshot.game.distance_joint_count, snapshot.game.contact_count,
+		    snapshot.game.candidate_pair_count, snapshot.game.possible_pair_count,
+		    snapshot.game.occupied_grid_cell_count, PICOSYSTEM_PHYSICS_GRID_CELL_COUNT,
+		    snapshot.game.solver_iteration_count, PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
 		    snapshot.game.broad_phase_fallback ? "yes" : "no");
 	shell_print(
 		shell,
@@ -375,19 +375,21 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->skipped_tick_count, game->over_budget_tick_count);
 	shell_print(shell,
 		    "renderer: running=%s, frames=%u, window=%u (%u.%u fps), render=%u us "
-		    "(dirty max=%u), full=%u, error=%d",
+		    "(dirty max=%u), dirty=%u regions/%u pixels/%u us SPI, full=%u, error=%d",
 		    game->render_thread_running ? "yes" : "no", game->presented_frame_count,
 		    game->measured_presented_frame_count, frame_rate_tenths / 10U,
 		    frame_rate_tenths % 10U, game->last_render_time_us,
-		    game->max_dirty_render_time_us, game->full_redraw_count, game->render_error);
+		    game->max_dirty_render_time_us, game->last_dirty_region_count,
+		    game->last_dirty_pixel_count, game->last_dirty_present_time_us,
+		    game->full_redraw_count, game->render_error);
 	shell_print(shell, "snapshots: published=%u, superseded=%u, age=%u us (dirty max=%u us)",
 		    game->published_snapshot_count, game->superseded_snapshot_count,
 		    game->last_snapshot_age_us, game->max_dirty_snapshot_age_us);
 	shell_print(shell,
-		    "physics: bodies=%u, segments=%u, contacts=%u, candidates=%u/%u, "
+		    "physics: bodies=%u, segments=%u, joints=%u, contacts=%u, candidates=%u/%u, "
 		    "grid=%u/%u cells, solver=%u/%u, fallback=%s",
-		    game->body_count, game->static_segment_count, game->contact_count,
-		    game->candidate_pair_count, game->possible_pair_count,
+		    game->body_count, game->static_segment_count, game->distance_joint_count,
+		    game->contact_count, game->candidate_pair_count, game->possible_pair_count,
 		    game->occupied_grid_cell_count, PICOSYSTEM_PHYSICS_GRID_CELL_COUNT,
 		    game->solver_iteration_count, PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
 		    game->broad_phase_fallback ? "yes" : "no");

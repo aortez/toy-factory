@@ -19,6 +19,7 @@
 #define PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT      4U
 #define PICOSYSTEM_PHYSICS_MAX_BODIES            12U
 #define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS   8U
+#define PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS   8U
 #define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS   2U
 #define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN    UINT32_C(0x40000000)
 #define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS 16U
@@ -32,6 +33,7 @@
 #define PICOSYSTEM_PHYSICS_MAX_CONTACTS                                                            \
 	(PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS * PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS)
 #define PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS 7U
+#define PICOSYSTEM_PHYSICS_WORLD_BODY_ID     0U
 
 typedef int32_t picosystem_physics_fixed_t;
 
@@ -76,6 +78,10 @@ struct picosystem_physics_work_counters {
 	uint32_t solver_iteration_count;
 	uint32_t solver_contact_visit_count;
 	uint32_t solver_changed_contact_count;
+	uint32_t distance_joint_count;
+	uint32_t joint_position_correction_visit_count;
+	uint32_t joint_solver_visit_count;
+	uint32_t joint_solver_changed_count;
 	uint32_t broad_phase_fallback_count;
 };
 
@@ -128,6 +134,16 @@ struct picosystem_physics_segment_config {
 	uint16_t id;
 };
 
+/* Anchor B is world-space when body_b_id is zero and body-local otherwise. */
+struct picosystem_physics_distance_joint_config {
+	struct picosystem_physics_vector local_anchor_a;
+	struct picosystem_physics_vector anchor_b;
+	picosystem_physics_fixed_t target_distance;
+	uint16_t id;
+	uint16_t body_a_id;
+	uint16_t body_b_id;
+};
+
 struct picosystem_physics_body {
 	struct picosystem_physics_vector center;
 	struct picosystem_physics_vector velocity_per_tick;
@@ -150,6 +166,25 @@ struct picosystem_physics_static_segment {
 	picosystem_physics_fixed_t restitution;
 	picosystem_physics_fixed_t friction;
 	uint16_t id;
+};
+
+struct picosystem_physics_distance_joint {
+	/* Persistent configuration included in the authoritative hash. */
+	struct picosystem_physics_vector local_anchor_a;
+	struct picosystem_physics_vector anchor_b;
+	picosystem_physics_fixed_t target_distance;
+	uint16_t id;
+	uint16_t body_a_id;
+	uint16_t body_b_id;
+	uint8_t body_a_index;
+	uint8_t body_b_index;
+
+	/* Scratch solver state rebuilt every step and excluded from the hash. */
+	struct picosystem_physics_vector world_anchor_a;
+	struct picosystem_physics_vector world_anchor_b;
+	struct picosystem_physics_vector normal;
+	picosystem_physics_fixed_t direction_inverse_mass;
+	picosystem_physics_fixed_t accumulated_impulse;
 };
 
 enum picosystem_physics_contact_type {
@@ -182,6 +217,8 @@ struct picosystem_physics_world {
 	struct picosystem_physics_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	struct picosystem_physics_static_segment
 		static_segments[PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS];
+	struct picosystem_physics_distance_joint
+		distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
 	struct picosystem_physics_contact contacts[PICOSYSTEM_PHYSICS_MAX_CONTACTS];
 	struct picosystem_physics_grid_cell grid_cells[PICOSYSTEM_PHYSICS_GRID_CELL_COUNT];
 	struct picosystem_physics_work_counters last_work;
@@ -190,6 +227,7 @@ struct picosystem_physics_world {
 	uint32_t last_possible_pair_count;
 	uint16_t body_count;
 	uint16_t static_segment_count;
+	uint16_t distance_joint_count;
 	uint16_t contact_count;
 	uint16_t last_occupied_grid_cell_count;
 	uint8_t last_broad_phase_fallback;
@@ -208,6 +246,9 @@ int picosystem_physics_world_add_box(struct picosystem_physics_world *world,
 int picosystem_physics_world_add_static_segment(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_segment_config *config);
+int picosystem_physics_world_add_distance_joint(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_distance_joint_config *config);
 
 /* Advance exactly one tick with a global acceleration expressed in pixels/tick^2. */
 int picosystem_physics_world_step(
@@ -228,6 +269,12 @@ int picosystem_physics_world_step_profiled(
 
 const struct picosystem_physics_body *
 picosystem_physics_world_body_at(const struct picosystem_physics_world *world, size_t index);
+
+/* Resolve the current world-space endpoints of one distance joint. */
+int picosystem_physics_world_distance_joint_endpoints(
+	const struct picosystem_physics_world *world, size_t index,
+	struct picosystem_physics_vector *world_anchor_a,
+	struct picosystem_physics_vector *world_anchor_b);
 
 /* Resolve a box's four world-space corners in stable winding order. */
 int picosystem_physics_body_box_vertices(

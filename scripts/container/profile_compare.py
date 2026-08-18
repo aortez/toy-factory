@@ -41,6 +41,10 @@ WORK_NAMES = {
     "solver_iterations",
     "solver_contact_visits",
     "solver_changed_contacts",
+    "distance_joints",
+    "joint_position_correction_visits",
+    "joint_solver_visits",
+    "joint_solver_changes",
     "broad_phase_fallbacks",
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
@@ -117,7 +121,7 @@ def parse_profile(output: str) -> dict[str, object]:
         "PROFILE_BEGIN",
     )
     schema_version = parse_unsigned(begin["schema"], "schema")
-    if schema_version != 1:
+    if schema_version != 2:
         raise ProfileError(f"unsupported profile schema {schema_version}")
     ticks = parse_unsigned(begin["ticks"], "ticks")
     if ticks == 0:

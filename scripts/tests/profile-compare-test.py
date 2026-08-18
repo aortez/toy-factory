@@ -22,7 +22,7 @@ MODULE_SPEC.loader.exec_module(profile_compare)
 
 def profile_output(*, states_match: str = "yes") -> str:
     lines = [
-        "PROFILE_BEGIN schema=1 ticks=2000 warmup=120 clock_hz=125000000 "
+        "PROFILE_BEGIN schema=2 ticks=2000 warmup=120 clock_hz=125000000 "
         "histogram_fine_bin_us=32 histogram_fine_bins=64 "
         "histogram_coarse_bin_us=128 histogram_coarse_bins=64 clock_delta_cycles=4"
     ]
@@ -55,7 +55,7 @@ class ProfileCompareTest(unittest.TestCase):
     def test_parses_complete_versioned_profile(self) -> None:
         result = profile_compare.parse_profile(profile_output())
 
-        self.assertEqual(result["schema_version"], 1)
+        self.assertEqual(result["schema_version"], 2)
         self.assertEqual(result["measured_ticks_per_mode"], 2000)
         self.assertEqual(result["modes"]["grid"]["stages"]["total"]["mean_us"], 400)
         self.assertEqual(

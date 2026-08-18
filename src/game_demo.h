@@ -50,6 +50,9 @@ struct picosystem_game_demo_stats {
 	uint32_t full_redraw_count;
 	uint32_t last_render_time_us;
 	uint32_t max_dirty_render_time_us;
+	uint32_t last_dirty_present_time_us;
+	uint32_t last_dirty_pixel_count;
+	uint16_t last_dirty_region_count;
 	uint32_t last_snapshot_age_us;
 	uint32_t max_dirty_snapshot_age_us;
 	uint32_t render_stack_size_bytes;
@@ -60,6 +63,7 @@ struct picosystem_game_demo_stats {
 	int32_t focus_angular_velocity_milliradians_per_second;
 	uint16_t body_count;
 	uint16_t static_segment_count;
+	uint16_t distance_joint_count;
 	uint16_t contact_count;
 	uint16_t occupied_grid_cell_count;
 	uint16_t focus_body_id;
