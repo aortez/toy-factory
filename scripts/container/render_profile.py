@@ -27,9 +27,12 @@ CASE_NAMES = {
     "band-100",
     "tiles-100",
     "full-100",
+    "dense-100",
 }
 STAGE_NAMES = {"draw", "te_wait", "present", "total"}
+DENSE_STAGE_NAMES = {"background", "links", "circles", "boxes"}
 TRANSPORT_NAMES = {"pl022", "pl022-dma", "pio-polling", "pio-dma"}
+TARGET_FRAME_RATES_HZ = (30, 60)
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 
 
@@ -142,7 +145,7 @@ def parse_profile(output: str) -> dict[str, object]:
         "DISPLAY_PROFILE_BEGIN",
     )
     schema_version = parse_unsigned(begin["schema"], "schema")
-    if schema_version != 1:
+    if schema_version != 2:
         raise RenderProfileError(f"unsupported render-profile schema {schema_version}")
     sample_count = parse_unsigned(begin["samples"], "samples")
     if sample_count == 0:
@@ -176,7 +179,15 @@ def parse_profile(output: str) -> dict[str, object]:
             continue
         require_keys(
             fields,
-            {"name", "coverage", "payload_bytes", "regions", "writes", "synchronized"},
+            {
+                "name",
+                "coverage",
+                "payload_bytes",
+                "regions",
+                "writes",
+                "synchronized",
+                "crc32",
+            },
             line,
         )
         name = fields["name"]
@@ -203,6 +214,7 @@ def parse_profile(output: str) -> dict[str, object]:
             "display_writes_per_frame": writes,
             "te_synchronized_samples": synchronized,
             "all_samples_te_synchronized": synchronized == sample_count,
+            "final_framebuffer_crc32": parse_crc32(fields["crc32"], f"{name} crc32"),
             "stages": {},
         }
     if set(cases) != CASE_NAMES:
@@ -247,20 +259,61 @@ def parse_profile(output: str) -> dict[str, object]:
         present_mean_us = stages["present"]["mean_us"]
         draw_mean_us = stages["draw"]["mean_us"]
         total_mean_us = stages["total"]["mean_us"]
+        mean_draw_plus_present_us = draw_mean_us + present_mean_us
+        frame_rate_budgets = {}
+        for target_hz in TARGET_FRAME_RATES_HZ:
+            budget_us = 1_000_000 // target_hz
+            frame_rate_budgets[f"{target_hz}_hz"] = {
+                "budget_us": budget_us,
+                "mean_headroom_us": budget_us - mean_draw_plus_present_us,
+                "meets_mean_budget": mean_draw_plus_present_us <= budget_us,
+            }
         case["derived"] = {
             "configured_bus_ideal_payload_time_us": ideal_wire_time_us,
             "mean_time_above_configured_bus_ideal_us": present_mean_us - ideal_wire_time_us,
             "mean_configured_bus_efficiency_percent": round(
                 ideal_wire_time_us * 100 / max(present_mean_us, 1), 3
             ),
-            "mean_unpaced_draw_plus_present_us": draw_mean_us + present_mean_us,
+            "mean_unpaced_draw_plus_present_us": mean_draw_plus_present_us,
             "mean_unpaced_frames_per_second": round(
-                1_000_000 / max(draw_mean_us + present_mean_us, 1), 3
+                1_000_000 / max(mean_draw_plus_present_us, 1), 3
             ),
             "mean_te_paced_frames_per_second": round(
                 1_000_000 / max(total_mean_us, 1), 3
             ),
+            "frame_rate_budgets": frame_rate_budgets,
         }
+
+    dense_stages: dict[str, dict[str, int]] = {}
+    dense_stage_keys = {
+        "stage",
+        "samples",
+        "mean_us",
+        "min_us",
+        "p50_us",
+        "p95_us",
+        "p99_us",
+        "max_us",
+    }
+    for line in output.splitlines():
+        fields = parse_fields(line, "DISPLAY_PROFILE_DENSE_STAGE")
+        if fields is None:
+            continue
+        require_keys(fields, dense_stage_keys, line)
+        stage = fields["stage"]
+        if stage not in DENSE_STAGE_NAMES or stage in dense_stages:
+            raise RenderProfileError(f"unexpected or duplicate dense-render stage '{stage}'")
+        dense_stages[stage] = parse_timing_summary(fields, f"dense/{stage}", sample_count)
+    if set(dense_stages) != DENSE_STAGE_NAMES:
+        raise RenderProfileError("render profile does not contain every dense-render stage")
+
+    dense_draw_mean_us = cases["dense-100"]["stages"]["draw"]["mean_us"]
+    attributed_dense_draw_mean_us = sum(stage["mean_us"] for stage in dense_stages.values())
+    dense_breakdown = {
+        "stages": dense_stages,
+        "attributed_mean_us": attributed_dense_draw_mean_us,
+        "unattributed_mean_us": dense_draw_mean_us - attributed_dense_draw_mean_us,
+    }
 
     verify = require_keys(
         one_line(output, "DISPLAY_PROFILE_VERIFY"),
@@ -314,6 +367,7 @@ def parse_profile(output: str) -> dict[str, object]:
             "shell_stack_used_bytes": shell_stack_used,
             "shell_stack_size_bytes": shell_stack_size,
         },
+        "dense_raster_breakdown": dense_breakdown,
         "cases": cases,
     }
 
@@ -342,7 +396,7 @@ def print_summary(result: dict[str, object], output_path: Path) -> None:
         f"{display['transport']} at "
         f"{display['configured_spi_frequency_hz'] / 1_000_000:.3f} MHz configured"
     )
-    print("case       bytes   windows  draw us  present us  unpaced fps  efficiency")
+    print("case       bytes   windows  draw us  present us  unpaced fps  30fps slack  efficiency")
     for name in sorted(cases, key=lambda item: (cases[item]["coverage_percent"], item)):
         case = cases[name]
         stages = case["stages"]
@@ -351,8 +405,19 @@ def print_summary(result: dict[str, object], output_path: Path) -> None:
             f"{name:10} {case['payload_bytes']:7} {case['display_writes_per_frame']:8} "
             f"{stages['draw']['mean_us']:8} {stages['present']['mean_us']:11} "
             f"{derived['mean_unpaced_frames_per_second']:12.2f} "
+            f"{derived['frame_rate_budgets']['30_hz']['mean_headroom_us']:11} "
             f"{derived['mean_configured_bus_efficiency_percent']:9.1f}%"
         )
+    dense_breakdown = result["dense_raster_breakdown"]
+    assert isinstance(dense_breakdown, dict)
+    dense_stages = dense_breakdown["stages"]
+    print(
+        "dense draw: "
+        + ", ".join(
+            f"{name}={dense_stages[name]['mean_us']} us" for name in sorted(dense_stages)
+        )
+        + f", unattributed={dense_breakdown['unattributed_mean_us']} us"
+    )
     print(f"artifact: {output_path}")
 
 

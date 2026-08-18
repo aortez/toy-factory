@@ -33,11 +33,12 @@ path:
 
 The LCD backlight is held off until the initial framebuffer is complete and has
 been transferred, then enabled at 25%. The framebuffer consumes 115,200 bytes;
-a separate 3,840-byte staging buffer packs partial rows for efficient driver
-writes. The piezo starts silent and uses a conservative 25 us active pulse for
-the tone test. GP2 remains an input so the board's automatic red charging
-indicator continues to work. PIO/DMA and PL022/DMA display transports remain
-optional benchmark variants; the default uses polling SPI0/PL022.
+a separate 3,840-byte staging buffer packs non-full-width partial rows for
+efficient driver writes, while contiguous full-width row ranges bypass it. The
+piezo starts silent and uses a conservative 25 us active pulse for the tone
+test. GP2 remains an input so the board's automatic red charging indicator
+continues to work. PIO/DMA and PL022/DMA display transports remain optional
+benchmark variants; the default uses polling SPI0/PL022.
 
 ## Build
 
@@ -258,12 +259,13 @@ and renderer pipeline. Tracked PIM559 results and their full JSON reports are in
 [benchmarks/physics-profile](benchmarks/physics-profile/README.md).
 
 `display profile` requires a paused simulation and runs deterministic 10%,
-25%, 50%, 75%, and 100% dense-update workloads. It separates framebuffer draw,
-TE wait, and display-present time; reports application regions and actual
-display writes; and verifies that the canonical game frame is restored. The
-`make render-profile` wrapper pauses and resumes the game, validates the
-machine-readable response, and writes JSON. Reproduction commands and PIM559
-transport results are in
+25%, 50%, 75%, and 100% update workloads plus a full-frame dense raster scene
+containing 64 moving circle/box bodies and 112 links. It separates framebuffer
+draw, TE wait, and display-present time; reports application regions and actual
+display writes; computes headroom against 30 Hz and 60 Hz frame budgets; and
+verifies that the canonical game frame is restored. The `make render-profile`
+wrapper pauses and resumes the game, validates the machine-readable response,
+and writes JSON. Reproduction commands and PIM559 transport results are in
 [benchmarks/display-throughput](benchmarks/display-throughput/README.md).
 
 `display checksum` reports the CRC-32 of the renderer-owned software framebuffer.

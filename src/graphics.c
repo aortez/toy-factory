@@ -26,22 +26,29 @@ LOG_MODULE_REGISTER(picosystem_graphics, LOG_LEVEL_INF);
 #define PICOSYSTEM_DISPLAY_NODE   DT_CHOSEN(zephyr_display)
 #define PICOSYSTEM_BACKLIGHT_NODE DT_NODELABEL(lcd_backlight)
 
-#define DISPLAY_WIDTH          DT_PROP(PICOSYSTEM_DISPLAY_NODE, width)
-#define DISPLAY_HEIGHT         DT_PROP(PICOSYSTEM_DISPLAY_NODE, height)
-#define DISPLAY_SPI_HZ         DT_PROP(PICOSYSTEM_DISPLAY_NODE, mipi_max_frequency)
-#define BACKLIGHT_DUTY_PERCENT 25U
-#define TRANSFER_BUFFER_ROWS   8U
-#define TRANSFER_BUFFER_PIXELS (DISPLAY_WIDTH * TRANSFER_BUFFER_ROWS)
-#define FONT_WIDTH             3U
-#define FONT_HEIGHT            5U
-#define FONT_ADVANCE           (FONT_WIDTH + 1U)
-#define FONT_LINE_ADVANCE      (FONT_HEIGHT + 1U)
-#define FONT_MAX_SCALE         8U
+#define DISPLAY_WIDTH           DT_PROP(PICOSYSTEM_DISPLAY_NODE, width)
+#define DISPLAY_HEIGHT          DT_PROP(PICOSYSTEM_DISPLAY_NODE, height)
+#define DISPLAY_SPI_HZ          DT_PROP(PICOSYSTEM_DISPLAY_NODE, mipi_max_frequency)
+#define BACKLIGHT_DUTY_PERCENT  25U
+#define TRANSFER_BUFFER_ROWS    8U
+#define TRANSFER_BUFFER_PIXELS  (DISPLAY_WIDTH * TRANSFER_BUFFER_ROWS)
+#define FONT_WIDTH              3U
+#define FONT_HEIGHT             5U
+#define FONT_ADVANCE            (FONT_WIDTH + 1U)
+#define FONT_LINE_ADVANCE       (FONT_HEIGHT + 1U)
+#define FONT_MAX_SCALE          8U
+#define TRIANGLE_FAST_COORD_MIN (-4096)
+#define TRIANGLE_FAST_COORD_MAX 4095
 
 static const struct device *const display = DEVICE_DT_GET(PICOSYSTEM_DISPLAY_NODE);
 static const struct pwm_dt_spec backlight = PWM_DT_SPEC_GET(PICOSYSTEM_BACKLIGHT_NODE);
 
-static uint16_t framebuffer[DISPLAY_WIDTH * DISPLAY_HEIGHT] __aligned(4);
+union graphics_framebuffer_storage {
+	uint16_t pixels[DISPLAY_WIDTH * DISPLAY_HEIGHT];
+	uint32_t pairs[(DISPLAY_WIDTH * DISPLAY_HEIGHT) / 2U];
+};
+
+static union graphics_framebuffer_storage framebuffer __aligned(4);
 static uint16_t transfer_buffer[TRANSFER_BUFFER_PIXELS] __aligned(4);
 static bool graphics_initialized;
 
@@ -101,10 +108,14 @@ static const uint8_t unknown_glyph[FONT_HEIGHT] = {0x6U, 0x1U, 0x2U, 0U, 0x2U};
 
 BUILD_ASSERT(DISPLAY_WIDTH == PICOSYSTEM_GRAPHICS_WIDTH);
 BUILD_ASSERT(DISPLAY_HEIGHT == PICOSYSTEM_GRAPHICS_HEIGHT);
-BUILD_ASSERT(sizeof(framebuffer) == PICOSYSTEM_GRAPHICS_FRAMEBUFFER_BYTES);
+BUILD_ASSERT(sizeof(framebuffer.pixels) == PICOSYSTEM_GRAPHICS_FRAMEBUFFER_BYTES);
+BUILD_ASSERT(ARRAY_SIZE(framebuffer.pixels) == (2U * ARRAY_SIZE(framebuffer.pairs)));
 BUILD_ASSERT((DISPLAY_HEIGHT % TRANSFER_BUFFER_ROWS) == 0U);
 BUILD_ASSERT(sizeof(framebuffer) <= UINT32_MAX);
 BUILD_ASSERT(sizeof(transfer_buffer) <= UINT32_MAX);
+BUILD_ASSERT(2LL * (TRIANGLE_FAST_COORD_MAX - TRIANGLE_FAST_COORD_MIN) *
+		     (TRIANGLE_FAST_COORD_MAX - TRIANGLE_FAST_COORD_MIN) <=
+	     INT32_MAX);
 
 static int set_backlight_percent(uint32_t percent)
 {
@@ -165,6 +176,39 @@ static void record_present_stats(struct picosystem_graphics_stats *stats, uint16
 	}
 }
 
+static int present_contiguous_region(struct picosystem_graphics_stats *stats,
+				     const struct picosystem_rect *region)
+{
+	if ((region->x != 0U) || (region->width != DISPLAY_WIDTH)) {
+		return -EINVAL;
+	}
+
+	const size_t pixel_offset = (size_t)region->y * DISPLAY_WIDTH;
+	const size_t pixel_count = (size_t)region->width * region->height;
+	const size_t byte_count = pixel_count * sizeof(framebuffer.pixels[0]);
+	const struct display_buffer_descriptor descriptor = {
+		.buf_size = byte_count,
+		.width = region->width,
+		.height = region->height,
+		.pitch = region->width,
+		.frame_incomplete = false,
+	};
+	stats->last_present_start_uptime_ticks = k_uptime_ticks();
+	const uint32_t start_cycles = k_cycle_get_32();
+
+	const int err = display_write(display, region->x, region->y, &descriptor,
+				      &framebuffer.pixels[pixel_offset]);
+	if (err != 0) {
+		LOG_ERR("Contiguous display write failed for %ux%u at (%u,%u) (%d)", region->width,
+			region->height, region->x, region->y, err);
+		return err;
+	}
+	increment_saturated(&stats->display_write_count);
+
+	record_present_stats(stats, region->width, region->height, byte_count, 1U, start_cycles);
+	return 0;
+}
+
 static uint16_t native_color(picosystem_color_t color)
 {
 	return sys_cpu_to_be16(color);
@@ -207,7 +251,7 @@ int picosystem_graphics_init(struct picosystem_graphics_stats *stats)
 	}
 
 	*stats = (struct picosystem_graphics_stats){
-		.framebuffer_bytes = sizeof(framebuffer),
+		.framebuffer_bytes = sizeof(framebuffer.pixels),
 		.transfer_buffer_bytes = sizeof(transfer_buffer),
 		.configured_spi_frequency_hz = DISPLAY_SPI_HZ,
 		.transport = DISPLAY_TRANSPORT,
@@ -297,6 +341,11 @@ int picosystem_graphics_present_region(struct picosystem_graphics_stats *stats,
 		return -EINVAL;
 	}
 
+	/* A full-width row range is contiguous in the framebuffer; copying would only add work. */
+	if ((region->x == 0U) && (region->width == DISPLAY_WIDTH)) {
+		return present_contiguous_region(stats, region);
+	}
+
 	const uint16_t rows_per_write = TRANSFER_BUFFER_PIXELS / region->width;
 	uint16_t write_count = 0U;
 	stats->last_present_start_uptime_ticks = k_uptime_ticks();
@@ -311,8 +360,9 @@ int picosystem_graphics_present_region(struct picosystem_graphics_stats *stats,
 				region->x;
 			const size_t destination_index = (size_t)row * region->width;
 
-			memcpy(&transfer_buffer[destination_index], &framebuffer[source_index],
-			       (size_t)region->width * sizeof(framebuffer[0]));
+			memcpy(&transfer_buffer[destination_index],
+			       &framebuffer.pixels[source_index],
+			       (size_t)region->width * sizeof(framebuffer.pixels[0]));
 		}
 
 		const size_t pixel_count = (size_t)region->width * write_rows;
@@ -337,7 +387,8 @@ int picosystem_graphics_present_region(struct picosystem_graphics_stats *stats,
 		row_offset += write_rows;
 	}
 
-	const size_t byte_count = (size_t)region->width * region->height * sizeof(framebuffer[0]);
+	const size_t byte_count =
+		(size_t)region->width * region->height * sizeof(framebuffer.pixels[0]);
 
 	record_present_stats(stats, region->width, region->height, byte_count, write_count,
 			     start_cycles);
@@ -350,27 +401,14 @@ int picosystem_graphics_present_full(struct picosystem_graphics_stats *stats)
 		return -EINVAL;
 	}
 
-	const struct display_buffer_descriptor descriptor = {
-		.buf_size = sizeof(framebuffer),
+	const struct picosystem_rect full_region = {
+		.x = 0U,
+		.y = 0U,
 		.width = DISPLAY_WIDTH,
 		.height = DISPLAY_HEIGHT,
-		.pitch = DISPLAY_WIDTH,
-		.frame_incomplete = false,
 	};
-	stats->last_present_start_uptime_ticks = k_uptime_ticks();
-	const uint32_t start_cycles = k_cycle_get_32();
 
-	/* Full frames are contiguous and already stored in the panel's RGB565X byte order. */
-	const int err = display_write(display, 0U, 0U, &descriptor, framebuffer);
-	if (err != 0) {
-		LOG_ERR("Full-frame display write failed (%d)", err);
-		return err;
-	}
-	increment_saturated(&stats->display_write_count);
-
-	record_present_stats(stats, DISPLAY_WIDTH, DISPLAY_HEIGHT, sizeof(framebuffer), 1U,
-			     start_cycles);
-	return 0;
+	return present_contiguous_region(stats, &full_region);
 }
 
 const char *picosystem_graphics_transport_name(uint8_t transport)
@@ -392,19 +430,25 @@ const char *picosystem_graphics_transport_name(uint8_t transport)
 void picosystem_graphics_clear(picosystem_color_t color)
 {
 	const uint16_t converted = native_color(color);
+	const uint32_t pair = ((uint32_t)converted << 16U) | converted;
 
-	for (size_t i = 0U; i < ARRAY_SIZE(framebuffer); ++i) {
-		framebuffer[i] = converted;
+	for (size_t i = 0U; i < ARRAY_SIZE(framebuffer.pairs); ++i) {
+		framebuffer.pairs[i] = pair;
 	}
 }
 
-void picosystem_graphics_draw_pixel(int16_t x, int16_t y, picosystem_color_t color)
+static inline void draw_native_pixel(int32_t x, int32_t y, uint16_t converted)
 {
 	if ((x < 0) || (x >= DISPLAY_WIDTH) || (y < 0) || (y >= DISPLAY_HEIGHT)) {
 		return;
 	}
 
-	framebuffer[((size_t)y * DISPLAY_WIDTH) + (size_t)x] = native_color(color);
+	framebuffer.pixels[((size_t)y * DISPLAY_WIDTH) + (size_t)x] = converted;
+}
+
+void picosystem_graphics_draw_pixel(int16_t x, int16_t y, picosystem_color_t color)
+{
+	draw_native_pixel(x, y, native_color(color));
 }
 
 void picosystem_graphics_fill_rect(int16_t x, int16_t y, uint16_t width, uint16_t height,
@@ -423,7 +467,7 @@ void picosystem_graphics_fill_rect(int16_t x, int16_t y, uint16_t width, uint16_
 	for (int32_t row = top; row < bottom; ++row) {
 		const size_t row_start = (size_t)row * DISPLAY_WIDTH;
 		for (int32_t column = left; column < right; ++column) {
-			framebuffer[row_start + (size_t)column] = converted;
+			framebuffer.pixels[row_start + (size_t)column] = converted;
 		}
 	}
 }
@@ -457,9 +501,10 @@ void picosystem_graphics_draw_line(int16_t start_x, int16_t start_y, int16_t end
 	const int32_t step_x = (start_x < end_x) ? 1 : -1;
 	const int32_t step_y = (start_y < end_y) ? 1 : -1;
 	int32_t error = delta_x + delta_y;
+	const uint16_t converted = native_color(color);
 
 	while (true) {
-		picosystem_graphics_draw_pixel((int16_t)x, (int16_t)y, color);
+		draw_native_pixel(x, y, converted);
 		if ((x == end_x) && (y == end_y)) {
 			break;
 		}
@@ -476,30 +521,83 @@ void picosystem_graphics_draw_line(int16_t start_x, int16_t start_y, int16_t end
 	}
 }
 
-static int64_t triangle_edge(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
-			     int32_t point_x, int32_t point_y)
+static int64_t triangle_edge_wide(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
+				  int32_t point_x, int32_t point_y)
 {
 	return ((int64_t)end_x - start_x) * (point_y - start_y) -
 	       ((int64_t)end_y - start_y) * (point_x - start_x);
 }
 
-void picosystem_graphics_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
-				       int16_t y2, picosystem_color_t color)
+static int32_t triangle_edge_fast(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
+				  int32_t point_x, int32_t point_y)
 {
-	const int32_t left = MAX(MIN(x0, MIN(x1, x2)), 0);
-	const int32_t top = MAX(MIN(y0, MIN(y1, y2)), 0);
-	const int32_t right = MIN(MAX(x0, MAX(x1, x2)), DISPLAY_WIDTH - 1);
-	const int32_t bottom = MIN(MAX(y0, MAX(y1, y2)), DISPLAY_HEIGHT - 1);
-	const int64_t area = triangle_edge(x0, y0, x1, y1, x2, y2);
-	if ((left > right) || (top > bottom) || (area == 0)) {
+	return ((int32_t)end_x - start_x) * (point_y - start_y) -
+	       ((int32_t)end_y - start_y) * (point_x - start_x);
+}
+
+static bool triangle_supports_fast_edges(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
+					 int16_t y2)
+{
+	return (x0 >= TRIANGLE_FAST_COORD_MIN) && (x0 <= TRIANGLE_FAST_COORD_MAX) &&
+	       (y0 >= TRIANGLE_FAST_COORD_MIN) && (y0 <= TRIANGLE_FAST_COORD_MAX) &&
+	       (x1 >= TRIANGLE_FAST_COORD_MIN) && (x1 <= TRIANGLE_FAST_COORD_MAX) &&
+	       (y1 >= TRIANGLE_FAST_COORD_MIN) && (y1 <= TRIANGLE_FAST_COORD_MAX) &&
+	       (x2 >= TRIANGLE_FAST_COORD_MIN) && (x2 <= TRIANGLE_FAST_COORD_MAX) &&
+	       (y2 >= TRIANGLE_FAST_COORD_MIN) && (y2 <= TRIANGLE_FAST_COORD_MAX);
+}
+
+static void fill_triangle_fast(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
+			       int16_t y2, int32_t left, int32_t top, int32_t right, int32_t bottom,
+			       uint16_t converted)
+{
+	const int32_t area = triangle_edge_fast(x0, y0, x1, y1, x2, y2);
+	if (area == 0) {
 		return;
 	}
 
 	const bool positive = area > 0;
-	const uint16_t converted = native_color(color);
-	int64_t row_edge_0 = triangle_edge(x0, y0, x1, y1, left, top);
-	int64_t row_edge_1 = triangle_edge(x1, y1, x2, y2, left, top);
-	int64_t row_edge_2 = triangle_edge(x2, y2, x0, y0, left, top);
+	int32_t row_edge_0 = triangle_edge_fast(x0, y0, x1, y1, left, top);
+	int32_t row_edge_1 = triangle_edge_fast(x1, y1, x2, y2, left, top);
+	int32_t row_edge_2 = triangle_edge_fast(x2, y2, x0, y0, left, top);
+	const int32_t x_step_0 = -((int32_t)y1 - y0);
+	const int32_t x_step_1 = -((int32_t)y2 - y1);
+	const int32_t x_step_2 = -((int32_t)y0 - y2);
+	const int32_t y_step_0 = (int32_t)x1 - x0;
+	const int32_t y_step_1 = (int32_t)x2 - x1;
+	const int32_t y_step_2 = (int32_t)x0 - x2;
+	for (int32_t y = top; y <= bottom; ++y) {
+		const size_t row_start = (size_t)y * DISPLAY_WIDTH;
+		int32_t edge_0 = row_edge_0;
+		int32_t edge_1 = row_edge_1;
+		int32_t edge_2 = row_edge_2;
+		for (int32_t x = left; x <= right; ++x) {
+			if (positive ? ((edge_0 >= 0) && (edge_1 >= 0) && (edge_2 >= 0))
+				     : ((edge_0 <= 0) && (edge_1 <= 0) && (edge_2 <= 0))) {
+				framebuffer.pixels[row_start + (size_t)x] = converted;
+			}
+			edge_0 += x_step_0;
+			edge_1 += x_step_1;
+			edge_2 += x_step_2;
+		}
+		row_edge_0 += y_step_0;
+		row_edge_1 += y_step_1;
+		row_edge_2 += y_step_2;
+	}
+}
+
+static void fill_triangle_wide(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
+			       int16_t y2, int32_t left, int32_t top, int32_t right, int32_t bottom,
+			       uint16_t converted)
+{
+	const int64_t area = triangle_edge_wide(x0, y0, x1, y1, x2, y2);
+	if (area == 0) {
+		return;
+	}
+
+	const bool positive = area > 0;
+	int64_t row_edge_0 = triangle_edge_wide(x0, y0, x1, y1, left, top);
+	int64_t row_edge_1 = triangle_edge_wide(x1, y1, x2, y2, left, top);
+	int64_t row_edge_2 = triangle_edge_wide(x2, y2, x0, y0, left, top);
 	const int32_t x_step_0 = -((int32_t)y1 - y0);
 	const int32_t x_step_1 = -((int32_t)y2 - y1);
 	const int32_t x_step_2 = -((int32_t)y0 - y2);
@@ -514,7 +612,7 @@ void picosystem_graphics_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16
 		for (int32_t x = left; x <= right; ++x) {
 			if (positive ? ((edge_0 >= 0) && (edge_1 >= 0) && (edge_2 >= 0))
 				     : ((edge_0 <= 0) && (edge_1 <= 0) && (edge_2 <= 0))) {
-				framebuffer[row_start + (size_t)x] = converted;
+				framebuffer.pixels[row_start + (size_t)x] = converted;
 			}
 			edge_0 += x_step_0;
 			edge_1 += x_step_1;
@@ -523,6 +621,25 @@ void picosystem_graphics_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16
 		row_edge_0 += y_step_0;
 		row_edge_1 += y_step_1;
 		row_edge_2 += y_step_2;
+	}
+}
+
+void picosystem_graphics_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
+				       int16_t y2, picosystem_color_t color)
+{
+	const int32_t left = MAX(MIN(x0, MIN(x1, x2)), 0);
+	const int32_t top = MAX(MIN(y0, MIN(y1, y2)), 0);
+	const int32_t right = MIN(MAX(x0, MAX(x1, x2)), DISPLAY_WIDTH - 1);
+	const int32_t bottom = MIN(MAX(y0, MAX(y1, y2)), DISPLAY_HEIGHT - 1);
+	if ((left > right) || (top > bottom)) {
+		return;
+	}
+
+	const uint16_t converted = native_color(color);
+	if (triangle_supports_fast_edges(x0, y0, x1, y1, x2, y2)) {
+		fill_triangle_fast(x0, y0, x1, y1, x2, y2, left, top, right, bottom, converted);
+	} else {
+		fill_triangle_wide(x0, y0, x1, y1, x2, y2, left, top, right, bottom, converted);
 	}
 }
 
@@ -656,9 +773,9 @@ int picosystem_graphics_visit_framebuffer(size_t chunk_bytes,
 		return -EINVAL;
 	}
 
-	const uint8_t *const bytes = (const uint8_t *)framebuffer;
-	for (size_t offset = 0U; offset < sizeof(framebuffer); offset += chunk_bytes) {
-		const size_t length = MIN(chunk_bytes, sizeof(framebuffer) - offset);
+	const uint8_t *const bytes = (const uint8_t *)framebuffer.pixels;
+	for (size_t offset = 0U; offset < sizeof(framebuffer.pixels); offset += chunk_bytes) {
+		const size_t length = MIN(chunk_bytes, sizeof(framebuffer.pixels) - offset);
 		const int err = visitor(offset, &bytes[offset], length, context);
 		if (err != 0) {
 			return err;
@@ -674,6 +791,6 @@ int picosystem_graphics_framebuffer_crc32(uint32_t *crc)
 		return -EINVAL;
 	}
 
-	*crc = crc32_ieee((const uint8_t *)framebuffer, sizeof(framebuffer));
+	*crc = crc32_ieee((const uint8_t *)framebuffer.pixels, sizeof(framebuffer.pixels));
 	return 0;
 }

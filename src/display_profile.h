@@ -13,11 +13,11 @@
 
 #include "graphics.h"
 
-#define PICOSYSTEM_DISPLAY_PROFILE_SCHEMA_VERSION  1U
+#define PICOSYSTEM_DISPLAY_PROFILE_SCHEMA_VERSION  2U
 #define PICOSYSTEM_DISPLAY_PROFILE_DEFAULT_SAMPLES 16U
 #define PICOSYSTEM_DISPLAY_PROFILE_MAX_SAMPLES     64U
 #define PICOSYSTEM_DISPLAY_PROFILE_WARMUP_SAMPLES  2U
-#define PICOSYSTEM_DISPLAY_PROFILE_CASE_COUNT      11U
+#define PICOSYSTEM_DISPLAY_PROFILE_CASE_COUNT      12U
 
 enum picosystem_display_profile_stage {
 	PICOSYSTEM_DISPLAY_PROFILE_STAGE_DRAW,
@@ -25,6 +25,14 @@ enum picosystem_display_profile_stage {
 	PICOSYSTEM_DISPLAY_PROFILE_STAGE_PRESENT,
 	PICOSYSTEM_DISPLAY_PROFILE_STAGE_TOTAL,
 	PICOSYSTEM_DISPLAY_PROFILE_STAGE_COUNT,
+};
+
+enum picosystem_display_profile_dense_stage {
+	PICOSYSTEM_DISPLAY_PROFILE_DENSE_STAGE_BACKGROUND,
+	PICOSYSTEM_DISPLAY_PROFILE_DENSE_STAGE_LINKS,
+	PICOSYSTEM_DISPLAY_PROFILE_DENSE_STAGE_CIRCLES,
+	PICOSYSTEM_DISPLAY_PROFILE_DENSE_STAGE_BOXES,
+	PICOSYSTEM_DISPLAY_PROFILE_DENSE_STAGE_COUNT,
 };
 
 struct picosystem_display_profile_stage_summary {
@@ -41,6 +49,7 @@ struct picosystem_display_profile_case_result {
 	struct picosystem_display_profile_stage_summary
 		stages[PICOSYSTEM_DISPLAY_PROFILE_STAGE_COUNT];
 	uint32_t payload_bytes;
+	uint32_t framebuffer_crc32;
 	uint16_t region_count;
 	uint16_t display_write_count;
 	uint16_t synchronized_wait_count;
@@ -49,6 +58,8 @@ struct picosystem_display_profile_case_result {
 
 struct picosystem_display_profile_result {
 	struct picosystem_display_profile_case_result cases[PICOSYSTEM_DISPLAY_PROFILE_CASE_COUNT];
+	struct picosystem_display_profile_stage_summary
+		dense_stages[PICOSYSTEM_DISPLAY_PROFILE_DENSE_STAGE_COUNT];
 	uint32_t schema_version;
 	uint32_t measured_sample_count;
 	uint32_t warmup_sample_count;
@@ -70,5 +81,6 @@ int picosystem_display_profile_run(struct picosystem_graphics_stats *graphics,
 
 const char *picosystem_display_profile_case_name(size_t case_index);
 const char *picosystem_display_profile_stage_name(size_t stage_index);
+const char *picosystem_display_profile_dense_stage_name(size_t stage_index);
 
 #endif /* PICOSYSTEM_DISPLAY_PROFILE_H_ */

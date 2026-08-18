@@ -711,10 +711,10 @@ static void print_display_profile_result(const struct shell *shell,
 		const char *const case_name = picosystem_display_profile_case_name(case_index);
 		shell_print(shell,
 			    "DISPLAY_PROFILE_CASE name=%s coverage=%u payload_bytes=%u regions=%u "
-			    "writes=%u synchronized=%u",
+			    "writes=%u synchronized=%u crc32=%08x",
 			    case_name, case_result->coverage_percent, case_result->payload_bytes,
 			    case_result->region_count, case_result->display_write_count,
-			    case_result->synchronized_wait_count);
+			    case_result->synchronized_wait_count, case_result->framebuffer_crc32);
 
 		for (size_t stage = 0U; stage < PICOSYSTEM_DISPLAY_PROFILE_STAGE_COUNT; ++stage) {
 			const struct picosystem_display_profile_stage_summary *const summary =
@@ -737,6 +737,28 @@ static void print_display_profile_result(const struct shell *shell,
 				    profile_cycles_to_microseconds(summary->maximum_cycles,
 								   result->clock_frequency_hz));
 		}
+	}
+
+	for (size_t stage = 0U; stage < PICOSYSTEM_DISPLAY_PROFILE_DENSE_STAGE_COUNT; ++stage) {
+		const struct picosystem_display_profile_stage_summary *const summary =
+			&result->dense_stages[stage];
+		shell_print(shell,
+			    "DISPLAY_PROFILE_DENSE_STAGE stage=%s samples=%u mean_us=%u min_us=%u "
+			    "p50_us=%u p95_us=%u p99_us=%u max_us=%u",
+			    picosystem_display_profile_dense_stage_name(stage),
+			    summary->sample_count,
+			    profile_cycles_to_microseconds(summary->mean_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->minimum_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->percentile_50_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->percentile_95_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->percentile_99_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->maximum_cycles,
+							   result->clock_frequency_hz));
 	}
 
 	shell_print(shell,

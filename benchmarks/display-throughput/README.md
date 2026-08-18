@@ -4,21 +4,24 @@ This benchmark measures the complete framebuffer-to-ST7789 presentation path
 for dense scenes. It separates the cost of transferred pixels from the cost of
 splitting those pixels across display windows.
 
-The tracked reports were captured on one Pimoroni PicoSystem PIM559 on
-2026-08-17. Every case uses two warm-up frames and 16 measured frames. The game
-is paused, a canonical full scene is established, each destructive workload is
-run with TE synchronization, and the same canonical scene is redrawn and
-CRC-verified before the simulation resumes.
+The tracked schema-1 baseline reports were captured on one Pimoroni PicoSystem
+PIM559 on 2026-08-17, before the full-width strip fast path was added. Every
+case uses two warm-up frames and 16 measured frames. The game is paused, a
+canonical full scene is established, each destructive workload is run with TE
+synchronization, and the same canonical scene is redrawn and CRC-verified
+before the simulation resumes.
 
 ## Workloads
 
-- `band-*` draws one centered, full-width strip. The application submits one
-  region, but the current 3,840-byte staging path splits it into 3-30 display
-  writes.
+- `band-*` draws one centered, full-width strip. The schema-1 baseline split it
+  into 3-30 staging-buffer writes; current firmware sends the contiguous row
+  range directly in one display write.
 - `tiles-*` draws deterministic scattered 24 x 24 tiles and submits each tile
   separately. The 100% case therefore performs 100 display writes.
 - `full-100` clears the framebuffer and sends its contiguous 115,200 bytes in
   one display write.
+- `dense-100`, added in schema 2, redraws 64 moving circle/box bodies and 112
+  links over the complete framebuffer, then sends it in one display write.
 
 Reported `present` time includes the synchronous Zephyr display call, panel
 window commands, buffer packing, SPI setup, DMA setup where applicable, and
@@ -31,7 +34,7 @@ Framebuffer CRCs validate the software data and restoration path, not pixels
 read back from the write-only LCD. The 62.5 MHz image therefore remains a
 benchmark variant pending explicit visual stress validation.
 
-## Results
+## Schema-1 baseline results
 
 | Transport | Configured clock | Full present | Full draw + present | Full unpaced rate | Full bus efficiency | 50% band present | 50% tiles present |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -52,6 +55,37 @@ for draw, TE wait, present, and total:
 - [PL022/DMA at 20 MHz](pim559-pl022-dma-20mhz-2026-08-17.json)
 - [PL022/DMA at 62.5 MHz](pim559-pl022-dma-62_5mhz-2026-08-17.json)
 
+## Schema-2 optimized dense result
+
+The optimized 62.5 MHz PL022/DMA image was profiled for another 16 measured
+frames. Full-width row ranges now bypass the staging buffer, solid clears write
+two equal pixels at a time, ordinary on/near-screen triangles use bounded
+32-bit edge arithmetic with the original 64-bit path retained as a fallback,
+and lines convert their color once rather than once per pixel.
+
+| Workload | Draw | Present | Draw + present | Unpaced rate | 30 Hz mean headroom | Writes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 100% band | 3.657 ms | 18.225 ms | 21.882 ms | 45.70 fps | 11.451 ms | 1 |
+| Solid full frame | 1.793 ms | 18.209 ms | 20.002 ms | 49.99 fps | 13.331 ms | 1 |
+| Dense 64-body scene | 13.346 ms | 18.328 ms | 31.674 ms | 31.57 fps | 1.659 ms | 1 |
+
+The dense draw breaks down into 3.777 ms for the checkerboard background,
+1.728 ms for 112 links, 2.201 ms for 32 circles, and 5.625 ms for 32 outlined
+boxes. Conservatively adding the separate draw and present p95 values gives
+31.943 ms, still 1.390 ms inside a 33.333 ms processing budget. TE pacing
+presents on every second measured panel refresh, so the observed paced rate is
+29.805 fps on this approximately 59.6 Hz panel.
+
+A controlled 8-sample before/after replay reduced box rasterization from
+13.584 ms to 5.262 ms and complete dense draw from 21.522 ms to 12.905 ms. Both
+images produced the same final framebuffer CRC, `013b49df`. The full-width
+fast path reduced the 50% band presentation from 24.615 ms to 9.450 ms and its
+driver writes from 15 to 1.
+
+The complete schema-2 distributions, per-workload framebuffer CRCs, dense
+raster breakdown, frame-budget calculations, and restoration proof are in
+[the optimized PL022/DMA report](pim559-pl022-dma-62_5mhz-schema2-2026-08-17.json).
+
 ## Findings
 
 PL022 polling is CPU/feed limited around 1.5 MB/s. Raising its configured clock
@@ -65,27 +99,27 @@ but Zephyr's four-cycle full-duplex PIO program limits a 125 MHz RP2040 to a
 34.332 ms. Repeated DMA setup is expensive: 100 tiles at the same pixel count
 take 152.486 ms instead of the contiguous frame's 30.972 ms.
 
-PL022/DMA is the fastest dense path at 62.5 MHz. Its 18.361 ms full present is
-already 1.6 ms longer than the measured panel period before any drawing occurs,
-and the solid-frame draw adds another 3.398 ms. It also performs poorly on
-small transfers because the generic Zephyr driver creates paired TX/RX DMA
-transactions for every command and payload.
+PL022/DMA is the fastest dense path at 62.5 MHz. Its optimized 18.209 ms full
+present is still about 1.4 ms longer than the measured panel period before any
+drawing occurs. It also performs poorly on small transfers because the generic
+Zephyr driver creates paired TX/RX DMA transactions for every command and
+payload.
 
 The evidence points to a size- and shape-aware renderer rather than one global
 transport choice:
 
-1. Add a direct one-write fast path for contiguous full-width strips instead of
-   copying and submitting every eight rows.
+1. Use the direct one-write fast path for contiguous full-width strips instead
+   of copying and submitting every eight rows.
 2. Merge aggressively and switch to a full frame when window setup costs more
    than the extra pixels.
 3. Prototype a PL022 path that polls short command/dirty transfers but uses DMA
    for a large payload without rebuilding the firmware.
-4. Reduce solid-fill and dense-raster cost. At an ideal 62.5 MHz payload rate,
-   a 60 Hz sequential full-frame pipeline leaves only about 2.0 ms for all
-   drawing and non-payload overhead.
-5. If dense 60 Hz remains a requirement, consider a bounded scanline/band
-   producer-consumer that overlaps rasterization and DMA. The roughly 72 KiB
-   remaining RAM cannot hold a second 115,200-byte framebuffer.
+4. Continue reducing dense-raster cost to reserve CPU time for simulation and
+   game systems; the current synthetic scene has 1.659 ms of mean sequential
+   margin at 30 Hz.
+5. Getting materially above 30 Hz requires reducing the 18.2 ms transfer below
+   one panel period or overlapping bounded scanline/band rasterization with
+   DMA. The remaining RAM cannot hold a second 115,200-byte framebuffer.
 
 The benchmark also exposed a correctness issue outside its throughput results:
 the framebuffer produced by ordinary partial rendering did not always match a

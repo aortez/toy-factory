@@ -265,6 +265,13 @@ take 102.914 ms. Polling PL022 barely improves when configured above 20 MHz.
 These results favor a size- and shape-aware transport policy; the current
 dirty-first image remains on polling PL022. Full distributions and reproduction
 commands are in [the dense-display report](../benchmarks/display-throughput/README.md).
+The current schema-2 profiler also includes a synthetic full-frame raster load
+with 64 moving circle/box bodies and 112 links, and reports remaining mean time
+inside conservative 30 Hz and 60 Hz processing budgets. With 62.5 MHz
+PL022/DMA, optimized 32-bit triangle edges, and a one-write frame transfer, that
+scene draws in 13.346 ms and presents in 18.328 ms: 31.57 fps unpaced with
+1.659 ms of mean 30 Hz processing headroom. Every-second-TE pacing measures
+29.805 fps on the approximately 59.6 Hz panel.
 
 On a cold power-on, the backlight remained visually dark until the completed
 frame appeared; no bright or white startup flash was observed.
