@@ -13,13 +13,13 @@ here.
 ## Hardware and scheduling budget
 
 The recommended fast build uses 205,300 bytes of the linker's 255 KiB Zephyr
-RAM region and 181,028 bytes of flash. Its 115,200-byte framebuffer and
+RAM region and 181,284 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
 physics world is 16,076 bytes, including its 1,024-byte scratch grid, eight
 distance-joint slots, eight revolute-joint slots, and per-step deterministic
 work counters. The serialized A/B workspace is 23,440 bytes, is inactive during
 normal play, and avoids placing a second world on a thread stack. The profile
-command's 4,096-byte shell stack measured a 3,472-byte high-water mark. The
+command's 4,096-byte shell stack measured a 3,504-byte high-water mark. The
 renderer reached 3,204 bytes while bringing up the larger scene snapshot, so
 its bounded stack was raised from 3,584 to 4,096 bytes. The linked image retains
 roughly 55 KiB of Zephyr RAM headroom. Physical timing acceptance
@@ -210,8 +210,8 @@ The flashable rigid-body lab contains:
 - all circle/box pairings plus finite, two-sided circle/box segment collision;
 - shape-derived inverse inertia, contact-point angular response, and two-point
   box manifolds;
-- restitution, friction, positional correction, and a seven-pass-ceiling impulse
-  solver with exact no-change termination;
+- restitution, friction, one-to-four adaptive revolute-position sweeps, and a
+  seven-pass-ceiling impulse solver with exact no-change termination;
 - deterministic 16 x 16 grid filtering with brute-force fallback and oracle;
 - one world-anchored distance pendulum and a four-box chain joined by one world
   pin and three body-to-body revolute joints;
@@ -266,26 +266,32 @@ The native suite covers:
 - authoritative hash changes and reset recovery; and
 - undefined-behavior sanitizer execution.
 
-The native canonical reset is `be490990`, right-30 is `f110b9f9`, the
-right-30/up-15 sequence reaches tick 45 at `62c9b14e`, and a 10,000-tick replay
-is `c79cc506`. The bounded replay reduces 76 possible pairs to between three and
+The native canonical reset is `2eee9251`, right-30 is `f11cec0f`, the
+right-30/up-15 sequence reaches tick 45 at `7e462383`, and a 10,000-tick replay
+is `880a5335`. The bounded replay reduces 76 possible pairs to between three and
 17 grid candidates, reaches 14 contacts, never falls back, keeps every distance
 and revolute constraint within three pixels, and preserves the three-pixel
-arena tolerance. The PIM559 reproduced the reset hash and a coherently
-presented reset framebuffer CRC-32 of `c965155f`. Its isolated 1,000-tick
-profile averaged 3.578 ms for the grid path and 3.866 ms for the brute-force
-reference, with zero budget violations and exact state agreement.
+arena tolerance. The PIM559 reproduced all three short-sequence hashes, a
+coherently presented reset framebuffer CRC-32 of `c965155f`, and tick-45 CRC-32
+`4ddc9697`. Its isolated 1,000-tick profile averaged 3.539 ms for the grid path
+and 3.793 ms for the brute-force reference, with zero budget violations and
+exact state agreement. Maximum revolute-anchor separation was 0.930 pixels.
 
-A second device profile isolated deterministic 4-, 6-, and 8-link chains. Grid
-means were 1.559, 2.202, and 2.819 ms; maxima were 2.022, 2.672, and 3.252 ms.
-All remained comfortably within 120 Hz and matched the reference state exactly.
-Maximum anchor separation was 0.495 pixels at four links and 1.314 pixels at six,
-but 51.867 pixels at eight. The current capacity is therefore CPU-safe but not
-quality-safe for a long unconverged chain. The next solver work should use the
-available timing headroom for additional position convergence, improved joint
-ordering, or warm starting before increasing the joint cap. The sparse fixture
-also confirms that broad-phase selection must remain workload-aware: brute
-force was 0.218-0.290 ms faster because grid setup outweighed pair rejection.
+The first chain-scaling baseline isolated deterministic 4-, 6-, and 8-link
+chains at 1.559, 2.202, and 2.819 ms mean. A single position pass held four and
+six links to 0.495 and 1.314 pixels but let eight links separate by 51.867
+pixels. The current solver now performs one forward position pass, checks every
+anchor against a one-pixel target, and adds alternating reverse/forward passes
+only as needed, with four as the hard ceiling. This keeps cached impulses as
+per-step scratch rather than introducing persistent warm-start state.
+
+The adaptive device profile averaged 1.569, 2.315, and 3.897 ms for 4/6/8
+links, using 1.000, 1.172, and 2.552 position passes per tick. Maximum anchor
+error was 0.495, 1.118, and 1.158 pixels; the 8-link maximum was 5.188 ms. All
+cases remained within 120 Hz and matched the reference state exactly. The
+sparse fixture also confirms that broad-phase selection must remain
+workload-aware: the reference stayed 0.221-0.267 ms faster because grid setup
+outweighed pair rejection.
 
 Scenario shapes and measurement discipline are informed by the earlier
 [allan.pizza physics work](https://github.com/aortez/aortez.github.io/pull/14):
@@ -297,11 +303,10 @@ are design references rather than code to port.
 
 ## Planned extensions
 
-1. Improve long-chain convergence while preserving deterministic bounded work.
-2. Add motors, sliders, springs, conveyors, sensors, and sleeping.
-3. Add capsules and a position-based rope/soft-body subsystem with deliberate
+1. Add motors, sliders, springs, conveyors, sensors, and sleeping.
+2. Add capsules and a position-based rope/soft-body subsystem with deliberate
    rigid-body coupling.
-4. Evaluate bounded granular materials and approximate gravity or magnetic
+3. Evaluate bounded granular materials and approximate gravity or magnetic
    fields as separate gameplay systems.
 
 Each extension must leave behind a playable device demo, a deterministic host

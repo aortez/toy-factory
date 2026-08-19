@@ -338,7 +338,7 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "62c9b14e",
+    "hash": "7e462383",
     "framebuffer_crc32": "4ddc9697"
   }
 }
@@ -474,14 +474,14 @@ physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
 The default image uses 199,324 bytes of its 255 KiB Zephyr RAM region (76.33%)
-and 176,552 bytes of flash. This includes the 115,200-byte framebuffer,
+and 176,808 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer,
 16,076-byte fixed-capacity physics world with a 1,024-byte scratch grid, eight
 distance-joint slots, eight revolute-joint slots, and per-step deterministic
 counters, a 23,440-byte serialized benchmark workspace, two 600-byte render
 snapshots, a 4,096-byte shell stack, a 4,096-byte renderer stack,
 display-profile result storage, and a 1,024-byte shell TX ring. The fast image
-uses 205,300 bytes of that region (78.62%) and 181,028 bytes of flash,
+uses 205,300 bytes of that region (78.62%) and 181,284 bytes of flash,
 including 5,376 bytes of SRAM-resident raster code. Both images also reserve
 8 KiB outside Zephyr's region for the core-1 mailbox and stack. The fast image
 retains about 55 KiB of Zephyr RAM headroom. Full frames bypass the staging
@@ -607,17 +607,21 @@ occupied 91 of 256 cells, and did not fall back; TE-driven presentation was
 The current multi-link image retains one distance-joint pendulum and adds four
 revolute constraints: one world pin followed by three body-to-body hinges.
 Directly connected bodies are excluded from collision generation unless a
-joint explicitly opts in. Native reset hashes to `be490990`; right for 30 ticks
-reaches `f110b9f9`; and a further 15 up ticks reaches tick 45 at `62c9b14e`.
+joint explicitly opts in. Native reset hashes to `2eee9251`; right for 30 ticks
+reaches `f11cec0f`; and a further 15 up ticks reaches tick 45 at `7e462383`.
 The PIM559 reproduced the reset hash and the reset frame shown above is CRC-32
-`c965155f`. A 10,000-tick native replay ends at `c79cc506` while keeping every
-hinge within three pixels. The isolated 1,000-tick device profile averaged
-3.578 ms for the grid path and 3.866 ms for the brute-force reference, with no
-budget violations and exact final state agreement. The fast full-frame image
-subsequently sustained 119.9 Hz simulation and 29.7 fps presentation with zero
-skipped ticks. A separate deterministic chain-scaling profile measured 4, 6,
-and 8 links at 1.559, 2.202, and 2.819 ms mean respectively, all well below the
-8.333 ms simulation budget. Maximum anchor separation stayed at 0.495 and
-1.314 pixels for 4 and 6 links, then rose to 51.867 pixels at 8 links. The
-current constraint is therefore long-chain solver convergence, not RP2040 CPU
-time.
+`c965155f`; the exact tick-45 frame remains CRC-32 `4ddc9697`. A 10,000-tick
+native replay ends at `880a5335` while keeping every hinge within two pixels.
+The adaptive position solver runs one forward pass, adds alternating bounded
+passes only while an anchor remains more than one pixel apart, and stops after
+four passes. The isolated 1,000-tick canonical profile averaged 3.539 ms for
+the grid and 3.793 ms for the brute-force reference, with no budget violations
+and exact final state agreement.
+
+The corresponding 4/6/8-link device profile averaged 1.569, 2.315, and
+3.897 ms. It used 1.00, 1.17, and 2.55 position passes per tick respectively;
+maximum anchor separation was 0.495, 1.118, and 1.158 pixels. Even the 8-link
+maximum was 5.188 ms, leaving more than three milliseconds of the 120 Hz
+budget. A longer 14,416-tick live window held 120.0 Hz simulation and 29.8 fps
+presentation, with one isolated skipped tick amid USB profiling and status
+activity.

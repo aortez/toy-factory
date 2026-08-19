@@ -209,22 +209,23 @@ The current multi-link lab adds eight fixed-capacity revolute-joint slots and
 uses four of them for one world pin plus three body-to-body hinges. Its physics
 world is 16,076 bytes, its two render snapshots are 600 bytes each, and the
 recommended full-frame image uses 205,300 bytes of Zephyr RAM. The PIM559
-reproduced the native reset hash `be490990`; its coherent reset framebuffer is
+reproduced the native reset hash `2eee9251`; its coherent reset framebuffer is
 CRC-32 `c965155f`, and the exact right-30/up-15 device sequence reaches hash
-`62c9b14e` and framebuffer CRC-32 `4ddc9697`. An isolated 1,000-tick device
-profile averaged 3.578 ms for the grid and 3.866 ms for the reference, with no
-8.333 ms budget violations and exact state agreement. A live 3,464-tick window
-held 119.9 Hz simulation with zero skipped ticks while full-frame presentation
-averaged 29.7 fps. The expanded snapshot drove renderer stack use to 3,204 of
-3,584 bytes during bring-up, so the configured renderer stack is now 4,096
-bytes.
+`7e462383` and framebuffer CRC-32 `4ddc9697`. An isolated 1,000-tick device
+profile averaged 3.539 ms for the grid and 3.793 ms for the reference, with no
+8.333 ms budget violations and exact state agreement. A live 14,416-tick window
+held 120.0 Hz simulation with one isolated skipped tick amid USB profiling and
+status activity, while full-frame presentation averaged 29.8 fps. The expanded
+snapshot drove renderer stack use to 3,204 of 3,584 bytes during bring-up, so
+the configured renderer stack is now 4,096 bytes.
 
-The chain-scaling benchmark's fast image uses 181,028 bytes of flash. Isolated
-4-, 6-, and 8-link fixtures averaged 1.559, 2.202, and 2.819 ms respectively,
-with no 8.333 ms budget violations and exact grid/reference agreement. Six
-links stayed within 1.314 pixels at their anchors, while eight links stretched
-by 51.867 pixels. At the current capacity, joint convergence is the limiting
-resource before CPU time.
+The adaptive-convergence fast image uses 181,284 bytes of flash. It performs
+one revolute position pass and adds alternating passes only while an anchor is
+more than one pixel apart, with a four-pass hard limit. Isolated 4-, 6-, and
+8-link fixtures averaged 1.569, 2.315, and 3.897 ms respectively, with no
+8.333 ms budget violations and exact grid/reference agreement. Their average
+pass counts were 1.000, 1.172, and 2.552, and maximum anchor errors were 0.495,
+1.118, and 1.158 pixels. The 8-link maximum was 5.188 ms.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.

@@ -6,9 +6,48 @@ followed by the same bounded input replay; the recorded artifact states its
 measured tick count. Timing covers isolated physics steps with rendering and
 snapshot publication disabled.
 
-## Revolute-chain scaling
+## Adaptive revolute-joint convergence
 
-The current chain aggregate contains schema-version-4 device results and is in
+The current schema-version-4 results are in
+[pim559-joint-convergence-2026-08-18.json](pim559-joint-convergence-2026-08-18.json)
+and
+[pim559-chain-convergence-2026-08-18.json](pim559-chain-convergence-2026-08-18.json).
+They were captured with:
+
+```sh
+make profile-ab PROFILE_TICKS=1000 \
+  PROFILE_OUT=benchmarks/physics-profile/pim559-joint-convergence-2026-08-18.json
+make profile-chain CHAIN_LINKS=4,6,8 CHAIN_PROFILE_TICKS=1000 \
+  CHAIN_PROFILE_OUT=benchmarks/physics-profile/pim559-chain-convergence-2026-08-18.json
+```
+
+The solver always performs one revolute position pass. It continues, alternating
+forward and reverse storage order, only while an anchor remains more than one
+pixel apart, with a hard ceiling of four passes. The deterministic visit count
+therefore records the actual adaptive work.
+
+| Links | Single-pass mean | Adaptive mean | Adaptive maximum | Position visits/tick | Single-pass error | Adaptive error | Budget violations |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4 | 1,559 us | 1,569 us | 2,082 us | 4.000 | 0.495 px | 0.495 px | 0 |
+| 6 | 2,202 us | 2,315 us | 4,094 us | 7.032 | 1.314 px | 1.118 px | 0 |
+| 8 | 2,819 us | 3,897 us | 5,188 us | 20.416 | 51.867 px | 1.158 px | 0 |
+
+Four links remain on one pass, so their mean cost increases by only 10 us.
+Six links average 1.172 passes and improve modestly. Eight links average 2.552
+passes: mean cost rises by 1.078 ms, but maximum anchor separation falls by
+97.8%. The 8-link maximum still uses only 62.3% of the 8.333 ms budget. Every
+grid/reference pair ends with an identical hash and persistent state.
+
+The canonical eight-body, six-segment scene averaged 3,539 us on the grid and
+3,793 us on the reference, compared with 3,578/3,866 us before the change. Its
+grid p95 was 5,376 us, maximum was 7,354 us, mean joint-position work was 5.012
+visits per tick, and maximum anchor error was 0.930 pixels. It had no timing
+violations and exact grid/reference agreement. Shell stack high-water was 3,504
+of 4,096 bytes.
+
+## Single-pass revolute-chain scaling baseline
+
+The baseline chain aggregate contains schema-version-4 device results and is in
 [pim559-chain-scaling-2026-08-18.json](pim559-chain-scaling-2026-08-18.json).
 It was captured in one USB session with:
 
@@ -17,7 +56,7 @@ make profile-chain CHAIN_LINKS=4,6,8 CHAIN_PROFILE_TICKS=1000 \
   CHAIN_PROFILE_OUT=benchmarks/physics-profile/pim559-chain-scaling-2026-08-18.json
 ```
 
-| Links | Grid mean | Grid p95 | Grid maximum | Reference mean | Joint visits/tick | Maximum anchor error | Budget violations |
+| Links | Grid mean | Grid p95 | Grid maximum | Reference mean | Velocity visits/tick | Maximum anchor error | Budget violations |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 4 | 1,559 us | 1,856 us | 2,022 us | 1,298 us | 28 | 0.495 px | 0 |
 | 6 | 2,202 us | 2,560 us | 2,672 us | 1,912 us | 42 | 1.314 px | 0 |
@@ -29,14 +68,14 @@ and reference run ended with the same authoritative hash and exact persistent
 state. Anchor error is sampled after each profiled step, outside its timed
 region.
 
-There is no CPU timing knee through the engine's current eight-joint capacity:
+There was no CPU timing knee through the engine's current eight-joint capacity:
 even the maximum 8-link step used only 39% of the 8.333 ms budget. The measured
 solver-quality knee is between six and eight links. Seven velocity passes plus
 one position pass kept six links within 1.314 pixels, but the eight-link chain
 stretched by 51.867 pixels. All 56 revolute-solver visits changed an impulse on
-every 8-link tick, so the solver had not converged. The next joint milestone
-should spend some of the available CPU headroom on convergence quality before
-raising capacity.
+every 8-link tick, so the solver had not converged. The adaptive result above
+spends that available CPU headroom only when the measured anchor error requires
+it.
 
 The brute-force reference is faster in this deliberately sparse fixture. With
 only 6, 15, or 28 possible body pairs and no segments, uniform-grid population

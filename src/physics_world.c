@@ -13,35 +13,35 @@
 #include <stdint.h>
 #include <string.h>
 
-#define PHYSICS_POSITION_LIMIT               PICOSYSTEM_PHYSICS_FIXED_FROM_INT(1024)
-#define PHYSICS_VELOCITY_LIMIT               PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
-#define PHYSICS_ACCELERATION_LIMIT           PICOSYSTEM_PHYSICS_FIXED_ONE
-#define PHYSICS_RADIUS_MINIMUM               PICOSYSTEM_PHYSICS_FIXED_ONE
-#define PHYSICS_RADIUS_LIMIT                 PICOSYSTEM_PHYSICS_FIXED_FROM_INT(128)
-#define PHYSICS_HALF_EXTENT_MINIMUM          PICOSYSTEM_PHYSICS_FIXED_ONE
-#define PHYSICS_HALF_EXTENT_LIMIT            PICOSYSTEM_PHYSICS_FIXED_FROM_INT(64)
-#define PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT     PICOSYSTEM_PHYSICS_FIXED_FROM_INT(128)
-#define PHYSICS_JOINT_DISTANCE_MINIMUM       PICOSYSTEM_PHYSICS_FIXED_ONE
-#define PHYSICS_JOINT_DISTANCE_LIMIT         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(256)
-#define PHYSICS_INVERSE_MASS_MINIMUM         (PICOSYSTEM_PHYSICS_FIXED_ONE / 16)
-#define PHYSICS_INVERSE_MASS_MAXIMUM         (PICOSYSTEM_PHYSICS_FIXED_ONE * 4)
-#define PHYSICS_INVERSE_INERTIA_MAXIMUM      (PICOSYSTEM_PHYSICS_FIXED_ONE * 8)
-#define PHYSICS_ANGULAR_VELOCITY_LIMIT       (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
-#define PHYSICS_POSITION_SLOP                (PICOSYSTEM_PHYSICS_FIXED_ONE / 256)
-#define PHYSICS_JOINT_POSITION_SLOP          (PICOSYSTEM_PHYSICS_FIXED_ONE / 128)
-#define PHYSICS_JOINT_CORRECTION_SCALE       (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
-#define PHYSICS_JOINT_MAX_CORRECTION         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
-#define PHYSICS_REVOLUTE_POSITION_ITERATIONS 1U
-#define PHYSICS_BOUNCE_THRESHOLD             (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
-#define PHYSICS_TAU_FIXED                    INT32_C(411775)
-#define PHYSICS_HASH_VERSION                 UINT32_C(5)
-#define FNV1A_OFFSET_BASIS                   UINT32_C(2166136261)
-#define FNV1A_PRIME                          UINT32_C(16777619)
-#define STATIC_BODY_INDEX                    UINT8_MAX
-#define STATIC_SEGMENT_INDEX                 UINT8_MAX
-#define TRIG_QUARTER_SAMPLE_SHIFT            24U
-#define TRIG_QUARTER_SAMPLE_COUNT            64U
-#define TRIG_QUARTER_PHASE_MASK              UINT32_C(0x3fffffff)
+#define PHYSICS_POSITION_LIMIT           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(1024)
+#define PHYSICS_VELOCITY_LIMIT           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
+#define PHYSICS_ACCELERATION_LIMIT       PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_RADIUS_MINIMUM           PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_RADIUS_LIMIT             PICOSYSTEM_PHYSICS_FIXED_FROM_INT(128)
+#define PHYSICS_HALF_EXTENT_MINIMUM      PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_HALF_EXTENT_LIMIT        PICOSYSTEM_PHYSICS_FIXED_FROM_INT(64)
+#define PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT PICOSYSTEM_PHYSICS_FIXED_FROM_INT(128)
+#define PHYSICS_JOINT_DISTANCE_MINIMUM   PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_JOINT_DISTANCE_LIMIT     PICOSYSTEM_PHYSICS_FIXED_FROM_INT(256)
+#define PHYSICS_INVERSE_MASS_MINIMUM     (PICOSYSTEM_PHYSICS_FIXED_ONE / 16)
+#define PHYSICS_INVERSE_MASS_MAXIMUM     (PICOSYSTEM_PHYSICS_FIXED_ONE * 4)
+#define PHYSICS_INVERSE_INERTIA_MAXIMUM  (PICOSYSTEM_PHYSICS_FIXED_ONE * 8)
+#define PHYSICS_ANGULAR_VELOCITY_LIMIT   (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
+#define PHYSICS_POSITION_SLOP            (PICOSYSTEM_PHYSICS_FIXED_ONE / 256)
+#define PHYSICS_JOINT_POSITION_SLOP      (PICOSYSTEM_PHYSICS_FIXED_ONE / 128)
+#define PHYSICS_JOINT_CORRECTION_SCALE   (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
+#define PHYSICS_JOINT_MAX_CORRECTION     PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
+#define PHYSICS_REVOLUTE_POSITION_TARGET PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_BOUNCE_THRESHOLD         (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
+#define PHYSICS_TAU_FIXED                INT32_C(411775)
+#define PHYSICS_HASH_VERSION             UINT32_C(6)
+#define FNV1A_OFFSET_BASIS               UINT32_C(2166136261)
+#define FNV1A_PRIME                      UINT32_C(16777619)
+#define STATIC_BODY_INDEX                UINT8_MAX
+#define STATIC_SEGMENT_INDEX             UINT8_MAX
+#define TRIG_QUARTER_SAMPLE_SHIFT        24U
+#define TRIG_QUARTER_SAMPLE_COUNT        64U
+#define TRIG_QUARTER_PHASE_MASK          UINT32_C(0x3fffffff)
 #define PHYSICS_GRID_CELL_SIZE_FIXED                                                               \
 	PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS)
 #define PHYSICS_GRID_WIDTH_FIXED                                                                   \
@@ -73,6 +73,8 @@ _Static_assert(PICOSYSTEM_PHYSICS_MAX_CONTACTS >= (PICOSYSTEM_PHYSICS_MAX_CANDID
 	       "contact storage must cover every brute-force manifold");
 _Static_assert(PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS <= UINT8_MAX,
 	       "solver iteration diagnostics must fit in uint8_t");
+_Static_assert(PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS <= UINT8_MAX,
+	       "position iterations must fit in uint8_t");
 
 struct box_geometry {
 	struct picosystem_physics_vector axis_x;
@@ -2170,6 +2172,37 @@ apply_revolute_joint_position_correction(struct picosystem_physics_world *world,
 	return (impulse.x != 0) || (impulse.y != 0);
 }
 
+static bool apply_revolute_joint_position_pass(struct picosystem_physics_world *world, bool reverse)
+{
+	bool correction_changed = false;
+	for (uint16_t visit = 0U; visit < world->revolute_joint_count; ++visit) {
+		const uint16_t index =
+			reverse ? (uint16_t)(world->revolute_joint_count - visit - 1U) : visit;
+		const bool joint_changed = apply_revolute_joint_position_correction(
+			world, &world->revolute_joints[index]);
+		correction_changed |= joint_changed;
+		++world->last_work.joint_position_correction_visit_count;
+	}
+	return correction_changed;
+}
+
+static bool revolute_joint_positions_within_target(const struct picosystem_physics_world *world)
+{
+	const uint64_t target_squared = (uint64_t)((int64_t)PHYSICS_REVOLUTE_POSITION_TARGET *
+						   PHYSICS_REVOLUTE_POSITION_TARGET);
+	for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
+		struct picosystem_physics_vector anchor_a;
+		struct picosystem_physics_vector anchor_b;
+		revolute_joint_anchors(world, &world->revolute_joints[index], &anchor_a, &anchor_b);
+		const struct picosystem_physics_vector error =
+			vector_subtract(&anchor_b, &anchor_a);
+		if (vector_length_squared_raw(&error) > target_squared) {
+			return false;
+		}
+	}
+	return true;
+}
+
 static void prepare_revolute_joint(struct picosystem_physics_world *world,
 				   struct picosystem_physics_revolute_joint *joint)
 {
@@ -2518,12 +2551,13 @@ static int physics_world_step(struct picosystem_physics_world *world,
 							       &world->distance_joints[index]);
 		++world->last_work.joint_position_correction_visit_count;
 	}
-	for (uint8_t iteration = 0U; iteration < PHYSICS_REVOLUTE_POSITION_ITERATIONS;
+	/* Alternate extra sweeps so storage order does not always favor the same chain end. */
+	for (uint8_t iteration = 0U; iteration < PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS;
 	     ++iteration) {
-		for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
-			(void)apply_revolute_joint_position_correction(
-				world, &world->revolute_joints[index]);
-			++world->last_work.joint_position_correction_visit_count;
+		const bool reverse = (iteration & 1U) != 0U;
+		const bool correction_changed = apply_revolute_joint_position_pass(world, reverse);
+		if (!correction_changed || revolute_joint_positions_within_target(world)) {
+			break;
 		}
 	}
 	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_POSITION_CORRECTION,
