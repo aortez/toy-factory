@@ -18,9 +18,10 @@ path:
   step with Q16.16 linear/angular motion, gravity, friction, and restitution;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
-- supports bounded bilateral distance joints and revolute point constraints
-  between two bodies or a body and a fixed world anchor, with one pendulum and
-  a four-link hinged chain in the canonical lab;
+- supports bounded bilateral distance joints and revolute point constraints,
+  motors, and creation-relative angular limits between two bodies or a body and
+  a fixed world anchor, with one pendulum and a powered four-link chain in the
+  canonical lab;
 - publishes fixed-size state snapshots to an independent renderer;
 - launches a bounded bare-metal worker on RP2040 core 1 for deterministic
   full-scene rasterization while Zephyr, physics, USB, and display drivers stay
@@ -136,7 +137,8 @@ The physical gesture remains the recovery path for a blank or broken image:
 The PicoSystem reboots automatically when the copy completes. Its LCD should
 show a dark checkerboard arena, four circles, four spinning boxes, two diagonal
 ramps, cyan boundaries, a yellow pendulum-radius guide, and a white
-`JOINT LAB 120HZ` heading. The world
+`JOINT LAB 120HZ` heading. The chain's world hinge is motorized and its far-end
+hinge stops at plus or minus one radian relative to the reset pose. The world
 advances on exact rational 120 Hz deadlines. Normal presentation restores each
 moved body's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
@@ -280,10 +282,11 @@ integration, geometry, broad phase, body/body and body/segment narrow phase,
 position correction, velocity solving, final clamping, unattributed
 validation/instrumentation work, and the total. Deterministic counters report
 candidate filtering, grid population, manifolds, contacts, connected-body
-collision filters, distance/revolute joint counts, joint correction/solver
-visits, and fallbacks. Schema version 4 also identifies the fixture and reports
-the maximum revolute-anchor separation; that quality check runs outside the
-timed physics step.
+collision filters, distance/revolute joint, motor, and limit counts, separate
+anchor/limit correction and velocity-row visits, and fallbacks. Schema version
+5 identifies the fixture and reports both maximum revolute-anchor separation
+and angular-limit violation; those quality checks run outside the timed physics
+step.
 
 `make profile-ab` handles pause/resume around the canonical command.
 `make profile-chain` keeps one USB session open while running the requested
@@ -338,8 +341,8 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "7e462383",
-    "framebuffer_crc32": "4ddc9697"
+    "hash": "66e3ab10",
+    "framebuffer_crc32": "0633575c"
   }
 }
 ```
@@ -423,12 +426,14 @@ that runs on the RP2040 rather than a second simulation model.
 
 Core 0 runs Zephyr and owns every driver. Its priority-0 main thread owns all
 authoritative game state, samples input, and advances one fixed 120 Hz tick.
-The priority-1 USB shell runs only while higher-priority work is blocked; if
-simulation has already missed its next deadline, the main loop reserves a
+The priority-1 USB shell runs only while higher-priority work is blocked; once
+two or more simulation deadlines are due, the main loop reserves a
 one-millisecond recovery window so diagnostics and the bootloader command cannot
-remain starved. The main thread publishes a 600-byte immutable render snapshot
-into one of two slots under a short spin lock. A saturated semaphore wakes the
-renderer, which coalesces obsolete snapshots instead of making simulation wait.
+remain starved. An isolated late tick may catch up and reach its normal sleep
+without paying that extra delay. The main thread publishes a 600-byte immutable
+render snapshot into one of two slots under a short spin lock. A saturated
+semaphore wakes the renderer, which coalesces obsolete snapshots instead of
+making simulation wait.
 
 Core 1 is deliberately much smaller: it is launched through the RP2040 boot-ROM
 handshake, runs without Zephyr, interrupts, allocation, or drivers, and accepts
@@ -473,18 +478,18 @@ serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The default image uses 199,324 bytes of its 255 KiB Zephyr RAM region (76.33%)
-and 176,808 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 200,428 bytes of its 255 KiB Zephyr RAM region (76.76%)
+and 179,740 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer,
-16,076-byte fixed-capacity physics world with a 1,024-byte scratch grid, eight
-distance-joint slots, eight revolute-joint slots, and per-step deterministic
-counters, a 23,440-byte serialized benchmark workspace, two 600-byte render
-snapshots, a 4,096-byte shell stack, a 4,096-byte renderer stack,
+16,364-byte fixed-capacity physics world with a 1,024-byte scratch grid, eight
+distance-joint slots, eight motor/limit-capable revolute-joint slots, and
+per-step deterministic counters, a 23,984-byte serialized benchmark workspace,
+two 600-byte render snapshots, a 4,096-byte shell stack, a 4,096-byte renderer stack,
 display-profile result storage, and a 1,024-byte shell TX ring. The fast image
-uses 205,300 bytes of that region (78.62%) and 181,284 bytes of flash,
+uses 206,404 bytes of that region (79.05%) and 184,216 bytes of flash,
 including 5,376 bytes of SRAM-resident raster code. Both images also reserve
 8 KiB outside Zephyr's region for the core-1 mailbox and stack. The fast image
-retains about 55 KiB of Zephyr RAM headroom. Full frames bypass the staging
+retains about 53 KiB of Zephyr RAM headroom. Full frames bypass the staging
 buffer with one contiguous write.
 
 On the tested PIM559, the recommended fast image sustained 29.8 fps across
@@ -604,7 +609,7 @@ the observed maximum was 19.848 ms. The grid retained 15 of 76 possible pairs,
 occupied 91 of 256 cells, and did not fall back; TE-driven presentation was
 53.9 fps.
 
-The current multi-link image retains one distance-joint pendulum and adds four
+The preceding multi-link image retains one distance-joint pendulum and adds four
 revolute constraints: one world pin followed by three body-to-body hinges.
 Directly connected bodies are excluded from collision generation unless a
 joint explicitly opts in. Native reset hashes to `2eee9251`; right for 30 ticks
@@ -625,3 +630,18 @@ maximum was 5.188 ms, leaving more than three milliseconds of the 120 Hz
 budget. A longer 14,416-tick live window held 120.0 Hz simulation and 29.8 fps
 presentation, with one isolated skipped tick amid USB profiling and status
 activity.
+
+The current motor-and-limit image gives the world pin a bounded 1/96-radian
+per-tick target and limits the final hinge to plus or minus one radian from its
+creation pose. Native reset/right-30/right-30-up-15 hashes are `13420a19`,
+`c65f5731`, and `66e3ab10`; the 10,000-tick replay ends at `2ff53bff`. The
+PIM559 reproduced all short-sequence hashes and the tick-45 framebuffer CRC-32
+`0633575c`. Its 1,000-tick isolated grid profile averaged 4.136 ms with a 5.760
+ms p95 and no 8.333 ms budget violations; the brute-force reference averaged
+4.418 ms. Both ended at `a554f3c3` with exact state agreement. Maximum anchor
+separation was 0.947 pixels and maximum angular-limit violation was 0.0175
+radian. Grid filtering retained 9.956 of 76 possible pairs per tick. A 20,055
+tick live window held 119.9 Hz with seven skipped ticks while full-frame
+presentation remained at 29.8 fps. Concurrent rendering and USB activity made
+5,143 updates exceed 8.333 ms, with a 25.008 ms maximum; faster intervening
+updates recovered the deadlines represented by the live rate.

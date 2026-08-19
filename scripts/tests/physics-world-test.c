@@ -91,6 +91,10 @@ static void assert_fixed_close(picosystem_physics_fixed_t actual,
 			       picosystem_physics_fixed_t tolerance)
 {
 	const int64_t difference = (int64_t)actual - expected;
+	if ((difference < -(int64_t)tolerance) || (difference > tolerance)) {
+		fprintf(stderr, "fixed value %d differs from %d by %lld (tolerance %d)\n", actual,
+			expected, (long long)difference, tolerance);
+	}
 	assert(difference >= -(int64_t)tolerance);
 	assert(difference <= tolerance);
 }
@@ -164,13 +168,24 @@ static void assert_revolute_joint_equal(const struct picosystem_physics_revolute
 	assert(left->body_a_index == right->body_a_index);
 	assert(left->body_b_index == right->body_b_index);
 	assert(left->collide_connected == right->collide_connected);
+	assert(left->motor_enabled == right->motor_enabled);
+	assert(left->limit_enabled == right->limit_enabled);
+	assert(left->motor_speed_per_tick == right->motor_speed_per_tick);
+	assert(left->maximum_motor_impulse_per_tick == right->maximum_motor_impulse_per_tick);
+	assert(left->lower_angle_radians == right->lower_angle_radians);
+	assert(left->upper_angle_radians == right->upper_angle_radians);
+	assert(left->reference_angle_turns == right->reference_angle_turns);
 	assert_vector_equal(&left->world_anchor_a, &right->world_anchor_a);
 	assert_vector_equal(&left->world_anchor_b, &right->world_anchor_b);
 	assert_vector_equal(&left->accumulated_impulse, &right->accumulated_impulse);
 	assert(left->effective_mass_xx == right->effective_mass_xx);
 	assert(left->effective_mass_xy == right->effective_mass_xy);
 	assert(left->effective_mass_yy == right->effective_mass_yy);
+	assert(left->angular_effective_mass == right->angular_effective_mass);
+	assert(left->accumulated_motor_impulse == right->accumulated_motor_impulse);
+	assert(left->accumulated_limit_impulse == right->accumulated_limit_impulse);
 	assert(left->effective_mass_valid == right->effective_mass_valid);
+	assert(left->limit_state == right->limit_state);
 }
 
 static uint64_t vector_distance_squared(const struct picosystem_physics_vector *left,
@@ -230,12 +245,26 @@ static void assert_step_matches_reference(const struct picosystem_physics_world 
 	       reference->last_work.solver_changed_contact_count);
 	assert(grid->last_work.distance_joint_count == reference->last_work.distance_joint_count);
 	assert(grid->last_work.revolute_joint_count == reference->last_work.revolute_joint_count);
+	assert(grid->last_work.revolute_motor_count == reference->last_work.revolute_motor_count);
+	assert(grid->last_work.revolute_limit_count == reference->last_work.revolute_limit_count);
 	assert(grid->last_work.joint_position_correction_visit_count ==
 	       reference->last_work.joint_position_correction_visit_count);
+	assert(grid->last_work.joint_limit_position_correction_visit_count ==
+	       reference->last_work.joint_limit_position_correction_visit_count);
+	assert(grid->last_work.joint_limit_position_correction_changed_count ==
+	       reference->last_work.joint_limit_position_correction_changed_count);
 	assert(grid->last_work.joint_solver_visit_count ==
 	       reference->last_work.joint_solver_visit_count);
 	assert(grid->last_work.joint_solver_changed_count ==
 	       reference->last_work.joint_solver_changed_count);
+	assert(grid->last_work.joint_motor_solver_visit_count ==
+	       reference->last_work.joint_motor_solver_visit_count);
+	assert(grid->last_work.joint_motor_solver_changed_count ==
+	       reference->last_work.joint_motor_solver_changed_count);
+	assert(grid->last_work.joint_limit_solver_visit_count ==
+	       reference->last_work.joint_limit_solver_visit_count);
+	assert(grid->last_work.joint_limit_solver_changed_count ==
+	       reference->last_work.joint_limit_solver_changed_count);
 	assert(reference->last_work.broad_phase_fallback_count == 0U);
 	assert(picosystem_physics_world_hash(grid) == picosystem_physics_world_hash(reference));
 
@@ -544,6 +573,8 @@ static void test_revolute_joint_boundaries_and_anchors(void)
 	assert(world.revolute_joint_count == 1U);
 	assert(world.revolute_joints[0].body_a_index == 0U);
 	assert(world.revolute_joints[0].body_b_index == UINT8_MAX);
+	assert(world.revolute_joints[0].reference_angle_turns ==
+	       PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN);
 
 	struct picosystem_physics_vector anchor_a;
 	struct picosystem_physics_vector anchor_b;
@@ -558,6 +589,13 @@ static void test_revolute_joint_boundaries_and_anchors(void)
 	assert(picosystem_physics_world_revolute_joint_anchors(&world, 0U, NULL, &anchor_b) ==
 	       -EINVAL);
 	assert(picosystem_physics_world_revolute_joint_anchors(&world, 1U, &anchor_a, &anchor_b) ==
+	       -ENOENT);
+	picosystem_physics_fixed_t relative_angle = INT32_MAX;
+	assert(picosystem_physics_world_revolute_joint_angle(&world, 0U, &relative_angle) == 0);
+	assert(relative_angle == 0);
+	assert(picosystem_physics_world_revolute_joint_angle(NULL, 0U, &relative_angle) == -EINVAL);
+	assert(picosystem_physics_world_revolute_joint_angle(&world, 0U, NULL) == -EINVAL);
+	assert(picosystem_physics_world_revolute_joint_angle(&world, 1U, &relative_angle) ==
 	       -ENOENT);
 
 	const uint32_t one_joint_hash = picosystem_physics_world_hash(&world);
@@ -578,6 +616,41 @@ static void test_revolute_joint_boundaries_and_anchors(void)
 	invalid = joint;
 	invalid.id = 202U;
 	invalid.collide_connected = 2U;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.motor_enabled = 2U;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.limit_enabled = 2U;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.motor_speed_per_tick = RATIO(1, 64);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.motor_enabled = 1U;
+	invalid.motor_speed_per_tick = RATIO(1, 64);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid.maximum_motor_impulse_per_tick = FIXED(9);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid.maximum_motor_impulse_per_tick = RATIO(1, 4);
+	invalid.motor_speed_per_tick = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.lower_angle_radians = -RATIO(1, 4);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid.limit_enabled = 1U;
+	invalid.upper_angle_radians = -RATIO(1, 2);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid.lower_angle_radians = -FIXED(4);
+	invalid.upper_angle_radians = RATIO(1, 2);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid.lower_angle_radians = 0;
+	invalid.upper_angle_radians = 1;
 	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
 	invalid = joint;
 	invalid.id = 202U;
@@ -635,6 +708,8 @@ static void test_revolute_joint_boundaries_and_anchors(void)
 	corrupt.revolute_joints[0].body_a_index = UINT8_MAX;
 	assert(picosystem_physics_world_revolute_joint_anchors(&corrupt, 0U, &anchor_a,
 							       &anchor_b) == -ERANGE);
+	assert(picosystem_physics_world_revolute_joint_angle(&corrupt, 0U, &relative_angle) ==
+	       -ERANGE);
 }
 
 static void test_revolute_joint_dynamics_and_multilink_chain(void)
@@ -699,6 +774,144 @@ static void test_revolute_joint_dynamics_and_multilink_chain(void)
 		assert(chain.last_work.joint_solver_visit_count ==
 		       4U * chain.last_work.solver_iteration_count);
 	}
+}
+
+static picosystem_physics_fixed_t revolute_joint_angle(const struct picosystem_physics_world *world,
+						       size_t index)
+{
+	picosystem_physics_fixed_t angle = 0;
+	assert(picosystem_physics_world_revolute_joint_angle(world, index, &angle) == 0);
+	return angle;
+}
+
+static void test_revolute_joint_motor_and_limits(void)
+{
+	struct picosystem_physics_world motor;
+	init_world(&motor, FIXED(2));
+	const struct picosystem_physics_circle_config rotor = circle_config(1U, 0, 0, 2);
+	assert(picosystem_physics_world_add_circle(&motor, &rotor) == 0);
+	struct picosystem_physics_revolute_joint_config drive =
+		revolute_joint_config(201U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	drive.motor_speed_per_tick = RATIO(1, 32);
+	drive.maximum_motor_impulse_per_tick = RATIO(1, 4);
+	drive.motor_enabled = 1U;
+	assert(picosystem_physics_world_add_revolute_joint(&motor, &drive) == 0);
+	for (uint32_t step = 0U; step < 32U; ++step) {
+		assert(picosystem_physics_world_step(&motor, &no_acceleration) == 0);
+		assert(motor.last_work.revolute_motor_count == 1U);
+		assert(motor.last_work.revolute_limit_count == 0U);
+		assert(motor.last_work.joint_motor_solver_visit_count >= 1U);
+		assert(motor.last_work.joint_motor_solver_visit_count <=
+		       motor.last_work.solver_iteration_count);
+		assert(motor.last_work.joint_limit_solver_visit_count == 0U);
+	}
+	assert_fixed_close(motor.bodies[0].angular_velocity_per_tick, drive.motor_speed_per_tick,
+			   1);
+	assert_fixed_close(revolute_joint_angle(&motor, 0U), RATIO(31, 32), RATIO(1, 128));
+
+	struct picosystem_physics_world motor_pair;
+	init_world(&motor_pair, FIXED(2));
+	const struct picosystem_physics_circle_config rotor_pair_a = circle_config(1U, 0, 0, 2);
+	const struct picosystem_physics_circle_config rotor_pair_b = circle_config(2U, 0, 0, 2);
+	assert(picosystem_physics_world_add_circle(&motor_pair, &rotor_pair_a) == 0);
+	assert(picosystem_physics_world_add_circle(&motor_pair, &rotor_pair_b) == 0);
+	drive = revolute_joint_config(206U, 1U, 2U);
+	drive.motor_speed_per_tick = RATIO(1, 32);
+	drive.maximum_motor_impulse_per_tick = RATIO(1, 4);
+	drive.motor_enabled = 1U;
+	assert(picosystem_physics_world_add_revolute_joint(&motor_pair, &drive) == 0);
+	assert(picosystem_physics_world_step(&motor_pair, &no_acceleration) == 0);
+	assert(motor_pair.bodies[0].angular_velocity_per_tick > 0);
+	assert(motor_pair.bodies[1].angular_velocity_per_tick < 0);
+	assert_fixed_close(motor_pair.bodies[0].angular_velocity_per_tick -
+				   motor_pair.bodies[1].angular_velocity_per_tick,
+			   drive.motor_speed_per_tick, 1);
+	assert_fixed_close(motor_pair.bodies[0].angular_velocity_per_tick +
+				   motor_pair.bodies[1].angular_velocity_per_tick,
+			   0, 1);
+
+	struct picosystem_physics_world torque_limited;
+	init_world(&torque_limited, FIXED(2));
+	assert(picosystem_physics_world_add_circle(&torque_limited, &rotor) == 0);
+	drive = revolute_joint_config(202U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	drive.motor_speed_per_tick = RATIO(1, 32);
+	drive.maximum_motor_impulse_per_tick = RATIO(1, 256);
+	drive.motor_enabled = 1U;
+	assert(picosystem_physics_world_add_revolute_joint(&torque_limited, &drive) == 0);
+	assert(picosystem_physics_world_step(&torque_limited, &no_acceleration) == 0);
+	assert(torque_limited.revolute_joints[0].accumulated_motor_impulse ==
+	       drive.maximum_motor_impulse_per_tick);
+	assert(torque_limited.bodies[0].angular_velocity_per_tick < drive.motor_speed_per_tick);
+
+	struct picosystem_physics_world limited;
+	init_world(&limited, FIXED(2));
+	const struct picosystem_physics_box_config arm = box_config(1U, 0, 0, 2, 1);
+	assert(picosystem_physics_world_add_box(&limited, &arm) == 0);
+	drive = revolute_joint_config(203U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	drive.motor_speed_per_tick = RATIO(1, 16);
+	drive.maximum_motor_impulse_per_tick = RATIO(1, 2);
+	drive.lower_angle_radians = -RATIO(1, 4);
+	drive.upper_angle_radians = RATIO(1, 4);
+	drive.motor_enabled = 1U;
+	drive.limit_enabled = 1U;
+	assert(picosystem_physics_world_add_revolute_joint(&limited, &drive) == 0);
+	struct picosystem_physics_world reference = limited;
+	bool saw_active_limit = false;
+	for (uint32_t step = 0U; step < 1000U; ++step) {
+		assert(picosystem_physics_world_step(&limited, &no_acceleration) == 0);
+		assert(picosystem_physics_world_step_reference(&reference, &no_acceleration) == 0);
+		assert_step_matches_reference(&limited, &reference);
+		const picosystem_physics_fixed_t angle = revolute_joint_angle(&limited, 0U);
+		assert(angle >= (drive.lower_angle_radians - RATIO(1, 32)));
+		assert(angle <= (drive.upper_angle_radians + RATIO(1, 32)));
+		assert(limited.last_work.revolute_motor_count == 1U);
+		assert(limited.last_work.revolute_limit_count == 1U);
+		if (limited.last_work.joint_limit_solver_visit_count != 0U) {
+			saw_active_limit = true;
+		}
+	}
+	assert(saw_active_limit);
+	assert_fixed_close(revolute_joint_angle(&limited, 0U), drive.upper_angle_radians,
+			   RATIO(1, 32));
+
+	struct picosystem_physics_world lower_limited;
+	init_world(&lower_limited, FIXED(2));
+	assert(picosystem_physics_world_add_box(&lower_limited, &arm) == 0);
+	drive.id = 207U;
+	drive.motor_speed_per_tick = -RATIO(1, 16);
+	assert(picosystem_physics_world_add_revolute_joint(&lower_limited, &drive) == 0);
+	for (uint32_t step = 0U; step < 256U; ++step) {
+		assert(picosystem_physics_world_step(&lower_limited, &no_acceleration) == 0);
+	}
+	assert_fixed_close(revolute_joint_angle(&lower_limited, 0U), drive.lower_angle_radians,
+			   RATIO(1, 32));
+
+	struct picosystem_physics_world locked;
+	init_world(&locked, FIXED(2));
+	struct picosystem_physics_box_config moving_arm = arm;
+	moving_arm.angular_velocity_per_tick = RATIO(1, 8);
+	assert(picosystem_physics_world_add_box(&locked, &moving_arm) == 0);
+	struct picosystem_physics_revolute_joint_config lock =
+		revolute_joint_config(204U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	lock.limit_enabled = 1U;
+	assert(picosystem_physics_world_add_revolute_joint(&locked, &lock) == 0);
+	for (uint32_t step = 0U; step < 64U; ++step) {
+		assert(picosystem_physics_world_step(&locked, &no_acceleration) == 0);
+	}
+	assert_fixed_close(revolute_joint_angle(&locked, 0U), 0, RATIO(1, 32));
+	assert_fixed_close(locked.bodies[0].angular_velocity_per_tick, 0, 1);
+
+	struct picosystem_physics_world wrapped;
+	init_world(&wrapped, FIXED(2));
+	struct picosystem_physics_box_config wrapped_arm = arm;
+	wrapped_arm.angle_turns = UINT32_MAX - 1000U;
+	wrapped_arm.angular_velocity_per_tick = RATIO(1, 64);
+	assert(picosystem_physics_world_add_box(&wrapped, &wrapped_arm) == 0);
+	const struct picosystem_physics_revolute_joint_config wrapped_pin =
+		revolute_joint_config(205U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	assert(picosystem_physics_world_add_revolute_joint(&wrapped, &wrapped_pin) == 0);
+	assert(picosystem_physics_world_step(&wrapped, &no_acceleration) == 0);
+	assert_fixed_close(revolute_joint_angle(&wrapped, 0U), RATIO(1, 64), 2);
 }
 
 static void test_revolute_joint_connected_collision_policy(void)
@@ -1289,8 +1502,14 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	const struct picosystem_physics_distance_joint_config joint =
 		distance_joint_config(101U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 1);
 	assert(picosystem_physics_world_add_distance_joint(&world, &joint) == 0);
-	const struct picosystem_physics_revolute_joint_config revolute_joint =
+	struct picosystem_physics_revolute_joint_config revolute_joint =
 		revolute_joint_config(201U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	revolute_joint.motor_speed_per_tick = RATIO(1, 64);
+	revolute_joint.maximum_motor_impulse_per_tick = RATIO(1, 4);
+	revolute_joint.lower_angle_radians = -RATIO(1, 2);
+	revolute_joint.upper_angle_radians = RATIO(1, 2);
+	revolute_joint.motor_enabled = 1U;
+	revolute_joint.limit_enabled = 1U;
 	assert(picosystem_physics_world_add_revolute_joint(&world, &revolute_joint) == 0);
 	const uint32_t expected = picosystem_physics_world_hash(&world);
 
@@ -1314,8 +1533,12 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	world.revolute_joints[0].effective_mass_xx = INT32_MAX;
 	world.revolute_joints[0].effective_mass_xy = INT32_MIN;
 	world.revolute_joints[0].effective_mass_yy = INT32_MAX;
+	world.revolute_joints[0].angular_effective_mass = INT32_MAX;
 	world.revolute_joints[0].accumulated_impulse.x = INT32_MIN;
+	world.revolute_joints[0].accumulated_motor_impulse = INT32_MIN;
+	world.revolute_joints[0].accumulated_limit_impulse = INT32_MAX;
 	world.revolute_joints[0].effective_mass_valid = UINT8_MAX;
+	world.revolute_joints[0].limit_state = UINT8_MAX;
 	assert(picosystem_physics_world_hash(&world) == expected);
 	struct picosystem_physics_world changed = world;
 	changed.distance_joints[0].target_distance += 1;
@@ -1328,6 +1551,27 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	assert(picosystem_physics_world_hash(&changed) != expected);
 	changed = world;
 	changed.revolute_joints[0].collide_connected = 1U;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.revolute_joints[0].motor_speed_per_tick += 1;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.revolute_joints[0].maximum_motor_impulse_per_tick += 1;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.revolute_joints[0].lower_angle_radians += 1;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.revolute_joints[0].upper_angle_radians -= 1;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.revolute_joints[0].reference_angle_turns += 1U;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.revolute_joints[0].motor_enabled = 0U;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.revolute_joints[0].limit_enabled = 0U;
 	assert(picosystem_physics_world_hash(&changed) != expected);
 	changed = world;
 	changed.revolute_joint_count = 0U;
@@ -1355,6 +1599,7 @@ int main(void)
 	test_distance_joint_dynamics();
 	test_revolute_joint_boundaries_and_anchors();
 	test_revolute_joint_dynamics_and_multilink_chain();
+	test_revolute_joint_motor_and_limits();
 	test_revolute_joint_connected_collision_policy();
 	test_integration_speed_clamp_and_invalid_step();
 	test_box_geometry_and_angular_integration();

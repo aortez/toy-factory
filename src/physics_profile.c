@@ -95,9 +95,17 @@ static const char *const work_names[] = {
 	"solver_changed_contacts",
 	"distance_joints",
 	"revolute_joints",
+	"revolute_motors",
+	"revolute_limits",
 	"joint_position_correction_visits",
+	"joint_limit_position_correction_visits",
+	"joint_limit_position_correction_changes",
 	"joint_solver_visits",
 	"joint_solver_changes",
+	"joint_motor_solver_visits",
+	"joint_motor_solver_changes",
+	"joint_limit_solver_visits",
+	"joint_limit_solver_changes",
 	"broad_phase_fallbacks",
 };
 
@@ -207,12 +215,28 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 		return work->distance_joint_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_REVOLUTE_JOINTS:
 		return work->revolute_joint_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_REVOLUTE_MOTORS:
+		return work->revolute_motor_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_REVOLUTE_LIMITS:
+		return work->revolute_limit_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_POSITION_CORRECTION_VISITS:
 		return work->joint_position_correction_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_LIMIT_POSITION_CORRECTION_VISITS:
+		return work->joint_limit_position_correction_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_LIMIT_POSITION_CORRECTION_CHANGES:
+		return work->joint_limit_position_correction_changed_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_SOLVER_VISITS:
 		return work->joint_solver_visit_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_SOLVER_CHANGES:
 		return work->joint_solver_changed_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_MOTOR_SOLVER_VISITS:
+		return work->joint_motor_solver_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_MOTOR_SOLVER_CHANGES:
+		return work->joint_motor_solver_changed_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_LIMIT_SOLVER_VISITS:
+		return work->joint_limit_solver_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_LIMIT_SOLVER_CHANGES:
+		return work->joint_limit_solver_changed_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_BROAD_PHASE_FALLBACKS:
 		return work->broad_phase_fallback_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT:
@@ -376,11 +400,18 @@ static bool revolute_joint_equal(const struct picosystem_physics_revolute_joint 
 	return (left->local_anchor_a.x == right->local_anchor_a.x) &&
 	       (left->local_anchor_a.y == right->local_anchor_a.y) &&
 	       (left->anchor_b.x == right->anchor_b.x) && (left->anchor_b.y == right->anchor_b.y) &&
+	       (left->motor_speed_per_tick == right->motor_speed_per_tick) &&
+	       (left->maximum_motor_impulse_per_tick == right->maximum_motor_impulse_per_tick) &&
+	       (left->lower_angle_radians == right->lower_angle_radians) &&
+	       (left->upper_angle_radians == right->upper_angle_radians) &&
+	       (left->reference_angle_turns == right->reference_angle_turns) &&
 	       (left->id == right->id) && (left->body_a_id == right->body_a_id) &&
 	       (left->body_b_id == right->body_b_id) &&
 	       (left->body_a_index == right->body_a_index) &&
 	       (left->body_b_index == right->body_b_index) &&
-	       (left->collide_connected == right->collide_connected);
+	       (left->collide_connected == right->collide_connected) &&
+	       (left->motor_enabled == right->motor_enabled) &&
+	       (left->limit_enabled == right->limit_enabled);
 }
 
 static bool authoritative_state_matches(const struct picosystem_game_world *world,
@@ -474,6 +505,38 @@ static int maximum_revolute_anchor_error_squared(const struct picosystem_game_wo
 	return 0;
 }
 
+static int maximum_revolute_limit_violation(const struct picosystem_game_world *world,
+					    uint32_t *maximum_violation)
+{
+	uint32_t maximum = 0U;
+	for (uint16_t index = 0U; index < world->physics.revolute_joint_count; ++index) {
+		const struct picosystem_physics_revolute_joint *const joint =
+			&world->physics.revolute_joints[index];
+		if (joint->limit_enabled == 0U) {
+			continue;
+		}
+
+		picosystem_physics_fixed_t angle;
+		const int err = picosystem_physics_world_revolute_joint_angle(&world->physics,
+									      index, &angle);
+		if (err != 0) {
+			return err;
+		}
+
+		uint32_t violation = 0U;
+		if (angle < joint->lower_angle_radians) {
+			violation = (uint32_t)(joint->lower_angle_radians - angle);
+		} else if (angle > joint->upper_angle_radians) {
+			violation = (uint32_t)(angle - joint->upper_angle_radians);
+		}
+		if (violation > maximum) {
+			maximum = violation;
+		}
+	}
+	*maximum_violation = maximum;
+	return 0;
+}
+
 static int reset_profile_world(enum picosystem_physics_profile_fixture fixture,
 			       uint16_t chain_link_count)
 {
@@ -519,6 +582,7 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 		.now = profile_clock_now,
 	};
 	uint64_t maximum_anchor_error_squared = 0U;
+	uint32_t maximum_limit_violation = 0U;
 	for (uint32_t measured_tick = 0U; measured_tick < measured_tick_count; ++measured_tick) {
 		const uint32_t replay_tick =
 			PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS + measured_tick;
@@ -539,6 +603,14 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 		}
 		if (anchor_error_squared > maximum_anchor_error_squared) {
 			maximum_anchor_error_squared = anchor_error_squared;
+		}
+		uint32_t limit_violation;
+		err = maximum_revolute_limit_violation(&workspace.world, &limit_violation);
+		if (err != 0) {
+			return err;
+		}
+		if (limit_violation > maximum_limit_violation) {
+			maximum_limit_violation = limit_violation;
 		}
 
 		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
@@ -572,6 +644,7 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 	mode_result->final_hash = picosystem_game_world_hash(&workspace.world);
 	mode_result->maximum_revolute_anchor_error_q16 =
 		integer_square_root(maximum_anchor_error_squared);
+	mode_result->maximum_revolute_limit_violation_q16 = maximum_limit_violation;
 	return 0;
 }
 

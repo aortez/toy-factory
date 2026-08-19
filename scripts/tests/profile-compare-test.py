@@ -24,7 +24,7 @@ MODULE_SPEC.loader.exec_module(profile_compare)
 
 def profile_output(
     *,
-    schema: int = 4,
+    schema: int = 5,
     fixture: str = "canonical",
     chain_links: int = 0,
     states_match: str = "yes",
@@ -42,7 +42,15 @@ def profile_output(
         ("grid", "1234abcd", 400),
         ("reference", "1234abcd", 800),
     ):
-        quality_field = " max_revolute_error_q16=98304" if schema >= 4 else ""
+        if schema >= 5:
+            quality_field = (
+                " max_revolute_anchor_error_q16=98304"
+                " max_revolute_limit_violation_q16=4096"
+            )
+        elif schema == 4:
+            quality_field = " max_revolute_error_q16=98304"
+        else:
+            quality_field = ""
         lines.append(
             f"PROFILE_MODE mode={mode} hash={final_hash} "
             f"clock_reads_min=46 clock_reads_max=46{quality_field}"
@@ -68,7 +76,7 @@ class ProfileCompareTest(unittest.TestCase):
     def test_parses_complete_versioned_profile(self) -> None:
         result = profile_compare.parse_profile(profile_output())
 
-        self.assertEqual(result["schema_version"], 4)
+        self.assertEqual(result["schema_version"], 5)
         self.assertEqual(result["fixture"], "canonical")
         self.assertEqual(result["chain_link_count"], 0)
         self.assertEqual(result["measured_ticks_per_mode"], 2000)
@@ -82,6 +90,12 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertEqual(
             result["modes"]["grid"]["quality"]["maximum_revolute_anchor_error_pixels"],
             1.5,
+        )
+        self.assertEqual(
+            result["modes"]["grid"]["quality"][
+                "maximum_revolute_limit_violation_radians"
+            ],
+            0.0625,
         )
         self.assertTrue(result["verification"]["states_match"])
 
@@ -97,6 +111,20 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertEqual(result["schema_version"], 3)
         self.assertEqual(result["fixture"], "canonical")
         self.assertIn("revolute_joints", result["modes"]["grid"]["work"])
+
+    def test_accepts_legacy_schema_four_profile(self) -> None:
+        result = profile_compare.parse_profile(profile_output(schema=4))
+
+        self.assertEqual(result["schema_version"], 4)
+        self.assertNotIn("revolute_motors", result["modes"]["grid"]["work"])
+
+    def test_schema_five_includes_motor_and_limit_work(self) -> None:
+        result = profile_compare.parse_profile(profile_output())
+
+        work = result["modes"]["grid"]["work"]
+        self.assertIn("revolute_motors", work)
+        self.assertIn("joint_motor_solver_visits", work)
+        self.assertIn("joint_limit_solver_visits", work)
 
     def test_parses_revolute_chain_fixture(self) -> None:
         result = profile_compare.parse_profile(

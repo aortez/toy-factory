@@ -142,9 +142,10 @@ The conservative image uses a preemptible priority-2 damage renderer. The fast
 PL022/DMA image instead uses a short priority -1 coordinator and a bare-metal
 core-1 raster worker. Core 1 receives immutable snapshots through reserved SRAM,
 signals completion through the SIO FIFO mailbox interrupt, and never calls
-Zephyr or a driver. When simulation has already missed its next deadline, the
-main loop reserves a one-millisecond recovery window so the shell can still
-accept diagnostics or a bootloader request. The scheduler
+Zephyr or a driver. Once two or more simulation deadlines are due, the main
+loop reserves a one-millisecond recovery window so the shell can still accept
+diagnostics or a bootloader request. An isolated late tick may catch up and
+reach its ordinary scheduler sleep without the added delay. The scheduler
 represents 120 Hz as rational kernel-tick deadlines rather than rounding it to
 an integer millisecond period. With the configured 10 kHz kernel tick, the
 deadline spacing repeats 83, 83, and 84 ticks, totaling exactly 250 ticks for
@@ -205,7 +206,7 @@ grid path, with no 8.333 ms budget violations. The brute-force path averaged
 2.382 ms, and both paths ended in exactly matching state. Main and renderer
 stack high-water marks were 2,752/4,096 and 2,676/3,584 bytes.
 
-The current multi-link lab adds eight fixed-capacity revolute-joint slots and
+The preceding multi-link lab adds eight fixed-capacity revolute-joint slots and
 uses four of them for one world pin plus three body-to-body hinges. Its physics
 world is 16,076 bytes, its two render snapshots are 600 bytes each, and the
 recommended full-frame image uses 205,300 bytes of Zephyr RAM. The PIM559
@@ -226,6 +227,24 @@ more than one pixel apart, with a four-pass hard limit. Isolated 4-, 6-, and
 8.333 ms budget violations and exact grid/reference agreement. Their average
 pass counts were 1.000, 1.172, and 2.552, and maximum anchor errors were 0.495,
 1.118, and 1.158 pixels. The 8-link maximum was 5.188 ms.
+
+The current motor-and-limit lab expands each revolute slot with a bounded motor
+row, creation-relative angular range, and per-step limit state. Its physics
+world is 16,364 bytes, its profiling workspace is 23,984 bytes, and the
+recommended full-frame image uses 206,404 bytes of Zephyr RAM plus 184,216
+bytes of flash. The canonical root hinge targets 1/96 radian per tick with at
+most 1/8 angular impulse per tick; the final hinge is limited to plus or minus
+one radian. The PIM559 reproduced reset/right-30/right-30-up-15 hashes
+`13420a19`, `c65f5731`, and `66e3ab10`, plus framebuffer CRC-32 `0633575c` at
+tick 45. Its isolated 1,000-tick grid profile averaged 4.136 ms, reached a 5.760
+ms p95 and 7.001 ms maximum, and recorded no 8.333 ms budget violations. The
+brute-force reference averaged 4.418 ms; both modes ended at `a554f3c3` with
+exact state agreement. Maximum hinge-anchor separation was 0.947 pixels and
+maximum angular-limit violation was 0.0175 radian. A 20,055-tick live window
+held 119.9 Hz with seven skipped ticks while full-frame presentation remained
+at 29.8 fps. Concurrent rendering and USB activity produced 5,143 updates over
+8.333 ms and a 25.008 ms maximum; faster intervening updates recovered most
+deadlines.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.
