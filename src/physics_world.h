@@ -20,6 +20,7 @@
 #define PICOSYSTEM_PHYSICS_MAX_BODIES            12U
 #define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS   8U
 #define PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS   8U
+#define PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS   8U
 #define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS   2U
 #define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN    UINT32_C(0x40000000)
 #define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS 16U
@@ -72,6 +73,7 @@ struct picosystem_physics_work_counters {
 	uint32_t maximum_grid_cell_occupancy;
 	uint32_t body_body_narrow_phase_test_count;
 	uint32_t body_segment_narrow_phase_test_count;
+	uint32_t joint_collision_filter_count;
 	uint32_t manifold_count;
 	uint32_t contact_point_count;
 	uint32_t position_correction_visit_count;
@@ -79,6 +81,7 @@ struct picosystem_physics_work_counters {
 	uint32_t solver_contact_visit_count;
 	uint32_t solver_changed_contact_count;
 	uint32_t distance_joint_count;
+	uint32_t revolute_joint_count;
 	uint32_t joint_position_correction_visit_count;
 	uint32_t joint_solver_visit_count;
 	uint32_t joint_solver_changed_count;
@@ -144,6 +147,16 @@ struct picosystem_physics_distance_joint_config {
 	uint16_t body_b_id;
 };
 
+/* Anchor B is world-space when body_b_id is zero and body-local otherwise. */
+struct picosystem_physics_revolute_joint_config {
+	struct picosystem_physics_vector local_anchor_a;
+	struct picosystem_physics_vector anchor_b;
+	uint16_t id;
+	uint16_t body_a_id;
+	uint16_t body_b_id;
+	uint8_t collide_connected;
+};
+
 struct picosystem_physics_body {
 	struct picosystem_physics_vector center;
 	struct picosystem_physics_vector velocity_per_tick;
@@ -187,6 +200,27 @@ struct picosystem_physics_distance_joint {
 	picosystem_physics_fixed_t accumulated_impulse;
 };
 
+struct picosystem_physics_revolute_joint {
+	/* Persistent configuration included in the authoritative hash. */
+	struct picosystem_physics_vector local_anchor_a;
+	struct picosystem_physics_vector anchor_b;
+	uint16_t id;
+	uint16_t body_a_id;
+	uint16_t body_b_id;
+	uint8_t body_a_index;
+	uint8_t body_b_index;
+	uint8_t collide_connected;
+
+	/* Scratch solver state rebuilt every step and excluded from the hash. */
+	struct picosystem_physics_vector world_anchor_a;
+	struct picosystem_physics_vector world_anchor_b;
+	struct picosystem_physics_vector accumulated_impulse;
+	picosystem_physics_fixed_t effective_mass_xx;
+	picosystem_physics_fixed_t effective_mass_xy;
+	picosystem_physics_fixed_t effective_mass_yy;
+	uint8_t effective_mass_valid;
+};
+
 enum picosystem_physics_contact_type {
 	PICOSYSTEM_PHYSICS_CONTACT_BODY,
 	PICOSYSTEM_PHYSICS_CONTACT_STATIC_SEGMENT,
@@ -219,6 +253,8 @@ struct picosystem_physics_world {
 		static_segments[PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS];
 	struct picosystem_physics_distance_joint
 		distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
+	struct picosystem_physics_revolute_joint
+		revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
 	struct picosystem_physics_contact contacts[PICOSYSTEM_PHYSICS_MAX_CONTACTS];
 	struct picosystem_physics_grid_cell grid_cells[PICOSYSTEM_PHYSICS_GRID_CELL_COUNT];
 	struct picosystem_physics_work_counters last_work;
@@ -228,6 +264,7 @@ struct picosystem_physics_world {
 	uint16_t body_count;
 	uint16_t static_segment_count;
 	uint16_t distance_joint_count;
+	uint16_t revolute_joint_count;
 	uint16_t contact_count;
 	uint16_t last_occupied_grid_cell_count;
 	uint8_t last_broad_phase_fallback;
@@ -249,6 +286,9 @@ int picosystem_physics_world_add_static_segment(
 int picosystem_physics_world_add_distance_joint(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_distance_joint_config *config);
+int picosystem_physics_world_add_revolute_joint(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_revolute_joint_config *config);
 
 /* Advance exactly one tick with a global acceleration expressed in pixels/tick^2. */
 int picosystem_physics_world_step(
@@ -272,6 +312,12 @@ picosystem_physics_world_body_at(const struct picosystem_physics_world *world, s
 
 /* Resolve the current world-space endpoints of one distance joint. */
 int picosystem_physics_world_distance_joint_endpoints(
+	const struct picosystem_physics_world *world, size_t index,
+	struct picosystem_physics_vector *world_anchor_a,
+	struct picosystem_physics_vector *world_anchor_b);
+
+/* Resolve the current world-space anchors constrained by one revolute joint. */
+int picosystem_physics_world_revolute_joint_anchors(
 	const struct picosystem_physics_world *world, size_t index,
 	struct picosystem_physics_vector *world_anchor_a,
 	struct picosystem_physics_vector *world_anchor_b);

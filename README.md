@@ -2,7 +2,7 @@
 
 Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
-![Toy Factory distance-joint lab](docs/images/joint-lab.png)
+![Toy Factory multi-link revolute-joint lab](docs/images/joint-lab.png)
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:
@@ -18,8 +18,9 @@ path:
   step with Q16.16 linear/angular motion, gravity, friction, and restitution;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
-- supports bounded bilateral distance joints between two bodies or a body and a
-  fixed world anchor, with one pendulum constraint in the canonical lab;
+- supports bounded bilateral distance joints and revolute point constraints
+  between two bodies or a body and a fixed world anchor, with one pendulum and
+  a four-link hinged chain in the canonical lab;
 - publishes fixed-size state snapshots to an independent renderer;
 - launches a bounded bare-metal worker on RP2040 core 1 for deterministic
   full-scene rasterization while Zephyr, physics, USB, and display drivers stay
@@ -274,7 +275,8 @@ logged per tick. The report separates integration, geometry, broad phase,
 body/body and body/segment narrow phase, position correction, velocity solving,
 final clamping, unattributed validation/instrumentation work, and the total.
 Deterministic counters report candidate filtering, grid population, manifolds,
-contacts, distance-joint correction/solver visits, and fallbacks.
+contacts, connected-body collision filters, distance/revolute joint counts,
+joint correction/solver visits, and fallbacks.
 
 `make profile-ab` handles pause/resume around that command, prints a compact
 comparison, and writes a schema-versioned JSON artifact. It restores the
@@ -327,8 +329,8 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "4e8d1ac6",
-    "framebuffer_crc32": "bc0cfa77"
+    "hash": "62c9b14e",
+    "framebuffer_crc32": "4ddc9697"
   }
 }
 ```
@@ -400,9 +402,9 @@ shape, configured bus frequency, PL022/PIO polling behavior, and both DMA paths.
 
 ## Game-loop architecture
 
-The authoritative fixed-point bodies, static segments, distance joints,
-uniform-grid candidate filter, contact generation, sequential-impulse response,
-and stable field-by-field hash live in
+The authoritative fixed-point bodies, static segments, distance and revolute
+joints, uniform-grid candidate filter, contact generation, sequential-impulse
+response, and stable field-by-field hash live in
 [`src/physics_world.c`](src/physics_world.c). Canonical scene construction,
 input-to-acceleration mapping, game ticks, and the outer hash live in
 [`src/game_world.c`](src/game_world.c). Neither module has a Zephyr, scheduler,
@@ -415,7 +417,7 @@ authoritative game state, samples input, and advances one fixed 120 Hz tick.
 The priority-1 USB shell runs only while higher-priority work is blocked; if
 simulation has already missed its next deadline, the main loop reserves a
 one-millisecond recovery window so diagnostics and the bootloader command cannot
-remain starved. The main thread publishes a 504-byte immutable render snapshot
+remain starved. The main thread publishes a 600-byte immutable render snapshot
 into one of two slots under a short spin lock. A saturated semaphore wakes the
 renderer, which coalesces obsolete snapshots instead of making simulation wait.
 
@@ -462,18 +464,19 @@ serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The default image uses 196,884 bytes of its 255 KiB Zephyr RAM region (75.40%)
-and 170,124 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 199,316 bytes of its 255 KiB Zephyr RAM region (76.33%)
+and 175,164 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer,
-15,520-byte fixed-capacity physics world with a 1,024-byte scratch grid, eight
-distance-joint slots, and per-step deterministic counters, a 22,344-byte
-serialized benchmark workspace, two 504-byte render snapshots, a 4,096-byte
-shell stack, a 3,584-byte renderer stack, display-profile result storage, and a
-1,024-byte shell TX ring. The fast image uses 202,396 bytes of that region
-(77.51%), including 4,912 bytes of SRAM-resident raster code. Both images also
-reserve 8 KiB outside Zephyr's region for the core-1 mailbox and stack. The fast
-image retains about 57 KiB of Zephyr RAM headroom. Full frames bypass the
-staging buffer with one contiguous write.
+16,076-byte fixed-capacity physics world with a 1,024-byte scratch grid, eight
+distance-joint slots, eight revolute-joint slots, and per-step deterministic
+counters, a 23,440-byte serialized benchmark workspace, two 600-byte render
+snapshots, a 4,096-byte shell stack, a 4,096-byte renderer stack,
+display-profile result storage, and a 1,024-byte shell TX ring. The fast image
+uses 205,292 bytes of that region (78.62%), including 5,376 bytes of
+SRAM-resident raster code. Both images also reserve 8 KiB outside Zephyr's
+region for the core-1 mailbox and stack. The fast image retains about 55 KiB of
+Zephyr RAM headroom. Full frames bypass the staging buffer with one contiguous
+write.
 
 On the tested PIM559, the recommended fast image sustained 29.8 fps across
 4,896 presented frames while completing 18,494 simulation ticks at 120.0 Hz
@@ -592,12 +595,15 @@ the observed maximum was 19.848 ms. The grid retained 15 of 76 possible pairs,
 occupied 91 of 256 cells, and did not fall back; TE-driven presentation was
 53.9 fps.
 
-The current distance-joint image canonically constrains body 6 to a fixed world
-pivot. Native and RP2040 reset both hash to `695073bd`; right for 30 ticks reaches
-`ba22ef24`; and a further 15 up ticks reaches tick 45 at `4e8d1ac6`. The coherent
-tick-45 framebuffer is CRC-32 `bc0cfa77`; the reset frame shown above is
-`dd0c0ea1`. A clean 2,934-tick opening window held 119.9 Hz with zero skipped
-ticks and two over-budget updates, while TE-driven presentation averaged
-48.9 fps. The isolated 2,000-tick device profile averaged 2.173 ms for the grid
-path and 2.382 ms for the brute-force reference, with no budget violations and
-exact final state agreement.
+The current multi-link image retains one distance-joint pendulum and adds four
+revolute constraints: one world pin followed by three body-to-body hinges.
+Directly connected bodies are excluded from collision generation unless a
+joint explicitly opts in. Native reset hashes to `be490990`; right for 30 ticks
+reaches `f110b9f9`; and a further 15 up ticks reaches tick 45 at `62c9b14e`.
+The PIM559 reproduced the reset hash and the reset frame shown above is CRC-32
+`c965155f`. A 10,000-tick native replay ends at `c79cc506` while keeping every
+hinge within three pixels. The isolated 1,000-tick device profile averaged
+3.578 ms for the grid path and 3.866 ms for the brute-force reference, with no
+budget violations and exact final state agreement. The fast full-frame image
+subsequently sustained 119.9 Hz simulation and 29.7 fps presentation with zero
+skipped ticks.

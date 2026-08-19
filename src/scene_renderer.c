@@ -55,7 +55,8 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 	}
 	if ((snapshot->body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
 	    (snapshot->static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||
-	    (snapshot->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS)) {
+	    (snapshot->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
+	    (snapshot->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS)) {
 		return -ERANGE;
 	}
 	return 0;
@@ -185,6 +186,37 @@ picosystem_scene_joint_bounds(const struct picosystem_scene_joint *joint)
 	}
 	return line_bounds(joint->anchor_a_x, joint->anchor_a_y, joint->anchor_b_x,
 			   joint->anchor_b_y);
+}
+
+PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
+picosystem_scene_revolute_joint_bounds(const struct picosystem_scene_joint *joint)
+{
+	const int32_t center_x = ((int32_t)joint->anchor_a_x + joint->anchor_b_x) / 2;
+	const int32_t center_y = ((int32_t)joint->anchor_a_y + joint->anchor_b_y) / 2;
+	const int32_t left = MAX(MIN(MIN((int32_t)joint->anchor_a_x, joint->anchor_b_x),
+				     center_x - PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS),
+				 0);
+	const int32_t top = MAX(MIN(MIN((int32_t)joint->anchor_a_y, joint->anchor_b_y),
+				    center_y - PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS),
+				0);
+	const int32_t right = MIN(MAX(MAX((int32_t)joint->anchor_a_x, joint->anchor_b_x),
+				      center_x + PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS) +
+					  1,
+				  PICOSYSTEM_GRAPHICS_WIDTH);
+	const int32_t bottom = MIN(MAX(MAX((int32_t)joint->anchor_a_y, joint->anchor_b_y),
+				       center_y + PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS) +
+					   1,
+				   PICOSYSTEM_GRAPHICS_HEIGHT);
+	if ((right <= left) || (bottom <= top)) {
+		return (struct picosystem_rect){0};
+	}
+
+	return (struct picosystem_rect){
+		.x = (uint16_t)left,
+		.y = (uint16_t)top,
+		.width = (uint16_t)(right - left),
+		.height = (uint16_t)(bottom - top),
+	};
 }
 
 struct picosystem_rect
@@ -363,6 +395,47 @@ render_distance_joints(const struct picosystem_scene_snapshot *snapshot,
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC int
+render_revolute_joints(const struct picosystem_scene_snapshot *snapshot,
+		       const struct picosystem_rect *clip,
+		       struct picosystem_scene_render_progress *progress)
+{
+	for (uint16_t index = 0U; index < snapshot->revolute_joint_count; ++index) {
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_REVOLUTE_JOINTS, index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_BOUNDS);
+		const struct picosystem_scene_joint *const joint =
+			&snapshot->revolute_joints[index];
+		if (clip != NULL) {
+			const struct picosystem_rect bounds =
+				picosystem_scene_revolute_joint_bounds(joint);
+			if (!picosystem_scene_rectangles_intersect(&bounds, clip)) {
+				continue;
+			}
+		}
+
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_REVOLUTE_JOINTS, index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_OUTLINE);
+		picosystem_graphics_draw_line_clipped(clip, joint->anchor_a_x, joint->anchor_a_y,
+						      joint->anchor_b_x, joint->anchor_b_y,
+						      PICOSYSTEM_COLOR_YELLOW);
+		const int16_t center_x =
+			(int16_t)(((int32_t)joint->anchor_a_x + joint->anchor_b_x) / 2);
+		const int16_t center_y =
+			(int16_t)(((int32_t)joint->anchor_a_y + joint->anchor_b_y) / 2);
+		int err = picosystem_graphics_fill_circle_clipped(
+			clip, center_x, center_y, PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS,
+			PICOSYSTEM_COLOR_YELLOW);
+		if (err == 0) {
+			err = picosystem_graphics_fill_circle_clipped(clip, center_x, center_y, 1U,
+								      PICOSYSTEM_COLOR_BLACK);
+		}
+		if (err != 0) {
+			return err;
+		}
+	}
+	return 0;
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC int
 render_bodies(const struct picosystem_scene_snapshot *snapshot, const struct picosystem_rect *clip,
 	      struct picosystem_scene_render_progress *progress)
 {
@@ -420,6 +493,12 @@ picosystem_scene_render_full_observed(const struct picosystem_scene_snapshot *sn
 	if (err != 0) {
 		return err;
 	}
+	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_REVOLUTE_JOINTS, 0U,
+			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
+	err = render_revolute_joints(snapshot, NULL, progress);
+	if (err != 0) {
+		return err;
+	}
 
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_HEADER, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
@@ -470,6 +549,12 @@ picosystem_scene_render_region_observed(const struct picosystem_scene_snapshot *
 	if (err != 0) {
 		return err;
 	}
+	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_REVOLUTE_JOINTS, 0U,
+			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
+	err = render_revolute_joints(snapshot, region, progress);
+	if (err != 0) {
+		return err;
+	}
 
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_HEADER, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
@@ -504,6 +589,8 @@ const char *picosystem_scene_render_stage_name(enum picosystem_scene_render_stag
 		return "joints";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_BODIES:
 		return "bodies";
+	case PICOSYSTEM_SCENE_RENDER_STAGE_REVOLUTE_JOINTS:
+		return "hinges";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_HEADER:
 		return "header";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_COMPLETE:

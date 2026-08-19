@@ -14,6 +14,7 @@
 #include "physics_world.h"
 
 #define PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT 3U
+#define PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS      3U
 
 struct picosystem_scene_body {
 	int16_t center_x;
@@ -53,9 +54,11 @@ struct picosystem_scene_snapshot {
 	uint16_t body_count;
 	uint16_t static_segment_count;
 	uint16_t distance_joint_count;
+	uint16_t revolute_joint_count;
 	struct picosystem_scene_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	struct picosystem_scene_segment static_segments[PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS];
 	struct picosystem_scene_joint distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
+	struct picosystem_scene_joint revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
 };
 
 enum picosystem_scene_render_stage {
@@ -66,6 +69,7 @@ enum picosystem_scene_render_stage {
 	PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_BODIES,
+	PICOSYSTEM_SCENE_RENDER_STAGE_REVOLUTE_JOINTS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_HEADER,
 	PICOSYSTEM_SCENE_RENDER_STAGE_COMPLETE,
 };
@@ -92,6 +96,8 @@ struct picosystem_rect picosystem_scene_body_bounds(const struct picosystem_scen
 struct picosystem_rect
 picosystem_scene_segment_bounds(const struct picosystem_scene_segment *segment);
 struct picosystem_rect picosystem_scene_joint_bounds(const struct picosystem_scene_joint *joint);
+struct picosystem_rect
+picosystem_scene_revolute_joint_bounds(const struct picosystem_scene_joint *joint);
 struct picosystem_rect
 picosystem_scene_joint_segment_bounds(const struct picosystem_scene_joint *joint,
 				      uint8_t segment_index);

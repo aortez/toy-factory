@@ -35,11 +35,14 @@ struct authoritative_snapshot {
 		static_segments[PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS];
 	struct picosystem_physics_distance_joint
 		distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
+	struct picosystem_physics_revolute_joint
+		revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
 	picosystem_physics_fixed_t max_speed_per_tick;
 	uint32_t logic_tick_count;
 	uint16_t body_count;
 	uint16_t static_segment_count;
 	uint16_t distance_joint_count;
+	uint16_t revolute_joint_count;
 };
 
 struct profile_workspace {
@@ -77,6 +80,7 @@ static const char *const work_names[] = {
 	"maximum_grid_cell_occupancy",
 	"body_body_tests",
 	"body_segment_tests",
+	"joint_collision_filters",
 	"manifolds",
 	"contact_points",
 	"position_correction_visits",
@@ -84,6 +88,7 @@ static const char *const work_names[] = {
 	"solver_contact_visits",
 	"solver_changed_contacts",
 	"distance_joints",
+	"revolute_joints",
 	"joint_position_correction_visits",
 	"joint_solver_visits",
 	"joint_solver_changes",
@@ -157,6 +162,8 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 		return work->body_body_narrow_phase_test_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_BODY_SEGMENT_TESTS:
 		return work->body_segment_narrow_phase_test_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_COLLISION_FILTERS:
+		return work->joint_collision_filter_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_MANIFOLDS:
 		return work->manifold_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_CONTACT_POINTS:
@@ -171,6 +178,8 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 		return work->solver_changed_contact_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_DISTANCE_JOINTS:
 		return work->distance_joint_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_REVOLUTE_JOINTS:
+		return work->revolute_joint_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_POSITION_CORRECTION_VISITS:
 		return work->joint_position_correction_visit_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_SOLVER_VISITS:
@@ -284,6 +293,7 @@ static void capture_authoritative_state(const struct picosystem_game_world *worl
 		.body_count = world->physics.body_count,
 		.static_segment_count = world->physics.static_segment_count,
 		.distance_joint_count = world->physics.distance_joint_count,
+		.revolute_joint_count = world->physics.revolute_joint_count,
 	};
 	memcpy(snapshot->bodies, world->physics.bodies,
 	       world->physics.body_count * sizeof(snapshot->bodies[0]));
@@ -291,6 +301,8 @@ static void capture_authoritative_state(const struct picosystem_game_world *worl
 	       world->physics.static_segment_count * sizeof(snapshot->static_segments[0]));
 	memcpy(snapshot->distance_joints, world->physics.distance_joints,
 	       world->physics.distance_joint_count * sizeof(snapshot->distance_joints[0]));
+	memcpy(snapshot->revolute_joints, world->physics.revolute_joints,
+	       world->physics.revolute_joint_count * sizeof(snapshot->revolute_joints[0]));
 }
 
 static bool body_equal(const struct picosystem_physics_body *left,
@@ -331,6 +343,19 @@ static bool distance_joint_equal(const struct picosystem_physics_distance_joint 
 	       (left->body_b_index == right->body_b_index);
 }
 
+static bool revolute_joint_equal(const struct picosystem_physics_revolute_joint *left,
+				 const struct picosystem_physics_revolute_joint *right)
+{
+	return (left->local_anchor_a.x == right->local_anchor_a.x) &&
+	       (left->local_anchor_a.y == right->local_anchor_a.y) &&
+	       (left->anchor_b.x == right->anchor_b.x) && (left->anchor_b.y == right->anchor_b.y) &&
+	       (left->id == right->id) && (left->body_a_id == right->body_a_id) &&
+	       (left->body_b_id == right->body_b_id) &&
+	       (left->body_a_index == right->body_a_index) &&
+	       (left->body_b_index == right->body_b_index) &&
+	       (left->collide_connected == right->collide_connected);
+}
+
 static bool authoritative_state_matches(const struct picosystem_game_world *world,
 					const struct authoritative_snapshot *snapshot)
 {
@@ -338,7 +363,8 @@ static bool authoritative_state_matches(const struct picosystem_game_world *worl
 	    (world->physics.max_speed_per_tick != snapshot->max_speed_per_tick) ||
 	    (world->physics.body_count != snapshot->body_count) ||
 	    (world->physics.static_segment_count != snapshot->static_segment_count) ||
-	    (world->physics.distance_joint_count != snapshot->distance_joint_count)) {
+	    (world->physics.distance_joint_count != snapshot->distance_joint_count) ||
+	    (world->physics.revolute_joint_count != snapshot->revolute_joint_count)) {
 		return false;
 	}
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
@@ -355,6 +381,12 @@ static bool authoritative_state_matches(const struct picosystem_game_world *worl
 	for (uint16_t index = 0U; index < snapshot->distance_joint_count; ++index) {
 		if (!distance_joint_equal(&world->physics.distance_joints[index],
 					  &snapshot->distance_joints[index])) {
+			return false;
+		}
+	}
+	for (uint16_t index = 0U; index < snapshot->revolute_joint_count; ++index) {
+		if (!revolute_joint_equal(&world->physics.revolute_joints[index],
+					  &snapshot->revolute_joints[index])) {
 			return false;
 		}
 	}

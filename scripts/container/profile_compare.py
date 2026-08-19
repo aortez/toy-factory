@@ -27,7 +27,7 @@ STAGE_NAMES = {
     "other",
     "total",
 }
-WORK_NAMES = {
+SCHEMA_2_WORK_NAMES = {
     "possible_pairs",
     "candidate_pairs",
     "grid_cell_insertions",
@@ -46,6 +46,14 @@ WORK_NAMES = {
     "joint_solver_visits",
     "joint_solver_changes",
     "broad_phase_fallbacks",
+}
+SCHEMA_3_WORK_NAMES = SCHEMA_2_WORK_NAMES | {
+    "joint_collision_filters",
+    "revolute_joints",
+}
+WORK_NAMES_BY_SCHEMA = {
+    2: SCHEMA_2_WORK_NAMES,
+    3: SCHEMA_3_WORK_NAMES,
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 
@@ -121,8 +129,9 @@ def parse_profile(output: str) -> dict[str, object]:
         "PROFILE_BEGIN",
     )
     schema_version = parse_unsigned(begin["schema"], "schema")
-    if schema_version != 2:
+    if schema_version not in WORK_NAMES_BY_SCHEMA:
         raise ProfileError(f"unsupported profile schema {schema_version}")
+    work_names = WORK_NAMES_BY_SCHEMA[schema_version]
     ticks = parse_unsigned(begin["ticks"], "ticks")
     if ticks == 0:
         raise ProfileError("ticks must be positive")
@@ -203,7 +212,7 @@ def parse_profile(output: str) -> dict[str, object]:
         require_keys(fields, work_keys, line)
         mode = fields["mode"]
         metric = fields["metric"]
-        if mode not in modes or metric not in WORK_NAMES:
+        if mode not in modes or metric not in work_names:
             raise ProfileError(f"unexpected work metric '{mode}/{metric}'")
         work = modes[mode]["work"]
         assert isinstance(work, dict)
@@ -219,7 +228,7 @@ def parse_profile(output: str) -> dict[str, object]:
     for mode, mode_result in modes.items():
         if set(mode_result["stages"]) != STAGE_NAMES:
             raise ProfileError(f"{mode} does not contain every timing stage")
-        if set(mode_result["work"]) != WORK_NAMES:
+        if set(mode_result["work"]) != work_names:
             raise ProfileError(f"{mode} does not contain every work metric")
 
     resource = require_keys(

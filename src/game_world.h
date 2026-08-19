@@ -22,6 +22,7 @@
 #define PICOSYSTEM_GAME_BODY_COUNT              8U
 #define PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT    6U
 #define PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT    1U
+#define PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT    4U
 #define PICOSYSTEM_GAME_FOCUS_BODY_INDEX        0U
 
 struct picosystem_game_input {
@@ -35,7 +36,7 @@ struct picosystem_game_world {
 	uint32_t logic_tick_count;
 };
 
-/* Restore the canonical deterministic joint-lab scene at tick zero. */
+/* Restore the canonical deterministic multi-link joint-lab scene at tick zero. */
 int picosystem_game_world_reset(struct picosystem_game_world *world);
 
 /* Advance exactly one fixed 1/120-second tick. */

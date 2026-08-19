@@ -2,8 +2,32 @@
 
 These profiles were captured on a production Pimoroni PicoSystem PIM559 with
 its RP2040 running at 125 MHz. Each mode receives 120 unmeasured warm-up ticks
-followed by the same 2,000-tick input replay. Timing covers isolated physics
-steps with rendering and snapshot publication disabled.
+followed by the same bounded input replay; the recorded artifact states its
+measured tick count. Timing covers isolated physics steps with rendering and
+snapshot publication disabled.
+
+## Multi-link revolute-joint lab
+
+The current schema-version-3 result is in
+[pim559-revolute-joint-2026-08-18.json](pim559-revolute-joint-2026-08-18.json).
+It was captured with:
+
+```sh
+make profile-ab PROFILE_TICKS=1000 \
+  PROFILE_OUT=benchmarks/physics-profile/pim559-revolute-joint-2026-08-18.json
+```
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Candidate pairs/tick | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 3,578 us | 3,456 us | 5,504 us | 6,784 us | 7,539 us | 10.544 | 0 |
+| Brute-force reference | 3,866 us | 3,712 us | 5,632 us | 6,784 us | 7,693 us | 76.0 | 0 |
+
+The grid rejected about 86.1% of possible pairs and made the complete step 1.08
+times faster on average. Both modes processed one distance joint and four
+revolute joints per tick, filtered the three directly connected body pairs, ran
+35 joint-solver visits, ended at authoritative hash `5d658f9f`, and matched
+field by field. The report estimated 65.136 us of clock-read overhead per
+profiled step. Shell stack high-water was 3,360 of 4,096 bytes.
 
 ## Distance-joint lab
 

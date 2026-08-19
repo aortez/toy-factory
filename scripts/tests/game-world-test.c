@@ -10,10 +10,10 @@
 
 #include "game_world.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0x695073bd)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xba22ef24)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x4e8d1ac6)
-#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0xa5fd5beb)
+#define EXPECTED_RESET_HASH          UINT32_C(0xbe490990)
+#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xf110b9f9)
+#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x62c9b14e)
+#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0xc79cc506)
 #define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
 
 static void assert_vector_equal(const struct picosystem_physics_vector *left,
@@ -31,6 +31,7 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 	assert(left->physics.body_count == right->physics.body_count);
 	assert(left->physics.static_segment_count == right->physics.static_segment_count);
 	assert(left->physics.distance_joint_count == right->physics.distance_joint_count);
+	assert(left->physics.revolute_joint_count == right->physics.revolute_joint_count);
 	assert(left->physics.contact_count == right->physics.contact_count);
 	assert(left->physics.last_candidate_pair_count == right->physics.last_candidate_pair_count);
 	assert(left->physics.last_possible_pair_count == right->physics.last_possible_pair_count);
@@ -98,6 +99,29 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 		assert(left_joint->direction_inverse_mass == right_joint->direction_inverse_mass);
 		assert(left_joint->accumulated_impulse == right_joint->accumulated_impulse);
 	}
+
+	for (uint16_t index = 0U; index < left->physics.revolute_joint_count; ++index) {
+		const struct picosystem_physics_revolute_joint *const left_joint =
+			&left->physics.revolute_joints[index];
+		const struct picosystem_physics_revolute_joint *const right_joint =
+			&right->physics.revolute_joints[index];
+		assert_vector_equal(&left_joint->local_anchor_a, &right_joint->local_anchor_a);
+		assert_vector_equal(&left_joint->anchor_b, &right_joint->anchor_b);
+		assert(left_joint->id == right_joint->id);
+		assert(left_joint->body_a_id == right_joint->body_a_id);
+		assert(left_joint->body_b_id == right_joint->body_b_id);
+		assert(left_joint->body_a_index == right_joint->body_a_index);
+		assert(left_joint->body_b_index == right_joint->body_b_index);
+		assert(left_joint->collide_connected == right_joint->collide_connected);
+		assert_vector_equal(&left_joint->world_anchor_a, &right_joint->world_anchor_a);
+		assert_vector_equal(&left_joint->world_anchor_b, &right_joint->world_anchor_b);
+		assert_vector_equal(&left_joint->accumulated_impulse,
+				    &right_joint->accumulated_impulse);
+		assert(left_joint->effective_mass_xx == right_joint->effective_mass_xx);
+		assert(left_joint->effective_mass_xy == right_joint->effective_mass_xy);
+		assert(left_joint->effective_mass_yy == right_joint->effective_mass_yy);
+		assert(left_joint->effective_mass_valid == right_joint->effective_mass_valid);
+	}
 }
 
 static void assert_hash(const char *label, uint32_t actual, uint32_t expected)
@@ -124,6 +148,7 @@ static void test_canonical_reset_and_golden_replay(void)
 	assert(world.physics.body_count == PICOSYSTEM_GAME_BODY_COUNT);
 	assert(world.physics.static_segment_count == PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT);
 	assert(world.physics.distance_joint_count == PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT);
+	assert(world.physics.revolute_joint_count == PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT);
 	assert(world.physics.contact_count == 0U);
 
 	const struct picosystem_physics_body *const focus =
@@ -189,6 +214,9 @@ static void test_validation_preserves_state(void)
 	assert(picosystem_game_world_reset(&world) == 0);
 	world.physics.distance_joint_count = PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS + 1U;
 	assert(picosystem_game_world_hash(&world) == 0U);
+	assert(picosystem_game_world_reset(&world) == 0);
+	world.physics.revolute_joint_count = PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS + 1U;
+	assert(picosystem_game_world_hash(&world) == 0U);
 }
 
 static uint64_t vector_distance_squared(const struct picosystem_physics_vector *left,
@@ -213,6 +241,15 @@ static void assert_joint_lengths_bounded(const struct picosystem_game_world *wor
 		const uint64_t distance_squared = vector_distance_squared(&anchor_a, &anchor_b);
 		assert(distance_squared >= (uint64_t)(minimum * minimum));
 		assert(distance_squared <= (uint64_t)(maximum * maximum));
+	}
+	for (uint16_t index = 0U; index < world->physics.revolute_joint_count; ++index) {
+		struct picosystem_physics_vector anchor_a;
+		struct picosystem_physics_vector anchor_b;
+		assert(picosystem_physics_world_revolute_joint_anchors(&world->physics, index,
+								       &anchor_a, &anchor_b) == 0);
+		const uint64_t distance_squared = vector_distance_squared(&anchor_a, &anchor_b);
+		const int64_t revolute_tolerance = BOUNDARY_TOLERANCE;
+		assert(distance_squared <= (uint64_t)(revolute_tolerance * revolute_tolerance));
 	}
 }
 
@@ -327,7 +364,6 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	fprintf(stderr, "candidate range: %u-%u/76, max contacts: %u, max solver: %u\n",
 		minimum_candidate_count, maximum_candidate_count, maximum_contact_count,
 		maximum_solver_iteration_count);
-
 	world.logic_tick_count = UINT32_MAX;
 	assert(picosystem_game_world_step(&world, &inputs[0]) == 0);
 	assert(world.logic_tick_count == UINT32_MAX);

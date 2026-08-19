@@ -152,14 +152,15 @@ three updates and 10,000 ticks for 120 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes a 504-byte immutable snapshot of
-up to 12 circle or oriented-box bodies, eight static segments, and eight
-distance-joint render records on every update. Two slots and a short
-spin-lock-protected copy prevent the
-renderer from observing partially updated state. A saturated semaphore is only
-a wake-up hint: if two or more simulation states arrive during a panel period,
-the renderer deliberately coalesces the older ones. The main thread never waits
-for TE, framebuffer work, core 1, or SPI, and neither renderer mode reads live
+Simulation uses Q16.16 positions and publishes a 600-byte immutable snapshot of
+up to 12 circle or oriented-box bodies and eight static segments, plus eight
+render records for distance joints and eight for revolute joints, on every
+update.
+Two slots and a short spin-lock-protected copy prevent the renderer from
+observing partially updated state. A saturated semaphore is only a wake-up
+hint: if two or more simulation states arrive during a panel period, the
+renderer deliberately coalesces the older ones. The main thread never waits for
+TE, framebuffer work, core 1, or SPI, and neither renderer mode reads live
 simulation state.
 
 The six-body collision lab held 120.0 Hz simulation and 59.3 fps presentation
@@ -203,6 +204,20 @@ ticks and two over-budget updates; presentation averaged 48.9 fps. The isolated
 grid path, with no 8.333 ms budget violations. The brute-force path averaged
 2.382 ms, and both paths ended in exactly matching state. Main and renderer
 stack high-water marks were 2,752/4,096 and 2,676/3,584 bytes.
+
+The current multi-link lab adds eight fixed-capacity revolute-joint slots and
+uses four of them for one world pin plus three body-to-body hinges. Its physics
+world is 16,076 bytes, its two render snapshots are 600 bytes each, and the
+recommended full-frame image uses 205,292 bytes of Zephyr RAM. The PIM559
+reproduced the native reset hash `be490990`; its coherent reset framebuffer is
+CRC-32 `c965155f`, and the exact right-30/up-15 device sequence reaches hash
+`62c9b14e` and framebuffer CRC-32 `4ddc9697`. An isolated 1,000-tick device
+profile averaged 3.578 ms for the grid and 3.866 ms for the reference, with no
+8.333 ms budget violations and exact state agreement. A live 3,464-tick window
+held 119.9 Hz simulation with zero skipped ticks while full-frame presentation
+averaged 29.7 fps. The expanded snapshot drove renderer stack use to 3,204 of
+3,584 bytes during bring-up, so the configured renderer stack is now 4,096
+bytes.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.

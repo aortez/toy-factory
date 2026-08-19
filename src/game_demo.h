@@ -71,6 +71,7 @@ struct picosystem_game_demo_stats {
 	uint16_t body_count;
 	uint16_t static_segment_count;
 	uint16_t distance_joint_count;
+	uint16_t revolute_joint_count;
 	uint16_t contact_count;
 	uint16_t occupied_grid_cell_count;
 	uint16_t focus_body_id;

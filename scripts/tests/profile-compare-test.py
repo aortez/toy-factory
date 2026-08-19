@@ -20,9 +20,9 @@ profile_compare = importlib.util.module_from_spec(MODULE_SPEC)
 MODULE_SPEC.loader.exec_module(profile_compare)
 
 
-def profile_output(*, states_match: str = "yes") -> str:
+def profile_output(*, schema: int = 3, states_match: str = "yes") -> str:
     lines = [
-        "PROFILE_BEGIN schema=2 ticks=2000 warmup=120 clock_hz=125000000 "
+        f"PROFILE_BEGIN schema={schema} ticks=2000 warmup=120 clock_hz=125000000 "
         "histogram_fine_bin_us=32 histogram_fine_bins=64 "
         "histogram_coarse_bin_us=128 histogram_coarse_bins=64 clock_delta_cycles=4"
     ]
@@ -41,7 +41,7 @@ def profile_output(*, states_match: str = "yes") -> str:
                 f"mean_us={mean} min_us=10 p50_us=32 p95_us=64 p99_us=96 "
                 "max_us=120 budget_violations=0"
             )
-        for metric in sorted(profile_compare.WORK_NAMES):
+        for metric in sorted(profile_compare.WORK_NAMES_BY_SCHEMA[schema]):
             total = 152000 if metric == "possible_pairs" else 30000
             lines.append(
                 f"PROFILE_WORK mode={mode} metric={metric} total={total} max=76"
@@ -55,7 +55,7 @@ class ProfileCompareTest(unittest.TestCase):
     def test_parses_complete_versioned_profile(self) -> None:
         result = profile_compare.parse_profile(profile_output())
 
-        self.assertEqual(result["schema_version"], 2)
+        self.assertEqual(result["schema_version"], 3)
         self.assertEqual(result["measured_ticks_per_mode"], 2000)
         self.assertEqual(result["modes"]["grid"]["stages"]["total"]["mean_us"], 400)
         self.assertEqual(
@@ -65,6 +65,12 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertEqual(result["clock"]["estimated_read_overhead_us_per_step"], 1.472)
         self.assertEqual(result["resources"]["shell_stack_used_bytes"], 2704)
         self.assertTrue(result["verification"]["states_match"])
+
+    def test_accepts_legacy_schema_two_profile(self) -> None:
+        result = profile_compare.parse_profile(profile_output(schema=2))
+
+        self.assertEqual(result["schema_version"], 2)
+        self.assertNotIn("revolute_joints", result["modes"]["grid"]["work"])
 
     def test_rejects_missing_stage(self) -> None:
         output = "\n".join(

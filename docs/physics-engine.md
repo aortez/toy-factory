@@ -5,22 +5,24 @@ RP2040. Every milestone must run through the same platform-neutral C code on the
 host and device, remain remotely stepable at exact tick boundaries, and produce
 stable authoritative hashes.
 
-This document describes the intended architecture and the current distance-joint
-rigid-body milestone. Later milestones may revise measured capacities, but they
-must retain the ownership, determinism, and overload contracts defined here.
+This document describes the intended architecture and the current multi-link
+revolute-joint milestone. Later milestones may revise measured capacities, but
+they must retain the ownership, determinism, and overload contracts defined
+here.
 
 ## Hardware and scheduling budget
 
-The profiling build uses 193,012 bytes of the linker's 263 KiB RAM region and
-156,524 bytes of flash. Its 115,200-byte framebuffer and 3,840-byte display
-transfer buffer dominate that footprint. The fixed-capacity physics world is
-15,520 bytes, including its 1,024-byte scratch grid, eight distance-joint slots,
-and per-step deterministic work counters. The serialized A/B workspace is
-22,344 bytes, is inactive during
+The recommended fast build uses 205,292 bytes of the linker's 255 KiB Zephyr
+RAM region and 179,892 bytes of flash. Its 115,200-byte framebuffer and
+3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
+physics world is 16,076 bytes, including its 1,024-byte scratch grid, eight
+distance-joint slots, eight revolute-joint slots, and per-step deterministic
+work counters. The serialized A/B workspace is 23,440 bytes, is inactive during
 normal play, and avoids placing a second world on a thread stack. The profile
-command's 4,096-byte shell stack measured a 2,896-byte high-water mark; the
-renderer measured 2,676 of its 3,584-byte stack. The linked image retains
-roughly 75 KiB of RAM headroom. Physical timing acceptance
+command's 4,096-byte shell stack measured a 3,360-byte high-water mark. The
+renderer reached 3,204 bytes while bringing up the larger scene snapshot, so
+its bounded stack was raised from 3,584 to 4,096 bytes. The linked image retains
+roughly 55 KiB of Zephyr RAM headroom. Physical timing acceptance
 is recorded after each candidate/solver configuration passes the native
 containment and oracle gates.
 
@@ -82,8 +84,8 @@ platform-neutral layers are:
 game input -> game world -> physics world -> immutable render snapshot
 ```
 
-The physics world owns fixed-capacity body, static-segment, distance-joint, and
-contact arrays.
+The physics world owns fixed-capacity body, static-segment, distance-joint,
+revolute-joint, and contact arrays.
 It is stored in static RAM because the application's main and renderer stacks
 are deliberately bounded. Contacts are scratch results from the current update
 and are excluded from the authoritative hash; body state, static geometry,
@@ -109,7 +111,8 @@ Each update performs these bounded phases in order:
 6. enumerate those candidates in stable body/segment index order;
 7. generate circle-circle, circle-box, box-box, circle-segment, and box-segment
    contacts;
-8. apply bounded contact and distance-joint positional correction;
+8. apply bounded contact, distance-joint, and revolute-joint positional
+   correction;
 9. run at most seven sequential-impulse contact and joint velocity iterations;
    and
 10. publish counters and the newest immutable state.
@@ -158,7 +161,7 @@ Stage samples accumulate into 64 fine 32-microsecond bins followed by 64 coarse
 increasing the fixed RAM footprint. The device reports count, mean, minimum,
 histogram-derived p50/p95/p99, exact maximum, and 1/120-second budget violations
 without per-tick logging. `make profile-ab` preserves the live run/pause mode,
-emits a concise comparison, and writes the complete version-2 JSON artifact.
+emits a concise comparison, and writes the complete version-3 JSON artifact.
 These isolated timings must not be compared directly with the live update value
 from `game stats`, which also contains game-demo and immutable-snapshot work and
 may be affected by renderer and scheduler activity. Physical PIM559 baselines
@@ -181,11 +184,22 @@ the shared seven-pass sequential solver then removes relative anchor velocity,
 including angular effective mass and off-center torque. Joint array order is
 solver order, and coincident endpoints use a stable joint-ID-derived axis.
 
-## Current milestone: distance-joint rigid-body lab
+Revolute joints constrain two anchor points to coincide while allowing relative
+rotation. They use the same body/world endpoint convention as distance joints.
+Each step rebuilds the two world anchors and a symmetric 2 x 2 effective-mass
+matrix, then solves one deterministic Q16.16 vector impulse in each correction
+and velocity pass. Multiple joints may reference the same body, so chains and
+branching mechanisms do not require a special aggregate type. Directly
+connected bodies are excluded from collision generation by default; a joint's
+explicit `collide_connected` flag opts that pair back in. Joint configuration
+and that policy are authoritative, while world anchors, matrix terms, and
+accumulated impulses remain scratch state.
+
+## Current milestone: multi-link revolute-joint lab
 
 The flashable rigid-body lab contains:
 
-- four dynamic circles and four differently sized, initially spinning boxes;
+- two dynamic circles and six boxes, including a four-box hinged chain;
 - four arena boundaries and two diagonal static ramps;
 - gravity plus D-pad-directed global acceleration;
 - all circle/box pairings plus finite, two-sided circle/box segment collision;
@@ -194,15 +208,15 @@ The flashable rigid-body lab contains:
 - restitution, friction, positional correction, and a seven-pass-ceiling impulse
   solver with exact no-change termination;
 - deterministic 16 x 16 grid filtering with brute-force fallback and oracle;
-- one world-anchored pendulum in the canonical scene, with body-to-body links
-  covered by the same solver and native oracle;
+- one world-anchored distance pendulum and a four-box chain joined by one world
+  pin and three body-to-body revolute joints;
 - old/new dirty footprints for every moved body, merged when they overlap; and
 - body, filtered/possible-pair, grid occupancy, fallback, contact, solver,
   timing, and deterministic-hash diagnostics.
 
 The milestone compile-time capacities are 12 dynamic bodies, eight static
-segments, eight distance joints, two contact points per candidate manifold, and
-324 contact slots:
+segments, eight distance joints, eight revolute joints, two contact points per
+candidate manifold, and 324 contact slots:
 enough for every possible body-body and body-segment combination at those
 limits. The native oracle fills all 12 body slots while the flashable lab uses
 eight to preserve its 120 Hz device budget. The capacities are deliberately
@@ -211,8 +225,8 @@ partially update a valid world. These are milestone
 limits, not the eventual product scale.
 
 The D-pad tilts the acceleration field while preserving neutral downward
-gravity. The fixed pivot and yellow radius guide make the canonical constraint
-visible without redrawing a long moving tether on every partial display update.
+gravity. Yellow pins make every revolute anchor visible, while the distance
+pendulum retains its fixed pivot and radius guide.
 A still performs the asynchronous full-redraw comparison and B keeps the
 bounded piezo test. Remote directional input has the same physics meaning as the
 physical D-pad.
@@ -235,6 +249,10 @@ The native suite covers:
   handling for distance joints;
 - world pendulum, body-to-body link, and off-center angular response over long
   replay;
+- validation, capacity, world/body anchors, collision policy, stable hashing,
+  and no-mutation failures for revolute joints;
+- a four-link chain with multiple constraints on the middle bodies and bounded
+  anchor separation over long replay;
 - cell-boundary collisions and distant-pair rejection;
 - explicit out-of-grid brute-force fallback;
 - exact grid/reference equality for bodies and contacts over 1,000 mixed ticks;
@@ -243,15 +261,15 @@ The native suite covers:
 - authoritative hash changes and reset recovery; and
 - undefined-behavior sanitizer execution.
 
-The native canonical reset is `695073bd`, right-30 is `ba22ef24`, the
-right-30/up-15 sequence reaches tick 45 at `4e8d1ac6`, and a 10,000-tick replay
-is `a5fd5beb`. The bounded replay reduces 76 possible pairs to between one and
-26 grid candidates, reaches 22 contacts, never falls back, keeps the joint
-within three pixels of its target, and preserves the three-pixel arena
-tolerance. The PIM559 reproduced the tick-45 hash and a coherently presented
-framebuffer CRC-32 of `bc0cfa77`. Its isolated 2,000-tick profile averaged
-2.173 ms for the grid path and 2.382 ms for the brute-force reference, with
-zero budget violations and exact state agreement.
+The native canonical reset is `be490990`, right-30 is `f110b9f9`, the
+right-30/up-15 sequence reaches tick 45 at `62c9b14e`, and a 10,000-tick replay
+is `c79cc506`. The bounded replay reduces 76 possible pairs to between three and
+17 grid candidates, reaches 14 contacts, never falls back, keeps every distance
+and revolute constraint within three pixels, and preserves the three-pixel
+arena tolerance. The PIM559 reproduced the reset hash and a coherently
+presented reset framebuffer CRC-32 of `c965155f`. Its isolated 1,000-tick
+profile averaged 3.578 ms for the grid path and 3.866 ms for the brute-force
+reference, with zero budget violations and exact state agreement.
 
 Scenario shapes and measurement discipline are informed by the earlier
 [allan.pizza physics work](https://github.com/aortez/aortez.github.io/pull/14):
@@ -263,7 +281,7 @@ are design references rather than code to port.
 
 ## Planned extensions
 
-1. Add hinges, motors, sliders, springs, conveyors, sensors, and sleeping.
+1. Add motors, sliders, springs, conveyors, sensors, and sleeping.
 2. Add capsules and a position-based rope/soft-body subsystem with deliberate
    rigid-body coupling.
 3. Evaluate bounded granular materials and approximate gravity or magnetic

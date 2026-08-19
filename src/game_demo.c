@@ -27,10 +27,11 @@ LOG_MODULE_REGISTER(picosystem_game_demo, LOG_LEVEL_INF);
 
 #define JOINT_PIXEL_QUANTUM 4
 #define MAX_DIRTY_REGIONS                                                                          \
-	((PICOSYSTEM_PHYSICS_MAX_BODIES + (PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS *                \
-					   PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT)) *         \
+	((PICOSYSTEM_PHYSICS_MAX_BODIES +                                                          \
+	  (PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS * PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT) + \
+	  PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) *                                                \
 	 2U)
-#define RENDER_THREAD_STACK_SIZE 3584U
+#define RENDER_THREAD_STACK_SIZE 4096U
 #if defined(CONFIG_TOY_FACTORY_CORE1_FULL_FRAME_RENDERER)
 #define RENDER_THREAD_PRIORITY -1
 #else
@@ -96,7 +97,7 @@ BUILD_ASSERT(RENDER_THREAD_PRIORITY < CONFIG_SHELL_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_MAIN_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_SHELL_THREAD_PRIORITY);
 #endif
-BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 512U);
+BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 640U);
 
 static bool core1_full_frame_renderer_enabled(void)
 {
@@ -179,7 +180,8 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 {
 	if ((left->body_count != right->body_count) ||
 	    (left->static_segment_count != right->static_segment_count) ||
-	    (left->distance_joint_count != right->distance_joint_count)) {
+	    (left->distance_joint_count != right->distance_joint_count) ||
+	    (left->revolute_joint_count != right->revolute_joint_count)) {
 		return false;
 	}
 
@@ -212,6 +214,11 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 		    ((left_joint->target_radius != 0U) &&
 		     ((left_joint->anchor_b_x != right_joint->anchor_b_x) ||
 		      (left_joint->anchor_b_y != right_joint->anchor_b_y)))) {
+			return false;
+		}
+	}
+	for (uint16_t index = 0U; index < left->revolute_joint_count; ++index) {
+		if (left->revolute_joints[index].id != right->revolute_joints[index].id) {
 			return false;
 		}
 	}
@@ -327,6 +334,16 @@ static size_t build_dirty_regions(const struct picosystem_scene_snapshot *snapsh
 			regions[count++] = current;
 		}
 	}
+	for (uint16_t index = 0U; index < snapshot->revolute_joint_count; ++index) {
+		if (joint_render_state_matches(&snapshot->revolute_joints[index],
+					       &presented->revolute_joints[index])) {
+			continue;
+		}
+		regions[count++] =
+			picosystem_scene_revolute_joint_bounds(&presented->revolute_joints[index]);
+		regions[count++] =
+			picosystem_scene_revolute_joint_bounds(&snapshot->revolute_joints[index]);
+	}
 	return merge_dirty_regions(regions, count, true);
 }
 
@@ -367,6 +384,7 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 		.body_count = state->world.physics.body_count,
 		.static_segment_count = state->world.physics.static_segment_count,
 		.distance_joint_count = state->world.physics.distance_joint_count,
+		.revolute_joint_count = state->world.physics.revolute_joint_count,
 	};
 
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
@@ -437,6 +455,24 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			.anchor_b_y = anchor_b_y,
 			.id = joint->id,
 			.target_radius = target_radius,
+		};
+	}
+	for (uint16_t index = 0U; index < snapshot->revolute_joint_count; ++index) {
+		struct picosystem_physics_vector anchor_a;
+		struct picosystem_physics_vector anchor_b;
+		const int err = picosystem_physics_world_revolute_joint_anchors(
+			&state->world.physics, index, &anchor_a, &anchor_b);
+		if (err != 0) {
+			return err;
+		}
+		const struct picosystem_physics_revolute_joint *const joint =
+			&state->world.physics.revolute_joints[index];
+		snapshot->revolute_joints[index] = (struct picosystem_scene_joint){
+			.anchor_a_x = fixed_to_pixel(anchor_a.x),
+			.anchor_a_y = fixed_to_pixel(anchor_a.y),
+			.anchor_b_x = fixed_to_pixel(anchor_b.x),
+			.anchor_b_y = fixed_to_pixel(anchor_b.y),
+			.id = joint->id,
 		};
 	}
 	return 0;
@@ -946,6 +982,7 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.body_count = state->world.physics.body_count,
 		.static_segment_count = state->world.physics.static_segment_count,
 		.distance_joint_count = state->world.physics.distance_joint_count,
+		.revolute_joint_count = state->world.physics.revolute_joint_count,
 		.contact_count = state->world.physics.contact_count,
 		.occupied_grid_cell_count = state->world.physics.last_occupied_grid_cell_count,
 		.focus_body_id = focus->id,
