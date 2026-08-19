@@ -6,8 +6,13 @@ list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(toy_factory)
 
+if(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+	zephyr_linker_sources(SECTIONS src/core1_ram.ld)
+endif()
+
 target_sources(app PRIVATE
 	src/battery.c
+	src/dense_scene.c
 	src/diagnostic_shell.c
 	src/display_profile.c
 	src/display_sync.c
@@ -21,4 +26,7 @@ target_sources(app PRIVATE
 	src/physics_profile.c
 	src/piezo.c
 	src/power_status.c
+	src/scene_renderer.c
 )
+
+target_sources_ifdef(CONFIG_TOY_FACTORY_CORE1_RUNTIME app PRIVATE src/core1_runtime.c)

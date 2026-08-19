@@ -21,6 +21,14 @@
 #include <zephyr/sys/crc.h>
 #include <zephyr/sys/util.h>
 
+#if defined(CONFIG_TOY_FACTORY_DISPLAY_DMA_HIGH_PRIORITY)
+#include <hardware/regs/busctrl.h>
+#include <hardware/structs/busctrl.h>
+#include <hardware/sync.h>
+#endif
+
+#include "render_placement.h"
+
 LOG_MODULE_REGISTER(picosystem_graphics, LOG_LEVEL_INF);
 
 #define PICOSYSTEM_DISPLAY_NODE   DT_CHOSEN(zephyr_display)
@@ -204,17 +212,16 @@ static int present_contiguous_region(struct picosystem_graphics_stats *stats,
 		return err;
 	}
 	increment_saturated(&stats->display_write_count);
-
 	record_present_stats(stats, region->width, region->height, byte_count, 1U, start_cycles);
 	return 0;
 }
 
-static uint16_t native_color(picosystem_color_t color)
+static PICOSYSTEM_RENDER_RAMFUNC uint16_t native_color(picosystem_color_t color)
 {
 	return sys_cpu_to_be16(color);
 }
 
-static const uint8_t *glyph_for_character(char character)
+static PICOSYSTEM_RENDER_RAMFUNC const uint8_t *glyph_for_character(char character)
 {
 	if ((character >= '0') && (character <= '9')) {
 		return digit_glyphs[character - '0'];
@@ -257,6 +264,11 @@ int picosystem_graphics_init(struct picosystem_graphics_stats *stats)
 		.transport = DISPLAY_TRANSPORT,
 	};
 	graphics_initialized = false;
+
+#if defined(CONFIG_TOY_FACTORY_DISPLAY_DMA_HIGH_PRIORITY)
+	hw_set_bits(&busctrl_hw->priority,
+		    BUSCTRL_BUS_PRIORITY_DMA_R_BITS | BUSCTRL_BUS_PRIORITY_DMA_W_BITS);
+#endif
 
 	if (!pwm_is_ready_dt(&backlight)) {
 		LOG_ERR("Backlight PWM controller is not ready");
@@ -427,7 +439,7 @@ const char *picosystem_graphics_transport_name(uint8_t transport)
 	}
 }
 
-void picosystem_graphics_clear(picosystem_color_t color)
+PICOSYSTEM_RENDER_RAMFUNC void picosystem_graphics_clear(picosystem_color_t color)
 {
 	const uint16_t converted = native_color(color);
 	const uint32_t pair = ((uint32_t)converted << 16U) | converted;
@@ -437,27 +449,54 @@ void picosystem_graphics_clear(picosystem_color_t color)
 	}
 }
 
-static inline void draw_native_pixel(int32_t x, int32_t y, uint16_t converted)
+static PICOSYSTEM_RENDER_RAMFUNC void draw_native_pixel(const struct picosystem_rect *clip,
+							int32_t x, int32_t y, uint16_t converted)
 {
 	if ((x < 0) || (x >= DISPLAY_WIDTH) || (y < 0) || (y >= DISPLAY_HEIGHT)) {
+		return;
+	}
+	if ((clip != NULL) && ((x < clip->x) || (x >= ((int32_t)clip->x + clip->width)) ||
+			       (y < clip->y) || (y >= ((int32_t)clip->y + clip->height)))) {
 		return;
 	}
 
 	framebuffer.pixels[((size_t)y * DISPLAY_WIDTH) + (size_t)x] = converted;
 }
 
-void picosystem_graphics_draw_pixel(int16_t x, int16_t y, picosystem_color_t color)
+PICOSYSTEM_RENDER_RAMFUNC void picosystem_graphics_draw_pixel(int16_t x, int16_t y,
+							      picosystem_color_t color)
 {
-	draw_native_pixel(x, y, native_color(color));
+	picosystem_graphics_draw_pixel_clipped(NULL, x, y, color);
 }
 
-void picosystem_graphics_fill_rect(int16_t x, int16_t y, uint16_t width, uint16_t height,
-				   picosystem_color_t color)
+PICOSYSTEM_RENDER_RAMFUNC void
+picosystem_graphics_draw_pixel_clipped(const struct picosystem_rect *clip, int16_t x, int16_t y,
+				       picosystem_color_t color)
 {
-	const int32_t left = MAX((int32_t)x, 0);
-	const int32_t top = MAX((int32_t)y, 0);
-	const int32_t right = MIN((int32_t)x + width, DISPLAY_WIDTH);
-	const int32_t bottom = MIN((int32_t)y + height, DISPLAY_HEIGHT);
+	draw_native_pixel(clip, x, y, native_color(color));
+}
+
+PICOSYSTEM_RENDER_RAMFUNC void picosystem_graphics_fill_rect(int16_t x, int16_t y, uint16_t width,
+							     uint16_t height,
+							     picosystem_color_t color)
+{
+	picosystem_graphics_fill_rect_clipped(NULL, x, y, width, height, color);
+}
+
+PICOSYSTEM_RENDER_RAMFUNC void
+picosystem_graphics_fill_rect_clipped(const struct picosystem_rect *clip, int16_t x, int16_t y,
+				      uint16_t width, uint16_t height, picosystem_color_t color)
+{
+	int32_t left = MAX((int32_t)x, 0);
+	int32_t top = MAX((int32_t)y, 0);
+	int32_t right = MIN((int32_t)x + width, DISPLAY_WIDTH);
+	int32_t bottom = MIN((int32_t)y + height, DISPLAY_HEIGHT);
+	if (clip != NULL) {
+		left = MAX(left, clip->x);
+		top = MAX(top, clip->y);
+		right = MIN(right, (int32_t)clip->x + clip->width);
+		bottom = MIN(bottom, (int32_t)clip->y + clip->height);
+	}
 
 	if ((left >= right) || (top >= bottom)) {
 		return;
@@ -472,8 +511,9 @@ void picosystem_graphics_fill_rect(int16_t x, int16_t y, uint16_t width, uint16_
 	}
 }
 
-void picosystem_graphics_draw_rect(int16_t x, int16_t y, uint16_t width, uint16_t height,
-				   picosystem_color_t color)
+PICOSYSTEM_RENDER_RAMFUNC void picosystem_graphics_draw_rect(int16_t x, int16_t y, uint16_t width,
+							     uint16_t height,
+							     picosystem_color_t color)
 {
 	if ((width == 0U) || (height == 0U)) {
 		return;
@@ -491,8 +531,17 @@ void picosystem_graphics_draw_rect(int16_t x, int16_t y, uint16_t width, uint16_
 	}
 }
 
-void picosystem_graphics_draw_line(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
-				   picosystem_color_t color)
+PICOSYSTEM_RENDER_RAMFUNC void picosystem_graphics_draw_line(int16_t start_x, int16_t start_y,
+							     int16_t end_x, int16_t end_y,
+							     picosystem_color_t color)
+{
+	picosystem_graphics_draw_line_clipped(NULL, start_x, start_y, end_x, end_y, color);
+}
+
+PICOSYSTEM_RENDER_RAMFUNC void
+picosystem_graphics_draw_line_clipped(const struct picosystem_rect *clip, int16_t start_x,
+				      int16_t start_y, int16_t end_x, int16_t end_y,
+				      picosystem_color_t color)
 {
 	int32_t x = start_x;
 	int32_t y = start_y;
@@ -504,7 +553,7 @@ void picosystem_graphics_draw_line(int16_t start_x, int16_t start_y, int16_t end
 	const uint16_t converted = native_color(color);
 
 	while (true) {
-		draw_native_pixel(x, y, converted);
+		draw_native_pixel(clip, x, y, converted);
 		if ((x == end_x) && (y == end_y)) {
 			break;
 		}
@@ -521,22 +570,24 @@ void picosystem_graphics_draw_line(int16_t start_x, int16_t start_y, int16_t end
 	}
 }
 
-static int64_t triangle_edge_wide(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
-				  int32_t point_x, int32_t point_y)
+static PICOSYSTEM_RENDER_RAMFUNC int64_t triangle_edge_wide(int16_t start_x, int16_t start_y,
+							    int16_t end_x, int16_t end_y,
+							    int32_t point_x, int32_t point_y)
 {
 	return ((int64_t)end_x - start_x) * (point_y - start_y) -
 	       ((int64_t)end_y - start_y) * (point_x - start_x);
 }
 
-static int32_t triangle_edge_fast(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
-				  int32_t point_x, int32_t point_y)
+static PICOSYSTEM_RENDER_RAMFUNC int32_t triangle_edge_fast(int16_t start_x, int16_t start_y,
+							    int16_t end_x, int16_t end_y,
+							    int32_t point_x, int32_t point_y)
 {
 	return ((int32_t)end_x - start_x) * (point_y - start_y) -
 	       ((int32_t)end_y - start_y) * (point_x - start_x);
 }
 
-static bool triangle_supports_fast_edges(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
-					 int16_t y2)
+static PICOSYSTEM_RENDER_RAMFUNC bool
+triangle_supports_fast_edges(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2)
 {
 	return (x0 >= TRIANGLE_FAST_COORD_MIN) && (x0 <= TRIANGLE_FAST_COORD_MAX) &&
 	       (y0 >= TRIANGLE_FAST_COORD_MIN) && (y0 <= TRIANGLE_FAST_COORD_MAX) &&
@@ -546,9 +597,10 @@ static bool triangle_supports_fast_edges(int16_t x0, int16_t y0, int16_t x1, int
 	       (y2 >= TRIANGLE_FAST_COORD_MIN) && (y2 <= TRIANGLE_FAST_COORD_MAX);
 }
 
-static void fill_triangle_fast(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
-			       int16_t y2, int32_t left, int32_t top, int32_t right, int32_t bottom,
-			       uint16_t converted)
+static PICOSYSTEM_RENDER_RAMFUNC void fill_triangle_fast(int16_t x0, int16_t y0, int16_t x1,
+							 int16_t y1, int16_t x2, int16_t y2,
+							 int32_t left, int32_t top, int32_t right,
+							 int32_t bottom, uint16_t converted)
 {
 	const int32_t area = triangle_edge_fast(x0, y0, x1, y1, x2, y2);
 	if (area == 0) {
@@ -585,9 +637,10 @@ static void fill_triangle_fast(int16_t x0, int16_t y0, int16_t x1, int16_t y1, i
 	}
 }
 
-static void fill_triangle_wide(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
-			       int16_t y2, int32_t left, int32_t top, int32_t right, int32_t bottom,
-			       uint16_t converted)
+static PICOSYSTEM_RENDER_RAMFUNC void fill_triangle_wide(int16_t x0, int16_t y0, int16_t x1,
+							 int16_t y1, int16_t x2, int16_t y2,
+							 int32_t left, int32_t top, int32_t right,
+							 int32_t bottom, uint16_t converted)
 {
 	const int64_t area = triangle_edge_wide(x0, y0, x1, y1, x2, y2);
 	if (area == 0) {
@@ -624,13 +677,28 @@ static void fill_triangle_wide(int16_t x0, int16_t y0, int16_t x1, int16_t y1, i
 	}
 }
 
-void picosystem_graphics_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
-				       int16_t y2, picosystem_color_t color)
+PICOSYSTEM_RENDER_RAMFUNC void picosystem_graphics_fill_triangle(int16_t x0, int16_t y0, int16_t x1,
+								 int16_t y1, int16_t x2, int16_t y2,
+								 picosystem_color_t color)
 {
-	const int32_t left = MAX(MIN(x0, MIN(x1, x2)), 0);
-	const int32_t top = MAX(MIN(y0, MIN(y1, y2)), 0);
-	const int32_t right = MIN(MAX(x0, MAX(x1, x2)), DISPLAY_WIDTH - 1);
-	const int32_t bottom = MIN(MAX(y0, MAX(y1, y2)), DISPLAY_HEIGHT - 1);
+	picosystem_graphics_fill_triangle_clipped(NULL, x0, y0, x1, y1, x2, y2, color);
+}
+
+PICOSYSTEM_RENDER_RAMFUNC void
+picosystem_graphics_fill_triangle_clipped(const struct picosystem_rect *clip, int16_t x0,
+					  int16_t y0, int16_t x1, int16_t y1, int16_t x2,
+					  int16_t y2, picosystem_color_t color)
+{
+	int32_t left = MAX(MIN(x0, MIN(x1, x2)), 0);
+	int32_t top = MAX(MIN(y0, MIN(y1, y2)), 0);
+	int32_t right = MIN(MAX(x0, MAX(x1, x2)), DISPLAY_WIDTH - 1);
+	int32_t bottom = MIN(MAX(y0, MAX(y1, y2)), DISPLAY_HEIGHT - 1);
+	if (clip != NULL) {
+		left = MAX(left, clip->x);
+		top = MAX(top, clip->y);
+		right = MIN(right, (int32_t)clip->x + clip->width - 1);
+		bottom = MIN(bottom, (int32_t)clip->y + clip->height - 1);
+	}
 	if ((left > right) || (top > bottom)) {
 		return;
 	}
@@ -643,7 +711,9 @@ void picosystem_graphics_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16
 	}
 }
 
-static void fill_circle_span(int32_t left, int32_t right, int32_t y, picosystem_color_t color)
+static PICOSYSTEM_RENDER_RAMFUNC void fill_circle_span(const struct picosystem_rect *clip,
+						       int32_t left, int32_t right, int32_t y,
+						       picosystem_color_t color)
 {
 	if ((y < 0) || (y >= DISPLAY_HEIGHT) || (right < 0) || (left >= DISPLAY_WIDTH)) {
 		return;
@@ -651,12 +721,20 @@ static void fill_circle_span(int32_t left, int32_t right, int32_t y, picosystem_
 
 	left = MAX(left, 0);
 	right = MIN(right, DISPLAY_WIDTH - 1);
-	picosystem_graphics_fill_rect((int16_t)left, (int16_t)y, (uint16_t)(right - left + 1), 1U,
-				      color);
+	picosystem_graphics_fill_rect_clipped(clip, (int16_t)left, (int16_t)y,
+					      (uint16_t)(right - left + 1), 1U, color);
 }
 
-int picosystem_graphics_fill_circle(int16_t center_x, int16_t center_y, uint16_t radius,
-				    picosystem_color_t color)
+PICOSYSTEM_RENDER_RAMFUNC int picosystem_graphics_fill_circle(int16_t center_x, int16_t center_y,
+							      uint16_t radius,
+							      picosystem_color_t color)
+{
+	return picosystem_graphics_fill_circle_clipped(NULL, center_x, center_y, radius, color);
+}
+
+PICOSYSTEM_RENDER_RAMFUNC int
+picosystem_graphics_fill_circle_clipped(const struct picosystem_rect *clip, int16_t center_x,
+					int16_t center_y, uint16_t radius, picosystem_color_t color)
 {
 	if (radius > MAX(DISPLAY_WIDTH, DISPLAY_HEIGHT)) {
 		return -ERANGE;
@@ -667,13 +745,13 @@ int picosystem_graphics_fill_circle(int16_t center_x, int16_t center_y, uint16_t
 	int32_t decision = 1 - x;
 
 	while (y <= x) {
-		fill_circle_span((int32_t)center_x - x, (int32_t)center_x + x,
+		fill_circle_span(clip, (int32_t)center_x - x, (int32_t)center_x + x,
 				 (int32_t)center_y + y, color);
-		fill_circle_span((int32_t)center_x - x, (int32_t)center_x + x,
+		fill_circle_span(clip, (int32_t)center_x - x, (int32_t)center_x + x,
 				 (int32_t)center_y - y, color);
-		fill_circle_span((int32_t)center_x - y, (int32_t)center_x + y,
+		fill_circle_span(clip, (int32_t)center_x - y, (int32_t)center_x + y,
 				 (int32_t)center_y + x, color);
-		fill_circle_span((int32_t)center_x - y, (int32_t)center_x + y,
+		fill_circle_span(clip, (int32_t)center_x - y, (int32_t)center_x + y,
 				 (int32_t)center_y - x, color);
 
 		++y;
@@ -688,9 +766,8 @@ int picosystem_graphics_fill_circle(int16_t center_x, int16_t center_y, uint16_t
 	return 0;
 }
 
-int picosystem_graphics_draw_mono_sprite(int16_t x, int16_t y,
-					 const struct picosystem_mono_sprite *sprite,
-					 picosystem_color_t color)
+PICOSYSTEM_RENDER_RAMFUNC int picosystem_graphics_draw_mono_sprite(
+	int16_t x, int16_t y, const struct picosystem_mono_sprite *sprite, picosystem_color_t color)
 {
 	if ((sprite == NULL) || (sprite->data == NULL) || (sprite->width == 0U) ||
 	    (sprite->height == 0U) || (sprite->stride_bytes < DIV_ROUND_UP(sprite->width, 8U))) {
@@ -716,8 +793,15 @@ int picosystem_graphics_draw_mono_sprite(int16_t x, int16_t y,
 	return 0;
 }
 
-int picosystem_graphics_draw_text(int16_t x, int16_t y, const char *text, uint8_t scale,
-				  picosystem_color_t color)
+PICOSYSTEM_RENDER_RAMFUNC int picosystem_graphics_draw_text(int16_t x, int16_t y, const char *text,
+							    uint8_t scale, picosystem_color_t color)
+{
+	return picosystem_graphics_draw_text_clipped(NULL, x, y, text, scale, color);
+}
+
+PICOSYSTEM_RENDER_RAMFUNC int
+picosystem_graphics_draw_text_clipped(const struct picosystem_rect *clip, int16_t x, int16_t y,
+				      const char *text, uint8_t scale, picosystem_color_t color)
 {
 	if ((text == NULL) || (scale == 0U) || (scale > FONT_MAX_SCALE)) {
 		return -EINVAL;
@@ -751,8 +835,9 @@ int picosystem_graphics_draw_text(int16_t x, int16_t y, const char *text, uint8_
 
 				const int32_t pixel_x = cursor_x + ((int32_t)column * scale);
 				const int32_t pixel_y = cursor_y + ((int32_t)row * scale);
-				picosystem_graphics_fill_rect((int16_t)pixel_x, (int16_t)pixel_y,
-							      scale, scale, color);
+				picosystem_graphics_fill_rect_clipped(clip, (int16_t)pixel_x,
+								      (int16_t)pixel_y, scale,
+								      scale, color);
 			}
 		}
 

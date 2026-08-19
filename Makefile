@@ -19,13 +19,17 @@ RENDER_PROFILE_SAMPLES ?= 16
 RENDER_PROFILE_OUT ?= artifacts/render-profile.json
 DISPLAY_TRANSPORT ?= pio-dma
 DISPLAY_HZ ?= 20000000
+CORE1_CHALLENGE ?= 0x01234567
+CORE1_FRAME ?= 37
 RENDER_PROFILE_BUILD_DIR = build-render-profile-$(DISPLAY_TRANSPORT)-$(DISPLAY_HZ)
 RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 
-.PHONY: help image setup build build-pio build-pio-dma build-pl022-dma \
+.PHONY: help image setup build build-fast build-pio build-pio-dma build-pl022-dma \
 	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
-	container-shell update update-pio update-pio-dma update-pl022-dma bootloader console status game-stats \
-	game-redraw display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
+	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
+	bootloader console status game-stats \
+	game-redraw core1-status core1-ping core1-raster core1-scene \
+	display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
 	sim-reset sim-state sim-test \
 	profile profile-ab render-profile update-render-profile \
 	flash monitor shell
@@ -42,7 +46,7 @@ help: ## Show this list of targets
 	@printf '                    [DISPLAY_TRANSPORT=pio-dma] [DISPLAY_HZ=20000000]\n'
 	@awk 'BEGIN { FS = ":.*## " } \
 		/^##@ / { printf "\n%s:\n", substr($$0, 5); next } \
-		/^[a-zA-Z0-9_-]+:.*## / { printf "  %-18s %s\n", $$1, $$2 }' \
+		/^[a-zA-Z0-9_-]+:.*## / { printf "  %-24s %s\n", $$1, $$2 }' \
 		$(MAKEFILE_LIST)
 
 ##@ Build and development
@@ -55,6 +59,10 @@ setup: ## Refresh the pinned Zephyr dependencies
 
 build: ## Build the firmware in Docker
 	$(COMPOSE) run --rm firmware
+
+build-fast: DISPLAY_TRANSPORT = pl022-dma
+build-fast: DISPLAY_HZ = 62500000
+build-fast: build-render-profile ## Build the recommended core-1/full-frame image
 
 build-pio: ## Build the PIO SPI benchmark variant
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --variant pio
@@ -93,6 +101,10 @@ container-shell: ## Open a shell in the builder container
 update: build ## Build, enter the ROM bootloader, and flash firmware
 	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(UF2)" "$(FIRMWARE_IMAGE)"
 
+update-fast: DISPLAY_TRANSPORT = pl022-dma
+update-fast: DISPLAY_HZ = 62500000
+update-fast: update-render-profile ## Build and flash the recommended core-1/full-frame image
+
 update-pio: build-pio ## Build and flash the PIO SPI benchmark
 	./scripts/update.sh "$(UF2_MOUNT)" "$(PORT)" "$(PIO_UF2)" "$(FIRMWARE_IMAGE)"
 
@@ -122,6 +134,42 @@ status: image ## Print one device status snapshot and exit
 			--volume "$(CURDIR):/workspace/app:ro" \
 			"$(FIRMWARE_IMAGE)" \
 			python3 ./scripts/container/serial-command.py "$$port" picosystem status
+
+core1-status: image ## Print auxiliary-core protocol and stack health
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "core1:" "$$port" \
+				picosystem core1 status
+
+core1-ping: image ## Round-trip CORE1_CHALLENGE=<number> through shared SRAM
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "challenge=" "$$port" \
+				picosystem core1 ping "$(CORE1_CHALLENGE)"
+
+core1-raster: image ## Compare deterministic frame CORE1_FRAME=<index> on both cores (pause first)
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix \
+				"CORE1_RASTER_VERIFY" "$$port" picosystem core1 raster "$(CORE1_FRAME)"
+
+core1-scene: image ## Compare the current live scene on both cores (pause first)
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix \
+				"CORE1_SCENE_VERIFY" "$$port" picosystem core1 scene
 
 game-stats: image ## Print simulation, snapshot, renderer, and stack metrics
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \

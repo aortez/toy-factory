@@ -18,6 +18,12 @@
 	model = "Pimoroni PicoSystem PIM559";
 	compatible = "pimoroni,picosystem";
 
+	core1_ram: memory@20040000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		reg = <0x20040000 0x2000>;
+		zephyr,memory-region = "CORE1_RAM";
+	};
+
 	chosen {
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
@@ -179,6 +185,11 @@
 	};
 };
 
+/* Keep SRAM4 and SRAM5 exclusively available to the bare-metal core-1 worker. */
+&sram0 {
+	reg = <0x20000004 0x3fffc>;
+};
+
 &adc {
 	pinctrl-0 = <&picosystem_adc_default>;
 	pinctrl-names = "default";
@@ -220,6 +231,10 @@
 };
 
 &gpio0 {
+	status = "okay";
+};
+
+&mbox {
 	status = "okay";
 };
 

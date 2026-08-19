@@ -22,8 +22,9 @@
 #include <zephyr/sys/reboot.h>
 #include <zephyr/sys/util.h>
 
-#include "display_sync.h"
+#include "core1_runtime.h"
 #include "display_profile.h"
+#include "display_sync.h"
 #include "game_control.h"
 #include "physics_profile.h"
 #include "piezo.h"
@@ -150,6 +151,149 @@ static void print_buttons(const struct shell *shell, uint32_t buttons)
 	shell_print(shell, "");
 }
 
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+static int print_core1_status(const struct shell *shell)
+{
+	struct picosystem_core1_status status;
+	const int err = picosystem_core1_get_status(&status);
+	if (err != 0) {
+		shell_error(shell, "Could not read core 1 status (%d)", err);
+		return err;
+	}
+
+	shell_print(shell,
+		    "core1: state=%s ready=%s core=%u requests=%u/%u heartbeat=%u "
+		    "stack=%u/%u bytes scene=%u us strips=%u/%u progress=%s[%u]/%s error=%d",
+		    picosystem_core1_state_name(status.state), status.ready ? "yes" : "no",
+		    status.core_id, status.completed_sequence, status.requested_sequence,
+		    status.heartbeat_count, status.stack_used_bytes, status.stack_size_bytes,
+		    status.last_scene_raster_time_us, status.ready_strip_count,
+		    status.scene_strip_count,
+		    picosystem_scene_render_stage_name(status.scene_stage), status.scene_item_index,
+		    picosystem_scene_render_primitive_name(status.scene_primitive), status.error);
+	return 0;
+}
+
+static int cmd_core1_status(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return print_core1_status(shell);
+}
+
+static int cmd_core1_ping(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t challenge = 0x01234567U;
+	if (argc == 2U) {
+		int parse_err = 0;
+		challenge = shell_strtoul(argv[1], 0, &parse_err);
+		if (parse_err != 0) {
+			shell_error(shell, "Invalid 32-bit challenge: %s", argv[1]);
+			return -EINVAL;
+		}
+	}
+
+	uint32_t response;
+	const int err = picosystem_core1_ping(challenge, &response);
+	if (err != 0) {
+		shell_error(shell, "Core 1 ping failed (%d)", err);
+		return err;
+	}
+
+	shell_print(shell, "challenge=%08x response=%08x", challenge, response);
+	return 0;
+}
+
+static int cmd_core1_raster(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t frame_index = 0U;
+	if (argc == 2U) {
+		int parse_err = 0;
+		frame_index = shell_strtoul(argv[1], 0, &parse_err);
+		if (parse_err != 0) {
+			shell_error(shell, "Invalid 32-bit frame index: %s", argv[1]);
+			return -EINVAL;
+		}
+	}
+
+	struct picosystem_game_control_state state;
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
+	};
+	int err = picosystem_game_control_submit(&request, &state);
+	if (err != 0) {
+		shell_error(shell, "Could not query simulation state (%d)", err);
+		return err;
+	}
+	if (!state.paused) {
+		shell_error(shell, "Pause the simulation before verifying core 1 raster output");
+		return -EBUSY;
+	}
+
+	struct picosystem_game_core1_raster_verification verification;
+	err = picosystem_game_demo_verify_core1_raster(frame_index, &verification);
+	if ((err == 0) || (err == -EILSEQ)) {
+		shell_print(
+			shell,
+			"CORE1_RASTER_VERIFY frame=%u core0_crc32=%08x core1_crc32=%08x "
+			"pixels_match=%s original_crc32=%08x restored_crc32=%08x "
+			"framebuffer_restored=%s total_us=%u background_us=%u links_us=%u "
+			"circles_us=%u boxes_us=%u",
+			verification.frame_index, verification.core0_crc32,
+			verification.core1_crc32, verification.pixels_match ? "yes" : "no",
+			verification.original_crc32, verification.restored_crc32,
+			verification.framebuffer_restored ? "yes" : "no",
+			verification.timing.total_time_us,
+			verification.timing.stage_time_us[PICOSYSTEM_DENSE_SCENE_STAGE_BACKGROUND],
+			verification.timing.stage_time_us[PICOSYSTEM_DENSE_SCENE_STAGE_LINKS],
+			verification.timing.stage_time_us[PICOSYSTEM_DENSE_SCENE_STAGE_CIRCLES],
+			verification.timing.stage_time_us[PICOSYSTEM_DENSE_SCENE_STAGE_BOXES]);
+	}
+	if (err != 0) {
+		shell_error(shell, "Core 1 raster verification failed (%d)", err);
+	}
+	return err;
+}
+
+static int cmd_core1_scene(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	struct picosystem_game_control_state state;
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
+	};
+	int err = picosystem_game_control_submit(&request, &state);
+	if (err != 0) {
+		shell_error(shell, "Could not query simulation state (%d)", err);
+		return err;
+	}
+	if (!state.paused) {
+		shell_error(shell, "Pause the simulation before verifying core 1 scene output");
+		return -EBUSY;
+	}
+
+	struct picosystem_game_core1_scene_verification verification;
+	err = picosystem_game_demo_verify_core1_scene(&verification);
+	if ((err == 0) || (err == -EILSEQ)) {
+		shell_print(shell,
+			    "CORE1_SCENE_VERIFY core0_crc32=%08x core1_crc32=%08x "
+			    "pixels_match=%s restored_crc32=%08x framebuffer_restored=%s "
+			    "raster_us=%u strips=%u",
+			    verification.core0_crc32, verification.core1_crc32,
+			    verification.pixels_match ? "yes" : "no", verification.restored_crc32,
+			    verification.framebuffer_restored ? "yes" : "no",
+			    verification.timing.raster_time_us, verification.timing.strip_count);
+	}
+	if (err != 0) {
+		shell_error(shell, "Core 1 scene verification failed (%d)", err);
+	}
+	return err;
+}
+#endif
+
 static int get_snapshot_or_report(const struct shell *shell,
 				  struct picosystem_diagnostic_snapshot *snapshot)
 {
@@ -259,7 +403,11 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 	shell_print(shell, "render stack high-water: %u/%u bytes",
 		    snapshot.game.render_stack_used_bytes, snapshot.game.render_stack_size_bytes);
 	shell_print(shell, "led: %s", led_mode_name(picosystem_diagnostic_shell_led_mode()));
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+	return print_core1_status(shell);
+#else
 	return 0;
+#endif
 }
 
 static int cmd_buttons(const struct shell *shell, size_t argc, char **argv)
@@ -376,14 +524,21 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->last_update_time_us, game->max_update_time_us, game->max_backlog_ticks,
 		    game->skipped_tick_count, game->over_budget_tick_count);
 	shell_print(shell,
-		    "renderer: running=%s, frames=%u, window=%u (%u.%u fps), render=%u us "
-		    "(dirty max=%u), dirty=%u regions/%u pixels/%u us SPI, full=%u, error=%d",
-		    game->render_thread_running ? "yes" : "no", game->presented_frame_count,
-		    game->measured_presented_frame_count, frame_rate_tenths / 10U,
-		    frame_rate_tenths % 10U, game->last_render_time_us,
-		    game->max_dirty_render_time_us, game->last_dirty_region_count,
-		    game->last_dirty_pixel_count, game->last_dirty_present_time_us,
+		    "renderer: running=%s, mode=%s, frames=%u, window=%u (%u.%u fps), "
+		    "wall=%u us, full=%u, error=%d",
+		    game->render_thread_running ? "yes" : "no",
+		    game->full_frame_renderer_enabled ? "full-frame" : "damage-region",
+		    game->presented_frame_count, game->measured_presented_frame_count,
+		    frame_rate_tenths / 10U, frame_rate_tenths % 10U, game->last_render_time_us,
 		    game->full_redraw_count, game->render_error);
+	shell_print(shell,
+		    "raster: core=%u, available=%s, %u us (max=%u), core1 frames=%u; "
+		    "present=%u regions/%u pixels/%u us",
+		    game->last_raster_on_core1 ? 1U : 0U,
+		    game->core1_renderer_available ? "yes" : "no", game->last_raster_time_us,
+		    game->maximum_raster_time_us, game->core1_raster_frame_count,
+		    game->last_dirty_region_count, game->last_dirty_pixel_count,
+		    game->last_dirty_present_time_us);
 	shell_print(shell, "snapshots: published=%u, superseded=%u, age=%u us (dirty max=%u us)",
 		    game->published_snapshot_count, game->superseded_snapshot_count,
 		    game->last_snapshot_age_us, game->max_dirty_snapshot_age_us);
@@ -1009,6 +1164,22 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		cmd_profile_compare, 1, 1),
 	SHELL_SUBCMD_SET_END);
 
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	core1_commands,
+	SHELL_CMD_ARG(ping, NULL, SHELL_HELP("Run a shared-memory round trip.", "[challenge]"),
+		      cmd_core1_ping, 1, 1),
+	SHELL_CMD_ARG(raster, NULL,
+		      SHELL_HELP("Compare deterministic core-0/core-1 raster output.",
+				 "[frame] (simulation must be paused)"),
+		      cmd_core1_raster, 1, 1),
+	SHELL_CMD_ARG(scene, NULL, "Compare the current live scene raster on core 0 and core 1.",
+		      cmd_core1_scene, 1, 0),
+	SHELL_CMD_ARG(status, NULL, "Show auxiliary-core protocol and stack health.",
+		      cmd_core1_status, 1, 0),
+	SHELL_SUBCMD_SET_END);
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	picosystem_commands,
 	SHELL_CMD_ARG(status, NULL, "Show a coherent board-state snapshot.", cmd_status, 1, 0),
@@ -1023,6 +1194,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 				 "<frequency_hz> <duration_ms>\n"
 				 "Frequency: 100-4000 Hz; duration: 1-1000 ms."),
 		      cmd_tone, 3, 0),
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+	SHELL_CMD(core1, &core1_commands, "RP2040 auxiliary-core diagnostics.", NULL),
+#endif
 	SHELL_CMD(display, &display_commands, "Display diagnostic commands.", NULL),
 	SHELL_CMD(game, &game_commands, "Game-loop diagnostic commands.", NULL),
 	SHELL_CMD(profile, &profile_commands, "Physics profiling commands.", NULL),

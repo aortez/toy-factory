@@ -16,6 +16,7 @@
 #include <zephyr/sys/util.h>
 
 #include "battery.h"
+#include "core1_runtime.h"
 #include "diagnostic_shell.h"
 #include "display_sync.h"
 #include "fixed_rate_scheduler.h"
@@ -513,6 +514,15 @@ int main(void)
 		LOG_ERR("RGB LED self-test failed (%d)", err);
 		return err;
 	}
+
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+	err = picosystem_core1_init();
+	if (err != 0) {
+		LOG_WRN("Core 1 health probe failed (%d); continuing on core 0", err);
+	} else {
+		LOG_INF("Core 1 auxiliary runtime passed its shared-memory health probe");
+	}
+#endif
 
 	err = picosystem_game_demo_init(&game_state);
 	if (err != 0) {

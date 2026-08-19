@@ -125,9 +125,10 @@ measurements and supports runtime `on` and `off` controls.
 
 The renderer waits for a fresh rising edge only after four periods qualify
 between 15 and 18.5 ms. Each wait is capped at 20 ms, stale signals are bypassed,
-and full-frame writes remain unsynchronized because their roughly 78-82 ms
-transfer cannot fit in a panel refresh interval. It late-latches the newest
-published state after the wait, immediately before drawing and starting SPI.
+and each display path begins from a bounded wait. Damage rendering late-latches
+after the edge; the fast full-frame path rasterizes first and starts its one DMA
+write at the next edge. A conservative 20 MHz full transfer still spans several
+panel periods even though its start is synchronized.
 In the final stress run, GP8 measured 59.626 Hz over more than 8,000 periods,
 with a 16,771 us mean period, no GPIO read errors, and no TE timeout. Runtime
 `sync off` and `sync on` also switched cleanly between unconstrained snapshot
@@ -135,11 +136,14 @@ consumption and TE-driven presentation without rebooting.
 
 ## Decoupled 120 Hz simulation and presentation
 
-Zephyr currently runs this RP2040 target on one core. The priority-0 main thread
-owns input and all authoritative simulation state; the USB shell runs at
-priority 1 and a preemptible priority-2 worker owns the framebuffer and display
-after initialization. When simulation has already missed its next deadline,
-the main loop reserves a one-millisecond recovery window so the shell can still
+Zephyr and every device driver run on core 0. Its priority-0 main thread owns
+input and all authoritative simulation state; the USB shell runs at priority 1.
+The conservative image uses a preemptible priority-2 damage renderer. The fast
+PL022/DMA image instead uses a short priority -1 coordinator and a bare-metal
+core-1 raster worker. Core 1 receives immutable snapshots through reserved SRAM,
+signals completion through the SIO FIFO mailbox interrupt, and never calls
+Zephyr or a driver. When simulation has already missed its next deadline, the
+main loop reserves a one-millisecond recovery window so the shell can still
 accept diagnostics or a bootloader request. The scheduler
 represents 120 Hz as rational kernel-tick deadlines rather than rounding it to
 an integer millisecond period. With the configured 10 kHz kernel tick, the
@@ -155,8 +159,8 @@ spin-lock-protected copy prevent the
 renderer from observing partially updated state. A saturated semaphore is only
 a wake-up hint: if two or more simulation states arrive during a panel period,
 the renderer deliberately coalesces the older ones. The main thread never waits
-for TE, framebuffer work, or SPI, and the renderer never reads live simulation
-state.
+for TE, framebuffer work, core 1, or SPI, and neither renderer mode reads live
+simulation state.
 
 The six-body collision lab held 120.0 Hz simulation and 59.3 fps presentation
 over a clean 20-second physical run, with backlog one and zero skipped or
@@ -272,6 +276,17 @@ PL022/DMA, optimized 32-bit triangle edges, and a one-write frame transfer, that
 scene draws in 13.346 ms and presents in 18.328 ms: 31.57 fps unpaced with
 1.659 ms of mean 30 Hz processing headroom. Every-second-TE pacing measures
 29.805 fps on the approximately 59.6 Hz panel.
+
+The subsequent dual-core image rasterizes that workload on bare-metal core 1,
+then presents the completed framebuffer with one 62.5 MHz PL022/DMA write from
+core 0. A 4,896-frame physical run sustained 29.8 fps while the authoritative
+simulation completed 18,494 ticks at 120.0 Hz with zero skipped ticks. Core-1
+raster time was 9.667 ms (9.935 ms observed maximum), transfer time was
+19.242 ms, and core-1 stack use was 376/4,096 bytes. The run recorded 244
+updates over the 8.333 ms physics budget and a 28.890 ms maximum, but the
+deadline scheduler recovered every tick. Paused live-scene and dense-frame
+checks produced byte-identical core-0/core-1 results and restored the original
+framebuffer after each comparison.
 
 On a cold power-on, the backlight remained visually dark until the completed
 frame appeared; no bright or white startup flash was observed.
