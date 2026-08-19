@@ -6,9 +6,37 @@ followed by the same bounded input replay; the recorded artifact states its
 measured tick count. Timing covers isolated physics steps with rendering and
 snapshot publication disabled.
 
+## Revolute motors and angular limits
+
+The current schema-version-5 canonical result is in
+[pim559-joint-motors-2026-08-18.json](pim559-joint-motors-2026-08-18.json). It
+was captured with:
+
+```sh
+make profile-ab PROFILE_TICKS=1000 \
+  PROFILE_OUT=benchmarks/physics-profile/pim559-joint-motors-2026-08-18.json
+```
+
+The four-link mechanism drives its world pin at 1/96 radian per tick with a
+bounded 1/8 angular impulse per tick. Its final body-to-body hinge is limited
+to -1 through +1 radian relative to the creation pose; the two middle hinges
+remain free.
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Candidates/tick | Anchor error | Limit violation | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 4,136 us | 4,224 us | 5,760 us | 6,400 us | 7,001 us | 9.956 | 0.947 px | 0.0175 rad | 0 |
+| Brute-force reference | 4,418 us | 4,480 us | 5,888 us | 6,656 us | 7,137 us | 76.0 | 0.947 px | 0.0175 rad | 0 |
+
+Both modes ended at hash `a554f3c3` with exact authoritative-state agreement.
+Each tick visited one motor through all seven velocity passes. The angular
+limit was active for 0.889 velocity visits and 1.001 position visits per tick
+on average. Quality sampling ran after the timed step. The grid rejected 86.9%
+of possible pairs and was 1.07 times faster on average. Shell stack high-water
+was 3,680 of 4,096 bytes.
+
 ## Adaptive revolute-joint convergence
 
-The current schema-version-4 results are in
+The preceding schema-version-4 results are in
 [pim559-joint-convergence-2026-08-18.json](pim559-joint-convergence-2026-08-18.json)
 and
 [pim559-chain-convergence-2026-08-18.json](pim559-chain-convergence-2026-08-18.json).

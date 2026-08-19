@@ -5,24 +5,24 @@ RP2040. Every milestone must run through the same platform-neutral C code on the
 host and device, remain remotely stepable at exact tick boundaries, and produce
 stable authoritative hashes.
 
-This document describes the intended architecture and the current multi-link
-revolute-joint milestone. Later milestones may revise measured capacities, but
-they must retain the ownership, determinism, and overload contracts defined
-here.
+This document describes the intended architecture and the current revolute
+motor-and-angular-limit milestone. Later milestones may revise measured
+capacities, but they must retain the ownership, determinism, and overload
+contracts defined here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 205,300 bytes of the linker's 255 KiB Zephyr
-RAM region and 181,284 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 206,404 bytes of the linker's 255 KiB Zephyr
+RAM region and 184,216 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
-physics world is 16,076 bytes, including its 1,024-byte scratch grid, eight
+physics world is 16,364 bytes, including its 1,024-byte scratch grid, eight
 distance-joint slots, eight revolute-joint slots, and per-step deterministic
-work counters. The serialized A/B workspace is 23,440 bytes, is inactive during
+work counters. The serialized A/B workspace is 23,984 bytes, is inactive during
 normal play, and avoids placing a second world on a thread stack. The profile
-command's 4,096-byte shell stack measured a 3,504-byte high-water mark. The
+command's 4,096-byte shell stack measured a 3,680-byte high-water mark. The
 renderer reached 3,204 bytes while bringing up the larger scene snapshot, so
 its bounded stack was raised from 3,584 to 4,096 bytes. The linked image retains
-roughly 55 KiB of Zephyr RAM headroom. Physical timing acceptance
+roughly 53 KiB of Zephyr RAM headroom. Physical timing acceptance
 is recorded after each candidate/solver configuration passes the native
 containment and oracle gates.
 
@@ -73,10 +73,11 @@ rather than relying on a variable iteration count.
 
 The priority-0 main thread remains the only owner of authoritative state. The
 USB shell is the priority-1 recovery and diagnostic control plane, while the
-renderer runs below both at priority 2. A main loop that has already missed its
-next deadline reserves a one-millisecond recovery window, keeping the
+renderer runs below both at priority 2. Once two or more simulation deadlines
+are due, the main loop reserves a one-millisecond recovery window, keeping the
 bootloader command responsive without letting routine shell output preempt
-on-time simulation. Shell operations that require authoritative state enqueue
+on-time simulation. An isolated late tick may catch up first. Shell operations
+that require authoritative state enqueue
 acknowledged requests and block while the main thread services them. The
 platform-neutral layers are:
 
@@ -131,8 +132,8 @@ contact, and authoritative hash over mixed 12-body replays.
 Every physics step publishes deterministic work counters for possible and
 retained pairs, cell insertions and occupancy, split narrow-phase tests,
 manifolds and contact points, positional-correction visits, solver iterations
-and visits, changed contact/joint impulses, joint counts, and unexpected
-broad-phase fallbacks.
+and visits, changed contact/joint impulses, joint, motor, and limit counts,
+separate motor/limit row work, and unexpected broad-phase fallbacks.
 These counters are fixed-size scratch diagnostics and do not participate in the
 authoritative hash.
 
@@ -165,10 +166,11 @@ histogram-derived p50/p95/p99, exact maximum, and 1/120-second budget violations
 without per-tick logging. `make profile-ab` preserves the live run/pause mode
 and writes the canonical result. `make profile-chain` profiles a comma-separated
 set of link counts over one USB session and writes an aggregate result. The
-version-4 protocol identifies the fixture and reports maximum revolute-anchor
-separation for each mode. That quality calculation runs after the measured
-step, so it does not contaminate the stage timings. These isolated timings must
-not be compared directly with the live update value from `game stats`, which
+version-5 protocol identifies the fixture and reports maximum revolute-anchor
+separation and angular-limit violation for each mode. Those quality calculations
+run after the measured step, so they do not contaminate the stage timings.
+These isolated timings must not be compared directly with the live update value
+from `game stats`, which
 also contains game-demo and immutable-snapshot work and may be affected by
 renderer and scheduler activity. Physical PIM559 baselines are recorded in
 [`benchmarks/physics-profile`](../benchmarks/physics-profile/README.md).
@@ -200,7 +202,25 @@ explicit `collide_connected` flag opts that pair back in. Joint configuration
 and that policy are authoritative, while world anchors, matrix terms, and
 accumulated impulses remain scratch state.
 
-## Current milestone: multi-link revolute-joint lab
+A revolute motor adds a one-dimensional angular velocity row to the shared
+projected Gauss-Seidel solver. Its signed Q16.16 target is radians per tick;
+positive speed rotates body A counter-clockwise relative to body B. The total
+impulse applied by that row during one step is clamped to the configured
+positive maximum, so a stalled mechanism has bounded torque rather than an
+unbounded velocity correction.
+
+Angular limits are signed Q16.16 radians relative to the two bodies' creation
+pose. A limit outside its one-degree slop receives a bounded positional
+correction followed by a unilateral velocity row; an equal lower/upper pair is
+a bilateral angular lock. Relative-angle conversion explicitly wraps unsigned
+turns into the signed half-turn interval, including across zero. Motor and
+limit impulses are per-step scratch rather than persistent warm-start state,
+so the existing hash and reset contracts remain straightforward.
+Angular correction runs during each scheduled revolute position pass, but a
+limit alone does not request another whole-chain sweep; extra passes remain
+driven by measured hinge-anchor separation.
+
+## Current milestone: revolute motor-and-limit lab
 
 The flashable rigid-body lab contains:
 
@@ -215,6 +235,8 @@ The flashable rigid-body lab contains:
 - deterministic 16 x 16 grid filtering with brute-force fallback and oracle;
 - one world-anchored distance pendulum and a four-box chain joined by one world
   pin and three body-to-body revolute joints;
+- a bounded motor on the world pin, two free middle hinges, and a plus/minus
+  one-radian limit on the final hinge;
 - old/new dirty footprints for every moved body, merged when they overlap; and
 - body, filtered/possible-pair, grid occupancy, fallback, contact, solver,
   timing, and deterministic-hash diagnostics.
@@ -256,6 +278,8 @@ The native suite covers:
   replay;
 - validation, capacity, world/body anchors, collision policy, stable hashing,
   and no-mutation failures for revolute joints;
+- bounded world/body motors, torque saturation, lower/upper/equal limits,
+  creation-pose reference angles, and signed turn wrap;
 - a four-link chain with multiple constraints on the middle bodies and bounded
   anchor separation over long replay;
 - cell-boundary collisions and distant-pair rejection;
@@ -266,16 +290,21 @@ The native suite covers:
 - authoritative hash changes and reset recovery; and
 - undefined-behavior sanitizer execution.
 
-The native canonical reset is `2eee9251`, right-30 is `f11cec0f`, the
-right-30/up-15 sequence reaches tick 45 at `7e462383`, and a 10,000-tick replay
-is `880a5335`. The bounded replay reduces 76 possible pairs to between three and
+The native canonical reset is `13420a19`, right-30 is `c65f5731`, the
+right-30/up-15 sequence reaches tick 45 at `66e3ab10`, and a 10,000-tick replay
+is `2ff53bff`. The bounded replay reduces 76 possible pairs to between three and
 17 grid candidates, reaches 14 contacts, never falls back, keeps every distance
-and revolute constraint within three pixels, and preserves the three-pixel
-arena tolerance. The PIM559 reproduced all three short-sequence hashes, a
-coherently presented reset framebuffer CRC-32 of `c965155f`, and tick-45 CRC-32
-`4ddc9697`. Its isolated 1,000-tick profile averaged 3.539 ms for the grid path
-and 3.793 ms for the brute-force reference, with zero budget violations and
-exact state agreement. Maximum revolute-anchor separation was 0.930 pixels.
+and revolute constraint within three pixels, holds the angular stop within
+0.0502 radian, and preserves the three-pixel arena tolerance. The PIM559
+reproduced all three short-sequence hashes and tick-45 framebuffer CRC-32
+`0633575c`. Its isolated 1,000-tick profile averaged 4.136 ms for the grid path
+and 4.418 ms for the brute-force reference, with no budget violations and exact
+final state agreement at `a554f3c3`. Maximum revolute-anchor separation was
+0.947 pixels and maximum angular-limit violation was 0.0175 radian. A 20,055
+tick live window held 119.9 Hz with seven skipped ticks while full-frame
+presentation remained at 29.8 fps. Concurrent rendering and USB activity made
+5,143 updates exceed 8.333 ms, with a 25.008 ms maximum; faster intervening
+updates recovered most deadlines.
 
 The first chain-scaling baseline isolated deterministic 4-, 6-, and 8-link
 chains at 1.559, 2.202, and 2.819 ms mean. A single position pass held four and
@@ -303,7 +332,7 @@ are design references rather than code to port.
 
 ## Planned extensions
 
-1. Add motors, sliders, springs, conveyors, sensors, and sleeping.
+1. Add sliders, springs, conveyors, sensors, and sleeping.
 2. Add capsules and a position-based rope/soft-body subsystem with deliberate
    rigid-body coupling.
 3. Evaluate bounded granular materials and approximate gravity or magnetic

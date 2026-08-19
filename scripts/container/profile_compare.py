@@ -52,10 +52,21 @@ SCHEMA_3_WORK_NAMES = SCHEMA_2_WORK_NAMES | {
     "revolute_joints",
 }
 SCHEMA_4_WORK_NAMES = SCHEMA_3_WORK_NAMES
+SCHEMA_5_WORK_NAMES = SCHEMA_4_WORK_NAMES | {
+    "revolute_motors",
+    "revolute_limits",
+    "joint_limit_position_correction_visits",
+    "joint_limit_position_correction_changes",
+    "joint_motor_solver_visits",
+    "joint_motor_solver_changes",
+    "joint_limit_solver_visits",
+    "joint_limit_solver_changes",
+}
 WORK_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_WORK_NAMES,
     3: SCHEMA_3_WORK_NAMES,
     4: SCHEMA_4_WORK_NAMES,
+    5: SCHEMA_5_WORK_NAMES,
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 
@@ -152,8 +163,13 @@ def parse_profile(output: str) -> dict[str, object]:
 
     modes: dict[str, dict[str, object]] = {}
     mode_keys = {"mode", "hash", "clock_reads_min", "clock_reads_max"}
-    if schema_version >= 4:
+    if schema_version == 4:
         mode_keys.add("max_revolute_error_q16")
+    elif schema_version >= 5:
+        mode_keys |= {
+            "max_revolute_anchor_error_q16",
+            "max_revolute_limit_violation_q16",
+        }
     for line in output.splitlines():
         fields = parse_fields(line, "PROFILE_MODE")
         if fields is None:
@@ -169,7 +185,15 @@ def parse_profile(output: str) -> dict[str, object]:
         if len(fields["hash"]) != 8:
             raise ProfileError(f"invalid {mode} hash '{fields['hash']}'")
         maximum_revolute_error_q16 = parse_unsigned(
-            fields.get("max_revolute_error_q16", "0"), "max_revolute_error_q16"
+            fields.get(
+                "max_revolute_anchor_error_q16",
+                fields.get("max_revolute_error_q16", "0"),
+            ),
+            "max_revolute_anchor_error_q16",
+        )
+        maximum_revolute_limit_violation_q16 = parse_unsigned(
+            fields.get("max_revolute_limit_violation_q16", "0"),
+            "max_revolute_limit_violation_q16",
         )
         modes[mode] = {
             "final_hash": f"{final_hash:08x}",
@@ -181,6 +205,12 @@ def parse_profile(output: str) -> dict[str, object]:
                 "maximum_revolute_anchor_error_q16": maximum_revolute_error_q16,
                 "maximum_revolute_anchor_error_pixels": round(
                     maximum_revolute_error_q16 / 65536, 6
+                ),
+                "maximum_revolute_limit_violation_q16": (
+                    maximum_revolute_limit_violation_q16
+                ),
+                "maximum_revolute_limit_violation_radians": round(
+                    maximum_revolute_limit_violation_q16 / 65536, 6
                 ),
             },
             "stages": {},

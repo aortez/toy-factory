@@ -206,9 +206,12 @@ static const struct picosystem_physics_revolute_joint_config canonical_revolute_
 	{
 		.local_anchor_a = {.x = -FIXED(10)},
 		.anchor_b = {.x = FIXED(134), .y = FIXED(88)},
+		.motor_speed_per_tick = RATIO(1, 96),
+		.maximum_motor_impulse_per_tick = RATIO(1, 8),
 		.id = 301U,
 		.body_a_id = 5U,
 		.body_b_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
+		.motor_enabled = 1U,
 	},
 	{
 		.local_anchor_a = {.x = FIXED(10)},
@@ -227,9 +230,12 @@ static const struct picosystem_physics_revolute_joint_config canonical_revolute_
 	{
 		.local_anchor_a = {.x = FIXED(10)},
 		.anchor_b = {.x = -FIXED(10)},
+		.lower_angle_radians = -PICOSYSTEM_PHYSICS_FIXED_ONE,
+		.upper_angle_radians = PICOSYSTEM_PHYSICS_FIXED_ONE,
 		.id = 304U,
 		.body_a_id = 7U,
 		.body_b_id = 8U,
+		.limit_enabled = 1U,
 	},
 };
 

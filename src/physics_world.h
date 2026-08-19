@@ -83,9 +83,17 @@ struct picosystem_physics_work_counters {
 	uint32_t solver_changed_contact_count;
 	uint32_t distance_joint_count;
 	uint32_t revolute_joint_count;
+	uint32_t revolute_motor_count;
+	uint32_t revolute_limit_count;
 	uint32_t joint_position_correction_visit_count;
+	uint32_t joint_limit_position_correction_visit_count;
+	uint32_t joint_limit_position_correction_changed_count;
 	uint32_t joint_solver_visit_count;
 	uint32_t joint_solver_changed_count;
+	uint32_t joint_motor_solver_visit_count;
+	uint32_t joint_motor_solver_changed_count;
+	uint32_t joint_limit_solver_visit_count;
+	uint32_t joint_limit_solver_changed_count;
 	uint32_t broad_phase_fallback_count;
 };
 
@@ -148,14 +156,24 @@ struct picosystem_physics_distance_joint_config {
 	uint16_t body_b_id;
 };
 
-/* Anchor B is world-space when body_b_id is zero and body-local otherwise. */
+/*
+ * Anchor B is world-space when body_b_id is zero and body-local otherwise.
+ * Positive motor speed rotates body A counter-clockwise relative to body B.
+ * Limits are signed Q16.16 radians relative to the joint's creation pose.
+ */
 struct picosystem_physics_revolute_joint_config {
 	struct picosystem_physics_vector local_anchor_a;
 	struct picosystem_physics_vector anchor_b;
+	picosystem_physics_fixed_t motor_speed_per_tick;
+	picosystem_physics_fixed_t maximum_motor_impulse_per_tick;
+	picosystem_physics_fixed_t lower_angle_radians;
+	picosystem_physics_fixed_t upper_angle_radians;
 	uint16_t id;
 	uint16_t body_a_id;
 	uint16_t body_b_id;
 	uint8_t collide_connected;
+	uint8_t motor_enabled;
+	uint8_t limit_enabled;
 };
 
 struct picosystem_physics_body {
@@ -205,12 +223,19 @@ struct picosystem_physics_revolute_joint {
 	/* Persistent configuration included in the authoritative hash. */
 	struct picosystem_physics_vector local_anchor_a;
 	struct picosystem_physics_vector anchor_b;
+	picosystem_physics_fixed_t motor_speed_per_tick;
+	picosystem_physics_fixed_t maximum_motor_impulse_per_tick;
+	picosystem_physics_fixed_t lower_angle_radians;
+	picosystem_physics_fixed_t upper_angle_radians;
+	uint32_t reference_angle_turns;
 	uint16_t id;
 	uint16_t body_a_id;
 	uint16_t body_b_id;
 	uint8_t body_a_index;
 	uint8_t body_b_index;
 	uint8_t collide_connected;
+	uint8_t motor_enabled;
+	uint8_t limit_enabled;
 
 	/* Scratch solver state rebuilt every step and excluded from the hash. */
 	struct picosystem_physics_vector world_anchor_a;
@@ -219,7 +244,11 @@ struct picosystem_physics_revolute_joint {
 	picosystem_physics_fixed_t effective_mass_xx;
 	picosystem_physics_fixed_t effective_mass_xy;
 	picosystem_physics_fixed_t effective_mass_yy;
+	picosystem_physics_fixed_t angular_effective_mass;
+	picosystem_physics_fixed_t accumulated_motor_impulse;
+	picosystem_physics_fixed_t accumulated_limit_impulse;
 	uint8_t effective_mass_valid;
+	uint8_t limit_state;
 };
 
 enum picosystem_physics_contact_type {
@@ -322,6 +351,11 @@ int picosystem_physics_world_revolute_joint_anchors(
 	const struct picosystem_physics_world *world, size_t index,
 	struct picosystem_physics_vector *world_anchor_a,
 	struct picosystem_physics_vector *world_anchor_b);
+
+/* Resolve signed Q16.16 radians relative to one revolute joint's creation pose. */
+int picosystem_physics_world_revolute_joint_angle(
+	const struct picosystem_physics_world *world, size_t index,
+	picosystem_physics_fixed_t *relative_angle_radians);
 
 /* Resolve a box's four world-space corners in stable winding order. */
 int picosystem_physics_body_box_vertices(

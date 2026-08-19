@@ -11,12 +11,13 @@
 #include "game_world.h"
 #include "physics_chain_fixture.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0x2eee9251)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xf11cec0f)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x7e462383)
-#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x880a5335)
+#define EXPECTED_RESET_HASH          UINT32_C(0x13420a19)
+#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xc65f5731)
+#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x66e3ab10)
+#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x2ff53bff)
 #define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
 #define CHAIN_CONVERGENCE_TOLERANCE  PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
+#define ANGULAR_BOUNDARY_TOLERANCE   PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 16)
 
 static void assert_vector_equal(const struct picosystem_physics_vector *left,
 				const struct picosystem_physics_vector *right)
@@ -115,6 +116,14 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 		assert(left_joint->body_a_index == right_joint->body_a_index);
 		assert(left_joint->body_b_index == right_joint->body_b_index);
 		assert(left_joint->collide_connected == right_joint->collide_connected);
+		assert(left_joint->motor_enabled == right_joint->motor_enabled);
+		assert(left_joint->limit_enabled == right_joint->limit_enabled);
+		assert(left_joint->motor_speed_per_tick == right_joint->motor_speed_per_tick);
+		assert(left_joint->maximum_motor_impulse_per_tick ==
+		       right_joint->maximum_motor_impulse_per_tick);
+		assert(left_joint->lower_angle_radians == right_joint->lower_angle_radians);
+		assert(left_joint->upper_angle_radians == right_joint->upper_angle_radians);
+		assert(left_joint->reference_angle_turns == right_joint->reference_angle_turns);
 		assert_vector_equal(&left_joint->world_anchor_a, &right_joint->world_anchor_a);
 		assert_vector_equal(&left_joint->world_anchor_b, &right_joint->world_anchor_b);
 		assert_vector_equal(&left_joint->accumulated_impulse,
@@ -122,7 +131,13 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 		assert(left_joint->effective_mass_xx == right_joint->effective_mass_xx);
 		assert(left_joint->effective_mass_xy == right_joint->effective_mass_xy);
 		assert(left_joint->effective_mass_yy == right_joint->effective_mass_yy);
+		assert(left_joint->angular_effective_mass == right_joint->angular_effective_mass);
+		assert(left_joint->accumulated_motor_impulse ==
+		       right_joint->accumulated_motor_impulse);
+		assert(left_joint->accumulated_limit_impulse ==
+		       right_joint->accumulated_limit_impulse);
 		assert(left_joint->effective_mass_valid == right_joint->effective_mass_valid);
+		assert(left_joint->limit_state == right_joint->limit_state);
 	}
 }
 
@@ -152,6 +167,14 @@ static void test_canonical_reset_and_golden_replay(void)
 	assert(world.physics.distance_joint_count == PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT);
 	assert(world.physics.revolute_joint_count == PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT);
 	assert(world.physics.contact_count == 0U);
+	assert(world.physics.revolute_joints[0].motor_enabled == 1U);
+	assert(world.physics.revolute_joints[0].limit_enabled == 0U);
+	for (uint16_t index = 1U; index < (world.physics.revolute_joint_count - 1U); ++index) {
+		assert(world.physics.revolute_joints[index].motor_enabled == 0U);
+		assert(world.physics.revolute_joints[index].limit_enabled == 0U);
+	}
+	assert(world.physics.revolute_joints[3].motor_enabled == 0U);
+	assert(world.physics.revolute_joints[3].limit_enabled == 1U);
 
 	const struct picosystem_physics_body *const focus =
 		picosystem_game_world_focus_body(&world);
@@ -261,6 +284,8 @@ static void assert_joint_lengths_bounded(const struct picosystem_game_world *wor
 		assert(distance_squared <= (uint64_t)(maximum * maximum));
 	}
 	for (uint16_t index = 0U; index < world->physics.revolute_joint_count; ++index) {
+		const struct picosystem_physics_revolute_joint *const joint =
+			&world->physics.revolute_joints[index];
 		struct picosystem_physics_vector anchor_a;
 		struct picosystem_physics_vector anchor_b;
 		assert(picosystem_physics_world_revolute_joint_anchors(&world->physics, index,
@@ -275,7 +300,63 @@ static void assert_joint_lengths_bounded(const struct picosystem_game_world *wor
 				(unsigned long long)distance_squared);
 		}
 		assert(distance_squared <= (uint64_t)(revolute_tolerance * revolute_tolerance));
+		if (joint->limit_enabled != 0U) {
+			picosystem_physics_fixed_t angle = 0;
+			assert(picosystem_physics_world_revolute_joint_angle(&world->physics, index,
+									     &angle) == 0);
+			if ((angle < (joint->lower_angle_radians - ANGULAR_BOUNDARY_TOLERANCE)) ||
+			    (angle > (joint->upper_angle_radians + ANGULAR_BOUNDARY_TOLERANCE))) {
+				const picosystem_physics_fixed_t body_b_angular_velocity =
+					(joint->body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID)
+						? 0
+						: world->physics.bodies[joint->body_b_index]
+							  .angular_velocity_per_tick;
+				fprintf(stderr,
+					"revolute limit %u exceeded at tick %u: angle=%d "
+					"range=%d..%d position=%u/%u limit_solver=%u/%u "
+					"velocity=%d/%d\n",
+					index, world->logic_tick_count, angle,
+					joint->lower_angle_radians, joint->upper_angle_radians,
+					world->physics.last_work
+						.joint_limit_position_correction_changed_count,
+					world->physics.last_work
+						.joint_limit_position_correction_visit_count,
+					world->physics.last_work.joint_limit_solver_changed_count,
+					world->physics.last_work.joint_limit_solver_visit_count,
+					world->physics.bodies[joint->body_a_index]
+						.angular_velocity_per_tick,
+					body_b_angular_velocity);
+			}
+			assert(angle >= (joint->lower_angle_radians - ANGULAR_BOUNDARY_TOLERANCE));
+			assert(angle <= (joint->upper_angle_radians + ANGULAR_BOUNDARY_TOLERANCE));
+		}
 	}
+}
+
+static picosystem_physics_fixed_t
+maximum_revolute_limit_violation(const struct picosystem_game_world *world)
+{
+	picosystem_physics_fixed_t maximum = 0;
+	for (uint16_t index = 0U; index < world->physics.revolute_joint_count; ++index) {
+		const struct picosystem_physics_revolute_joint *const joint =
+			&world->physics.revolute_joints[index];
+		if (joint->limit_enabled == 0U) {
+			continue;
+		}
+		picosystem_physics_fixed_t angle = 0;
+		assert(picosystem_physics_world_revolute_joint_angle(&world->physics, index,
+								     &angle) == 0);
+		picosystem_physics_fixed_t violation = 0;
+		if (angle < joint->lower_angle_radians) {
+			violation = joint->lower_angle_radians - angle;
+		} else if (angle > joint->upper_angle_radians) {
+			violation = angle - joint->upper_angle_radians;
+		}
+		if (violation > maximum) {
+			maximum = violation;
+		}
+	}
+	return maximum;
 }
 
 static void test_chain_fixture_boundaries_and_replay(void)
@@ -400,6 +481,7 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	bool saw_candidate_reduction = false;
 	uint32_t minimum_candidate_count = UINT32_MAX;
 	uint32_t maximum_candidate_count = 0U;
+	picosystem_physics_fixed_t maximum_limit_violation = 0;
 	uint16_t maximum_contact_count = 0U;
 	uint8_t maximum_solver_iteration_count = 0U;
 
@@ -424,6 +506,14 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 		       world.physics.last_possible_pair_count);
 		assert(world.physics.last_occupied_grid_cell_count > 0U);
 		assert(world.physics.last_broad_phase_fallback == 0U);
+		assert(world.physics.last_work.revolute_motor_count == 1U);
+		assert(world.physics.last_work.revolute_limit_count == 1U);
+		assert(world.physics.last_work.joint_motor_solver_visit_count >= 1U);
+		const picosystem_physics_fixed_t limit_violation =
+			maximum_revolute_limit_violation(&world);
+		if (limit_violation > maximum_limit_violation) {
+			maximum_limit_violation = limit_violation;
+		}
 		if (world.physics.last_candidate_pair_count <
 		    world.physics.last_possible_pair_count) {
 			saw_candidate_reduction = true;
@@ -453,9 +543,11 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	assert(saw_body_contact);
 	assert(saw_static_contact);
 	assert(saw_candidate_reduction);
-	fprintf(stderr, "candidate range: %u-%u/76, max contacts: %u, max solver: %u\n",
+	fprintf(stderr,
+		"candidate range: %u-%u/76, max contacts: %u, max solver: %u, max angular "
+		"limit violation: %d q16 rad\n",
 		minimum_candidate_count, maximum_candidate_count, maximum_contact_count,
-		maximum_solver_iteration_count);
+		maximum_solver_iteration_count, maximum_limit_violation);
 	world.logic_tick_count = UINT32_MAX;
 	assert(picosystem_game_world_step(&world, &inputs[0]) == 0);
 	assert(world.logic_tick_count == UINT32_MAX);

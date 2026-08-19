@@ -27,13 +27,14 @@
 
 LOG_MODULE_REGISTER(toy_factory, LOG_LEVEL_INF);
 
-#define PIEZO_TEST_FREQUENCY_HZ  440U
-#define PIEZO_TEST_DURATION_MS   180U
-#define DIAGNOSTIC_INTERVAL_MS   100
-#define STACK_SAMPLE_INTERVAL_MS 1000
-#define STATUS_LOG_INTERVAL_MS   30000
-#define PAUSED_POLL_INTERVAL_MS  8
-#define OVERLOAD_RECOVERY_MS     1
+#define PIEZO_TEST_FREQUENCY_HZ         440U
+#define PIEZO_TEST_DURATION_MS          180U
+#define DIAGNOSTIC_INTERVAL_MS          100
+#define STACK_SAMPLE_INTERVAL_MS        1000
+#define STATUS_LOG_INTERVAL_MS          30000
+#define PAUSED_POLL_INTERVAL_MS         8
+#define OVERLOAD_RECOVERY_MS            1
+#define OVERLOAD_RECOVERY_BACKLOG_TICKS 2U
 
 BUILD_ASSERT(CONFIG_MAIN_THREAD_PRIORITY < CONFIG_SHELL_THREAD_PRIORITY);
 
@@ -607,9 +608,12 @@ int main(void)
 				game_scheduler.next_deadline_ticks - before_sleep_ticks;
 			if (sleep_ticks > 0) {
 				k_sleep(K_TICKS(sleep_ticks));
-			} else if (sleep_ticks < 0) {
-				/* Preserve a control-plane window after the tick budget is
-				 * exhausted. */
+			} else if ((sleep_ticks < 0) &&
+				   (picosystem_fixed_rate_scheduler_due(&game_scheduler,
+									before_sleep_ticks) >=
+				    OVERLOAD_RECOVERY_BACKLOG_TICKS)) {
+				/* A single late tick may catch up and sleep naturally. Preserve a
+				 * control-plane window once real backlog develops. */
 				k_msleep(OVERLOAD_RECOVERY_MS);
 			}
 		}

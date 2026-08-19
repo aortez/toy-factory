@@ -1005,11 +1005,13 @@ static void print_profile_result(const struct shell *shell,
 		const char *const mode_name = picosystem_physics_profile_mode_name(mode);
 		shell_print(shell,
 			    "PROFILE_MODE mode=%s hash=%08x clock_reads_min=%u clock_reads_max=%u "
-			    "max_revolute_error_q16=%u",
+			    "max_revolute_anchor_error_q16=%u "
+			    "max_revolute_limit_violation_q16=%u",
 			    mode_name, mode_result->final_hash,
 			    mode_result->minimum_clock_reads_per_step,
 			    mode_result->maximum_clock_reads_per_step,
-			    mode_result->maximum_revolute_anchor_error_q16);
+			    mode_result->maximum_revolute_anchor_error_q16,
+			    mode_result->maximum_revolute_limit_violation_q16);
 
 		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
 			const struct picosystem_physics_profile_stage_summary *const summary =
