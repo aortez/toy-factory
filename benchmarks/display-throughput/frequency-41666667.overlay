@@ -1,0 +1,9 @@
+/*
+ * Copyright (c) 2026 Toy Factory contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&lcd {
+	mipi-max-frequency = <41666667>;
+};

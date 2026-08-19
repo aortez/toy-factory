@@ -125,9 +125,10 @@ measurements and supports runtime `on` and `off` controls.
 
 The renderer waits for a fresh rising edge only after four periods qualify
 between 15 and 18.5 ms. Each wait is capped at 20 ms, stale signals are bypassed,
-and full-frame writes remain unsynchronized because their roughly 78-82 ms
-transfer cannot fit in a panel refresh interval. It late-latches the newest
-published state after the wait, immediately before drawing and starting SPI.
+and each display path begins from a bounded wait. Damage rendering late-latches
+after the edge; the fast full-frame path rasterizes first and starts its one DMA
+write at the next edge. A conservative 20 MHz full transfer still spans several
+panel periods even though its start is synchronized.
 In the final stress run, GP8 measured 59.626 Hz over more than 8,000 periods,
 with a 16,771 us mean period, no GPIO read errors, and no TE timeout. Runtime
 `sync off` and `sync on` also switched cleanly between unconstrained snapshot
@@ -135,11 +136,14 @@ consumption and TE-driven presentation without rebooting.
 
 ## Decoupled 120 Hz simulation and presentation
 
-Zephyr currently runs this RP2040 target on one core. The priority-0 main thread
-owns input and all authoritative simulation state; the USB shell runs at
-priority 1 and a preemptible priority-2 worker owns the framebuffer and display
-after initialization. When simulation has already missed its next deadline,
-the main loop reserves a one-millisecond recovery window so the shell can still
+Zephyr and every device driver run on core 0. Its priority-0 main thread owns
+input and all authoritative simulation state; the USB shell runs at priority 1.
+The conservative image uses a preemptible priority-2 damage renderer. The fast
+PL022/DMA image instead uses a short priority -1 coordinator and a bare-metal
+core-1 raster worker. Core 1 receives immutable snapshots through reserved SRAM,
+signals completion through the SIO FIFO mailbox interrupt, and never calls
+Zephyr or a driver. When simulation has already missed its next deadline, the
+main loop reserves a one-millisecond recovery window so the shell can still
 accept diagnostics or a bootloader request. The scheduler
 represents 120 Hz as rational kernel-tick deadlines rather than rounding it to
 an integer millisecond period. With the configured 10 kHz kernel tick, the
@@ -148,14 +152,16 @@ three updates and 10,000 ticks for 120 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes a 400-byte immutable snapshot of
-up to 12 circle or oriented-box bodies and eight static segments on every
-update. Two slots and a short spin-lock-protected copy prevent the
-renderer from observing partially updated state. A saturated semaphore is only
-a wake-up hint: if two or more simulation states arrive during a panel period,
-the renderer deliberately coalesces the older ones. The main thread never waits
-for TE, framebuffer work, or SPI, and the renderer never reads live simulation
-state.
+Simulation uses Q16.16 positions and publishes a 600-byte immutable snapshot of
+up to 12 circle or oriented-box bodies and eight static segments, plus eight
+render records for distance joints and eight for revolute joints, on every
+update.
+Two slots and a short spin-lock-protected copy prevent the renderer from
+observing partially updated state. A saturated semaphore is only a wake-up
+hint: if two or more simulation states arrive during a panel period, the
+renderer deliberately coalesces the older ones. The main thread never waits for
+TE, framebuffer work, core 1, or SPI, and neither renderer mode reads live
+simulation state.
 
 The six-body collision lab held 120.0 Hz simulation and 59.3 fps presentation
 over a clean 20-second physical run, with backlog one and zero skipped or
@@ -186,6 +192,39 @@ sampled update was 5.724 ms and the observed maximum was 19.848 ms. The sampled
 step retained 15 of 76 possible pairs, occupied 91 of 256 cells, and used no
 brute-force fallback. TE-driven presentation was 53.9 fps. Main and renderer
 stack high-water marks were 2,600/4,096 and 1,988/3,072 bytes.
+
+The distance-joint lab adds eight fixed-capacity joint slots and canonically
+constrains one circle to a world pivot. Its physics world is 15,520 bytes, its
+two render snapshots are 504 bytes each, and the complete image uses 193,012
+bytes of RAM. Native and RP2040 reset/right-30/right-30-up-15 hashes are
+`695073bd`, `ba22ef24`, and `4e8d1ac6`; the tick-45 framebuffer CRC-32 is
+`bc0cfa77`. A clean opening window ran 2,934 ticks at 119.9 Hz with zero skipped
+ticks and two over-budget updates; presentation averaged 48.9 fps. The isolated
+2,000-tick device profile measured 2.173 ms mean and 6.816 ms maximum for the
+grid path, with no 8.333 ms budget violations. The brute-force path averaged
+2.382 ms, and both paths ended in exactly matching state. Main and renderer
+stack high-water marks were 2,752/4,096 and 2,676/3,584 bytes.
+
+The current multi-link lab adds eight fixed-capacity revolute-joint slots and
+uses four of them for one world pin plus three body-to-body hinges. Its physics
+world is 16,076 bytes, its two render snapshots are 600 bytes each, and the
+recommended full-frame image uses 205,300 bytes of Zephyr RAM. The PIM559
+reproduced the native reset hash `be490990`; its coherent reset framebuffer is
+CRC-32 `c965155f`, and the exact right-30/up-15 device sequence reaches hash
+`62c9b14e` and framebuffer CRC-32 `4ddc9697`. An isolated 1,000-tick device
+profile averaged 3.578 ms for the grid and 3.866 ms for the reference, with no
+8.333 ms budget violations and exact state agreement. A live 3,464-tick window
+held 119.9 Hz simulation with zero skipped ticks while full-frame presentation
+averaged 29.7 fps. The expanded snapshot drove renderer stack use to 3,204 of
+3,584 bytes during bring-up, so the configured renderer stack is now 4,096
+bytes.
+
+The chain-scaling benchmark's fast image uses 181,028 bytes of flash. Isolated
+4-, 6-, and 8-link fixtures averaged 1.559, 2.202, and 2.819 ms respectively,
+with no 8.333 ms budget violations and exact grid/reference agreement. Six
+links stayed within 1.314 pixels at their anchors, while eight links stretched
+by 51.867 pixels. At the current capacity, joint convergence is the limiting
+resource before CPU time.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.
@@ -242,6 +281,45 @@ demo therefore retains hardware SPI0/PL022 as its default, while large-update
 workloads should reconsider PIO/DMA. The direct full-frame output was visually
 confirmed on the physical PIM559. Full results and reproduction targets are in
 [the benchmark report](../benchmarks/pio-dma/README.md).
+
+The later dense-update matrix measures deterministic full-width bands,
+scattered tiles, and contiguous frames at several configured clocks. Stock
+PIO/DMA reaches 95.2% payload efficiency at its 31.25 MHz program limit and
+presents a full frame in 30.972 ms. PL022/DMA at 62.5 MHz is faster for the same
+contiguous frame at 18.361 ms, but repeated DMA/window setup makes 100 tiles
+take 102.914 ms. Polling PL022 barely improves when configured above 20 MHz.
+These results favor a size- and shape-aware transport policy; the current
+dirty-first image remains on polling PL022. Full distributions and reproduction
+commands are in [the dense-display report](../benchmarks/display-throughput/README.md).
+The current schema-2 profiler also includes a synthetic full-frame raster load
+with 64 moving circle/box bodies and 112 links, and reports remaining mean time
+inside conservative 30 Hz and 60 Hz processing budgets. With 62.5 MHz
+PL022/DMA, optimized 32-bit triangle edges, and a one-write frame transfer, that
+scene draws in 13.346 ms and presents in 18.328 ms: 31.57 fps unpaced with
+1.659 ms of mean 30 Hz processing headroom. Every-second-TE pacing measures
+29.805 fps on the approximately 59.6 Hz panel.
+
+The subsequent dual-core image rasterizes that workload on bare-metal core 1,
+then presents the completed framebuffer with one 62.5 MHz PL022/DMA write from
+core 0. A 4,896-frame physical run sustained 29.8 fps while the authoritative
+simulation completed 18,494 ticks at 120.0 Hz with zero skipped ticks. Core-1
+raster time was 9.667 ms (9.935 ms observed maximum), transfer time was
+19.242 ms, and core-1 stack use was 376/4,096 bytes. The run recorded 244
+updates over the 8.333 ms physics budget and a 28.890 ms maximum, but the
+deadline scheduler recovered every tick. Paused live-scene and dense-frame
+checks produced byte-identical core-0/core-1 results and restored the original
+framebuffer after each comparison.
+
+Because the fast coordinator runs at priority -1, it leaves a one-millisecond
+handoff window after every frame and uses nonblocking framebuffer acquisition.
+This prevents continuous presentation from starving the lower-priority USB
+shell and prevents mutex priority inheritance from promoting a long capture
+above simulation. With that policy, a clean 4,365-tick run held 119.9 Hz and
+29.8 fps with zero skipped ticks. A paused capture completed in 7.1 seconds.
+A live capture held the coherent framebuffer for about 99 seconds and therefore
+froze presentation, but all 16,240 simulation ticks completed at 120.0 Hz with
+zero skips. Pause before capture for deterministic automation and practical
+latency.
 
 On a cold power-on, the backlight remained visually dark until the completed
 frame appeared; no bright or white startup flash was observed.

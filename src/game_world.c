@@ -16,7 +16,7 @@
 #define GAME_CONTROL_PER_TICK   PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 64)
 #define GAME_RESTITUTION        PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 4)
 #define GAME_FRICTION           PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
-#define GAME_WORLD_HASH_VERSION UINT32_C(3)
+#define GAME_WORLD_HASH_VERSION UINT32_C(5)
 #define FNV1A_OFFSET_BASIS      UINT32_C(2166136261)
 #define FNV1A_PRIME             UINT32_C(16777619)
 
@@ -92,58 +92,50 @@ static const struct canonical_body_config canonical_bodies[] =
 		{
 			.box =
 				{
-					.center = {.x = FIXED(200), .y = FIXED(52)},
-					.velocity_per_tick = {.x = -RATIO(1, 8), .y = RATIO(1, 4)},
-					.half_extent = {.x = FIXED(7), .y = FIXED(5)},
-					.inverse_mass = RATIO(3, 2),
-					.restitution = RATIO(5, 6),
-					.friction = RATIO(1, 12),
-					.angular_velocity_per_tick = RATIO(1, 64),
-					.angle_turns = UINT32_C(0x20000000),
+					.center = {.x = FIXED(144), .y = FIXED(88)},
+					.half_extent = {.x = FIXED(10), .y = FIXED(4)},
+					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
+					.restitution = RATIO(1, 4),
+					.friction = RATIO(1, 5),
 					.id = 5U,
 				},
 			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
 		},
 		{
-			.circle =
+			.box =
 				{
-					.center = {.x = FIXED(120), .y = FIXED(105)},
-					.velocity_per_tick = {.x = RATIO(3, 8), .y = -RATIO(1, 8)},
-					.radius = FIXED(10),
-					.inverse_mass = RATIO(4, 5),
-					.restitution = RATIO(3, 4),
-					.friction = RATIO(1, 7),
+					.center = {.x = FIXED(164), .y = FIXED(88)},
+					.half_extent = {.x = FIXED(10), .y = FIXED(4)},
+					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
+					.restitution = RATIO(1, 4),
+					.friction = RATIO(1, 5),
 					.id = 6U,
 				},
-			.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
+			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
 		},
 		{
 			.box =
 				{
-					.center = {.x = FIXED(35), .y = FIXED(112)},
-					.velocity_per_tick = {.x = RATIO(1, 4), .y = -RATIO(1, 8)},
-					.half_extent = {.x = FIXED(7), .y = FIXED(5)},
-					.inverse_mass = RATIO(5, 4),
-					.restitution = RATIO(7, 10),
-					.friction = RATIO(1, 9),
-					.angular_velocity_per_tick = RATIO(1, 72),
-					.angle_turns = UINT32_C(0x30000000),
+					.center = {.x = FIXED(184), .y = FIXED(88)},
+					.half_extent = {.x = FIXED(10), .y = FIXED(4)},
+					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
+					.restitution = RATIO(1, 4),
+					.friction = RATIO(1, 5),
 					.id = 7U,
 				},
 			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
 		},
 		{
-			.circle =
+			.box =
 				{
-					.center = {.x = FIXED(68), .y = FIXED(126)},
-					.velocity_per_tick = {.x = RATIO(3, 8), .y = -RATIO(1, 16)},
-					.radius = FIXED(6),
-					.inverse_mass = RATIO(3, 2),
-					.restitution = RATIO(4, 5),
-					.friction = RATIO(1, 6),
+					.center = {.x = FIXED(204), .y = FIXED(88)},
+					.half_extent = {.x = FIXED(10), .y = FIXED(4)},
+					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
+					.restitution = RATIO(1, 4),
+					.friction = RATIO(1, 5),
 					.id = 8U,
 				},
-			.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
+			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
 		},
 };
 
@@ -200,15 +192,66 @@ static const struct picosystem_physics_segment_config canonical_segments[] = {
 	},
 };
 
+static const struct picosystem_physics_distance_joint_config canonical_distance_joints[] = {
+	{
+		.anchor_b = {.x = FIXED(120), .y = FIXED(64)},
+		.target_distance = FIXED(43),
+		.id = 201U,
+		.body_a_id = 4U,
+		.body_b_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
+	},
+};
+
+static const struct picosystem_physics_revolute_joint_config canonical_revolute_joints[] = {
+	{
+		.local_anchor_a = {.x = -FIXED(10)},
+		.anchor_b = {.x = FIXED(134), .y = FIXED(88)},
+		.id = 301U,
+		.body_a_id = 5U,
+		.body_b_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
+	},
+	{
+		.local_anchor_a = {.x = FIXED(10)},
+		.anchor_b = {.x = -FIXED(10)},
+		.id = 302U,
+		.body_a_id = 5U,
+		.body_b_id = 6U,
+	},
+	{
+		.local_anchor_a = {.x = FIXED(10)},
+		.anchor_b = {.x = -FIXED(10)},
+		.id = 303U,
+		.body_a_id = 6U,
+		.body_b_id = 7U,
+	},
+	{
+		.local_anchor_a = {.x = FIXED(10)},
+		.anchor_b = {.x = -FIXED(10)},
+		.id = 304U,
+		.body_a_id = 7U,
+		.body_b_id = 8U,
+	},
+};
+
 _Static_assert(sizeof(canonical_bodies) / sizeof(canonical_bodies[0]) == PICOSYSTEM_GAME_BODY_COUNT,
 	       "canonical body count must match the public contract");
 _Static_assert(sizeof(canonical_segments) / sizeof(canonical_segments[0]) ==
 		       PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT,
 	       "canonical segment count must match the public contract");
+_Static_assert(sizeof(canonical_distance_joints) / sizeof(canonical_distance_joints[0]) ==
+		       PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT,
+	       "canonical joint count must match the public contract");
+_Static_assert(sizeof(canonical_revolute_joints) / sizeof(canonical_revolute_joints[0]) ==
+		       PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT,
+	       "canonical revolute-joint count must match the public contract");
 _Static_assert(PICOSYSTEM_GAME_BODY_COUNT <= PICOSYSTEM_PHYSICS_MAX_BODIES,
 	       "canonical bodies must fit physics storage");
 _Static_assert(PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT <= PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS,
 	       "canonical segments must fit physics storage");
+_Static_assert(PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT <= PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS,
+	       "canonical joints must fit physics storage");
+_Static_assert(PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT <= PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS,
+	       "canonical revolute joints must fit physics storage");
 
 static void increment_saturated(uint32_t *value)
 {
@@ -257,12 +300,29 @@ int picosystem_game_world_reset(struct picosystem_game_world *world)
 			return err;
 		}
 	}
+	for (size_t index = 0U; index < PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT; ++index) {
+		err = picosystem_physics_world_add_distance_joint(
+			&world->physics, &canonical_distance_joints[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (size_t index = 0U; index < PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT; ++index) {
+		err = picosystem_physics_world_add_revolute_joint(
+			&world->physics, &canonical_revolute_joints[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
 
 	return 0;
 }
 
-int picosystem_game_world_step(struct picosystem_game_world *world,
-			       const struct picosystem_game_input *input)
+static int game_world_step(struct picosystem_game_world *world,
+			   const struct picosystem_game_input *input,
+			   enum picosystem_physics_step_mode mode,
+			   const struct picosystem_physics_clock *clock,
+			   struct picosystem_physics_step_profile *profile)
 {
 	if ((world == NULL) || (input == NULL)) {
 		return -EINVAL;
@@ -276,13 +336,29 @@ int picosystem_game_world_step(struct picosystem_game_world *world,
 		.x = input->horizontal * GAME_CONTROL_PER_TICK,
 		.y = GAME_GRAVITY_PER_TICK + (input->vertical * GAME_CONTROL_PER_TICK),
 	};
-	const int err = picosystem_physics_world_step(&world->physics, &acceleration);
+	const int err = picosystem_physics_world_step_profiled(&world->physics, &acceleration, mode,
+							       clock, profile);
 	if (err != 0) {
 		return err;
 	}
 
 	increment_saturated(&world->logic_tick_count);
 	return 0;
+}
+
+int picosystem_game_world_step(struct picosystem_game_world *world,
+			       const struct picosystem_game_input *input)
+{
+	return game_world_step(world, input, PICOSYSTEM_PHYSICS_STEP_MODE_GRID, NULL, NULL);
+}
+
+int picosystem_game_world_step_profiled(struct picosystem_game_world *world,
+					const struct picosystem_game_input *input,
+					enum picosystem_physics_step_mode mode,
+					const struct picosystem_physics_clock *clock,
+					struct picosystem_physics_step_profile *profile)
+{
+	return game_world_step(world, input, mode, clock, profile);
 }
 
 const struct picosystem_physics_body *
@@ -297,7 +373,9 @@ picosystem_game_world_focus_body(const struct picosystem_game_world *world)
 uint32_t picosystem_game_world_hash(const struct picosystem_game_world *world)
 {
 	if ((world == NULL) || (world->physics.body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
-	    (world->physics.static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS)) {
+	    (world->physics.static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||
+	    (world->physics.distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
+	    (world->physics.revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS)) {
 		return 0U;
 	}
 

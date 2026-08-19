@@ -22,11 +22,18 @@
 #include <zephyr/sys/reboot.h>
 #include <zephyr/sys/util.h>
 
+#include "core1_runtime.h"
+#include "display_profile.h"
 #include "display_sync.h"
 #include "game_control.h"
+#include "physics_chain_fixture.h"
+#include "physics_profile.h"
 #include "piezo.h"
 
 #define BOOTLOADER_REBOOT_DELAY_MS 100
+
+static struct picosystem_physics_profile_result profile_result;
+static struct picosystem_display_profile_result display_profile_result;
 
 struct named_button {
 	const char *name;
@@ -145,6 +152,149 @@ static void print_buttons(const struct shell *shell, uint32_t buttons)
 	shell_print(shell, "");
 }
 
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+static int print_core1_status(const struct shell *shell)
+{
+	struct picosystem_core1_status status;
+	const int err = picosystem_core1_get_status(&status);
+	if (err != 0) {
+		shell_error(shell, "Could not read core 1 status (%d)", err);
+		return err;
+	}
+
+	shell_print(shell,
+		    "core1: state=%s ready=%s core=%u requests=%u/%u heartbeat=%u "
+		    "stack=%u/%u bytes scene=%u us strips=%u/%u progress=%s[%u]/%s error=%d",
+		    picosystem_core1_state_name(status.state), status.ready ? "yes" : "no",
+		    status.core_id, status.completed_sequence, status.requested_sequence,
+		    status.heartbeat_count, status.stack_used_bytes, status.stack_size_bytes,
+		    status.last_scene_raster_time_us, status.ready_strip_count,
+		    status.scene_strip_count,
+		    picosystem_scene_render_stage_name(status.scene_stage), status.scene_item_index,
+		    picosystem_scene_render_primitive_name(status.scene_primitive), status.error);
+	return 0;
+}
+
+static int cmd_core1_status(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return print_core1_status(shell);
+}
+
+static int cmd_core1_ping(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t challenge = 0x01234567U;
+	if (argc == 2U) {
+		int parse_err = 0;
+		challenge = shell_strtoul(argv[1], 0, &parse_err);
+		if (parse_err != 0) {
+			shell_error(shell, "Invalid 32-bit challenge: %s", argv[1]);
+			return -EINVAL;
+		}
+	}
+
+	uint32_t response;
+	const int err = picosystem_core1_ping(challenge, &response);
+	if (err != 0) {
+		shell_error(shell, "Core 1 ping failed (%d)", err);
+		return err;
+	}
+
+	shell_print(shell, "challenge=%08x response=%08x", challenge, response);
+	return 0;
+}
+
+static int cmd_core1_raster(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t frame_index = 0U;
+	if (argc == 2U) {
+		int parse_err = 0;
+		frame_index = shell_strtoul(argv[1], 0, &parse_err);
+		if (parse_err != 0) {
+			shell_error(shell, "Invalid 32-bit frame index: %s", argv[1]);
+			return -EINVAL;
+		}
+	}
+
+	struct picosystem_game_control_state state;
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
+	};
+	int err = picosystem_game_control_submit(&request, &state);
+	if (err != 0) {
+		shell_error(shell, "Could not query simulation state (%d)", err);
+		return err;
+	}
+	if (!state.paused) {
+		shell_error(shell, "Pause the simulation before verifying core 1 raster output");
+		return -EBUSY;
+	}
+
+	struct picosystem_game_core1_raster_verification verification;
+	err = picosystem_game_demo_verify_core1_raster(frame_index, &verification);
+	if ((err == 0) || (err == -EILSEQ)) {
+		shell_print(
+			shell,
+			"CORE1_RASTER_VERIFY frame=%u core0_crc32=%08x core1_crc32=%08x "
+			"pixels_match=%s original_crc32=%08x restored_crc32=%08x "
+			"framebuffer_restored=%s total_us=%u background_us=%u links_us=%u "
+			"circles_us=%u boxes_us=%u",
+			verification.frame_index, verification.core0_crc32,
+			verification.core1_crc32, verification.pixels_match ? "yes" : "no",
+			verification.original_crc32, verification.restored_crc32,
+			verification.framebuffer_restored ? "yes" : "no",
+			verification.timing.total_time_us,
+			verification.timing.stage_time_us[PICOSYSTEM_DENSE_SCENE_STAGE_BACKGROUND],
+			verification.timing.stage_time_us[PICOSYSTEM_DENSE_SCENE_STAGE_LINKS],
+			verification.timing.stage_time_us[PICOSYSTEM_DENSE_SCENE_STAGE_CIRCLES],
+			verification.timing.stage_time_us[PICOSYSTEM_DENSE_SCENE_STAGE_BOXES]);
+	}
+	if (err != 0) {
+		shell_error(shell, "Core 1 raster verification failed (%d)", err);
+	}
+	return err;
+}
+
+static int cmd_core1_scene(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	struct picosystem_game_control_state state;
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
+	};
+	int err = picosystem_game_control_submit(&request, &state);
+	if (err != 0) {
+		shell_error(shell, "Could not query simulation state (%d)", err);
+		return err;
+	}
+	if (!state.paused) {
+		shell_error(shell, "Pause the simulation before verifying core 1 scene output");
+		return -EBUSY;
+	}
+
+	struct picosystem_game_core1_scene_verification verification;
+	err = picosystem_game_demo_verify_core1_scene(&verification);
+	if ((err == 0) || (err == -EILSEQ)) {
+		shell_print(shell,
+			    "CORE1_SCENE_VERIFY core0_crc32=%08x core1_crc32=%08x "
+			    "pixels_match=%s restored_crc32=%08x framebuffer_restored=%s "
+			    "raster_us=%u strips=%u",
+			    verification.core0_crc32, verification.core1_crc32,
+			    verification.pixels_match ? "yes" : "no", verification.restored_crc32,
+			    verification.framebuffer_restored ? "yes" : "no",
+			    verification.timing.raster_time_us, verification.timing.strip_count);
+	}
+	if (err != 0) {
+		shell_error(shell, "Core 1 scene verification failed (%d)", err);
+	}
+	return err;
+}
+#endif
+
 static int get_snapshot_or_report(const struct shell *shell,
 				  struct picosystem_diagnostic_snapshot *snapshot)
 {
@@ -232,9 +382,11 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.superseded_snapshot_count, snapshot.game.last_snapshot_age_us,
 		    snapshot.game.max_dirty_snapshot_age_us);
 	shell_print(shell,
-		    "physics: bodies=%u, segments=%u, contacts=%u, candidates=%u/%u, "
+		    "physics: bodies=%u, segments=%u, joints=%u distance/%u revolute, contacts=%u, "
+		    "candidates=%u/%u, "
 		    "grid=%u/%u cells, solver=%u/%u, fallback=%s",
 		    snapshot.game.body_count, snapshot.game.static_segment_count,
+		    snapshot.game.distance_joint_count, snapshot.game.revolute_joint_count,
 		    snapshot.game.contact_count, snapshot.game.candidate_pair_count,
 		    snapshot.game.possible_pair_count, snapshot.game.occupied_grid_cell_count,
 		    PICOSYSTEM_PHYSICS_GRID_CELL_COUNT, snapshot.game.solver_iteration_count,
@@ -254,7 +406,11 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 	shell_print(shell, "render stack high-water: %u/%u bytes",
 		    snapshot.game.render_stack_used_bytes, snapshot.game.render_stack_size_bytes);
 	shell_print(shell, "led: %s", led_mode_name(picosystem_diagnostic_shell_led_mode()));
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+	return print_core1_status(shell);
+#else
 	return 0;
+#endif
 }
 
 static int cmd_buttons(const struct shell *shell, size_t argc, char **argv)
@@ -371,22 +527,33 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->last_update_time_us, game->max_update_time_us, game->max_backlog_ticks,
 		    game->skipped_tick_count, game->over_budget_tick_count);
 	shell_print(shell,
-		    "renderer: running=%s, frames=%u, window=%u (%u.%u fps), render=%u us "
-		    "(dirty max=%u), full=%u, error=%d",
-		    game->render_thread_running ? "yes" : "no", game->presented_frame_count,
-		    game->measured_presented_frame_count, frame_rate_tenths / 10U,
-		    frame_rate_tenths % 10U, game->last_render_time_us,
-		    game->max_dirty_render_time_us, game->full_redraw_count, game->render_error);
+		    "renderer: running=%s, mode=%s, frames=%u, window=%u (%u.%u fps), "
+		    "wall=%u us, full=%u, error=%d",
+		    game->render_thread_running ? "yes" : "no",
+		    game->full_frame_renderer_enabled ? "full-frame" : "damage-region",
+		    game->presented_frame_count, game->measured_presented_frame_count,
+		    frame_rate_tenths / 10U, frame_rate_tenths % 10U, game->last_render_time_us,
+		    game->full_redraw_count, game->render_error);
+	shell_print(shell,
+		    "raster: core=%u, available=%s, %u us (max=%u), core1 frames=%u; "
+		    "present=%u regions/%u pixels/%u us",
+		    game->last_raster_on_core1 ? 1U : 0U,
+		    game->core1_renderer_available ? "yes" : "no", game->last_raster_time_us,
+		    game->maximum_raster_time_us, game->core1_raster_frame_count,
+		    game->last_dirty_region_count, game->last_dirty_pixel_count,
+		    game->last_dirty_present_time_us);
 	shell_print(shell, "snapshots: published=%u, superseded=%u, age=%u us (dirty max=%u us)",
 		    game->published_snapshot_count, game->superseded_snapshot_count,
 		    game->last_snapshot_age_us, game->max_dirty_snapshot_age_us);
 	shell_print(shell,
-		    "physics: bodies=%u, segments=%u, contacts=%u, candidates=%u/%u, "
+		    "physics: bodies=%u, segments=%u, joints=%u distance/%u revolute, contacts=%u, "
+		    "candidates=%u/%u, "
 		    "grid=%u/%u cells, solver=%u/%u, fallback=%s",
-		    game->body_count, game->static_segment_count, game->contact_count,
-		    game->candidate_pair_count, game->possible_pair_count,
-		    game->occupied_grid_cell_count, PICOSYSTEM_PHYSICS_GRID_CELL_COUNT,
-		    game->solver_iteration_count, PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
+		    game->body_count, game->static_segment_count, game->distance_joint_count,
+		    game->revolute_joint_count, game->contact_count, game->candidate_pair_count,
+		    game->possible_pair_count, game->occupied_grid_cell_count,
+		    PICOSYSTEM_PHYSICS_GRID_CELL_COUNT, game->solver_iteration_count,
+		    PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
 		    game->broad_phase_fallback ? "yes" : "no");
 	shell_print(shell,
 		    "focus #%u %s: simulation=(%u,%u), displayed=(%u,%u), "
@@ -679,6 +846,313 @@ static int cmd_game_redraw(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+static uint32_t profile_cycles_to_microseconds(uint32_t cycles, uint32_t clock_frequency_hz)
+{
+	return (uint32_t)((((uint64_t)cycles * 1000000U) + (clock_frequency_hz / 2U)) /
+			  clock_frequency_hz);
+}
+
+static void print_display_profile_result(const struct shell *shell,
+					 const struct picosystem_display_profile_result *result)
+{
+	shell_print(shell,
+		    "DISPLAY_PROFILE_BEGIN schema=%u samples=%u warmup=%u clock_hz=%u "
+		    "configured_spi_hz=%u width=%u height=%u bpp=%u transport=%s cases=%u",
+		    result->schema_version, result->measured_sample_count,
+		    result->warmup_sample_count, result->clock_frequency_hz,
+		    result->configured_spi_frequency_hz, result->width, result->height,
+		    result->bytes_per_pixel, picosystem_graphics_transport_name(result->transport),
+		    PICOSYSTEM_DISPLAY_PROFILE_CASE_COUNT);
+
+	for (size_t case_index = 0U; case_index < PICOSYSTEM_DISPLAY_PROFILE_CASE_COUNT;
+	     ++case_index) {
+		const struct picosystem_display_profile_case_result *const case_result =
+			&result->cases[case_index];
+		const char *const case_name = picosystem_display_profile_case_name(case_index);
+		shell_print(shell,
+			    "DISPLAY_PROFILE_CASE name=%s coverage=%u payload_bytes=%u regions=%u "
+			    "writes=%u synchronized=%u crc32=%08x",
+			    case_name, case_result->coverage_percent, case_result->payload_bytes,
+			    case_result->region_count, case_result->display_write_count,
+			    case_result->synchronized_wait_count, case_result->framebuffer_crc32);
+
+		for (size_t stage = 0U; stage < PICOSYSTEM_DISPLAY_PROFILE_STAGE_COUNT; ++stage) {
+			const struct picosystem_display_profile_stage_summary *const summary =
+				&case_result->stages[stage];
+			shell_print(shell,
+				    "DISPLAY_PROFILE_STAGE name=%s stage=%s samples=%u mean_us=%u "
+				    "min_us=%u p50_us=%u p95_us=%u p99_us=%u max_us=%u",
+				    case_name, picosystem_display_profile_stage_name(stage),
+				    summary->sample_count,
+				    profile_cycles_to_microseconds(summary->mean_cycles,
+								   result->clock_frequency_hz),
+				    profile_cycles_to_microseconds(summary->minimum_cycles,
+								   result->clock_frequency_hz),
+				    profile_cycles_to_microseconds(summary->percentile_50_cycles,
+								   result->clock_frequency_hz),
+				    profile_cycles_to_microseconds(summary->percentile_95_cycles,
+								   result->clock_frequency_hz),
+				    profile_cycles_to_microseconds(summary->percentile_99_cycles,
+								   result->clock_frequency_hz),
+				    profile_cycles_to_microseconds(summary->maximum_cycles,
+								   result->clock_frequency_hz));
+		}
+	}
+
+	for (size_t stage = 0U; stage < PICOSYSTEM_DISPLAY_PROFILE_DENSE_STAGE_COUNT; ++stage) {
+		const struct picosystem_display_profile_stage_summary *const summary =
+			&result->dense_stages[stage];
+		shell_print(shell,
+			    "DISPLAY_PROFILE_DENSE_STAGE stage=%s samples=%u mean_us=%u min_us=%u "
+			    "p50_us=%u p95_us=%u p99_us=%u max_us=%u",
+			    picosystem_display_profile_dense_stage_name(stage),
+			    summary->sample_count,
+			    profile_cycles_to_microseconds(summary->mean_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->minimum_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->percentile_50_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->percentile_95_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->percentile_99_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->maximum_cycles,
+							   result->clock_frequency_hz));
+	}
+
+	shell_print(shell,
+		    "DISPLAY_PROFILE_VERIFY original_crc32=%08x restored_crc32=%08x "
+		    "framebuffer_restored=%s",
+		    result->original_framebuffer_crc32, result->restored_framebuffer_crc32,
+		    result->framebuffer_restored ? "yes" : "no");
+}
+
+static int cmd_display_profile(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t measured_sample_count = PICOSYSTEM_DISPLAY_PROFILE_DEFAULT_SAMPLES;
+	if (argc == 2U) {
+		const int parse_err =
+			parse_u32(shell, "measured sample count", argv[1], &measured_sample_count);
+		if (parse_err != 0) {
+			return parse_err;
+		}
+	}
+	if ((measured_sample_count == 0U) ||
+	    (measured_sample_count > PICOSYSTEM_DISPLAY_PROFILE_MAX_SAMPLES)) {
+		shell_error(shell, "Measured sample count must be 1-%u",
+			    PICOSYSTEM_DISPLAY_PROFILE_MAX_SAMPLES);
+		return -ERANGE;
+	}
+
+	struct picosystem_game_control_state state;
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
+	};
+	int err = picosystem_game_control_submit(&request, &state);
+	if (err != 0) {
+		shell_error(shell, "Could not query simulation state (%d)", err);
+		return err;
+	}
+	if (!state.paused) {
+		shell_error(shell, "Pause the simulation before profiling the display");
+		return -EBUSY;
+	}
+
+	err = picosystem_game_demo_profile_display(measured_sample_count, &display_profile_result);
+	if ((err == 0) || (err == -EILSEQ)) {
+		print_display_profile_result(shell, &display_profile_result);
+		size_t unused_stack_bytes;
+		const int stack_err =
+			k_thread_stack_space_get(k_current_get(), &unused_stack_bytes);
+		if (stack_err == 0) {
+			shell_print(shell,
+				    "DISPLAY_PROFILE_RESOURCE shell_stack_used_bytes=%u "
+				    "shell_stack_size_bytes=%u",
+				    CONFIG_SHELL_STACK_SIZE - (uint32_t)unused_stack_bytes,
+				    CONFIG_SHELL_STACK_SIZE);
+		} else if (err == 0) {
+			err = stack_err;
+		}
+		shell_print(shell, "DISPLAY_PROFILE_END status=%s", (err == 0) ? "ok" : "failed");
+	}
+	if (err != 0) {
+		shell_error(shell, "Display profile failed (%d)", err);
+	}
+	return err;
+}
+
+static void print_profile_result(const struct shell *shell,
+				 const struct picosystem_physics_profile_result *result)
+{
+	shell_print(
+		shell,
+		"PROFILE_BEGIN schema=%u fixture=%s chain_links=%u ticks=%u warmup=%u "
+		"clock_hz=%u "
+		"histogram_fine_bin_us=%u histogram_fine_bins=%u "
+		"histogram_coarse_bin_us=%u histogram_coarse_bins=%u clock_delta_cycles=%u",
+		result->schema_version, picosystem_physics_profile_fixture_name(result->fixture),
+		result->chain_link_count, result->measured_tick_count, result->warmup_tick_count,
+		result->clock_frequency_hz, PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_US,
+		PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT,
+		PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_US,
+		PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_COUNT,
+		result->back_to_back_clock_delta_cycles);
+
+	for (size_t mode = 0U; mode < PICOSYSTEM_PHYSICS_PROFILE_MODE_COUNT; ++mode) {
+		const struct picosystem_physics_profile_mode_result *const mode_result =
+			&result->modes[mode];
+		const char *const mode_name = picosystem_physics_profile_mode_name(mode);
+		shell_print(shell,
+			    "PROFILE_MODE mode=%s hash=%08x clock_reads_min=%u clock_reads_max=%u "
+			    "max_revolute_error_q16=%u",
+			    mode_name, mode_result->final_hash,
+			    mode_result->minimum_clock_reads_per_step,
+			    mode_result->maximum_clock_reads_per_step,
+			    mode_result->maximum_revolute_anchor_error_q16);
+
+		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
+			const struct picosystem_physics_profile_stage_summary *const summary =
+				&mode_result->stages[stage];
+			shell_print(
+				shell,
+				"PROFILE_STAGE mode=%s stage=%s samples=%u mean_us=%u min_us=%u "
+				"p50_us=%u p95_us=%u p99_us=%u max_us=%u budget_violations=%u",
+				mode_name, picosystem_physics_profile_stage_name(stage),
+				summary->sample_count,
+				profile_cycles_to_microseconds(summary->mean_cycles,
+							       result->clock_frequency_hz),
+				profile_cycles_to_microseconds(summary->minimum_cycles,
+							       result->clock_frequency_hz),
+				profile_cycles_to_microseconds(summary->percentile_50_cycles,
+							       result->clock_frequency_hz),
+				profile_cycles_to_microseconds(summary->percentile_95_cycles,
+							       result->clock_frequency_hz),
+				profile_cycles_to_microseconds(summary->percentile_99_cycles,
+							       result->clock_frequency_hz),
+				profile_cycles_to_microseconds(summary->maximum_cycles,
+							       result->clock_frequency_hz),
+				summary->budget_violation_count);
+		}
+
+		for (size_t metric = 0U; metric < PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT;
+		     ++metric) {
+			const struct picosystem_physics_profile_work_summary *const summary =
+				&mode_result->work[metric];
+			shell_print(shell, "PROFILE_WORK mode=%s metric=%s total=%llu max=%u",
+				    mode_name, picosystem_physics_profile_work_name(metric),
+				    (unsigned long long)summary->total, summary->maximum);
+		}
+	}
+}
+
+static int run_physics_profile(const struct shell *shell, uint16_t chain_link_count,
+			       uint32_t measured_tick_count)
+{
+	struct picosystem_game_control_state state;
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
+	};
+	int err = picosystem_game_control_submit(&request, &state);
+	if (err != 0) {
+		shell_error(shell, "Could not query simulation state (%d)", err);
+		return err;
+	}
+	if (!state.paused) {
+		shell_error(shell, "Pause the simulation before profiling");
+		return -EBUSY;
+	}
+
+	if (chain_link_count == 0U) {
+		shell_print(
+			shell,
+			"Running canonical grid/reference replay for %u measured ticks per mode",
+			measured_tick_count);
+		err = picosystem_physics_profile_compare(measured_tick_count, &profile_result);
+	} else {
+		shell_print(shell,
+			    "Running %u-link chain grid/reference replay for %u measured ticks per "
+			    "mode",
+			    chain_link_count, measured_tick_count);
+		err = picosystem_physics_profile_compare_chain(
+			chain_link_count, measured_tick_count, &profile_result);
+	}
+	if ((err == 0) || (err == -EILSEQ)) {
+		print_profile_result(shell, &profile_result);
+		size_t unused_stack_bytes;
+		const int stack_err =
+			k_thread_stack_space_get(k_current_get(), &unused_stack_bytes);
+		if (stack_err == 0) {
+			shell_print(shell,
+				    "PROFILE_RESOURCE shell_stack_used_bytes=%u "
+				    "shell_stack_size_bytes=%u",
+				    CONFIG_SHELL_STACK_SIZE - (uint32_t)unused_stack_bytes,
+				    CONFIG_SHELL_STACK_SIZE);
+		} else if (err == 0) {
+			err = stack_err;
+		}
+		shell_print(shell, "PROFILE_END hashes_match=%s states_match=%s",
+			    profile_result.hashes_match ? "yes" : "no",
+			    profile_result.states_match ? "yes" : "no");
+	}
+	if (err != 0) {
+		shell_error(shell, "Physics profile comparison failed (%d)", err);
+	}
+	return err;
+}
+
+static int cmd_profile_compare(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t measured_tick_count = PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS;
+	if (argc == 2U) {
+		const int parse_err =
+			parse_u32(shell, "measured tick count", argv[1], &measured_tick_count);
+		if (parse_err != 0) {
+			return parse_err;
+		}
+	}
+	if ((measured_tick_count == 0U) ||
+	    (measured_tick_count > PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS)) {
+		shell_error(shell, "Measured tick count must be 1-%u",
+			    PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS);
+		return -ERANGE;
+	}
+
+	return run_physics_profile(shell, 0U, measured_tick_count);
+}
+
+static int cmd_profile_chain(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t link_count;
+	int err = parse_u32(shell, "chain link count", argv[1], &link_count);
+	if (err != 0) {
+		return err;
+	}
+	if ((link_count < PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MIN_LINKS) ||
+	    (link_count > PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MAX_LINKS)) {
+		shell_error(shell, "Chain link count must be %u-%u",
+			    PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MIN_LINKS,
+			    PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MAX_LINKS);
+		return -ERANGE;
+	}
+
+	uint32_t measured_tick_count = PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS;
+	if (argc == 3U) {
+		err = parse_u32(shell, "measured tick count", argv[2], &measured_tick_count);
+		if (err != 0) {
+			return err;
+		}
+	}
+	if ((measured_tick_count == 0U) ||
+	    (measured_tick_count > PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS)) {
+		shell_error(shell, "Measured tick count must be 1-%u",
+			    PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS);
+		return -ERANGE;
+	}
+
+	return run_physics_profile(shell, (uint16_t)link_count, measured_tick_count);
+}
+
 static int cmd_reboot_bootloader(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -702,6 +1176,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      1, 0),
 	SHELL_CMD_ARG(checksum, NULL, "Checksum the coherent presented framebuffer.",
 		      cmd_display_checksum, 1, 0),
+	SHELL_CMD_ARG(profile, NULL,
+		      SHELL_HELP("Profile dense display workloads.",
+				 "[samples] (default 16, maximum 64; simulation must be paused)"),
+		      cmd_display_profile, 1, 1),
 	SHELL_CMD_ARG(stats, NULL, "Show framebuffer, timing, and game-loop metrics.",
 		      cmd_display_stats, 1, 0),
 	SHELL_CMD_ARG(sync, NULL,
@@ -737,6 +1215,36 @@ SHELL_STATIC_SUBCMD_SET_CREATE(reboot_commands,
 			       SHELL_SUBCMD_SET_END);
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
+	profile_commands,
+	SHELL_CMD_ARG(chain, NULL,
+		      SHELL_HELP("Compare a deterministic revolute-chain fixture.",
+				 "<links> [ticks] (links 1-8, default 2000 ticks; simulation must "
+				 "be paused)"),
+		      cmd_profile_chain, 2, 1),
+	SHELL_CMD_ARG(
+		compare, NULL,
+		SHELL_HELP("Compare isolated grid and brute-force physics replays.",
+			   "[ticks] (default 2000, maximum 10000; simulation must be paused)"),
+		cmd_profile_compare, 1, 1),
+	SHELL_SUBCMD_SET_END);
+
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	core1_commands,
+	SHELL_CMD_ARG(ping, NULL, SHELL_HELP("Run a shared-memory round trip.", "[challenge]"),
+		      cmd_core1_ping, 1, 1),
+	SHELL_CMD_ARG(raster, NULL,
+		      SHELL_HELP("Compare deterministic core-0/core-1 raster output.",
+				 "[frame] (simulation must be paused)"),
+		      cmd_core1_raster, 1, 1),
+	SHELL_CMD_ARG(scene, NULL, "Compare the current live scene raster on core 0 and core 1.",
+		      cmd_core1_scene, 1, 0),
+	SHELL_CMD_ARG(status, NULL, "Show auxiliary-core protocol and stack health.",
+		      cmd_core1_status, 1, 0),
+	SHELL_SUBCMD_SET_END);
+#endif
+
+SHELL_STATIC_SUBCMD_SET_CREATE(
 	picosystem_commands,
 	SHELL_CMD_ARG(status, NULL, "Show a coherent board-state snapshot.", cmd_status, 1, 0),
 	SHELL_CMD_ARG(buttons, NULL, "Show the currently pressed buttons.", cmd_buttons, 1, 0),
@@ -750,8 +1258,12 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 				 "<frequency_hz> <duration_ms>\n"
 				 "Frequency: 100-4000 Hz; duration: 1-1000 ms."),
 		      cmd_tone, 3, 0),
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+	SHELL_CMD(core1, &core1_commands, "RP2040 auxiliary-core diagnostics.", NULL),
+#endif
 	SHELL_CMD(display, &display_commands, "Display diagnostic commands.", NULL),
 	SHELL_CMD(game, &game_commands, "Game-loop diagnostic commands.", NULL),
+	SHELL_CMD(profile, &profile_commands, "Physics profiling commands.", NULL),
 	SHELL_CMD(reboot, &reboot_commands, "Reboot commands.", NULL), SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(picosystem, &picosystem_commands, "PicoSystem diagnostics.", NULL);

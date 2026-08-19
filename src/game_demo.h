@@ -10,6 +10,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+#include "core1_runtime.h"
+#endif
+#include "display_profile.h"
 #include "game_world.h"
 #include "graphics.h"
 
@@ -49,7 +53,13 @@ struct picosystem_game_demo_stats {
 	uint32_t measured_presented_frame_count;
 	uint32_t full_redraw_count;
 	uint32_t last_render_time_us;
+	uint32_t last_raster_time_us;
+	uint32_t maximum_raster_time_us;
+	uint32_t core1_raster_frame_count;
 	uint32_t max_dirty_render_time_us;
+	uint32_t last_dirty_present_time_us;
+	uint32_t last_dirty_pixel_count;
+	uint16_t last_dirty_region_count;
 	uint32_t last_snapshot_age_us;
 	uint32_t max_dirty_snapshot_age_us;
 	uint32_t render_stack_size_bytes;
@@ -60,6 +70,8 @@ struct picosystem_game_demo_stats {
 	int32_t focus_angular_velocity_milliradians_per_second;
 	uint16_t body_count;
 	uint16_t static_segment_count;
+	uint16_t distance_joint_count;
+	uint16_t revolute_joint_count;
 	uint16_t contact_count;
 	uint16_t occupied_grid_cell_count;
 	uint16_t focus_body_id;
@@ -74,6 +86,9 @@ struct picosystem_game_demo_stats {
 	bool broad_phase_fallback;
 	int64_t start_uptime_ms;
 	int render_error;
+	bool last_raster_on_core1;
+	bool core1_renderer_available;
+	bool full_frame_renderer_enabled;
 	bool render_thread_running;
 };
 
@@ -84,6 +99,28 @@ struct picosystem_game_framebuffer_capture {
 	uint16_t width;
 	uint16_t height;
 };
+
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+struct picosystem_game_core1_raster_verification {
+	struct picosystem_core1_dense_result timing;
+	uint32_t frame_index;
+	uint32_t original_crc32;
+	uint32_t core0_crc32;
+	uint32_t core1_crc32;
+	uint32_t restored_crc32;
+	bool pixels_match;
+	bool framebuffer_restored;
+};
+
+struct picosystem_game_core1_scene_verification {
+	struct picosystem_core1_scene_result timing;
+	uint32_t core0_crc32;
+	uint32_t core1_crc32;
+	uint32_t restored_crc32;
+	bool pixels_match;
+	bool framebuffer_restored;
+};
+#endif
 
 /* Initialize graphics, publish the initial state, and start the renderer. */
 int picosystem_game_demo_init(struct picosystem_game_demo_state *state);
@@ -121,6 +158,20 @@ uint32_t picosystem_game_demo_state_hash(const struct picosystem_game_demo_state
 int picosystem_game_demo_capture_framebuffer(picosystem_graphics_framebuffer_visitor visitor,
 					     void *context,
 					     struct picosystem_game_framebuffer_capture *capture);
+
+#if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
+/* Compare core-0 and core-1 raster output, then restore the currently presented game frame. */
+int picosystem_game_demo_verify_core1_raster(
+	uint32_t frame_index, struct picosystem_game_core1_raster_verification *verification);
+
+/* Compare the current live-scene raster on both cores without changing the visible scene. */
+int picosystem_game_demo_verify_core1_scene(
+	struct picosystem_game_core1_scene_verification *verification);
+#endif
+
+/* Profile destructive display workloads, then restore the coherent presented game frame. */
+int picosystem_game_demo_profile_display(uint32_t measured_sample_count,
+					 struct picosystem_display_profile_result *result);
 
 /* Return a fatal renderer error, or zero while the worker remains healthy. */
 int picosystem_game_demo_renderer_error(void);

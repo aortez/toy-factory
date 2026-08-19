@@ -43,3 +43,6 @@ jobs:
 
       - name: Build PIO and DMA firmware variant
         run: make check-pio-dma
+
+      - name: Build PL022 and DMA firmware variant
+        run: make check-pl022-dma

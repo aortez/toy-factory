@@ -1,0 +1,872 @@
+{
+  "benchmark": "dense-display-throughput",
+  "cases": {
+    "band-10": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 10,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 1475,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": 30567,
+            "meets_mean_budget": true
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": 13900,
+            "meets_mean_budget": true
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 60.625,
+        "mean_te_paced_frames_per_second": 59.63,
+        "mean_time_above_configured_bus_ideal_us": 958,
+        "mean_unpaced_draw_plus_present_us": 2766,
+        "mean_unpaced_frames_per_second": 361.533
+      },
+      "display_writes_per_frame": 1,
+      "final_framebuffer_crc32": "c2398eb0",
+      "payload_bytes": 11520,
+      "stages": {
+        "draw": {
+          "maximum_us": 341,
+          "mean_us": 333,
+          "minimum_us": 330,
+          "p50_us": 333,
+          "p95_us": 341,
+          "p99_us": 341,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 2566,
+          "mean_us": 2433,
+          "minimum_us": 2400,
+          "p50_us": 2420,
+          "p95_us": 2566,
+          "p99_us": 2566,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 14077,
+          "mean_us": 13997,
+          "minimum_us": 13800,
+          "p50_us": 14012,
+          "p95_us": 14077,
+          "p99_us": 14077,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 16982,
+          "mean_us": 16770,
+          "minimum_us": 16577,
+          "p50_us": 16764,
+          "p95_us": 16982,
+          "p99_us": 16982,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "band-100": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 100,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 14746,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": 11451,
+            "meets_mean_budget": true
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": -5216,
+            "meets_mean_budget": false
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 80.911,
+        "mean_te_paced_frames_per_second": 29.804,
+        "mean_time_above_configured_bus_ideal_us": 3479,
+        "mean_unpaced_draw_plus_present_us": 21882,
+        "mean_unpaced_frames_per_second": 45.7
+      },
+      "display_writes_per_frame": 1,
+      "final_framebuffer_crc32": "600bb4b1",
+      "payload_bytes": 115200,
+      "stages": {
+        "draw": {
+          "maximum_us": 3858,
+          "mean_us": 3657,
+          "minimum_us": 3559,
+          "p50_us": 3577,
+          "p95_us": 3858,
+          "p99_us": 3858,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 18289,
+          "mean_us": 18225,
+          "minimum_us": 18193,
+          "p50_us": 18216,
+          "p95_us": 18289,
+          "p99_us": 18289,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 11780,
+          "mean_us": 11661,
+          "minimum_us": 11501,
+          "p50_us": 11691,
+          "p95_us": 11780,
+          "p99_us": 11780,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 33677,
+          "mean_us": 33552,
+          "minimum_us": 33428,
+          "p50_us": 33548,
+          "p95_us": 33677,
+          "p99_us": 33677,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "band-25": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 25,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 3687,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": 27467,
+            "meets_mean_budget": true
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": 10800,
+            "meets_mean_budget": true
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 73.053,
+        "mean_te_paced_frames_per_second": 59.616,
+        "mean_time_above_configured_bus_ideal_us": 1360,
+        "mean_unpaced_draw_plus_present_us": 5866,
+        "mean_unpaced_frames_per_second": 170.474
+      },
+      "display_writes_per_frame": 1,
+      "final_framebuffer_crc32": "c3a391d0",
+      "payload_bytes": 28800,
+      "stages": {
+        "draw": {
+          "maximum_us": 820,
+          "mean_us": 819,
+          "minimum_us": 817,
+          "p50_us": 819,
+          "p95_us": 820,
+          "p99_us": 820,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 5124,
+          "mean_us": 5047,
+          "minimum_us": 5020,
+          "p50_us": 5036,
+          "p95_us": 5124,
+          "p99_us": 5124,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 10955,
+          "mean_us": 10901,
+          "minimum_us": 10777,
+          "p50_us": 10906,
+          "p95_us": 10955,
+          "p99_us": 10955,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 16901,
+          "mean_us": 16774,
+          "minimum_us": 16637,
+          "p50_us": 16770,
+          "p95_us": 16901,
+          "p99_us": 16901,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "band-50": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 50,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 7373,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": 21885,
+            "meets_mean_budget": true
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": 5218,
+            "meets_mean_budget": true
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 78.021,
+        "mean_te_paced_frames_per_second": 59.634,
+        "mean_time_above_configured_bus_ideal_us": 2077,
+        "mean_unpaced_draw_plus_present_us": 11448,
+        "mean_unpaced_frames_per_second": 87.352
+      },
+      "display_writes_per_frame": 1,
+      "final_framebuffer_crc32": "5903fe66",
+      "payload_bytes": 57600,
+      "stages": {
+        "draw": {
+          "maximum_us": 2242,
+          "mean_us": 1998,
+          "minimum_us": 1938,
+          "p50_us": 1950,
+          "p95_us": 2242,
+          "p99_us": 2242,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 9480,
+          "mean_us": 9450,
+          "minimum_us": 9428,
+          "p50_us": 9446,
+          "p95_us": 9480,
+          "p99_us": 9480,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 5407,
+          "mean_us": 5314,
+          "minimum_us": 5102,
+          "p50_us": 5343,
+          "p95_us": 5407,
+          "p99_us": 5407,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 16842,
+          "mean_us": 16769,
+          "minimum_us": 16699,
+          "p50_us": 16764,
+          "p95_us": 16842,
+          "p99_us": 16842,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "band-75": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 75,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 11060,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": 16642,
+            "meets_mean_budget": true
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": -25,
+            "meets_mean_budget": false
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 79.931,
+        "mean_te_paced_frames_per_second": 41.456,
+        "mean_time_above_configured_bus_ideal_us": 2777,
+        "mean_unpaced_draw_plus_present_us": 16691,
+        "mean_unpaced_frames_per_second": 59.913
+      },
+      "display_writes_per_frame": 1,
+      "final_framebuffer_crc32": "c5ad533b",
+      "payload_bytes": 86400,
+      "stages": {
+        "draw": {
+          "maximum_us": 3124,
+          "mean_us": 2854,
+          "minimum_us": 2739,
+          "p50_us": 2769,
+          "p95_us": 3124,
+          "p99_us": 3124,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 13895,
+          "mean_us": 13837,
+          "minimum_us": 13798,
+          "p50_us": 13827,
+          "p95_us": 13895,
+          "p99_us": 13895,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 16847,
+          "mean_us": 7425,
+          "minimum_us": 147,
+          "p50_us": 205,
+          "p95_us": 16847,
+          "p99_us": 16847,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 33689,
+          "mean_us": 24122,
+          "minimum_us": 16709,
+          "p50_us": 16790,
+          "p95_us": 33689,
+          "p99_us": 33689,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "dense-100": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 100,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 14746,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": 1659,
+            "meets_mean_budget": true
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": -15008,
+            "meets_mean_budget": false
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 80.456,
+        "mean_te_paced_frames_per_second": 29.805,
+        "mean_time_above_configured_bus_ideal_us": 3582,
+        "mean_unpaced_draw_plus_present_us": 31674,
+        "mean_unpaced_frames_per_second": 31.572
+      },
+      "display_writes_per_frame": 1,
+      "final_framebuffer_crc32": "3f20a72f",
+      "payload_bytes": 115200,
+      "stages": {
+        "draw": {
+          "maximum_us": 13557,
+          "mean_us": 13346,
+          "minimum_us": 13171,
+          "p50_us": 13244,
+          "p95_us": 13557,
+          "p99_us": 13557,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 18386,
+          "mean_us": 18328,
+          "minimum_us": 18291,
+          "p50_us": 18323,
+          "p95_us": 18386,
+          "p99_us": 18386,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 2034,
+          "mean_us": 1870,
+          "minimum_us": 1689,
+          "p50_us": 1936,
+          "p95_us": 2034,
+          "p99_us": 2034,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 33639,
+          "mean_us": 33551,
+          "minimum_us": 33475,
+          "p50_us": 33535,
+          "p95_us": 33639,
+          "p99_us": 33639,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "full-100": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 1,
+      "coverage_percent": 100,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 14746,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": 13331,
+            "meets_mean_budget": true
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": -3336,
+            "meets_mean_budget": false
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 80.982,
+        "mean_te_paced_frames_per_second": 29.801,
+        "mean_time_above_configured_bus_ideal_us": 3463,
+        "mean_unpaced_draw_plus_present_us": 20002,
+        "mean_unpaced_frames_per_second": 49.995
+      },
+      "display_writes_per_frame": 1,
+      "final_framebuffer_crc32": "7875d8ac",
+      "payload_bytes": 115200,
+      "stages": {
+        "draw": {
+          "maximum_us": 1945,
+          "mean_us": 1793,
+          "minimum_us": 1617,
+          "p50_us": 1916,
+          "p95_us": 1945,
+          "p99_us": 1945,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 18255,
+          "mean_us": 18209,
+          "minimum_us": 18170,
+          "p50_us": 18202,
+          "p95_us": 18255,
+          "p99_us": 18255,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 13791,
+          "mean_us": 13546,
+          "minimum_us": 13313,
+          "p50_us": 13469,
+          "p95_us": 13791,
+          "p99_us": 13791,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 33664,
+          "mean_us": 33556,
+          "minimum_us": 33444,
+          "p50_us": 33540,
+          "p95_us": 33664,
+          "p99_us": 33664,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "tiles-10": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 10,
+      "coverage_percent": 10,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 1475,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": 23580,
+            "meets_mean_budget": true
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": 6913,
+            "meets_mean_budget": true
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 15.742,
+        "mean_te_paced_frames_per_second": 59.63,
+        "mean_time_above_configured_bus_ideal_us": 7895,
+        "mean_unpaced_draw_plus_present_us": 9753,
+        "mean_unpaced_frames_per_second": 102.533
+      },
+      "display_writes_per_frame": 10,
+      "final_framebuffer_crc32": "88b0778d",
+      "payload_bytes": 11520,
+      "stages": {
+        "draw": {
+          "maximum_us": 383,
+          "mean_us": 383,
+          "minimum_us": 380,
+          "p50_us": 383,
+          "p95_us": 383,
+          "p99_us": 383,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 9595,
+          "mean_us": 9370,
+          "minimum_us": 9130,
+          "p50_us": 9363,
+          "p95_us": 9595,
+          "p99_us": 9595,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 7244,
+          "mean_us": 7010,
+          "minimum_us": 6799,
+          "p50_us": 7005,
+          "p95_us": 7244,
+          "p99_us": 7244,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 17229,
+          "mean_us": 16770,
+          "minimum_us": 16522,
+          "p50_us": 16746,
+          "p95_us": 17229,
+          "p99_us": 17229,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "tiles-100": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 100,
+      "coverage_percent": 100,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 14746,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": -63224,
+            "meets_mean_budget": false
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": -79891,
+            "meets_mean_budget": false
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 15.913,
+        "mean_te_paced_frames_per_second": 9.933,
+        "mean_time_above_configured_bus_ideal_us": 77920,
+        "mean_unpaced_draw_plus_present_us": 96557,
+        "mean_unpaced_frames_per_second": 10.357
+      },
+      "display_writes_per_frame": 100,
+      "final_framebuffer_crc32": "327fa90a",
+      "payload_bytes": 115200,
+      "stages": {
+        "draw": {
+          "maximum_us": 4127,
+          "mean_us": 3891,
+          "minimum_us": 3761,
+          "p50_us": 3761,
+          "p95_us": 4127,
+          "p99_us": 4127,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 92951,
+          "mean_us": 92666,
+          "minimum_us": 92489,
+          "p50_us": 92651,
+          "p95_us": 92951,
+          "p99_us": 92951,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 4426,
+          "mean_us": 4107,
+          "minimum_us": 3797,
+          "p50_us": 4088,
+          "p95_us": 4426,
+          "p99_us": 4426,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 100948,
+          "mean_us": 100672,
+          "minimum_us": 100272,
+          "p50_us": 100648,
+          "p95_us": 100948,
+          "p99_us": 100948,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "tiles-25": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 25,
+      "coverage_percent": 25,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 3687,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": 9092,
+            "meets_mean_budget": true
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": -7575,
+            "meets_mean_budget": false
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 15.892,
+        "mean_te_paced_frames_per_second": 29.768,
+        "mean_time_above_configured_bus_ideal_us": 19514,
+        "mean_unpaced_draw_plus_present_us": 24241,
+        "mean_unpaced_frames_per_second": 41.252
+      },
+      "display_writes_per_frame": 25,
+      "final_framebuffer_crc32": "67eed020",
+      "payload_bytes": 28800,
+      "stages": {
+        "draw": {
+          "maximum_us": 1391,
+          "mean_us": 1040,
+          "minimum_us": 941,
+          "p50_us": 943,
+          "p95_us": 1391,
+          "p99_us": 1391,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 23766,
+          "mean_us": 23201,
+          "minimum_us": 22794,
+          "p50_us": 23178,
+          "p95_us": 23766,
+          "p99_us": 23766,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 9812,
+          "mean_us": 9344,
+          "minimum_us": 8772,
+          "p50_us": 9366,
+          "p95_us": 9812,
+          "p99_us": 9812,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 34167,
+          "mean_us": 33593,
+          "minimum_us": 32914,
+          "p50_us": 33552,
+          "p95_us": 34167,
+          "p99_us": 34167,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "tiles-50": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 50,
+      "coverage_percent": 50,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 7373,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": -14940,
+            "meets_mean_budget": false
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": -31607,
+            "meets_mean_budget": false
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 15.94,
+        "mean_te_paced_frames_per_second": 19.878,
+        "mean_time_above_configured_bus_ideal_us": 38881,
+        "mean_unpaced_draw_plus_present_us": 48273,
+        "mean_unpaced_frames_per_second": 20.716
+      },
+      "display_writes_per_frame": 50,
+      "final_framebuffer_crc32": "99649536",
+      "payload_bytes": 57600,
+      "stages": {
+        "draw": {
+          "maximum_us": 2357,
+          "mean_us": 2019,
+          "minimum_us": 1879,
+          "p50_us": 1879,
+          "p95_us": 2357,
+          "p99_us": 2357,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 46907,
+          "mean_us": 46254,
+          "minimum_us": 45836,
+          "p50_us": 46198,
+          "p95_us": 46907,
+          "p99_us": 46907,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 2621,
+          "mean_us": 2028,
+          "minimum_us": 1536,
+          "p50_us": 2048,
+          "p95_us": 2621,
+          "p99_us": 2621,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 50877,
+          "mean_us": 50308,
+          "minimum_us": 49326,
+          "p50_us": 50199,
+          "p95_us": 50877,
+          "p99_us": 50877,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    },
+    "tiles-75": {
+      "all_samples_te_synchronized": true,
+      "application_regions_per_frame": 75,
+      "coverage_percent": 75,
+      "derived": {
+        "configured_bus_ideal_payload_time_us": 11060,
+        "frame_rate_budgets": {
+          "30_hz": {
+            "budget_us": 33333,
+            "mean_headroom_us": -39268,
+            "meets_mean_budget": false
+          },
+          "60_hz": {
+            "budget_us": 16666,
+            "mean_headroom_us": -55935,
+            "meets_mean_budget": false
+          }
+        },
+        "mean_configured_bus_efficiency_percent": 15.885,
+        "mean_te_paced_frames_per_second": 11.918,
+        "mean_time_above_configured_bus_ideal_us": 58567,
+        "mean_unpaced_draw_plus_present_us": 72601,
+        "mean_unpaced_frames_per_second": 13.774
+      },
+      "display_writes_per_frame": 75,
+      "final_framebuffer_crc32": "5b995c0f",
+      "payload_bytes": 86400,
+      "stages": {
+        "draw": {
+          "maximum_us": 3449,
+          "mean_us": 2974,
+          "minimum_us": 2819,
+          "p50_us": 2820,
+          "p95_us": 3449,
+          "p99_us": 3449,
+          "samples": 16
+        },
+        "present": {
+          "maximum_us": 70166,
+          "mean_us": 69627,
+          "minimum_us": 68863,
+          "p50_us": 69601,
+          "p95_us": 70166,
+          "p99_us": 70166,
+          "samples": 16
+        },
+        "te_wait": {
+          "maximum_us": 12510,
+          "mean_us": 11297,
+          "minimum_us": 10887,
+          "p50_us": 11220,
+          "p95_us": 12510,
+          "p99_us": 12510,
+          "samples": 16
+        },
+        "total": {
+          "maximum_us": 84872,
+          "mean_us": 83905,
+          "minimum_us": 83203,
+          "p50_us": 83874,
+          "p95_us": 84872,
+          "p99_us": 84872,
+          "samples": 16
+        }
+      },
+      "te_synchronized_samples": 16
+    }
+  },
+  "clock_frequency_hz": 125000000,
+  "dense_raster_breakdown": {
+    "attributed_mean_us": 13331,
+    "stages": {
+      "background": {
+        "maximum_us": 3898,
+        "mean_us": 3777,
+        "minimum_us": 3750,
+        "p50_us": 3771,
+        "p95_us": 3898,
+        "p99_us": 3898,
+        "samples": 16
+      },
+      "boxes": {
+        "maximum_us": 5851,
+        "mean_us": 5625,
+        "minimum_us": 5460,
+        "p50_us": 5528,
+        "p95_us": 5851,
+        "p99_us": 5851,
+        "samples": 16
+      },
+      "circles": {
+        "maximum_us": 2209,
+        "mean_us": 2201,
+        "minimum_us": 2195,
+        "p50_us": 2199,
+        "p95_us": 2209,
+        "p99_us": 2209,
+        "samples": 16
+      },
+      "links": {
+        "maximum_us": 1732,
+        "mean_us": 1728,
+        "minimum_us": 1724,
+        "p50_us": 1728,
+        "p95_us": 1732,
+        "p99_us": 1732,
+        "samples": 16
+      }
+    },
+    "unattributed_mean_us": 15
+  },
+  "display": {
+    "bytes_per_pixel": 2,
+    "configured_spi_frequency_hz": 62500000,
+    "framebuffer_bytes": 115200,
+    "height": 240,
+    "transport": "pl022-dma",
+    "width": 240
+  },
+  "resources": {
+    "shell_stack_size_bytes": 4096,
+    "shell_stack_used_bytes": 2076
+  },
+  "samples_per_case": 16,
+  "schema_version": 2,
+  "verification": {
+    "framebuffer_restored": true,
+    "original_framebuffer_crc32": "79b9fc8f",
+    "restored_framebuffer_crc32": "79b9fc8f"
+  },
+  "warmup_samples_per_case": 2
+}

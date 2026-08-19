@@ -8,7 +8,7 @@ import sys
 
 import serial
 
-from framebuffer_capture import CaptureError, capture_to_png
+from framebuffer_capture import CaptureError, DEFAULT_CAPTURE_TIMEOUT_SECONDS, capture_to_png
 from serial_shell import SerialShellError, SerialShellSession
 
 
@@ -16,7 +16,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("port", help="USB CDC ACM device")
     parser.add_argument("output", type=Path, help="PNG output path")
-    parser.add_argument("--timeout", type=float, default=60.0, help="transfer timeout in seconds")
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=DEFAULT_CAPTURE_TIMEOUT_SECONDS,
+        help="transfer timeout in seconds",
+    )
     parser.add_argument("--owner-uid", type=int, help="set the output owner UID")
     parser.add_argument("--owner-gid", type=int, help="set the output owner GID")
     return parser.parse_args()

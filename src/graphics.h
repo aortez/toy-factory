@@ -18,6 +18,13 @@
 
 typedef uint16_t picosystem_color_t;
 
+enum picosystem_graphics_transport {
+	PICOSYSTEM_GRAPHICS_TRANSPORT_PL022,
+	PICOSYSTEM_GRAPHICS_TRANSPORT_PL022_DMA,
+	PICOSYSTEM_GRAPHICS_TRANSPORT_PIO_POLLING,
+	PICOSYSTEM_GRAPHICS_TRANSPORT_PIO_DMA,
+};
+
 enum picosystem_color {
 	PICOSYSTEM_COLOR_BLACK = 0x0000U,
 	PICOSYSTEM_COLOR_DARK_BLUE = 0x0842U,
@@ -50,14 +57,19 @@ struct picosystem_graphics_stats {
 	int64_t last_present_start_uptime_ticks;
 	uint32_t framebuffer_bytes;
 	uint32_t transfer_buffer_bytes;
+	uint32_t configured_spi_frequency_hz;
 	uint32_t full_present_time_us;
 	uint32_t full_present_throughput_kib_per_second;
 	uint32_t last_present_time_us;
 	uint32_t last_present_throughput_kib_per_second;
+	uint32_t last_present_byte_count;
 	uint32_t present_count;
 	uint32_t full_present_count;
+	uint32_t display_write_count;
 	uint16_t last_present_width;
 	uint16_t last_present_height;
+	uint16_t last_present_write_count;
+	uint8_t transport;
 	bool ready;
 };
 
@@ -75,23 +87,42 @@ int picosystem_graphics_present_region(struct picosystem_graphics_stats *stats,
 				       const struct picosystem_rect *region);
 int picosystem_graphics_present_full(struct picosystem_graphics_stats *stats);
 
+const char *picosystem_graphics_transport_name(uint8_t transport);
+
 void picosystem_graphics_clear(picosystem_color_t color);
 void picosystem_graphics_draw_pixel(int16_t x, int16_t y, picosystem_color_t color);
+void picosystem_graphics_draw_pixel_clipped(const struct picosystem_rect *clip, int16_t x,
+					    int16_t y, picosystem_color_t color);
 void picosystem_graphics_fill_rect(int16_t x, int16_t y, uint16_t width, uint16_t height,
 				   picosystem_color_t color);
+void picosystem_graphics_fill_rect_clipped(const struct picosystem_rect *clip, int16_t x, int16_t y,
+					   uint16_t width, uint16_t height,
+					   picosystem_color_t color);
 void picosystem_graphics_draw_rect(int16_t x, int16_t y, uint16_t width, uint16_t height,
 				   picosystem_color_t color);
 void picosystem_graphics_draw_line(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
 				   picosystem_color_t color);
+void picosystem_graphics_draw_line_clipped(const struct picosystem_rect *clip, int16_t start_x,
+					   int16_t start_y, int16_t end_x, int16_t end_y,
+					   picosystem_color_t color);
 void picosystem_graphics_fill_triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2,
 				       int16_t y2, picosystem_color_t color);
+void picosystem_graphics_fill_triangle_clipped(const struct picosystem_rect *clip, int16_t x0,
+					       int16_t y0, int16_t x1, int16_t y1, int16_t x2,
+					       int16_t y2, picosystem_color_t color);
 int picosystem_graphics_fill_circle(int16_t center_x, int16_t center_y, uint16_t radius,
 				    picosystem_color_t color);
+int picosystem_graphics_fill_circle_clipped(const struct picosystem_rect *clip, int16_t center_x,
+					    int16_t center_y, uint16_t radius,
+					    picosystem_color_t color);
 int picosystem_graphics_draw_mono_sprite(int16_t x, int16_t y,
 					 const struct picosystem_mono_sprite *sprite,
 					 picosystem_color_t color);
 int picosystem_graphics_draw_text(int16_t x, int16_t y, const char *text, uint8_t scale,
 				  picosystem_color_t color);
+int picosystem_graphics_draw_text_clipped(const struct picosystem_rect *clip, int16_t x, int16_t y,
+					  const char *text, uint8_t scale,
+					  picosystem_color_t color);
 
 /* Visit the native RGB565 big-endian framebuffer. The caller serializes rendering. */
 int picosystem_graphics_visit_framebuffer(size_t chunk_bytes,

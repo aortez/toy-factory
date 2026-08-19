@@ -1,5 +1,40 @@
+# Copyright (c) 2026 Toy Factory contributors
 # SPDX-License-Identifier: Apache-2.0
 
 mainmenu "Toy Factory"
 
 source "Kconfig.zephyr"
+
+menu "Toy Factory"
+
+config TOY_FACTORY_CORE1_RUNTIME
+	bool "Enable the RP2040 auxiliary-core runtime"
+	default y
+	depends on SOC_RP2040
+	help
+	  Reserve the RP2040's two 4 KiB auxiliary SRAM banks and launch core 1 as
+	  a bounded bare-metal worker. Zephyr and all device drivers remain on
+	  core 0.
+
+config TOY_FACTORY_CORE1_FULL_FRAME_RENDERER
+	bool "Render every game frame on RP2040 core 1"
+	default y if SPI_PL022_DMA
+	depends on TOY_FACTORY_CORE1_RUNTIME
+	help
+	  Copy each immutable game snapshot to core 1 and rasterize a complete
+	  framebuffer there. Core 0 keeps ownership of Zephyr, physics, USB, TE
+	  timing, and the display DMA transfer. This defaults on for the PL022 DMA
+	  transport used by the high-throughput build; slower transports retain the
+	  damage-region renderer.
+
+config TOY_FACTORY_DISPLAY_DMA_HIGH_PRIORITY
+	bool "Prioritize display DMA on the RP2040 bus fabric"
+	default n
+	depends on SOC_RP2040 && DMA
+	help
+	  Give the RP2040 DMA read and write masters high bus-arbitration priority.
+	  This can reduce display-transfer jitter, but it can also delay both CPU
+	  cores' SRAM access enough to hurt the 120 Hz physics deadline. It is kept
+	  off by default and exists for controlled A/B measurements.
+
+endmenu

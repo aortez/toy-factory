@@ -17,7 +17,15 @@ from pathlib import Path
 for path in sorted(Path("scripts/container").glob("*.py")):
     compile(path.read_text(), str(path), "exec")
 PY
+for profile in benchmarks/physics-profile/*.json; do
+	python3 -m json.tool "$profile" >/dev/null
+done
+for profile in benchmarks/display-throughput/*.json; do
+	python3 -m json.tool "$profile" >/dev/null
+done
 python3 scripts/tests/framebuffer-capture-test.py
+python3 scripts/tests/profile-compare-test.py
+python3 scripts/tests/render-profile-test.py
 python3 scripts/tests/sequence-runner-test.py
 python3 scripts/tests/serial-command-test.py
 git diff --check

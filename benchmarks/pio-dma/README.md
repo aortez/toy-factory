@@ -1,5 +1,8 @@
 # RP2040 PIO/DMA display benchmark
 
+For the newer multi-coverage and multi-frequency hardware matrix, see the
+[dense-display throughput report](../display-throughput/README.md).
+
 This benchmark replaces the PicoSystem's hardware SPI0/PL022 display transport
 with Zephyr's `raspberrypi,pico-spi-pio` driver on PIO0. The DMA variant adds
 two RP2040 DMA channels using Zephyr's existing PIO SPI DMA support. The default

@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "physics_world.h"
 
@@ -13,6 +14,13 @@
 #define RATIO(numerator, denominator) PICOSYSTEM_PHYSICS_FIXED_RATIO(numerator, denominator)
 
 static const struct picosystem_physics_vector no_acceleration = {0};
+
+static uint32_t fake_clock_now(void *context)
+{
+	uint32_t *const cycles = context;
+	*cycles += 10U;
+	return *cycles;
+}
 
 static struct picosystem_physics_circle_config circle_config(uint16_t id, int32_t x, int32_t y,
 							     int32_t radius)
@@ -48,6 +56,27 @@ static struct picosystem_physics_segment_config horizontal_segment(uint16_t id, 
 		.restitution = RATIO(3, 4),
 		.friction = RATIO(1, 5),
 		.id = id,
+	};
+}
+
+static struct picosystem_physics_distance_joint_config
+distance_joint_config(uint16_t id, uint16_t body_a_id, uint16_t body_b_id, int32_t target_distance)
+{
+	return (struct picosystem_physics_distance_joint_config){
+		.target_distance = FIXED(target_distance),
+		.id = id,
+		.body_a_id = body_a_id,
+		.body_b_id = body_b_id,
+	};
+}
+
+static struct picosystem_physics_revolute_joint_config
+revolute_joint_config(uint16_t id, uint16_t body_a_id, uint16_t body_b_id)
+{
+	return (struct picosystem_physics_revolute_joint_config){
+		.id = id,
+		.body_a_id = body_a_id,
+		.body_b_id = body_b_id,
 	};
 }
 
@@ -106,15 +135,108 @@ static void assert_contact_equal(const struct picosystem_physics_contact *left,
 	assert(left->type == right->type);
 }
 
+static void assert_distance_joint_equal(const struct picosystem_physics_distance_joint *left,
+					const struct picosystem_physics_distance_joint *right)
+{
+	assert_vector_equal(&left->local_anchor_a, &right->local_anchor_a);
+	assert_vector_equal(&left->anchor_b, &right->anchor_b);
+	assert(left->target_distance == right->target_distance);
+	assert(left->id == right->id);
+	assert(left->body_a_id == right->body_a_id);
+	assert(left->body_b_id == right->body_b_id);
+	assert(left->body_a_index == right->body_a_index);
+	assert(left->body_b_index == right->body_b_index);
+	assert_vector_equal(&left->world_anchor_a, &right->world_anchor_a);
+	assert_vector_equal(&left->world_anchor_b, &right->world_anchor_b);
+	assert_vector_equal(&left->normal, &right->normal);
+	assert(left->direction_inverse_mass == right->direction_inverse_mass);
+	assert(left->accumulated_impulse == right->accumulated_impulse);
+}
+
+static void assert_revolute_joint_equal(const struct picosystem_physics_revolute_joint *left,
+					const struct picosystem_physics_revolute_joint *right)
+{
+	assert_vector_equal(&left->local_anchor_a, &right->local_anchor_a);
+	assert_vector_equal(&left->anchor_b, &right->anchor_b);
+	assert(left->id == right->id);
+	assert(left->body_a_id == right->body_a_id);
+	assert(left->body_b_id == right->body_b_id);
+	assert(left->body_a_index == right->body_a_index);
+	assert(left->body_b_index == right->body_b_index);
+	assert(left->collide_connected == right->collide_connected);
+	assert_vector_equal(&left->world_anchor_a, &right->world_anchor_a);
+	assert_vector_equal(&left->world_anchor_b, &right->world_anchor_b);
+	assert_vector_equal(&left->accumulated_impulse, &right->accumulated_impulse);
+	assert(left->effective_mass_xx == right->effective_mass_xx);
+	assert(left->effective_mass_xy == right->effective_mass_xy);
+	assert(left->effective_mass_yy == right->effective_mass_yy);
+	assert(left->effective_mass_valid == right->effective_mass_valid);
+}
+
+static uint64_t vector_distance_squared(const struct picosystem_physics_vector *left,
+					const struct picosystem_physics_vector *right)
+{
+	const int64_t x = (int64_t)right->x - left->x;
+	const int64_t y = (int64_t)right->y - left->y;
+	return (uint64_t)((x * x) + (y * y));
+}
+
+static void assert_distance_between(const struct picosystem_physics_vector *left,
+				    const struct picosystem_physics_vector *right,
+				    picosystem_physics_fixed_t minimum,
+				    picosystem_physics_fixed_t maximum)
+{
+	const uint64_t distance_squared = vector_distance_squared(left, right);
+	const uint64_t minimum_squared = (uint64_t)((int64_t)minimum * minimum);
+	const uint64_t maximum_squared = (uint64_t)((int64_t)maximum * maximum);
+	assert(distance_squared >= minimum_squared);
+	assert(distance_squared <= maximum_squared);
+}
+
 static void assert_step_matches_reference(const struct picosystem_physics_world *grid,
 					  const struct picosystem_physics_world *reference)
 {
 	assert(grid->body_count == reference->body_count);
 	assert(grid->static_segment_count == reference->static_segment_count);
+	assert(grid->distance_joint_count == reference->distance_joint_count);
+	assert(grid->revolute_joint_count == reference->revolute_joint_count);
 	assert(grid->contact_count == reference->contact_count);
 	assert(grid->last_possible_pair_count == reference->last_possible_pair_count);
 	assert(reference->last_candidate_pair_count == reference->last_possible_pair_count);
 	assert(grid->last_solver_iteration_count == reference->last_solver_iteration_count);
+	assert(grid->last_work.possible_pair_count == reference->last_work.possible_pair_count);
+	assert(grid->last_work.candidate_pair_count == grid->last_candidate_pair_count);
+	assert(reference->last_work.candidate_pair_count ==
+	       reference->last_work.possible_pair_count);
+	assert(grid->last_work.body_body_narrow_phase_test_count +
+		       grid->last_work.body_segment_narrow_phase_test_count +
+		       grid->last_work.joint_collision_filter_count ==
+	       grid->last_work.candidate_pair_count);
+	assert(reference->last_work.body_body_narrow_phase_test_count +
+		       reference->last_work.body_segment_narrow_phase_test_count +
+		       reference->last_work.joint_collision_filter_count ==
+	       reference->last_work.candidate_pair_count);
+	assert(grid->last_work.joint_collision_filter_count ==
+	       reference->last_work.joint_collision_filter_count);
+	assert(grid->last_work.manifold_count == reference->last_work.manifold_count);
+	assert(grid->last_work.contact_point_count == reference->last_work.contact_point_count);
+	assert(grid->last_work.position_correction_visit_count ==
+	       reference->last_work.position_correction_visit_count);
+	assert(grid->last_work.solver_iteration_count ==
+	       reference->last_work.solver_iteration_count);
+	assert(grid->last_work.solver_contact_visit_count ==
+	       reference->last_work.solver_contact_visit_count);
+	assert(grid->last_work.solver_changed_contact_count ==
+	       reference->last_work.solver_changed_contact_count);
+	assert(grid->last_work.distance_joint_count == reference->last_work.distance_joint_count);
+	assert(grid->last_work.revolute_joint_count == reference->last_work.revolute_joint_count);
+	assert(grid->last_work.joint_position_correction_visit_count ==
+	       reference->last_work.joint_position_correction_visit_count);
+	assert(grid->last_work.joint_solver_visit_count ==
+	       reference->last_work.joint_solver_visit_count);
+	assert(grid->last_work.joint_solver_changed_count ==
+	       reference->last_work.joint_solver_changed_count);
+	assert(reference->last_work.broad_phase_fallback_count == 0U);
 	assert(picosystem_physics_world_hash(grid) == picosystem_physics_world_hash(reference));
 
 	for (uint16_t index = 0U; index < grid->body_count; ++index) {
@@ -122,6 +244,14 @@ static void assert_step_matches_reference(const struct picosystem_physics_world 
 	}
 	for (uint16_t index = 0U; index < grid->contact_count; ++index) {
 		assert_contact_equal(&grid->contacts[index], &reference->contacts[index]);
+	}
+	for (uint16_t index = 0U; index < grid->distance_joint_count; ++index) {
+		assert_distance_joint_equal(&grid->distance_joints[index],
+					    &reference->distance_joints[index]);
+	}
+	for (uint16_t index = 0U; index < grid->revolute_joint_count; ++index) {
+		assert_revolute_joint_equal(&grid->revolute_joints[index],
+					    &reference->revolute_joints[index]);
 	}
 }
 
@@ -204,6 +334,395 @@ static void test_duplicate_ids_and_invalid_segments(void)
 	world.static_segments[0].normal.x = PICOSYSTEM_PHYSICS_FIXED_ONE;
 	world.static_segments[0].normal.y = 0;
 	assert(picosystem_physics_world_step(&world, &no_acceleration) == -ERANGE);
+}
+
+static void test_distance_joint_boundaries_and_endpoints(void)
+{
+	struct picosystem_physics_world world;
+	init_world(&world, FIXED(4));
+	struct picosystem_physics_box_config box = box_config(1U, 10, 20, 2, 1);
+	box.angle_turns = PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN;
+	const struct picosystem_physics_circle_config circle = circle_config(2U, 30, 40, 3);
+	assert(picosystem_physics_world_add_box(&world, &box) == 0);
+	assert(picosystem_physics_world_add_circle(&world, &circle) == 0);
+
+	assert(picosystem_physics_world_add_distance_joint(NULL, NULL) == -EINVAL);
+	assert(picosystem_physics_world_add_distance_joint(&world, NULL) == -EINVAL);
+	struct picosystem_physics_distance_joint_config joint =
+		distance_joint_config(101U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 20);
+	joint.local_anchor_a.x = FIXED(2);
+	joint.anchor_b = (struct picosystem_physics_vector){.x = FIXED(30), .y = FIXED(40)};
+	assert(picosystem_physics_world_add_distance_joint(&world, &joint) == 0);
+	assert(world.distance_joint_count == 1U);
+	assert(world.distance_joints[0].body_a_index == 0U);
+	assert(world.distance_joints[0].body_b_index == UINT8_MAX);
+
+	struct picosystem_physics_vector anchor_a;
+	struct picosystem_physics_vector anchor_b;
+	assert(picosystem_physics_world_distance_joint_endpoints(&world, 0U, &anchor_a,
+								 &anchor_b) == 0);
+	assert(anchor_a.x == FIXED(10));
+	assert(anchor_a.y == FIXED(22));
+	assert(anchor_b.x == FIXED(30));
+	assert(anchor_b.y == FIXED(40));
+	assert(picosystem_physics_world_distance_joint_endpoints(NULL, 0U, &anchor_a, &anchor_b) ==
+	       -EINVAL);
+	assert(picosystem_physics_world_distance_joint_endpoints(&world, 0U, NULL, &anchor_b) ==
+	       -EINVAL);
+	assert(picosystem_physics_world_distance_joint_endpoints(&world, 1U, &anchor_a,
+								 &anchor_b) == -ENOENT);
+
+	const uint32_t one_joint_hash = picosystem_physics_world_hash(&world);
+	assert(picosystem_physics_world_add_distance_joint(&world, &joint) == -EEXIST);
+	assert(picosystem_physics_world_hash(&world) == one_joint_hash);
+
+	struct picosystem_physics_distance_joint_config invalid = joint;
+	invalid.id = 0U;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 102U;
+	invalid.body_a_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 102U;
+	invalid.body_b_id = invalid.body_a_id;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 102U;
+	invalid.target_distance = 0;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 102U;
+	invalid.target_distance = FIXED(257);
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 102U;
+	invalid.local_anchor_a.x = INT32_MAX;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 102U;
+	invalid.local_anchor_a.x = FIXED(3);
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 102U;
+	invalid.anchor_b.x = INT32_MAX;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	assert(picosystem_physics_world_hash(&world) == one_joint_hash);
+
+	struct picosystem_physics_distance_joint_config missing =
+		distance_joint_config(102U, 99U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 1);
+	assert(picosystem_physics_world_add_distance_joint(&world, &missing) == -ENOENT);
+	missing.body_a_id = 1U;
+	missing.body_b_id = 99U;
+	assert(picosystem_physics_world_add_distance_joint(&world, &missing) == -ENOENT);
+
+	joint = distance_joint_config(102U, 1U, 2U, 10);
+	joint.anchor_b.x = FIXED(4);
+	assert(picosystem_physics_world_add_distance_joint(&world, &joint) == -ERANGE);
+	joint.anchor_b = (struct picosystem_physics_vector){.x = FIXED(1), .y = FIXED(-2)};
+	assert(picosystem_physics_world_add_distance_joint(&world, &joint) == 0);
+	assert(picosystem_physics_world_distance_joint_endpoints(&world, 1U, &anchor_a,
+								 &anchor_b) == 0);
+	assert(anchor_a.x == FIXED(10));
+	assert(anchor_a.y == FIXED(20));
+	assert(anchor_b.x == FIXED(31));
+	assert(anchor_b.y == FIXED(38));
+
+	for (uint16_t index = world.distance_joint_count;
+	     index < PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS; ++index) {
+		joint = distance_joint_config((uint16_t)(101U + index), 2U,
+					      PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 1);
+		joint.anchor_b.x = FIXED(index);
+		assert(picosystem_physics_world_add_distance_joint(&world, &joint) == 0);
+	}
+	assert(world.distance_joint_count == PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS);
+	joint = distance_joint_config(200U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 1);
+	assert(picosystem_physics_world_add_distance_joint(&world, &joint) == -ENOSPC);
+
+	struct picosystem_physics_world corrupt = world;
+	corrupt.body_count = PICOSYSTEM_PHYSICS_MAX_BODIES + 1U;
+	assert(picosystem_physics_world_distance_joint_endpoints(&corrupt, 0U, &anchor_a,
+								 &anchor_b) == -ERANGE);
+	corrupt = world;
+	corrupt.distance_joint_count = PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS + 1U;
+	assert(picosystem_physics_world_distance_joint_endpoints(&corrupt, 0U, &anchor_a,
+								 &anchor_b) == -ERANGE);
+	corrupt = world;
+	corrupt.distance_joints[0].body_a_index = UINT8_MAX;
+	assert(picosystem_physics_world_distance_joint_endpoints(&corrupt, 0U, &anchor_a,
+								 &anchor_b) == -ERANGE);
+}
+
+static void test_distance_joint_dynamics(void)
+{
+	struct picosystem_physics_world pendulum;
+	init_world(&pendulum, FIXED(4));
+	struct picosystem_physics_circle_config bob = circle_config(1U, 30, 0, 2);
+	bob.velocity_per_tick.y = RATIO(1, 2);
+	assert(picosystem_physics_world_add_circle(&pendulum, &bob) == 0);
+	const struct picosystem_physics_distance_joint_config tether =
+		distance_joint_config(101U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 30);
+	assert(picosystem_physics_world_add_distance_joint(&pendulum, &tether) == 0);
+	const struct picosystem_physics_vector gravity = {.y = RATIO(1, 128)};
+	for (uint32_t step = 0U; step < 1000U; ++step) {
+		assert(picosystem_physics_world_step(&pendulum, &gravity) == 0);
+		struct picosystem_physics_vector endpoint_a;
+		struct picosystem_physics_vector endpoint_b;
+		assert(picosystem_physics_world_distance_joint_endpoints(&pendulum, 0U, &endpoint_a,
+									 &endpoint_b) == 0);
+		assert_distance_between(&endpoint_a, &endpoint_b, FIXED(29), FIXED(31));
+		assert(pendulum.last_work.distance_joint_count == 1U);
+		assert(pendulum.last_work.joint_position_correction_visit_count == 1U);
+		assert(pendulum.last_work.joint_solver_visit_count ==
+		       pendulum.last_work.solver_iteration_count);
+		assert(pendulum.last_work.joint_solver_changed_count <=
+		       pendulum.last_work.joint_solver_visit_count);
+	}
+
+	struct picosystem_physics_world pair;
+	init_world(&pair, FIXED(4));
+	struct picosystem_physics_circle_config left = circle_config(1U, -5, 0, 1);
+	struct picosystem_physics_circle_config right = circle_config(2U, 5, 0, 1);
+	left.velocity_per_tick.x = -RATIO(1, 2);
+	right.velocity_per_tick.x = RATIO(1, 2);
+	assert(picosystem_physics_world_add_circle(&pair, &left) == 0);
+	assert(picosystem_physics_world_add_circle(&pair, &right) == 0);
+	const struct picosystem_physics_distance_joint_config link =
+		distance_joint_config(101U, 1U, 2U, 10);
+	assert(picosystem_physics_world_add_distance_joint(&pair, &link) == 0);
+	for (uint32_t step = 0U; step < 32U; ++step) {
+		assert(picosystem_physics_world_step(&pair, &no_acceleration) == 0);
+	}
+	struct picosystem_physics_vector endpoint_a;
+	struct picosystem_physics_vector endpoint_b;
+	assert(picosystem_physics_world_distance_joint_endpoints(&pair, 0U, &endpoint_a,
+								 &endpoint_b) == 0);
+	assert_distance_between(&endpoint_a, &endpoint_b, FIXED(9), FIXED(11));
+	assert_fixed_close(pair.bodies[0].velocity_per_tick.x, pair.bodies[1].velocity_per_tick.x,
+			   RATIO(1, 64));
+
+	struct picosystem_physics_world off_center;
+	init_world(&off_center, FIXED(4));
+	struct picosystem_physics_box_config swinging_box = box_config(1U, 20, 0, 2, 4);
+	swinging_box.velocity_per_tick.y = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	assert(picosystem_physics_world_add_box(&off_center, &swinging_box) == 0);
+	struct picosystem_physics_distance_joint_config off_center_tether =
+		distance_joint_config(102U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 20);
+	off_center_tether.local_anchor_a.y = FIXED(4);
+	assert(picosystem_physics_world_add_distance_joint(&off_center, &off_center_tether) == 0);
+	assert(picosystem_physics_world_step(&off_center, &no_acceleration) == 0);
+	assert(off_center.bodies[0].angular_velocity_per_tick != 0);
+
+	struct picosystem_physics_world coincident;
+	init_world(&coincident, FIXED(2));
+	const struct picosystem_physics_circle_config center = circle_config(1U, 0, 0, 1);
+	assert(picosystem_physics_world_add_circle(&coincident, &center) == 0);
+	const struct picosystem_physics_distance_joint_config fallback =
+		distance_joint_config(102U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 1);
+	assert(picosystem_physics_world_add_distance_joint(&coincident, &fallback) == 0);
+	assert(picosystem_physics_world_step(&coincident, &no_acceleration) == 0);
+	assert(coincident.bodies[0].center.x < 0);
+}
+
+static void test_revolute_joint_boundaries_and_anchors(void)
+{
+	struct picosystem_physics_world world;
+	init_world(&world, FIXED(4));
+	struct picosystem_physics_box_config box = box_config(1U, 10, 20, 2, 1);
+	box.angle_turns = PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN;
+	const struct picosystem_physics_circle_config circle = circle_config(2U, 30, 40, 3);
+	assert(picosystem_physics_world_add_box(&world, &box) == 0);
+	assert(picosystem_physics_world_add_circle(&world, &circle) == 0);
+
+	assert(picosystem_physics_world_add_revolute_joint(NULL, NULL) == -EINVAL);
+	assert(picosystem_physics_world_add_revolute_joint(&world, NULL) == -EINVAL);
+	struct picosystem_physics_revolute_joint_config joint =
+		revolute_joint_config(201U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	joint.local_anchor_a.x = FIXED(2);
+	joint.anchor_b = (struct picosystem_physics_vector){.x = FIXED(30), .y = FIXED(40)};
+	assert(picosystem_physics_world_add_revolute_joint(&world, &joint) == 0);
+	assert(world.revolute_joint_count == 1U);
+	assert(world.revolute_joints[0].body_a_index == 0U);
+	assert(world.revolute_joints[0].body_b_index == UINT8_MAX);
+
+	struct picosystem_physics_vector anchor_a;
+	struct picosystem_physics_vector anchor_b;
+	assert(picosystem_physics_world_revolute_joint_anchors(&world, 0U, &anchor_a, &anchor_b) ==
+	       0);
+	assert(anchor_a.x == FIXED(10));
+	assert(anchor_a.y == FIXED(22));
+	assert(anchor_b.x == FIXED(30));
+	assert(anchor_b.y == FIXED(40));
+	assert(picosystem_physics_world_revolute_joint_anchors(NULL, 0U, &anchor_a, &anchor_b) ==
+	       -EINVAL);
+	assert(picosystem_physics_world_revolute_joint_anchors(&world, 0U, NULL, &anchor_b) ==
+	       -EINVAL);
+	assert(picosystem_physics_world_revolute_joint_anchors(&world, 1U, &anchor_a, &anchor_b) ==
+	       -ENOENT);
+
+	const uint32_t one_joint_hash = picosystem_physics_world_hash(&world);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &joint) == -EEXIST);
+	assert(picosystem_physics_world_hash(&world) == one_joint_hash);
+
+	struct picosystem_physics_revolute_joint_config invalid = joint;
+	invalid.id = 0U;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.body_a_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.body_b_id = invalid.body_a_id;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.collide_connected = 2U;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.local_anchor_a.x = INT32_MAX;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.local_anchor_a.x = FIXED(3);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	invalid = joint;
+	invalid.id = 202U;
+	invalid.anchor_b.x = INT32_MAX;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
+	assert(picosystem_physics_world_hash(&world) == one_joint_hash);
+
+	struct picosystem_physics_revolute_joint_config missing =
+		revolute_joint_config(202U, 99U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &missing) == -ENOENT);
+	missing.body_a_id = 1U;
+	missing.body_b_id = 99U;
+	assert(picosystem_physics_world_add_revolute_joint(&world, &missing) == -ENOENT);
+
+	joint = revolute_joint_config(202U, 1U, 2U);
+	joint.anchor_b.x = FIXED(4);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &joint) == -ERANGE);
+	joint.anchor_b = (struct picosystem_physics_vector){.x = FIXED(1), .y = FIXED(-2)};
+	assert(picosystem_physics_world_add_revolute_joint(&world, &joint) == 0);
+	assert(picosystem_physics_world_revolute_joint_anchors(&world, 1U, &anchor_a, &anchor_b) ==
+	       0);
+	assert(anchor_a.x == FIXED(10));
+	assert(anchor_a.y == FIXED(20));
+	assert(anchor_b.x == FIXED(31));
+	assert(anchor_b.y == FIXED(38));
+
+	for (uint16_t index = world.revolute_joint_count;
+	     index < PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS; ++index) {
+		joint = revolute_joint_config((uint16_t)(201U + index), 2U,
+					      PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+		joint.anchor_b.x = FIXED(index);
+		assert(picosystem_physics_world_add_revolute_joint(&world, &joint) == 0);
+	}
+	assert(world.revolute_joint_count == PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS);
+	joint = revolute_joint_config(300U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &joint) == -ENOSPC);
+
+	struct picosystem_physics_world corrupt = world;
+	corrupt.body_count = PICOSYSTEM_PHYSICS_MAX_BODIES + 1U;
+	assert(picosystem_physics_world_revolute_joint_anchors(&corrupt, 0U, &anchor_a,
+							       &anchor_b) == -ERANGE);
+	corrupt = world;
+	corrupt.revolute_joint_count = PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS + 1U;
+	assert(picosystem_physics_world_revolute_joint_anchors(&corrupt, 0U, &anchor_a,
+							       &anchor_b) == -ERANGE);
+	corrupt = world;
+	corrupt.revolute_joints[0].body_a_index = UINT8_MAX;
+	assert(picosystem_physics_world_revolute_joint_anchors(&corrupt, 0U, &anchor_a,
+							       &anchor_b) == -ERANGE);
+}
+
+static void test_revolute_joint_dynamics_and_multilink_chain(void)
+{
+	struct picosystem_physics_world pinned;
+	init_world(&pinned, FIXED(4));
+	struct picosystem_physics_box_config arm = box_config(1U, 2, 0, 2, 1);
+	arm.velocity_per_tick.y = RATIO(1, 2);
+	assert(picosystem_physics_world_add_box(&pinned, &arm) == 0);
+	struct picosystem_physics_revolute_joint_config pin =
+		revolute_joint_config(201U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	pin.local_anchor_a.x = -FIXED(2);
+	assert(picosystem_physics_world_add_revolute_joint(&pinned, &pin) == 0);
+	for (uint32_t step = 0U; step < 1000U; ++step) {
+		assert(picosystem_physics_world_step(&pinned, &no_acceleration) == 0);
+		struct picosystem_physics_vector anchor_a;
+		struct picosystem_physics_vector anchor_b;
+		assert(picosystem_physics_world_revolute_joint_anchors(&pinned, 0U, &anchor_a,
+								       &anchor_b) == 0);
+		assert_distance_between(&anchor_a, &anchor_b, 0, RATIO(1, 2));
+		assert(pinned.last_work.revolute_joint_count == 1U);
+		assert(pinned.last_work.joint_position_correction_visit_count == 1U);
+		assert(pinned.last_work.joint_solver_visit_count ==
+		       pinned.last_work.solver_iteration_count);
+	}
+	assert(pinned.bodies[0].angle_turns != 0U);
+
+	struct picosystem_physics_world chain;
+	init_world(&chain, FIXED(4));
+	for (uint16_t index = 0U; index < 4U; ++index) {
+		const struct picosystem_physics_box_config link =
+			box_config((uint16_t)(index + 1U), 2 + ((int32_t)index * 4), 0, 2, 1);
+		assert(picosystem_physics_world_add_box(&chain, &link) == 0);
+	}
+	pin = revolute_joint_config(201U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	pin.local_anchor_a.x = -FIXED(2);
+	assert(picosystem_physics_world_add_revolute_joint(&chain, &pin) == 0);
+	for (uint16_t index = 1U; index < 4U; ++index) {
+		struct picosystem_physics_revolute_joint_config link = revolute_joint_config(
+			(uint16_t)(201U + index), index, (uint16_t)(index + 1U));
+		link.local_anchor_a.x = FIXED(2);
+		link.anchor_b.x = -FIXED(2);
+		assert(picosystem_physics_world_add_revolute_joint(&chain, &link) == 0);
+	}
+	const struct picosystem_physics_vector gravity = {.y = RATIO(1, 512)};
+	for (uint32_t step = 0U; step < 2000U; ++step) {
+		assert(picosystem_physics_world_step(&chain, &gravity) == 0);
+		for (uint16_t index = 0U; index < chain.revolute_joint_count; ++index) {
+			struct picosystem_physics_vector anchor_a;
+			struct picosystem_physics_vector anchor_b;
+			assert(picosystem_physics_world_revolute_joint_anchors(
+				       &chain, index, &anchor_a, &anchor_b) == 0);
+			assert_distance_between(&anchor_a, &anchor_b, 0, FIXED(1));
+		}
+		assert(chain.last_work.revolute_joint_count == 4U);
+		assert(chain.last_work.joint_position_correction_visit_count == 4U);
+		assert(chain.last_work.joint_solver_visit_count ==
+		       4U * chain.last_work.solver_iteration_count);
+	}
+}
+
+static void test_revolute_joint_connected_collision_policy(void)
+{
+	struct picosystem_physics_world filtered;
+	init_world(&filtered, FIXED(2));
+	const struct picosystem_physics_circle_config first = circle_config(1U, 0, 0, 2);
+	const struct picosystem_physics_circle_config second = circle_config(2U, 0, 0, 2);
+	assert(picosystem_physics_world_add_circle(&filtered, &first) == 0);
+	assert(picosystem_physics_world_add_circle(&filtered, &second) == 0);
+	const struct picosystem_physics_revolute_joint_config filtered_joint =
+		revolute_joint_config(201U, 1U, 2U);
+	assert(picosystem_physics_world_add_revolute_joint(&filtered, &filtered_joint) == 0);
+	assert(picosystem_physics_world_step(&filtered, &no_acceleration) == 0);
+	assert(filtered.contact_count == 0U);
+	assert(filtered.last_work.joint_collision_filter_count == 1U);
+	assert(filtered.last_work.body_body_narrow_phase_test_count == 0U);
+
+	struct picosystem_physics_world colliding;
+	init_world(&colliding, FIXED(2));
+	assert(picosystem_physics_world_add_circle(&colliding, &first) == 0);
+	assert(picosystem_physics_world_add_circle(&colliding, &second) == 0);
+	struct picosystem_physics_revolute_joint_config colliding_joint = filtered_joint;
+	colliding_joint.collide_connected = 1U;
+	assert(picosystem_physics_world_add_revolute_joint(&colliding, &colliding_joint) == 0);
+	assert(picosystem_physics_world_step(&colliding, &no_acceleration) == 0);
+	assert(colliding.contact_count == 1U);
+	assert(colliding.last_work.joint_collision_filter_count == 0U);
+	assert(colliding.last_work.body_body_narrow_phase_test_count == 1U);
 }
 
 static void test_integration_speed_clamp_and_invalid_step(void)
@@ -517,6 +1036,20 @@ static void test_uniform_grid_filter_and_fallback(void)
 	assert(separated.last_broad_phase_fallback == 0U);
 	assert(separated.last_solver_iteration_count == 0U);
 	assert(separated.contact_count == 0U);
+	assert(separated.last_work.possible_pair_count == 1U);
+	assert(separated.last_work.candidate_pair_count == 0U);
+	assert(separated.last_work.grid_cell_insertion_count == 2U);
+	assert(separated.last_work.occupied_grid_cell_count == 2U);
+	assert(separated.last_work.maximum_grid_cell_occupancy == 1U);
+	assert(separated.last_work.body_body_narrow_phase_test_count == 0U);
+	assert(separated.last_work.body_segment_narrow_phase_test_count == 0U);
+	assert(separated.last_work.manifold_count == 0U);
+	assert(separated.last_work.contact_point_count == 0U);
+	assert(separated.last_work.position_correction_visit_count == 0U);
+	assert(separated.last_work.solver_iteration_count == 0U);
+	assert(separated.last_work.solver_contact_visit_count == 0U);
+	assert(separated.last_work.solver_changed_contact_count == 0U);
+	assert(separated.last_work.broad_phase_fallback_count == 0U);
 
 	struct picosystem_physics_world boundary;
 	init_world(&boundary, FIXED(2));
@@ -531,6 +1064,13 @@ static void test_uniform_grid_filter_and_fallback(void)
 	assert(boundary.last_broad_phase_fallback == 0U);
 	assert(boundary.contact_count == 1U);
 	assert(boundary.last_solver_iteration_count == 1U);
+	assert(boundary.last_work.candidate_pair_count == 1U);
+	assert(boundary.last_work.body_body_narrow_phase_test_count == 1U);
+	assert(boundary.last_work.manifold_count == 1U);
+	assert(boundary.last_work.contact_point_count == 1U);
+	assert(boundary.last_work.position_correction_visit_count == 1U);
+	assert(boundary.last_work.solver_iteration_count == 1U);
+	assert(boundary.last_work.solver_contact_visit_count == 1U);
 
 	struct picosystem_physics_world fallback;
 	init_world(&fallback, FIXED(2));
@@ -547,6 +1087,62 @@ static void test_uniform_grid_filter_and_fallback(void)
 	assert(fallback.last_broad_phase_fallback == 1U);
 	assert(fallback.contact_count == 1U);
 	assert(fallback.last_solver_iteration_count == 1U);
+	assert(fallback.last_work.broad_phase_fallback_count == 1U);
+}
+
+static void test_profiled_step_and_reference_work(void)
+{
+	struct picosystem_physics_world grid;
+	init_world(&grid, FIXED(2));
+	const struct picosystem_physics_circle_config left = circle_config(1U, 8, 8, 2);
+	const struct picosystem_physics_circle_config right = circle_config(2U, 232, 232, 2);
+	assert(picosystem_physics_world_add_circle(&grid, &left) == 0);
+	assert(picosystem_physics_world_add_circle(&grid, &right) == 0);
+	struct picosystem_physics_world reference = grid;
+
+	uint32_t grid_cycles = 0U;
+	const struct picosystem_physics_clock grid_clock = {
+		.now = fake_clock_now,
+		.context = &grid_cycles,
+	};
+	struct picosystem_physics_step_profile grid_profile;
+	assert(picosystem_physics_world_step_profiled(&grid, &no_acceleration,
+						      PICOSYSTEM_PHYSICS_STEP_MODE_GRID,
+						      &grid_clock, &grid_profile) == 0);
+	assert(grid_profile.clock_read_count > 0U);
+	assert(grid_profile.stage_cycles[PICOSYSTEM_PHYSICS_PROFILE_TOTAL] > 0U);
+	uint32_t attributed_cycles = 0U;
+	for (size_t stage = PICOSYSTEM_PHYSICS_PROFILE_FORCE_AND_INTEGRATE;
+	     stage < PICOSYSTEM_PHYSICS_PROFILE_TOTAL; ++stage) {
+		attributed_cycles += grid_profile.stage_cycles[stage];
+	}
+	assert(attributed_cycles == grid_profile.stage_cycles[PICOSYSTEM_PHYSICS_PROFILE_TOTAL]);
+	assert(grid_profile.work.candidate_pair_count == 0U);
+	assert(grid_profile.work.grid_cell_insertion_count == 2U);
+
+	uint32_t reference_cycles = 0U;
+	const struct picosystem_physics_clock reference_clock = {
+		.now = fake_clock_now,
+		.context = &reference_cycles,
+	};
+	struct picosystem_physics_step_profile reference_profile;
+	assert(picosystem_physics_world_step_profiled(&reference, &no_acceleration,
+						      PICOSYSTEM_PHYSICS_STEP_MODE_REFERENCE,
+						      &reference_clock, &reference_profile) == 0);
+	assert(reference_profile.work.possible_pair_count == 1U);
+	assert(reference_profile.work.candidate_pair_count == 1U);
+	assert(reference_profile.work.body_body_narrow_phase_test_count == 1U);
+	assert(reference_profile.work.grid_cell_insertion_count == 0U);
+	assert(reference_profile.work.broad_phase_fallback_count == 0U);
+	assert(reference.last_broad_phase_fallback == 1U);
+	assert(picosystem_physics_world_hash(&grid) == picosystem_physics_world_hash(&reference));
+
+	assert(picosystem_physics_world_step_profiled(&grid, &no_acceleration,
+						      (enum picosystem_physics_step_mode)99,
+						      &grid_clock, &grid_profile) == -EINVAL);
+	assert(picosystem_physics_world_step_profiled(&grid, &no_acceleration,
+						      PICOSYSTEM_PHYSICS_STEP_MODE_GRID, NULL,
+						      &grid_profile) == -EINVAL);
 }
 
 static void add_grid_oracle_fixture(struct picosystem_physics_world *world)
@@ -611,6 +1207,15 @@ static void add_grid_oracle_fixture(struct picosystem_physics_world *world)
 	for (size_t index = 0U; index < (sizeof(segments) / sizeof(segments[0])); ++index) {
 		assert(picosystem_physics_world_add_static_segment(world, &segments[index]) == 0);
 	}
+	struct picosystem_physics_distance_joint_config joint =
+		distance_joint_config(201U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 32);
+	joint.anchor_b = (struct picosystem_physics_vector){.x = FIXED(40), .y = FIXED(20)};
+	assert(picosystem_physics_world_add_distance_joint(world, &joint) == 0);
+	joint = distance_joint_config(202U, 1U, 2U, 10);
+	assert(picosystem_physics_world_add_distance_joint(world, &joint) == 0);
+	joint = distance_joint_config(203U, 2U, 3U, 30);
+	joint.local_anchor_a.x = FIXED(2);
+	assert(picosystem_physics_world_add_distance_joint(world, &joint) == 0);
 }
 
 static void test_uniform_grid_matches_brute_force_oracle(void)
@@ -676,6 +1281,12 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	init_world(&world, FIXED(2));
 	const struct picosystem_physics_circle_config body = circle_config(1U, 0, 0, 1);
 	assert(picosystem_physics_world_add_circle(&world, &body) == 0);
+	const struct picosystem_physics_distance_joint_config joint =
+		distance_joint_config(101U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 1);
+	assert(picosystem_physics_world_add_distance_joint(&world, &joint) == 0);
+	const struct picosystem_physics_revolute_joint_config revolute_joint =
+		revolute_joint_config(201U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	assert(picosystem_physics_world_add_revolute_joint(&world, &revolute_joint) == 0);
 	const uint32_t expected = picosystem_physics_world_hash(&world);
 
 	world.last_candidate_pair_count = UINT32_MAX;
@@ -683,11 +1294,39 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	world.last_occupied_grid_cell_count = UINT16_MAX;
 	world.last_broad_phase_fallback = UINT8_MAX;
 	world.last_solver_iteration_count = UINT8_MAX;
+	memset(&world.last_work, UINT8_MAX, sizeof(world.last_work));
 	world.grid_cells[0].body_mask = UINT16_MAX;
 	world.grid_cells[0].static_segment_mask = UINT8_MAX;
 	world.contact_count = 1U;
 	world.contacts[0].penetration = INT32_MAX;
+	world.distance_joints[0].world_anchor_a.x = INT32_MAX;
+	world.distance_joints[0].world_anchor_b.y = INT32_MIN;
+	world.distance_joints[0].normal.x = INT32_MAX;
+	world.distance_joints[0].direction_inverse_mass = INT32_MAX;
+	world.distance_joints[0].accumulated_impulse = INT32_MIN;
+	world.revolute_joints[0].world_anchor_a.x = INT32_MAX;
+	world.revolute_joints[0].world_anchor_b.y = INT32_MIN;
+	world.revolute_joints[0].effective_mass_xx = INT32_MAX;
+	world.revolute_joints[0].effective_mass_xy = INT32_MIN;
+	world.revolute_joints[0].effective_mass_yy = INT32_MAX;
+	world.revolute_joints[0].accumulated_impulse.x = INT32_MIN;
+	world.revolute_joints[0].effective_mass_valid = UINT8_MAX;
 	assert(picosystem_physics_world_hash(&world) == expected);
+	struct picosystem_physics_world changed = world;
+	changed.distance_joints[0].target_distance += 1;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.distance_joint_count = 0U;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.revolute_joints[0].anchor_b.x += 1;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.revolute_joints[0].collide_connected = 1U;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.revolute_joint_count = 0U;
+	assert(picosystem_physics_world_hash(&changed) != expected);
 	assert(picosystem_physics_world_hash(NULL) == 0U);
 	assert(picosystem_physics_world_body_at(&world, 0U) == &world.bodies[0]);
 	assert(picosystem_physics_world_body_at(&world, 1U) == NULL);
@@ -695,12 +1334,23 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	world.body_count = PICOSYSTEM_PHYSICS_MAX_BODIES + 1U;
 	assert(picosystem_physics_world_hash(&world) == 0U);
 	assert(picosystem_physics_world_body_at(&world, 0U) == NULL);
+	world.body_count = 1U;
+	world.distance_joint_count = PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS + 1U;
+	assert(picosystem_physics_world_hash(&world) == 0U);
+	world.distance_joint_count = 1U;
+	world.revolute_joint_count = PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS + 1U;
+	assert(picosystem_physics_world_hash(&world) == 0U);
 }
 
 int main(void)
 {
 	test_initialization_and_add_boundaries();
 	test_duplicate_ids_and_invalid_segments();
+	test_distance_joint_boundaries_and_endpoints();
+	test_distance_joint_dynamics();
+	test_revolute_joint_boundaries_and_anchors();
+	test_revolute_joint_dynamics_and_multilink_chain();
+	test_revolute_joint_connected_collision_policy();
 	test_integration_speed_clamp_and_invalid_step();
 	test_box_geometry_and_angular_integration();
 	test_equal_mass_head_on_collision();
@@ -710,6 +1360,7 @@ int main(void)
 	test_box_box_and_circle_box_collisions();
 	test_coincident_centers_are_stable();
 	test_uniform_grid_filter_and_fallback();
+	test_profiled_step_and_reference_work();
 	test_uniform_grid_matches_brute_force_oracle();
 	test_contact_storage_covers_all_candidates();
 	test_hash_excludes_scratch_and_diagnostics();

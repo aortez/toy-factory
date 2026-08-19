@@ -55,9 +55,15 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Measure RAM, stack high-water marks, frame time, and USB logging impact.
 - [x] Add and benchmark a contiguous one-transfer full-frame path.
 - [x] Evaluate a preassembled PIO/DMA transfer path; retain PL022 for dirty updates.
+- [x] Add deterministic dense-update profiling across PL022, PIO/DMA, and PL022/DMA.
+- [x] Add and physically profile a direct one-write path for contiguous full-width updates.
+- [x] Establish a CRC-checked dense full-frame workload above the nominal 30 Hz target.
+- [x] Launch a bounded bare-metal core-1 raster worker with CRC equivalence checks.
+- [x] Sustain TE-paced full-screen presentation with one 62.5 MHz PL022/DMA write.
+- [ ] Evaluate a size-aware polling/DMA transport policy.
 - [x] Use the LCD tearing-effect signal for synchronized presentation.
 - [x] Run authoritative simulation on exact rational 120 Hz deadlines.
-- [x] Hand immutable snapshots to a lower-priority, TE-driven renderer.
+- [x] Hand immutable snapshots to a decoupled, TE-driven renderer.
 - [x] Confirm that full redraws and repeated USB queries do not skip simulation ticks.
 - [x] Visually confirm the asynchronous A-button full-redraw path on hardware.
 - [ ] Evaluate 120 x 120 pixel-doubled rendering.
@@ -78,6 +84,11 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Confirm deterministic state and framebuffer goldens on physical hardware.
 - [x] Add angular bodies, oriented boxes, and stable two-point contact manifolds.
 - [x] Add a deterministic broad phase proven against brute-force candidate sets.
-- [ ] Add joints, motors, conveyors, springs, sensors, and sleeping.
+- [x] Add deterministic work counters and an isolated device grid/reference profiler.
+- [x] Add bounded bilateral distance joints with body/world anchors and profiling.
+- [x] Add deterministic revolute hinges, multi-link chains, collision policy, and profiling.
+- [x] Measure deterministic 4/6/8-link timing and revolute-anchor quality on the PIM559.
+- [ ] Improve long-chain constraint convergence within the existing 120 Hz budget.
+- [ ] Add motors, conveyors, springs, sensors, and sleeping.
 - [ ] Add a bounded rope or soft-body subsystem.
 - [ ] Evaluate granular materials and approximate force fields.

@@ -2,7 +2,7 @@
 
 Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
-![Toy Factory broad-phase lab](docs/images/broad-phase-lab.png)
+![Toy Factory multi-link revolute-joint lab](docs/images/joint-lab.png)
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:
@@ -12,13 +12,20 @@ path:
   over USB CDC ACM;
 - reads all eight buttons;
 - performs an RGB LED self-test and then mirrors the face buttons;
-- owns one 240 x 240 RGB565 framebuffer and presents packed dirty regions over SPI;
+- owns one 240 x 240 RGB565 framebuffer and supports both damage-region and
+  continuous full-frame presentation;
 - runs a deterministic eight-body circle-and-box lab at an exact 120 Hz fixed
   step with Q16.16 linear/angular motion, gravity, friction, and restitution;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
-- publishes fixed-size state snapshots to an independent, lower-priority renderer;
-- late-latches the newest snapshot and aligns partial display writes with the LCD's GP8
+- supports bounded bilateral distance joints and revolute point constraints
+  between two bodies or a body and a fixed world anchor, with one pendulum and
+  a four-link hinged chain in the canonical lab;
+- publishes fixed-size state snapshots to an independent renderer;
+- launches a bounded bare-metal worker on RP2040 core 1 for deterministic
+  full-scene rasterization while Zephyr, physics, USB, and display drivers stay
+  on core 0;
+- late-latches immutable snapshots and aligns display writes with the LCD's GP8
   tearing-effect signal;
 - exposes acknowledged reset, pause, exact-step, injected-input, state-hash, and
   framebuffer-capture controls over USB;
@@ -31,11 +38,12 @@ path:
 
 The LCD backlight is held off until the initial framebuffer is complete and has
 been transferred, then enabled at 25%. The framebuffer consumes 115,200 bytes;
-a separate 3,840-byte staging buffer packs partial rows for efficient driver
-writes. The piezo starts silent and uses a conservative 25 us active pulse for
-the tone test. GP2 remains an input so the board's automatic red charging
-indicator continues to work. PIO and PIO/DMA display transports remain optional
-benchmark variants; the default uses SPI0/PL022.
+a separate 3,840-byte staging buffer packs non-full-width partial rows for
+efficient driver writes, while contiguous full-width row ranges bypass it. The
+piezo starts silent and uses a conservative 25 us active pulse for the tone
+test. GP2 remains an input so the board's automatic red charging indicator
+continues to work. PIO/DMA and PL022/DMA display transports remain optional
+benchmark variants; the default uses polling SPI0/PL022.
 
 ## Build
 
@@ -56,7 +64,9 @@ Useful commands:
 ```sh
 make          # show all available targets (`make help` also works)
 make build    # build the firmware
+make build-fast  # build the recommended dual-core PL022/DMA image at 62.5 MHz
 make build-pio-dma  # build the optional PIO/DMA display benchmark
+make build-pl022-dma  # build the optional PL022/DMA display benchmark
 make setup    # explicitly refresh the pinned west dependencies
 make format   # format the application C source in the container
 make check    # formatting, whitespace, and a clean build
@@ -65,8 +75,14 @@ make sim-pause  # pause at a tick boundary and print exact simulation state
 make sim-reset  # restore canonical tick-zero state while paused
 make sim-step STEPS=1  # advance a paused simulation by exact 1/120-second ticks
 make sim-test  # run the default deterministic hardware sequence
-make screenshot  # save the coherent presented framebuffer as a PNG
+make screenshot  # save the renderer-owned software framebuffer as a PNG
+make profile-chain  # benchmark deterministic 4/6/8-link chain scaling
 ```
+
+`make build` retains the conservative 20 MHz polling-display configuration.
+`make build-fast` selects the measured high-throughput configuration: PL022/DMA
+at 62.5 MHz with the core-1 full-frame renderer. Its UF2 is written to
+`build-render-profile-pl022-dma-62500000/zephyr/zephyr.uf2`.
 
 The Ubuntu base, SDK archives, Python dependencies, and Zephyr release are
 pinned. SDK downloads are checked against their upstream SHA-256 hashes.
@@ -81,6 +97,13 @@ bootloader, waits for the `RPI-RP2` volume, validates it, and copies the UF2:
 
 ```sh
 make update
+```
+
+For normal development of the dual-core full-frame path, use the shorter
+performance-profile target:
+
+```sh
+make update-fast
 ```
 
 If the PicoSystem is already in update mode, the command skips the reboot and
@@ -111,18 +134,21 @@ The physical gesture remains the recovery path for a blank or broken image:
 4. Run `make update` again.
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
-show a dark checkerboard arena, three circles, three spinning boxes, two diagonal
-ramps, cyan boundaries, and a white `RIGID LAB 120HZ` heading. The world
+show a dark checkerboard arena, four circles, four spinning boxes, two diagonal
+ramps, cyan boundaries, a yellow pendulum-radius guide, and a white
+`JOINT LAB 120HZ` heading. The world
 advances on exact rational 120 Hz deadlines. Normal presentation restores each
 moved body's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
 empty swept area between distant footprints.
 The D-pad tilts the global acceleration field while neutral input retains
 downward gravity. Press A to queue a full-screen redraw for comparison, B to
-play a 440 Hz tone for 180 ms, and Y to reset the world. A full transfer still
-occupies the panel for roughly 80 ms, but it runs on the renderer thread:
-physics and input sampling continue at 120 Hz and newer snapshots coalesce
-while the renderer is busy.
+play a 440 Hz tone for 180 ms, and Y to reset the world. In the conservative
+20 MHz build, a full transfer occupies the panel for roughly 80 ms, but it runs
+on the renderer thread: physics and input sampling continue at 120 Hz and newer
+snapshots coalesce while the renderer is busy. The fast build instead
+rasterizes every frame on core 1 and presents it with one DMA write as described
+below.
 
 The RGB LED shows red, green, and blue in sequence at startup, then blinks blue.
 A/B/X illuminate red/green/blue respectively; Y illuminates all three channels.
@@ -156,8 +182,11 @@ For a non-interactive snapshot, run:
 make status
 make game-stats
 make game-redraw
+make core1-status
+make core1-ping
 make display-sync
 make sim-pause
+make core1-scene  # compare paused core-0/core-1 scene pixels by CRC
 make sim-reset
 make sim-input INPUT=right
 make sim-step STEPS=1
@@ -165,6 +194,9 @@ make sim-state
 make screenshot OUT=artifacts/screenshot.png
 make sim-run
 make sim-test
+make profile-ab PROFILE_TICKS=2000 PROFILE_OUT=artifacts/physics-profile.json
+make profile-chain CHAIN_LINKS=4,6,8 CHAIN_PROFILE_TICKS=1000
+make render-profile RENDER_PROFILE_OUT=artifacts/render-profile.json
 ```
 
 `status` briefly owns the same serial port as `console`, sends `picosystem
@@ -173,7 +205,7 @@ status`, prints the response, and exits. Close the console before using it.
 the same asynchronous full redraw as the A button, and `display-sync` reports
 the panel refresh signal and bounded-wait counters. The `sim-*` targets provide
 acknowledged remote simulation control and deterministic sequence testing.
-`screenshot` validates and converts a coherent RGB565 transfer into a PNG
+`screenshot` validates and converts a complete RGB565 transfer into a PNG
 beneath the checkout. Captures briefly own the same framebuffer mutex as the
 renderer, so pausing first is recommended when an exact stepped frame is
 required.
@@ -185,10 +217,15 @@ picosystem status
 picosystem buttons
 picosystem led auto|off|red|green|blue|white
 picosystem tone <frequency_hz> <duration_ms>
+picosystem core1 status
+picosystem core1 ping <challenge>
+picosystem core1 raster [frame]
+picosystem core1 scene
 picosystem display stats
 picosystem display sync [on|off]
 picosystem display checksum
 picosystem display capture
+picosystem display profile [samples]
 picosystem game stats
 picosystem game redraw
 picosystem game pause
@@ -197,6 +234,8 @@ picosystem game step [count]
 picosystem game input physical|none|up|down|left|right|up-left|up-right|down-left|down-right
 picosystem game state
 picosystem game run
+picosystem profile compare [ticks]
+picosystem profile chain <links> [ticks]
 picosystem reboot bootloader
 ```
 
@@ -209,8 +248,8 @@ both application-thread stack high-water marks.
 `display sync` reports GP8 edge timing, refresh frequency, blanking-pulse width,
 qualification state, wait latency, and fallback counts. Passing `off` bypasses
 TE waits without disabling measurement; `on` restores automatic synchronization.
-Only partial presents wait for TE because a full frame cannot fit within one
-panel refresh interval. `game stats` exposes scheduler backlog and budget
+Damage updates wait before rasterization; the fast full-frame path rasterizes
+first and then starts its one DMA write at a fresh TE edge. `game stats` exposes scheduler backlog and budget
 counters, published/coalesced snapshots, renderer health, state age at the SPI
 write, full-redraw count, and both stack high-water marks. `game redraw` only
 posts a coalesced request; the shell never touches the framebuffer or display.
@@ -230,13 +269,50 @@ state, input source,
 published/presented snapshot sequence, and a deterministic hash that excludes
 clocks and performance counters.
 
-`display checksum` reports the CRC-32 of one fully presented framebuffer.
+`profile compare` requires a paused simulation and runs a separate canonical
+world, leaving the live world untouched. `profile chain` instead builds a
+bounded deterministic fixture containing 1-8 short links joined to a world pin.
+Both commands warm up each implementation for 120 ticks, measure the requested
+replay through the uniform grid and the brute-force reference, and reject any
+final hash or field-by-field state mismatch. Timings are accumulated in
+fixed-size histograms instead of being logged per tick. The report separates
+integration, geometry, broad phase, body/body and body/segment narrow phase,
+position correction, velocity solving, final clamping, unattributed
+validation/instrumentation work, and the total. Deterministic counters report
+candidate filtering, grid population, manifolds, contacts, connected-body
+collision filters, distance/revolute joint counts, joint correction/solver
+visits, and fallbacks. Schema version 4 also identifies the fixture and reports
+the maximum revolute-anchor separation; that quality check runs outside the
+timed physics step.
+
+`make profile-ab` handles pause/resume around the canonical command.
+`make profile-chain` keeps one USB session open while running the requested
+comma-separated link counts, prints a scaling table, and writes one aggregate
+JSON artifact. Both restore the original running/paused mode even after a
+failed benchmark. These are isolated physics measurements: rendering and
+immutable snapshot publication are disabled, whereas `make game-stats`
+continues to describe the complete live game-update and renderer pipeline.
+Tracked PIM559 results and their full JSON reports are in
+[benchmarks/physics-profile](benchmarks/physics-profile/README.md).
+
+`display profile` requires a paused simulation and runs deterministic 10%,
+25%, 50%, 75%, and 100% update workloads plus a full-frame dense raster scene
+containing 64 moving circle/box bodies and 112 links. It separates framebuffer
+draw, TE wait, and display-present time; reports application regions and actual
+display writes; computes headroom against 30 Hz and 60 Hz frame budgets; and
+verifies that the canonical game frame is restored. The `make render-profile`
+wrapper pauses and resumes the game, validates the machine-readable response,
+and writes JSON. Reproduction commands and PIM559 transport results are in
+[benchmarks/display-throughput](benchmarks/display-throughput/README.md).
+
+`display checksum` reports the CRC-32 of the renderer-owned software framebuffer.
 `display capture` waits for the current published snapshot to be presented,
 then streams the complete 240 x 240 RGB565 big-endian framebuffer in numbered
 base64 chunks with a final CRC-32. The host rejects missing, reordered, corrupt,
-or truncated chunks before writing a PNG. The capture represents the software
-framebuffer sent to the display. The PIM559 display bus is write-only, so it
-cannot prove that a faulty SPI transfer or physical LCD produced the same pixels.
+or truncated chunks before writing a PNG. The PIM559 display bus is write-only,
+so capture cannot prove that a faulty SPI transfer or physical LCD produced the
+same pixels. Region drawing is clip-contained, so a coherent capture after
+partial updates reconstructs the pixels the firmware intended to transfer.
 The LED override takes effect in the main hardware loop; `auto` restores the
 button colors and blue heartbeat. The independent hardware red charge indicator
 is not disabled by `led off`. Tone requests are constrained to 100-4000 Hz and
@@ -262,8 +338,8 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "6a25b6d6",
-    "framebuffer_crc32": "c62eb3a0"
+    "hash": "62c9b14e",
+    "framebuffer_crc32": "4ddc9697"
   }
 }
 ```
@@ -284,7 +360,7 @@ new baseline is being authored, but committed regression sequences should use
 both.
 
 On success, the runner restores physical input and resumes real-time scheduling.
-On failure, it first saves a coherent diagnostic image to
+On failure, it first saves a software-framebuffer diagnostic image to
 `artifacts/sequence-failure.png`, then performs the same cleanup and returns a
 nonzero status. Override that path with
 `FAIL_SCREENSHOT=artifacts/another-name.png`. Close `make console` before running
@@ -323,20 +399,21 @@ docs/                        Hardware notes and staged bring-up plan
 scripts/container/           Dependency, build, and validation automation
 scripts/sequences/           Declarative deterministic device tests
 src/                         Firmware application
+benchmarks/                  Reproducible device measurements and build variants
 compose.yaml                 Isolated workspace and persistent dependencies
 west.yml                     Pinned Zephyr/module manifest
 ```
 
 See [the hardware map](docs/hardware.md) before adding peripherals and
 [the bring-up roadmap](docs/roadmap.md) for the next milestones. The measured
-[PIO/DMA comparison](benchmarks/pio-dma/README.md) shows the tradeoff between
-the default hardware SPI0/PL022 dirty-update path and faster PIO/DMA full frames.
+[dense-display report](benchmarks/display-throughput/README.md) compares update
+shape, configured bus frequency, PL022/PIO polling behavior, and both DMA paths.
 
 ## Game-loop architecture
 
-The authoritative fixed-point bodies, static segments, uniform-grid candidate
-filter, contact generation, sequential-impulse response, and stable
-field-by-field hash live in
+The authoritative fixed-point bodies, static segments, distance and revolute
+joints, uniform-grid candidate filter, contact generation, sequential-impulse
+response, and stable field-by-field hash live in
 [`src/physics_world.c`](src/physics_world.c). Canonical scene construction,
 input-to-acceleration mapping, game ticks, and the outer hash live in
 [`src/game_world.c`](src/game_world.c). Neither module has a Zephyr, scheduler,
@@ -344,25 +421,39 @@ renderer, USB, or wall-clock dependency. The firmware and native test suites
 compile these same C sources, so host replay tests exercise the implementation
 that runs on the RP2040 rather than a second simulation model.
 
-The RP2040 build currently uses one core, so this is priority-based decoupling
-rather than parallel CPU execution. The priority-0 main thread owns all
-authoritative game state, samples input, and asks the platform-neutral world to
-advance one fixed 120 Hz tick. The priority-1 USB shell runs only while the main
-thread is blocked; if simulation has already missed its next deadline, the main
-loop reserves a one-millisecond recovery window so diagnostics and the
-bootloader command cannot remain starved. The main thread publishes a 400-byte
-immutable render snapshot into one of two slots under a short spin lock. A
-saturated semaphore wakes the priority-2 renderer, which coalesces obsolete
-snapshots instead of making simulation wait.
+Core 0 runs Zephyr and owns every driver. Its priority-0 main thread owns all
+authoritative game state, samples input, and advances one fixed 120 Hz tick.
+The priority-1 USB shell runs only while higher-priority work is blocked; if
+simulation has already missed its next deadline, the main loop reserves a
+one-millisecond recovery window so diagnostics and the bootloader command cannot
+remain starved. The main thread publishes a 600-byte immutable render snapshot
+into one of two slots under a short spin lock. A saturated semaphore wakes the
+renderer, which coalesces obsolete snapshots instead of making simulation wait.
 
-For normal dirty updates, the renderer waits for a qualified TE rising edge,
-then late-latches the newest snapshot and immediately draws/presents it. This
-keeps presentation synchronized to the roughly 59.63 Hz panel while logic runs
-twice as fast. Slow or deliberately full redraws may reduce presentation rate,
-but they do not change simulation time. This ownership boundary is intended to
-remain stable as the demo grows into heavier physics: simulation can later
-publish a richer read-only snapshot without giving rendering access to live
-world state.
+Core 1 is deliberately much smaller: it is launched through the RP2040 boot-ROM
+handshake, runs without Zephyr, interrupts, allocation, or drivers, and accepts
+bounded commands through a shared-memory mailbox. SRAM4 holds that mailbox and
+SRAM5 holds a canary-measured 4 KiB core-1 stack. The RP2040 inter-core FIFO
+wakes a Zephyr semaphore only when a command or diagnostic strip is complete;
+core 0 does not poll the worker. The same pure scene-rendering functions run on
+either core, and diagnostic commands compare their completed framebuffers by
+CRC-32. The hottest raster functions are copied into SRAM at boot to reduce
+execute-in-place flash contention during a frame.
+
+In the recommended PL022/DMA build, a short priority -1 coordinator
+late-latches the newest snapshot and gives it to core 1. Core 1 renders the
+complete clip-contained framebuffer while core 0 continues physics. The
+coordinator then waits for a qualified TE edge and submits the entire
+115,200-byte framebuffer as one contiguous DMA write. The next frame's raster
+work overlaps the panel cadence rather than splitting the transfer into
+multiple driver transactions. Zephyr, USB, physics, TE timing, and the display
+driver never run on core 1.
+
+The conservative display variants keep the lower-priority damage-region
+renderer. It waits for TE, late-latches a snapshot, restores old and new object
+footprints, and presents only the merged clip-contained regions. Both modes
+preserve the same simulation/snapshot boundary, so renderer throughput can
+change without changing the fixed-step world model.
 
 Remote game-control requests cross a bounded message queue and are completed by
 that same simulation-owning main thread. Canonical reset rewinds only
@@ -378,18 +469,45 @@ framebuffer is allocated.
 `make check` verifies configuration, device tree, compilation, linking, and UF2
 generation and also runs native rigid-body collision/capacity, 1,000-tick
 grid/brute-force oracle, 10,000-tick game-world replay/boundary, deadline-scheduler,
-serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure, and
-deterministic-sequence tests. The game-world test uses the undefined-behavior
-sanitizer and treats the accepted reset/right-30/up-15 hashes as native goldens.
-The default uniform-grid image uses 166,012 bytes of RAM (61.64%) and 147,052
-bytes of flash. This includes the 115,200-byte framebuffer, 3,840-byte transfer
-buffer, 14,968-byte fixed-capacity physics world with a 1,024-byte scratch grid,
-two 400-byte render snapshots, and a 1,024-byte shell TX ring.
-Full frames bypass the staging buffer with one contiguous display write.
+serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
+physics-profile protocol, and deterministic-sequence tests. The game-world test
+uses the undefined-behavior sanitizer and treats the accepted
+reset/right-30/up-15 hashes as native goldens.
+The default image uses 199,324 bytes of its 255 KiB Zephyr RAM region (76.33%)
+and 176,552 bytes of flash. This includes the 115,200-byte framebuffer,
+3,840-byte transfer buffer,
+16,076-byte fixed-capacity physics world with a 1,024-byte scratch grid, eight
+distance-joint slots, eight revolute-joint slots, and per-step deterministic
+counters, a 23,440-byte serialized benchmark workspace, two 600-byte render
+snapshots, a 4,096-byte shell stack, a 4,096-byte renderer stack,
+display-profile result storage, and a 1,024-byte shell TX ring. The fast image
+uses 205,300 bytes of that region (78.62%) and 181,028 bytes of flash,
+including 5,376 bytes of SRAM-resident raster code. Both images also reserve
+8 KiB outside Zephyr's region for the core-1 mailbox and stack. The fast image
+retains about 55 KiB of Zephyr RAM headroom. Full frames bypass the staging
+buffer with one contiguous write.
 
-GitHub Actions runs `make check` and builds the PIO and PIO/DMA variants for
-every pull request and push to `main`. Tests that need a connected PicoSystem
-remain part of the physical smoke-test boundary rather than hosted CI.
+On the tested PIM559, the recommended fast image sustained 29.8 fps across
+4,896 presented frames while completing 18,494 simulation ticks at 120.0 Hz
+with zero skipped ticks. A full core-1 raster took 9.667 ms (9.935 ms observed
+maximum), and the 62.5 MHz DMA transfer took 19.242 ms. There were 244 isolated
+updates over the 8.333 ms simulation budget, with a 28.890 ms observed maximum;
+the deadline scheduler recovered without dropping a tick. Core 1 used 376 bytes
+of its 4 KiB canary-measured stack. Paused hardware checks also produced
+identical core-0/core-1 pixels for both the live scene and dense stress frame,
+then restored the original framebuffer exactly.
+
+The priority -1 coordinator leaves a one-millisecond handoff window after each
+frame so a waiting framebuffer reader cannot starve. A subsequent clean
+4,365-tick run sustained 119.9 Hz simulation and 29.8 fps with zero skipped
+ticks. A coherent capture while paused completed in 7.1 seconds. Capturing while
+the simulation runs deliberately freezes presentation and took about 99 seconds,
+but simulation remained at 120.0 Hz with zero skipped ticks. The host capture
+timeout is therefore 120 seconds; deterministic automation should pause first.
+
+GitHub Actions runs `make check` and builds the PIO, PIO/DMA, and PL022/DMA
+variants for every pull request and push to `main`. Tests that need a connected
+PicoSystem remain part of the physical smoke-test boundary rather than hosted CI.
 
 The following scheduler and display results describe the preceding single-sprite
 baseline. On the tested PIM559, the exact 120 Hz scheduler ran with a maximum observed
@@ -476,12 +594,30 @@ sprite, and colors. During a running capture, logic advanced from tick 3,440 to
 over-budget updates, and a fully caught-up presented snapshot. Capture outputs
 and newly created artifact directories retain the invoking host user's ownership.
 
-The current uniform-grid rigid-body image preserves the same deterministic
+The preceding uniform-grid rigid-body image preserves the same deterministic
 control path. Canonical reset hashes to `b20aaf3a`; right for 30 ticks reaches
 `cb18185d`; and a further 15 up ticks reaches tick 45 at `7272656f`. The coherent
-framebuffer at that state is CRC-32 `11bbf436`, matching the screenshot above.
+framebuffer at that state is CRC-32 `11bbf436`.
 On the tested PIM559, a reset 3,692-tick window held 119.9 Hz with zero skipped
 ticks and one isolated over-budget update. The sampled update was 5.724 ms and
 the observed maximum was 19.848 ms. The grid retained 15 of 76 possible pairs,
 occupied 91 of 256 cells, and did not fall back; TE-driven presentation was
 53.9 fps.
+
+The current multi-link image retains one distance-joint pendulum and adds four
+revolute constraints: one world pin followed by three body-to-body hinges.
+Directly connected bodies are excluded from collision generation unless a
+joint explicitly opts in. Native reset hashes to `be490990`; right for 30 ticks
+reaches `f110b9f9`; and a further 15 up ticks reaches tick 45 at `62c9b14e`.
+The PIM559 reproduced the reset hash and the reset frame shown above is CRC-32
+`c965155f`. A 10,000-tick native replay ends at `c79cc506` while keeping every
+hinge within three pixels. The isolated 1,000-tick device profile averaged
+3.578 ms for the grid path and 3.866 ms for the brute-force reference, with no
+budget violations and exact final state agreement. The fast full-frame image
+subsequently sustained 119.9 Hz simulation and 29.7 fps presentation with zero
+skipped ticks. A separate deterministic chain-scaling profile measured 4, 6,
+and 8 links at 1.559, 2.202, and 2.819 ms mean respectively, all well below the
+8.333 ms simulation budget. Maximum anchor separation stayed at 0.495 and
+1.314 pixels for 4 and 6 links, then rose to 51.867 pixels at 8 links. The
+current constraint is therefore long-chain solver convergence, not RP2040 CPU
+time.
