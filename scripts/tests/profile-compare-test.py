@@ -2,7 +2,9 @@
 
 """Native tests for device physics-profile output parsing."""
 
+import contextlib
 import importlib.util
+import io
 from pathlib import Path
 import sys
 import unittest
@@ -120,6 +122,19 @@ class ProfileCompareTest(unittest.TestCase):
 
         self.assertEqual(result["link_counts"], [4, 6, 8])
         self.assertEqual(result["cases"]["8"]["chain_link_count"], 8)
+
+    def test_chain_summary_reports_position_and_velocity_visits(self) -> None:
+        case = profile_compare.parse_profile(
+            profile_output(fixture="revolute_chain", chain_links=4)
+        )
+        result = profile_compare.chain_scaling_result([4], 2000, {"4": case})
+        output = io.StringIO()
+
+        with contextlib.redirect_stdout(output):
+            profile_compare.print_chain_summary(result, Path("profile.json"))
+
+        self.assertIn("pos/vel visits", output.getvalue())
+        self.assertIn("15/15", output.getvalue())
 
     def test_rejects_duplicate_chain_link_count(self) -> None:
         with self.assertRaisesRegex(profile_compare.ProfileError, "duplicates"):

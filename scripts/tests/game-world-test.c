@@ -11,11 +11,12 @@
 #include "game_world.h"
 #include "physics_chain_fixture.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0xbe490990)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xf110b9f9)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x62c9b14e)
-#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0xc79cc506)
+#define EXPECTED_RESET_HASH          UINT32_C(0x2eee9251)
+#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xf11cec0f)
+#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x7e462383)
+#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x880a5335)
 #define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
+#define CHAIN_CONVERGENCE_TOLERANCE  PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
 
 static void assert_vector_equal(const struct picosystem_physics_vector *left,
 				const struct picosystem_physics_vector *right)
@@ -303,6 +304,7 @@ static void test_chain_fixture_boundaries_and_replay(void)
 		assert_joint_lengths_bounded(&world);
 
 		uint64_t maximum_error_squared = 0U;
+		uint32_t extra_position_sweep_tick_count = 0U;
 		for (uint32_t step = 0U; step < 1120U; ++step) {
 			assert(picosystem_game_world_step(&world, &neutral) == 0);
 			const uint64_t error_squared = maximum_revolute_error_squared(&world);
@@ -311,6 +313,16 @@ static void test_chain_fixture_boundaries_and_replay(void)
 			}
 			assert(world.physics.last_broad_phase_fallback == 0U);
 			assert(world.physics.last_work.revolute_joint_count == link_count);
+			assert(world.physics.last_work.joint_position_correction_visit_count >=
+			       link_count);
+			assert(world.physics.last_work.joint_position_correction_visit_count <=
+			       link_count * PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS);
+			assert((world.physics.last_work.joint_position_correction_visit_count %
+				link_count) == 0U);
+			if (world.physics.last_work.joint_position_correction_visit_count >
+			    link_count) {
+				++extra_position_sweep_tick_count;
+			}
 			assert(world.physics.last_work.joint_solver_visit_count ==
 			       link_count * world.physics.last_work.solver_iteration_count);
 		}
@@ -318,8 +330,18 @@ static void test_chain_fixture_boundaries_and_replay(void)
 		assert(picosystem_game_world_hash(&world) != 0U);
 		fprintf(stderr, "chain links=%u maximum squared anchor error=%llu\n", link_count,
 			(unsigned long long)maximum_error_squared);
-		const int64_t safety_limit = PICOSYSTEM_PHYSICS_FIXED_FROM_INT(64);
-		assert(maximum_error_squared <= (uint64_t)(safety_limit * safety_limit));
+		const int64_t tolerance = CHAIN_CONVERGENCE_TOLERANCE;
+		assert(maximum_error_squared <= (uint64_t)(tolerance * tolerance));
+		if (link_count <= 4U) {
+			assert(extra_position_sweep_tick_count == 0U);
+		} else if (link_count == PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MAX_LINKS) {
+			assert(extra_position_sweep_tick_count > 0U);
+		}
+
+		struct picosystem_game_world replay;
+		assert(picosystem_physics_chain_fixture_reset(&replay, link_count) == 0);
+		step_many(&replay, &neutral, 1120U);
+		assert_world_equal(&world, &replay);
 	}
 }
 

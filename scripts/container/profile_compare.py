@@ -410,19 +410,22 @@ def print_chain_summary(result: dict[str, object], output_path: Path) -> None:
     cases = result["cases"]
     link_counts = result["link_counts"]
     assert isinstance(cases, dict) and isinstance(link_counts, list)
-    print("links  grid mean/p95/max      reference mean  joint visits  max error  violations")
+    print("links  grid mean/p95/max      reference mean  pos/vel visits  max error  violations")
     for link_count in link_counts:
         profile = cases[str(link_count)]
         modes = profile["modes"]
         grid = modes["grid"]
         reference = modes["reference"]
         total = grid["stages"]["total"]
-        visits = grid["work"]["joint_solver_visits"]["mean_per_tick"]
+        position_visits = grid["work"]["joint_position_correction_visits"][
+            "mean_per_tick"
+        ]
+        velocity_visits = grid["work"]["joint_solver_visits"]["mean_per_tick"]
         maximum_error = grid["quality"]["maximum_revolute_anchor_error_pixels"]
         print(
             f"{link_count:>5}  {total['mean_us']:>4}/{total['p95_us']:>4}/"
             f"{total['maximum_us']:>4} us  {reference['stages']['total']['mean_us']:>8} us"
-            f"  {visits:>12g}  {maximum_error:>8.3f}px  "
+            f"  {position_visits:>4g}/{velocity_visits:<4g}  {maximum_error:>8.3f}px  "
             f"{total['budget_violations']:>10}"
         )
     print(f"artifact:  {output_path}")

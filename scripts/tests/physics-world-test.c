@@ -656,7 +656,9 @@ static void test_revolute_joint_dynamics_and_multilink_chain(void)
 								       &anchor_b) == 0);
 		assert_distance_between(&anchor_a, &anchor_b, 0, RATIO(1, 2));
 		assert(pinned.last_work.revolute_joint_count == 1U);
-		assert(pinned.last_work.joint_position_correction_visit_count == 1U);
+		assert(pinned.last_work.joint_position_correction_visit_count >= 1U);
+		assert(pinned.last_work.joint_position_correction_visit_count <=
+		       PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS);
 		assert(pinned.last_work.joint_solver_visit_count ==
 		       pinned.last_work.solver_iteration_count);
 	}
@@ -690,7 +692,10 @@ static void test_revolute_joint_dynamics_and_multilink_chain(void)
 			assert_distance_between(&anchor_a, &anchor_b, 0, FIXED(1));
 		}
 		assert(chain.last_work.revolute_joint_count == 4U);
-		assert(chain.last_work.joint_position_correction_visit_count == 4U);
+		assert(chain.last_work.joint_position_correction_visit_count >= 4U);
+		assert(chain.last_work.joint_position_correction_visit_count <=
+		       4U * PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS);
+		assert((chain.last_work.joint_position_correction_visit_count % 4U) == 0U);
 		assert(chain.last_work.joint_solver_visit_count ==
 		       4U * chain.last_work.solver_iteration_count);
 	}
