@@ -208,7 +208,7 @@ stack high-water marks were 2,752/4,096 and 2,676/3,584 bytes.
 The current multi-link lab adds eight fixed-capacity revolute-joint slots and
 uses four of them for one world pin plus three body-to-body hinges. Its physics
 world is 16,076 bytes, its two render snapshots are 600 bytes each, and the
-recommended full-frame image uses 205,292 bytes of Zephyr RAM. The PIM559
+recommended full-frame image uses 205,300 bytes of Zephyr RAM. The PIM559
 reproduced the native reset hash `be490990`; its coherent reset framebuffer is
 CRC-32 `c965155f`, and the exact right-30/up-15 device sequence reaches hash
 `62c9b14e` and framebuffer CRC-32 `4ddc9697`. An isolated 1,000-tick device
@@ -218,6 +218,13 @@ held 119.9 Hz simulation with zero skipped ticks while full-frame presentation
 averaged 29.7 fps. The expanded snapshot drove renderer stack use to 3,204 of
 3,584 bytes during bring-up, so the configured renderer stack is now 4,096
 bytes.
+
+The chain-scaling benchmark's fast image uses 181,028 bytes of flash. Isolated
+4-, 6-, and 8-link fixtures averaged 1.559, 2.202, and 2.819 ms respectively,
+with no 8.333 ms budget violations and exact grid/reference agreement. Six
+links stayed within 1.314 pixels at their anchors, while eight links stretched
+by 51.867 pixels. At the current capacity, joint convergence is the limiting
+resource before CPU time.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.

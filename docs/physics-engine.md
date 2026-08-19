@@ -12,14 +12,14 @@ here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 205,292 bytes of the linker's 255 KiB Zephyr
-RAM region and 179,892 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 205,300 bytes of the linker's 255 KiB Zephyr
+RAM region and 181,028 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
 physics world is 16,076 bytes, including its 1,024-byte scratch grid, eight
 distance-joint slots, eight revolute-joint slots, and per-step deterministic
 work counters. The serialized A/B workspace is 23,440 bytes, is inactive during
 normal play, and avoids placing a second world on a thread stack. The profile
-command's 4,096-byte shell stack measured a 3,360-byte high-water mark. The
+command's 4,096-byte shell stack measured a 3,472-byte high-water mark. The
 renderer reached 3,204 bytes while bringing up the larger scene snapshot, so
 its bounded stack was raised from 3,584 to 4,096 bytes. The linked image retains
 roughly 55 KiB of Zephyr RAM headroom. Physical timing acceptance
@@ -150,22 +150,27 @@ instrumentation cost remains visible rather than silently folded into a result.
 `picosystem profile compare [ticks]` operates only while the live simulation is
 paused. It resets a separate canonical world, runs 120 unmeasured warm-up ticks,
 then replays the same bounded input pattern for the grid and brute-force paths.
-Each individual measured call runs with Zephyr thread preemption locked, while
-interrupts remain enabled; the benchmark yields every 32 ticks outside the
-timed region so USB and board servicing remain responsive. Rendering and
-snapshot publication are absent by design. The two final worlds are checked by
-both authoritative hash and field-by-field persistent state comparison.
+`picosystem profile chain <links> [ticks]` uses the same machinery with a
+deterministic 1-8-link revolute fixture under neutral gravity. Each individual
+measured call runs with Zephyr thread preemption locked, while interrupts remain
+enabled; the benchmark yields every 32 ticks outside the timed region so USB
+and board servicing remain responsive. Rendering and snapshot publication are
+absent by design. The two final worlds are checked by both authoritative hash
+and field-by-field persistent state comparison.
 
 Stage samples accumulate into 64 fine 32-microsecond bins followed by 64 coarse
 128-microsecond bins, covering tails through 10.24 milliseconds without
 increasing the fixed RAM footprint. The device reports count, mean, minimum,
 histogram-derived p50/p95/p99, exact maximum, and 1/120-second budget violations
-without per-tick logging. `make profile-ab` preserves the live run/pause mode,
-emits a concise comparison, and writes the complete version-3 JSON artifact.
-These isolated timings must not be compared directly with the live update value
-from `game stats`, which also contains game-demo and immutable-snapshot work and
-may be affected by renderer and scheduler activity. Physical PIM559 baselines
-are recorded in
+without per-tick logging. `make profile-ab` preserves the live run/pause mode
+and writes the canonical result. `make profile-chain` profiles a comma-separated
+set of link counts over one USB session and writes an aggregate result. The
+version-4 protocol identifies the fixture and reports maximum revolute-anchor
+separation for each mode. That quality calculation runs after the measured
+step, so it does not contaminate the stage timings. These isolated timings must
+not be compared directly with the live update value from `game stats`, which
+also contains game-demo and immutable-snapshot work and may be affected by
+renderer and scheduler activity. Physical PIM559 baselines are recorded in
 [`benchmarks/physics-profile`](../benchmarks/physics-profile/README.md).
 
 Contacts carry a stable point, normal, penetration depth, restitution target,
@@ -271,6 +276,17 @@ presented reset framebuffer CRC-32 of `c965155f`. Its isolated 1,000-tick
 profile averaged 3.578 ms for the grid path and 3.866 ms for the brute-force
 reference, with zero budget violations and exact state agreement.
 
+A second device profile isolated deterministic 4-, 6-, and 8-link chains. Grid
+means were 1.559, 2.202, and 2.819 ms; maxima were 2.022, 2.672, and 3.252 ms.
+All remained comfortably within 120 Hz and matched the reference state exactly.
+Maximum anchor separation was 0.495 pixels at four links and 1.314 pixels at six,
+but 51.867 pixels at eight. The current capacity is therefore CPU-safe but not
+quality-safe for a long unconverged chain. The next solver work should use the
+available timing headroom for additional position convergence, improved joint
+ordering, or warm starting before increasing the joint cap. The sparse fixture
+also confirms that broad-phase selection must remain workload-aware: brute
+force was 0.218-0.290 ms faster because grid setup outweighed pair rejection.
+
 Scenario shapes and measurement discipline are informed by the earlier
 [allan.pizza physics work](https://github.com/aortez/aortez.github.io/pull/14):
 keep a brute-force oracle, use seeded sparse/clustered/mixed-radius/boundary/
@@ -281,10 +297,11 @@ are design references rather than code to port.
 
 ## Planned extensions
 
-1. Add motors, sliders, springs, conveyors, sensors, and sleeping.
-2. Add capsules and a position-based rope/soft-body subsystem with deliberate
+1. Improve long-chain convergence while preserving deterministic bounded work.
+2. Add motors, sliders, springs, conveyors, sensors, and sleeping.
+3. Add capsules and a position-based rope/soft-body subsystem with deliberate
    rigid-body coupling.
-3. Evaluate bounded granular materials and approximate gravity or magnetic
+4. Evaluate bounded granular materials and approximate gravity or magnetic
    fields as separate gameplay systems.
 
 Each extension must leave behind a playable device demo, a deterministic host

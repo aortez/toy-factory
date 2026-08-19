@@ -76,6 +76,7 @@ make sim-reset  # restore canonical tick-zero state while paused
 make sim-step STEPS=1  # advance a paused simulation by exact 1/120-second ticks
 make sim-test  # run the default deterministic hardware sequence
 make screenshot  # save the renderer-owned software framebuffer as a PNG
+make profile-chain  # benchmark deterministic 4/6/8-link chain scaling
 ```
 
 `make build` retains the conservative 20 MHz polling-display configuration.
@@ -194,6 +195,7 @@ make screenshot OUT=artifacts/screenshot.png
 make sim-run
 make sim-test
 make profile-ab PROFILE_TICKS=2000 PROFILE_OUT=artifacts/physics-profile.json
+make profile-chain CHAIN_LINKS=4,6,8 CHAIN_PROFILE_TICKS=1000
 make render-profile RENDER_PROFILE_OUT=artifacts/render-profile.json
 ```
 
@@ -233,6 +235,7 @@ picosystem game input physical|none|up|down|left|right|up-left|up-right|down-lef
 picosystem game state
 picosystem game run
 picosystem profile compare [ticks]
+picosystem profile chain <links> [ticks]
 picosystem reboot bootloader
 ```
 
@@ -267,23 +270,29 @@ published/presented snapshot sequence, and a deterministic hash that excludes
 clocks and performance counters.
 
 `profile compare` requires a paused simulation and runs a separate canonical
-world, leaving the live world untouched. It warms up each implementation for
-120 ticks, measures the requested replay through the uniform grid and the
-brute-force reference, and rejects any final hash or field-by-field state
-mismatch. Timings are accumulated in fixed-size histograms instead of being
-logged per tick. The report separates integration, geometry, broad phase,
-body/body and body/segment narrow phase, position correction, velocity solving,
-final clamping, unattributed validation/instrumentation work, and the total.
-Deterministic counters report candidate filtering, grid population, manifolds,
-contacts, connected-body collision filters, distance/revolute joint counts,
-joint correction/solver visits, and fallbacks.
+world, leaving the live world untouched. `profile chain` instead builds a
+bounded deterministic fixture containing 1-8 short links joined to a world pin.
+Both commands warm up each implementation for 120 ticks, measure the requested
+replay through the uniform grid and the brute-force reference, and reject any
+final hash or field-by-field state mismatch. Timings are accumulated in
+fixed-size histograms instead of being logged per tick. The report separates
+integration, geometry, broad phase, body/body and body/segment narrow phase,
+position correction, velocity solving, final clamping, unattributed
+validation/instrumentation work, and the total. Deterministic counters report
+candidate filtering, grid population, manifolds, contacts, connected-body
+collision filters, distance/revolute joint counts, joint correction/solver
+visits, and fallbacks. Schema version 4 also identifies the fixture and reports
+the maximum revolute-anchor separation; that quality check runs outside the
+timed physics step.
 
-`make profile-ab` handles pause/resume around that command, prints a compact
-comparison, and writes a schema-versioned JSON artifact. It restores the
-original running/paused mode even after a failed benchmark. This is an isolated
-physics measurement: rendering and immutable snapshot publication are disabled,
-whereas `make game-stats` continues to describe the complete live game-update
-and renderer pipeline. Tracked PIM559 results and their full JSON reports are in
+`make profile-ab` handles pause/resume around the canonical command.
+`make profile-chain` keeps one USB session open while running the requested
+comma-separated link counts, prints a scaling table, and writes one aggregate
+JSON artifact. Both restore the original running/paused mode even after a
+failed benchmark. These are isolated physics measurements: rendering and
+immutable snapshot publication are disabled, whereas `make game-stats`
+continues to describe the complete live game-update and renderer pipeline.
+Tracked PIM559 results and their full JSON reports are in
 [benchmarks/physics-profile](benchmarks/physics-profile/README.md).
 
 `display profile` requires a paused simulation and runs deterministic 10%,
@@ -464,19 +473,19 @@ serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The default image uses 199,316 bytes of its 255 KiB Zephyr RAM region (76.33%)
-and 175,164 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 199,324 bytes of its 255 KiB Zephyr RAM region (76.33%)
+and 176,552 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer,
 16,076-byte fixed-capacity physics world with a 1,024-byte scratch grid, eight
 distance-joint slots, eight revolute-joint slots, and per-step deterministic
 counters, a 23,440-byte serialized benchmark workspace, two 600-byte render
 snapshots, a 4,096-byte shell stack, a 4,096-byte renderer stack,
 display-profile result storage, and a 1,024-byte shell TX ring. The fast image
-uses 205,292 bytes of that region (78.62%), including 5,376 bytes of
-SRAM-resident raster code. Both images also reserve 8 KiB outside Zephyr's
-region for the core-1 mailbox and stack. The fast image retains about 55 KiB of
-Zephyr RAM headroom. Full frames bypass the staging buffer with one contiguous
-write.
+uses 205,300 bytes of that region (78.62%) and 181,028 bytes of flash,
+including 5,376 bytes of SRAM-resident raster code. Both images also reserve
+8 KiB outside Zephyr's region for the core-1 mailbox and stack. The fast image
+retains about 55 KiB of Zephyr RAM headroom. Full frames bypass the staging
+buffer with one contiguous write.
 
 On the tested PIM559, the recommended fast image sustained 29.8 fps across
 4,896 presented frames while completing 18,494 simulation ticks at 120.0 Hz
@@ -606,4 +615,9 @@ hinge within three pixels. The isolated 1,000-tick device profile averaged
 3.578 ms for the grid path and 3.866 ms for the brute-force reference, with no
 budget violations and exact final state agreement. The fast full-frame image
 subsequently sustained 119.9 Hz simulation and 29.7 fps presentation with zero
-skipped ticks.
+skipped ticks. A separate deterministic chain-scaling profile measured 4, 6,
+and 8 links at 1.559, 2.202, and 2.819 ms mean respectively, all well below the
+8.333 ms simulation budget. Maximum anchor separation stayed at 0.495 and
+1.314 pixels for 4 and 6 links, then rose to 51.867 pixels at 8 links. The
+current constraint is therefore long-chain solver convergence, not RP2040 CPU
+time.

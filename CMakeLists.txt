@@ -22,6 +22,7 @@ target_sources(app PRIVATE
 	src/game_world.c
 	src/graphics.c
 	src/main.c
+	src/physics_chain_fixture.c
 	src/physics_world.c
 	src/physics_profile.c
 	src/piezo.c

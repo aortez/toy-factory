@@ -16,6 +16,7 @@
 #include <zephyr/kernel.h>
 
 #include "game_world.h"
+#include "physics_chain_fixture.h"
 
 #define PROFILE_YIELD_INTERVAL_TICKS 32U
 #define PROFILE_CLOCK_SAMPLE_COUNT   256U
@@ -53,6 +54,11 @@ struct profile_workspace {
 
 static struct profile_workspace workspace;
 K_MUTEX_DEFINE(profile_mutex);
+
+static const char *const fixture_names[] = {
+	"canonical",
+	"revolute_chain",
+};
 
 static const char *const mode_names[] = {
 	"grid",
@@ -95,6 +101,11 @@ static const char *const work_names[] = {
 	"broad_phase_fallbacks",
 };
 
+_Static_assert(sizeof(fixture_names) / sizeof(fixture_names[0]) ==
+		       PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_COUNT,
+	       "profile fixture names must cover every fixture");
+_Static_assert(PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_COUNT <= UINT8_MAX,
+	       "profile fixture identifiers must fit in one byte");
 _Static_assert(sizeof(mode_names) / sizeof(mode_names[0]) == PICOSYSTEM_PHYSICS_PROFILE_MODE_COUNT,
 	       "profile mode names must cover every mode");
 _Static_assert(sizeof(stage_names) / sizeof(stage_names[0]) ==
@@ -107,6 +118,13 @@ _Static_assert(sizeof(work_names) / sizeof(work_names[0]) ==
 const char *picosystem_physics_profile_mode_name(size_t mode_index)
 {
 	return (mode_index < PICOSYSTEM_PHYSICS_PROFILE_MODE_COUNT) ? mode_names[mode_index] : NULL;
+}
+
+const char *picosystem_physics_profile_fixture_name(size_t fixture_index)
+{
+	return (fixture_index < PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_COUNT)
+		       ? fixture_names[fixture_index]
+		       : NULL;
 }
 
 const char *picosystem_physics_profile_stage_name(size_t stage_index)
@@ -142,6 +160,15 @@ static struct picosystem_game_input replay_input(uint32_t tick)
 	};
 	const size_t input_index = (tick / 120U) % ARRAY_SIZE(inputs);
 	return inputs[input_index];
+}
+
+static struct picosystem_game_input profile_input(enum picosystem_physics_profile_fixture fixture,
+						  uint32_t tick)
+{
+	if (fixture == PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN) {
+		return (struct picosystem_game_input){0};
+	}
+	return replay_input(tick);
 }
 
 static uint32_t work_value(const struct picosystem_physics_work_counters *work,
@@ -405,14 +432,71 @@ static uint32_t measure_clock_delta(void)
 	return (uint32_t)(total / PROFILE_CLOCK_SAMPLE_COUNT);
 }
 
-static int run_mode(size_t mode_index, uint32_t measured_tick_count, uint32_t fine_bin_cycles,
-		    uint32_t coarse_bin_cycles, uint32_t budget_cycles,
+static uint32_t integer_square_root(uint64_t value)
+{
+	uint64_t result = 0U;
+	uint64_t bit = UINT64_C(1) << 62U;
+	while (bit > value) {
+		bit >>= 2U;
+	}
+	while (bit != 0U) {
+		if (value >= (result + bit)) {
+			value -= result + bit;
+			result = (result >> 1U) + bit;
+		} else {
+			result >>= 1U;
+		}
+		bit >>= 2U;
+	}
+	return (result <= UINT32_MAX) ? (uint32_t)result : UINT32_MAX;
+}
+
+static int maximum_revolute_anchor_error_squared(const struct picosystem_game_world *world,
+						 uint64_t *maximum_squared)
+{
+	uint64_t maximum = 0U;
+	for (uint16_t index = 0U; index < world->physics.revolute_joint_count; ++index) {
+		struct picosystem_physics_vector anchor_a;
+		struct picosystem_physics_vector anchor_b;
+		const int err = picosystem_physics_world_revolute_joint_anchors(
+			&world->physics, index, &anchor_a, &anchor_b);
+		if (err != 0) {
+			return err;
+		}
+		const int64_t delta_x = (int64_t)anchor_b.x - anchor_a.x;
+		const int64_t delta_y = (int64_t)anchor_b.y - anchor_a.y;
+		const uint64_t squared = (uint64_t)((delta_x * delta_x) + (delta_y * delta_y));
+		if (squared > maximum) {
+			maximum = squared;
+		}
+	}
+	*maximum_squared = maximum;
+	return 0;
+}
+
+static int reset_profile_world(enum picosystem_physics_profile_fixture fixture,
+			       uint16_t chain_link_count)
+{
+	switch (fixture) {
+	case PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL:
+		return picosystem_game_world_reset(&workspace.world);
+	case PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN:
+		return picosystem_physics_chain_fixture_reset(&workspace.world, chain_link_count);
+	case PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_COUNT:
+	default:
+		return -EINVAL;
+	}
+}
+
+static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture fixture,
+		    uint16_t chain_link_count, uint32_t measured_tick_count,
+		    uint32_t fine_bin_cycles, uint32_t coarse_bin_cycles, uint32_t budget_cycles,
 		    struct picosystem_physics_profile_mode_result *mode_result)
 {
 	const enum picosystem_physics_step_mode mode =
 		(mode_index == 0U) ? PICOSYSTEM_PHYSICS_STEP_MODE_GRID
 				   : PICOSYSTEM_PHYSICS_STEP_MODE_REFERENCE;
-	int err = picosystem_game_world_reset(&workspace.world);
+	int err = reset_profile_world(fixture, chain_link_count);
 	if (err != 0) {
 		return err;
 	}
@@ -420,7 +504,7 @@ static int run_mode(size_t mode_index, uint32_t measured_tick_count, uint32_t fi
 	mode_result->minimum_clock_reads_per_step = UINT32_MAX;
 
 	for (uint32_t tick = 0U; tick < PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS; ++tick) {
-		const struct picosystem_game_input input = replay_input(tick);
+		const struct picosystem_game_input input = profile_input(fixture, tick);
 		k_sched_lock();
 		err = picosystem_game_world_step_profiled(&workspace.world, &input, mode, NULL,
 							  NULL);
@@ -434,10 +518,11 @@ static int run_mode(size_t mode_index, uint32_t measured_tick_count, uint32_t fi
 	const struct picosystem_physics_clock clock = {
 		.now = profile_clock_now,
 	};
+	uint64_t maximum_anchor_error_squared = 0U;
 	for (uint32_t measured_tick = 0U; measured_tick < measured_tick_count; ++measured_tick) {
 		const uint32_t replay_tick =
 			PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS + measured_tick;
-		const struct picosystem_game_input input = replay_input(replay_tick);
+		const struct picosystem_game_input input = profile_input(fixture, replay_tick);
 		struct picosystem_physics_step_profile profile;
 		k_sched_lock();
 		err = picosystem_game_world_step_profiled(&workspace.world, &input, mode, &clock,
@@ -445,6 +530,15 @@ static int run_mode(size_t mode_index, uint32_t measured_tick_count, uint32_t fi
 		k_sched_unlock();
 		if (err != 0) {
 			return err;
+		}
+		uint64_t anchor_error_squared;
+		err = maximum_revolute_anchor_error_squared(&workspace.world,
+							    &anchor_error_squared);
+		if (err != 0) {
+			return err;
+		}
+		if (anchor_error_squared > maximum_anchor_error_squared) {
+			maximum_anchor_error_squared = anchor_error_squared;
 		}
 
 		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
@@ -476,17 +570,29 @@ static int run_mode(size_t mode_index, uint32_t measured_tick_count, uint32_t fi
 
 	summarize_stages(mode_result, fine_bin_cycles, coarse_bin_cycles);
 	mode_result->final_hash = picosystem_game_world_hash(&workspace.world);
+	mode_result->maximum_revolute_anchor_error_q16 =
+		integer_square_root(maximum_anchor_error_squared);
 	return 0;
 }
 
-int picosystem_physics_profile_compare(uint32_t measured_tick_count,
-				       struct picosystem_physics_profile_result *result)
+static int compare_fixture(enum picosystem_physics_profile_fixture fixture,
+			   uint16_t chain_link_count, uint32_t measured_tick_count,
+			   struct picosystem_physics_profile_result *result)
 {
 	if (result == NULL) {
 		return -EINVAL;
 	}
 	if ((measured_tick_count == 0U) ||
 	    (measured_tick_count > PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS)) {
+		return -ERANGE;
+	}
+	if (((fixture == PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL) &&
+	     (chain_link_count != 0U)) ||
+	    ((fixture == PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN) &&
+	     ((chain_link_count < PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MIN_LINKS) ||
+	      (chain_link_count > PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MAX_LINKS))) ||
+	    (fixture < PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL) ||
+	    (fixture >= PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_COUNT)) {
 		return -ERANGE;
 	}
 
@@ -497,6 +603,8 @@ int picosystem_physics_profile_compare(uint32_t measured_tick_count,
 
 	memset(result, 0, sizeof(*result));
 	result->schema_version = PICOSYSTEM_PHYSICS_PROFILE_SCHEMA_VERSION;
+	result->fixture = (uint8_t)fixture;
+	result->chain_link_count = chain_link_count;
 	result->measured_tick_count = measured_tick_count;
 	result->warmup_tick_count = PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS;
 	result->clock_frequency_hz = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC;
@@ -513,11 +621,13 @@ int picosystem_physics_profile_compare(uint32_t measured_tick_count,
 	result->back_to_back_clock_delta_cycles = measure_clock_delta();
 	const uint32_t budget_cycles = result->clock_frequency_hz / PICOSYSTEM_GAME_TICK_RATE_HZ;
 
-	int err = run_mode(0U, measured_tick_count, result->histogram_fine_bin_cycles,
-			   result->histogram_coarse_bin_cycles, budget_cycles, &result->modes[0]);
+	int err = run_mode(0U, fixture, chain_link_count, measured_tick_count,
+			   result->histogram_fine_bin_cycles, result->histogram_coarse_bin_cycles,
+			   budget_cycles, &result->modes[0]);
 	if (err == 0) {
 		capture_authoritative_state(&workspace.world, &workspace.grid_final_state);
-		err = run_mode(1U, measured_tick_count, result->histogram_fine_bin_cycles,
+		err = run_mode(1U, fixture, chain_link_count, measured_tick_count,
+			       result->histogram_fine_bin_cycles,
 			       result->histogram_coarse_bin_cycles, budget_cycles,
 			       &result->modes[1]);
 	}
@@ -532,4 +642,18 @@ int picosystem_physics_profile_compare(uint32_t measured_tick_count,
 
 	k_mutex_unlock(&profile_mutex);
 	return err;
+}
+
+int picosystem_physics_profile_compare(uint32_t measured_tick_count,
+				       struct picosystem_physics_profile_result *result)
+{
+	return compare_fixture(PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL, 0U,
+			       measured_tick_count, result);
+}
+
+int picosystem_physics_profile_compare_chain(uint16_t link_count, uint32_t measured_tick_count,
+					     struct picosystem_physics_profile_result *result)
+{
+	return compare_fixture(PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN, link_count,
+			       measured_tick_count, result);
 }

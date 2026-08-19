@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Run an isolated device physics A/B profile and save a versioned JSON artifact."""
+"""Run isolated device physics A/B profiles and save versioned JSON artifacts."""
 
 import argparse
 import json
@@ -51,9 +51,11 @@ SCHEMA_3_WORK_NAMES = SCHEMA_2_WORK_NAMES | {
     "joint_collision_filters",
     "revolute_joints",
 }
+SCHEMA_4_WORK_NAMES = SCHEMA_3_WORK_NAMES
 WORK_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_WORK_NAMES,
     3: SCHEMA_3_WORK_NAMES,
+    4: SCHEMA_4_WORK_NAMES,
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 
@@ -113,35 +115,50 @@ def one_line(output: str, prefix: str) -> dict[str, str]:
 
 
 def parse_profile(output: str) -> dict[str, object]:
-    begin = require_keys(
-        one_line(output, "PROFILE_BEGIN"),
-        {
-            "schema",
-            "ticks",
-            "warmup",
-            "clock_hz",
-            "histogram_fine_bin_us",
-            "histogram_fine_bins",
-            "histogram_coarse_bin_us",
-            "histogram_coarse_bins",
-            "clock_delta_cycles",
-        },
-        "PROFILE_BEGIN",
-    )
+    begin = one_line(output, "PROFILE_BEGIN")
+    if "schema" not in begin:
+        raise ProfileError("PROFILE_BEGIN fields are invalid: missing schema")
     schema_version = parse_unsigned(begin["schema"], "schema")
     if schema_version not in WORK_NAMES_BY_SCHEMA:
         raise ProfileError(f"unsupported profile schema {schema_version}")
+    begin_keys = {
+        "schema",
+        "ticks",
+        "warmup",
+        "clock_hz",
+        "histogram_fine_bin_us",
+        "histogram_fine_bins",
+        "histogram_coarse_bin_us",
+        "histogram_coarse_bins",
+        "clock_delta_cycles",
+    }
+    if schema_version >= 4:
+        begin_keys |= {"fixture", "chain_links"}
+    require_keys(begin, begin_keys, "PROFILE_BEGIN")
     work_names = WORK_NAMES_BY_SCHEMA[schema_version]
     ticks = parse_unsigned(begin["ticks"], "ticks")
     if ticks == 0:
         raise ProfileError("ticks must be positive")
+    fixture = begin.get("fixture", "canonical")
+    chain_link_count = parse_unsigned(begin.get("chain_links", "0"), "chain_links")
+    if fixture == "canonical":
+        if chain_link_count != 0:
+            raise ProfileError("canonical fixture must report zero chain links")
+    elif fixture == "revolute_chain":
+        if not 1 <= chain_link_count <= 8:
+            raise ProfileError("revolute-chain fixture must report 1-8 links")
+    else:
+        raise ProfileError(f"unsupported profile fixture '{fixture}'")
 
     modes: dict[str, dict[str, object]] = {}
+    mode_keys = {"mode", "hash", "clock_reads_min", "clock_reads_max"}
+    if schema_version >= 4:
+        mode_keys.add("max_revolute_error_q16")
     for line in output.splitlines():
         fields = parse_fields(line, "PROFILE_MODE")
         if fields is None:
             continue
-        require_keys(fields, {"mode", "hash", "clock_reads_min", "clock_reads_max"}, line)
+        require_keys(fields, mode_keys, line)
         mode = fields["mode"]
         if mode not in MODE_NAMES or mode in modes:
             raise ProfileError(f"unexpected or duplicate profile mode '{mode}'")
@@ -151,11 +168,20 @@ def parse_profile(output: str) -> dict[str, object]:
             raise ProfileError(f"invalid {mode} hash '{fields['hash']}'") from error
         if len(fields["hash"]) != 8:
             raise ProfileError(f"invalid {mode} hash '{fields['hash']}'")
+        maximum_revolute_error_q16 = parse_unsigned(
+            fields.get("max_revolute_error_q16", "0"), "max_revolute_error_q16"
+        )
         modes[mode] = {
             "final_hash": f"{final_hash:08x}",
             "clock_reads_per_step": {
                 "minimum": parse_unsigned(fields["clock_reads_min"], "clock_reads_min"),
                 "maximum": parse_unsigned(fields["clock_reads_max"], "clock_reads_max"),
+            },
+            "quality": {
+                "maximum_revolute_anchor_error_q16": maximum_revolute_error_q16,
+                "maximum_revolute_anchor_error_pixels": round(
+                    maximum_revolute_error_q16 / 65536, 6
+                ),
             },
             "stages": {},
             "work": {},
@@ -268,6 +294,8 @@ def parse_profile(output: str) -> dict[str, object]:
     return {
         "schema_version": schema_version,
         "benchmark": "isolated-physics-grid-reference",
+        "fixture": fixture,
+        "chain_link_count": chain_link_count,
         "measured_ticks_per_mode": ticks,
         "warmup_ticks_per_mode": parse_unsigned(begin["warmup"], "warmup"),
         "clock": {
@@ -352,11 +380,63 @@ def print_summary(result: dict[str, object], output_path: Path) -> None:
     print(f"artifact:  {output_path}")
 
 
+def parse_chain_link_counts(value: str) -> list[int]:
+    tokens = value.split(",")
+    if not tokens or any(not token.isdigit() for token in tokens):
+        raise ProfileError("chain links must be a comma-separated list of unsigned integers")
+    link_counts = [int(token) for token in tokens]
+    if any(not 1 <= link_count <= 8 for link_count in link_counts):
+        raise ProfileError("chain link counts must be 1-8")
+    if len(set(link_counts)) != len(link_counts):
+        raise ProfileError("chain link counts must not contain duplicates")
+    return link_counts
+
+
+def chain_scaling_result(
+    link_counts: list[int], ticks: int, cases: dict[str, dict[str, object]]
+) -> dict[str, object]:
+    if set(cases) != {str(link_count) for link_count in link_counts}:
+        raise ProfileError("chain profile cases do not match the requested link counts")
+    return {
+        "schema_version": 1,
+        "benchmark": "revolute-chain-scaling",
+        "measured_ticks_per_mode": ticks,
+        "link_counts": link_counts,
+        "cases": cases,
+    }
+
+
+def print_chain_summary(result: dict[str, object], output_path: Path) -> None:
+    cases = result["cases"]
+    link_counts = result["link_counts"]
+    assert isinstance(cases, dict) and isinstance(link_counts, list)
+    print("links  grid mean/p95/max      reference mean  joint visits  max error  violations")
+    for link_count in link_counts:
+        profile = cases[str(link_count)]
+        modes = profile["modes"]
+        grid = modes["grid"]
+        reference = modes["reference"]
+        total = grid["stages"]["total"]
+        visits = grid["work"]["joint_solver_visits"]["mean_per_tick"]
+        maximum_error = grid["quality"]["maximum_revolute_anchor_error_pixels"]
+        print(
+            f"{link_count:>5}  {total['mean_us']:>4}/{total['p95_us']:>4}/"
+            f"{total['maximum_us']:>4} us  {reference['stages']['total']['mean_us']:>8} us"
+            f"  {visits:>12g}  {maximum_error:>8.3f}px  "
+            f"{total['budget_violations']:>10}"
+        )
+    print(f"artifact:  {output_path}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("port", help="USB CDC ACM device")
     parser.add_argument("output", type=Path, help="versioned JSON artifact path")
     parser.add_argument("--ticks", type=int, default=2000, help="measured ticks per mode")
+    parser.add_argument(
+        "--chain-links",
+        help="profile comma-separated revolute-chain link counts instead of the canonical world",
+    )
     parser.add_argument("--owner-uid", type=int, help="set artifact owner UID")
     parser.add_argument("--owner-gid", type=int, help="set artifact owner GID")
     return parser.parse_args()
@@ -366,6 +446,14 @@ def main() -> int:
     args = parse_args()
     if not 1 <= args.ticks <= 10000:
         print("ticks must be 1-10000", file=sys.stderr)
+        return 1
+
+    try:
+        link_counts = (
+            parse_chain_link_counts(args.chain_links) if args.chain_links is not None else []
+        )
+    except ProfileError as error:
+        print(f"profile failed: {error}", file=sys.stderr)
         return 1
 
     initially_running = False
@@ -381,10 +469,30 @@ def main() -> int:
                     if mode != "paused":
                         raise ProfileError("simulation did not pause")
                     paused_by_us = True
-                output = session.run(
-                    f"picosystem profile compare {args.ticks}", timeout_seconds=120.0
-                )
-                result = parse_profile(output)
+                if link_counts:
+                    cases: dict[str, dict[str, object]] = {}
+                    for link_count in link_counts:
+                        output = session.run(
+                            f"picosystem profile chain {link_count} {args.ticks}",
+                            timeout_seconds=120.0,
+                        )
+                        case = parse_profile(output)
+                        if (
+                            case["fixture"] != "revolute_chain"
+                            or case["chain_link_count"] != link_count
+                        ):
+                            raise ProfileError(
+                                f"device returned the wrong fixture for {link_count} links"
+                            )
+                        cases[str(link_count)] = case
+                    result = chain_scaling_result(link_counts, args.ticks, cases)
+                else:
+                    output = session.run(
+                        f"picosystem profile compare {args.ticks}", timeout_seconds=120.0
+                    )
+                    result = parse_profile(output)
+                    if result["fixture"] != "canonical":
+                        raise ProfileError("device returned a non-canonical fixture")
                 write_artifact(args.output, result, args.owner_uid, args.owner_gid)
             except (
                 OSError,
@@ -417,7 +525,10 @@ def main() -> int:
         print(f"profile failed: {failure}", file=sys.stderr)
         return 1
 
-    print_summary(result, args.output)
+    if link_counts:
+        print_chain_summary(result, args.output)
+    else:
+        print_summary(result, args.output)
     return 0
 
 

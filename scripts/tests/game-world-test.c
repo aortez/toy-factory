@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 #include "game_world.h"
+#include "physics_chain_fixture.h"
 
 #define EXPECTED_RESET_HASH          UINT32_C(0xbe490990)
 #define EXPECTED_RIGHT_30_HASH       UINT32_C(0xf110b9f9)
@@ -227,6 +228,22 @@ static uint64_t vector_distance_squared(const struct picosystem_physics_vector *
 	return (uint64_t)((x * x) + (y * y));
 }
 
+static uint64_t maximum_revolute_error_squared(const struct picosystem_game_world *world)
+{
+	uint64_t maximum = 0U;
+	for (uint16_t index = 0U; index < world->physics.revolute_joint_count; ++index) {
+		struct picosystem_physics_vector anchor_a;
+		struct picosystem_physics_vector anchor_b;
+		assert(picosystem_physics_world_revolute_joint_anchors(&world->physics, index,
+								       &anchor_a, &anchor_b) == 0);
+		const uint64_t distance_squared = vector_distance_squared(&anchor_a, &anchor_b);
+		if (distance_squared > maximum) {
+			maximum = distance_squared;
+		}
+	}
+	return maximum;
+}
+
 static void assert_joint_lengths_bounded(const struct picosystem_game_world *world)
 {
 	const int32_t tolerance = PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3);
@@ -249,7 +266,60 @@ static void assert_joint_lengths_bounded(const struct picosystem_game_world *wor
 								       &anchor_a, &anchor_b) == 0);
 		const uint64_t distance_squared = vector_distance_squared(&anchor_a, &anchor_b);
 		const int64_t revolute_tolerance = BOUNDARY_TOLERANCE;
+		if (distance_squared > (uint64_t)(revolute_tolerance * revolute_tolerance)) {
+			fprintf(stderr,
+				"revolute joint %u exceeded tolerance at tick %u: squared "
+				"error=%llu\n",
+				index, world->logic_tick_count,
+				(unsigned long long)distance_squared);
+		}
 		assert(distance_squared <= (uint64_t)(revolute_tolerance * revolute_tolerance));
+	}
+}
+
+static void test_chain_fixture_boundaries_and_replay(void)
+{
+	struct picosystem_game_world world;
+	assert(picosystem_game_world_reset(&world) == 0);
+	const struct picosystem_game_world baseline = world;
+	assert(picosystem_physics_chain_fixture_reset(NULL, 4U) == -EINVAL);
+	assert(picosystem_physics_chain_fixture_reset(&world, 0U) == -ERANGE);
+	assert_world_equal(&world, &baseline);
+	assert(picosystem_physics_chain_fixture_reset(
+		       &world, PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MAX_LINKS + 1U) == -ERANGE);
+	assert_world_equal(&world, &baseline);
+
+	static const uint16_t link_counts[] = {1U, 4U, 6U, 8U};
+	static const struct picosystem_game_input neutral = {0};
+	for (size_t count_index = 0U; count_index < sizeof(link_counts) / sizeof(link_counts[0]);
+	     ++count_index) {
+		const uint16_t link_count = link_counts[count_index];
+		assert(picosystem_physics_chain_fixture_reset(&world, link_count) == 0);
+		assert(world.logic_tick_count == 0U);
+		assert(world.physics.body_count == link_count);
+		assert(world.physics.static_segment_count == 0U);
+		assert(world.physics.distance_joint_count == 0U);
+		assert(world.physics.revolute_joint_count == link_count);
+		assert_joint_lengths_bounded(&world);
+
+		uint64_t maximum_error_squared = 0U;
+		for (uint32_t step = 0U; step < 1120U; ++step) {
+			assert(picosystem_game_world_step(&world, &neutral) == 0);
+			const uint64_t error_squared = maximum_revolute_error_squared(&world);
+			if (error_squared > maximum_error_squared) {
+				maximum_error_squared = error_squared;
+			}
+			assert(world.physics.last_broad_phase_fallback == 0U);
+			assert(world.physics.last_work.revolute_joint_count == link_count);
+			assert(world.physics.last_work.joint_solver_visit_count ==
+			       link_count * world.physics.last_work.solver_iteration_count);
+		}
+		assert(world.logic_tick_count == 1120U);
+		assert(picosystem_game_world_hash(&world) != 0U);
+		fprintf(stderr, "chain links=%u maximum squared anchor error=%llu\n", link_count,
+			(unsigned long long)maximum_error_squared);
+		const int64_t safety_limit = PICOSYSTEM_PHYSICS_FIXED_FROM_INT(64);
+		assert(maximum_error_squared <= (uint64_t)(safety_limit * safety_limit));
 	}
 }
 
@@ -403,6 +473,7 @@ int main(void)
 	test_bounded_motion_contacts_and_saturated_tick();
 	test_canonical_reset_and_golden_replay();
 	test_validation_preserves_state();
+	test_chain_fixture_boundaries_and_replay();
 	test_reset_replay_is_bit_exact();
 	puts("game-world tests passed");
 	return 0;

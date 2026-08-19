@@ -87,6 +87,8 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add deterministic work counters and an isolated device grid/reference profiler.
 - [x] Add bounded bilateral distance joints with body/world anchors and profiling.
 - [x] Add deterministic revolute hinges, multi-link chains, collision policy, and profiling.
+- [x] Measure deterministic 4/6/8-link timing and revolute-anchor quality on the PIM559.
+- [ ] Improve long-chain constraint convergence within the existing 120 Hz budget.
 - [ ] Add motors, conveyors, springs, sensors, and sleeping.
 - [ ] Add a bounded rope or soft-body subsystem.
 - [ ] Evaluate granular materials and approximate force fields.

@@ -13,7 +13,7 @@
 
 #include "physics_world.h"
 
-#define PICOSYSTEM_PHYSICS_PROFILE_SCHEMA_VERSION             3U
+#define PICOSYSTEM_PHYSICS_PROFILE_SCHEMA_VERSION             4U
 #define PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS              2000U
 #define PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS                  10000U
 #define PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS               120U
@@ -25,6 +25,12 @@
 	(PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT +                                     \
 	 PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_COUNT)
 #define PICOSYSTEM_PHYSICS_PROFILE_MODE_COUNT 2U
+
+enum picosystem_physics_profile_fixture {
+	PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL,
+	PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN,
+	PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_COUNT,
+};
 
 enum picosystem_physics_profile_work_metric {
 	PICOSYSTEM_PHYSICS_PROFILE_WORK_POSSIBLE_PAIRS,
@@ -74,6 +80,7 @@ struct picosystem_physics_profile_mode_result {
 	uint32_t final_hash;
 	uint32_t minimum_clock_reads_per_step;
 	uint32_t maximum_clock_reads_per_step;
+	uint32_t maximum_revolute_anchor_error_q16;
 };
 
 struct picosystem_physics_profile_result {
@@ -85,6 +92,8 @@ struct picosystem_physics_profile_result {
 	uint32_t histogram_fine_bin_cycles;
 	uint32_t histogram_coarse_bin_cycles;
 	uint32_t back_to_back_clock_delta_cycles;
+	uint16_t chain_link_count;
+	uint8_t fixture;
 	bool hashes_match;
 	bool states_match;
 };
@@ -92,7 +101,10 @@ struct picosystem_physics_profile_result {
 /* Run an isolated canonical replay. The caller owns result; internal scratch is serialized. */
 int picosystem_physics_profile_compare(uint32_t measured_tick_count,
 				       struct picosystem_physics_profile_result *result);
+int picosystem_physics_profile_compare_chain(uint16_t link_count, uint32_t measured_tick_count,
+					     struct picosystem_physics_profile_result *result);
 
+const char *picosystem_physics_profile_fixture_name(size_t fixture_index);
 const char *picosystem_physics_profile_mode_name(size_t mode_index);
 const char *picosystem_physics_profile_stage_name(size_t stage_index);
 const char *picosystem_physics_profile_work_name(size_t metric_index);

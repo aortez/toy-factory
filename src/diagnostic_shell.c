@@ -26,6 +26,7 @@
 #include "display_profile.h"
 #include "display_sync.h"
 #include "game_control.h"
+#include "physics_chain_fixture.h"
 #include "physics_profile.h"
 #include "piezo.h"
 
@@ -984,26 +985,31 @@ static int cmd_display_profile(const struct shell *shell, size_t argc, char **ar
 static void print_profile_result(const struct shell *shell,
 				 const struct picosystem_physics_profile_result *result)
 {
-	shell_print(shell,
-		    "PROFILE_BEGIN schema=%u ticks=%u warmup=%u clock_hz=%u "
-		    "histogram_fine_bin_us=%u histogram_fine_bins=%u "
-		    "histogram_coarse_bin_us=%u histogram_coarse_bins=%u clock_delta_cycles=%u",
-		    result->schema_version, result->measured_tick_count, result->warmup_tick_count,
-		    result->clock_frequency_hz, PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_US,
-		    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT,
-		    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_US,
-		    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_COUNT,
-		    result->back_to_back_clock_delta_cycles);
+	shell_print(
+		shell,
+		"PROFILE_BEGIN schema=%u fixture=%s chain_links=%u ticks=%u warmup=%u "
+		"clock_hz=%u "
+		"histogram_fine_bin_us=%u histogram_fine_bins=%u "
+		"histogram_coarse_bin_us=%u histogram_coarse_bins=%u clock_delta_cycles=%u",
+		result->schema_version, picosystem_physics_profile_fixture_name(result->fixture),
+		result->chain_link_count, result->measured_tick_count, result->warmup_tick_count,
+		result->clock_frequency_hz, PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_US,
+		PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT,
+		PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_US,
+		PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_COUNT,
+		result->back_to_back_clock_delta_cycles);
 
 	for (size_t mode = 0U; mode < PICOSYSTEM_PHYSICS_PROFILE_MODE_COUNT; ++mode) {
 		const struct picosystem_physics_profile_mode_result *const mode_result =
 			&result->modes[mode];
 		const char *const mode_name = picosystem_physics_profile_mode_name(mode);
 		shell_print(shell,
-			    "PROFILE_MODE mode=%s hash=%08x clock_reads_min=%u clock_reads_max=%u",
+			    "PROFILE_MODE mode=%s hash=%08x clock_reads_min=%u clock_reads_max=%u "
+			    "max_revolute_error_q16=%u",
 			    mode_name, mode_result->final_hash,
 			    mode_result->minimum_clock_reads_per_step,
-			    mode_result->maximum_clock_reads_per_step);
+			    mode_result->maximum_clock_reads_per_step,
+			    mode_result->maximum_revolute_anchor_error_q16);
 
 		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
 			const struct picosystem_physics_profile_stage_summary *const summary =
@@ -1040,23 +1046,9 @@ static void print_profile_result(const struct shell *shell,
 	}
 }
 
-static int cmd_profile_compare(const struct shell *shell, size_t argc, char **argv)
+static int run_physics_profile(const struct shell *shell, uint16_t chain_link_count,
+			       uint32_t measured_tick_count)
 {
-	uint32_t measured_tick_count = PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS;
-	if (argc == 2U) {
-		const int parse_err =
-			parse_u32(shell, "measured tick count", argv[1], &measured_tick_count);
-		if (parse_err != 0) {
-			return parse_err;
-		}
-	}
-	if ((measured_tick_count == 0U) ||
-	    (measured_tick_count > PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS)) {
-		shell_error(shell, "Measured tick count must be 1-%u",
-			    PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS);
-		return -ERANGE;
-	}
-
 	struct picosystem_game_control_state state;
 	const struct picosystem_game_control_request request = {
 		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
@@ -1071,9 +1063,20 @@ static int cmd_profile_compare(const struct shell *shell, size_t argc, char **ar
 		return -EBUSY;
 	}
 
-	shell_print(shell, "Running isolated grid/reference replay for %u measured ticks per mode",
-		    measured_tick_count);
-	err = picosystem_physics_profile_compare(measured_tick_count, &profile_result);
+	if (chain_link_count == 0U) {
+		shell_print(
+			shell,
+			"Running canonical grid/reference replay for %u measured ticks per mode",
+			measured_tick_count);
+		err = picosystem_physics_profile_compare(measured_tick_count, &profile_result);
+	} else {
+		shell_print(shell,
+			    "Running %u-link chain grid/reference replay for %u measured ticks per "
+			    "mode",
+			    chain_link_count, measured_tick_count);
+		err = picosystem_physics_profile_compare_chain(
+			chain_link_count, measured_tick_count, &profile_result);
+	}
 	if ((err == 0) || (err == -EILSEQ)) {
 		print_profile_result(shell, &profile_result);
 		size_t unused_stack_bytes;
@@ -1096,6 +1099,58 @@ static int cmd_profile_compare(const struct shell *shell, size_t argc, char **ar
 		shell_error(shell, "Physics profile comparison failed (%d)", err);
 	}
 	return err;
+}
+
+static int cmd_profile_compare(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t measured_tick_count = PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS;
+	if (argc == 2U) {
+		const int parse_err =
+			parse_u32(shell, "measured tick count", argv[1], &measured_tick_count);
+		if (parse_err != 0) {
+			return parse_err;
+		}
+	}
+	if ((measured_tick_count == 0U) ||
+	    (measured_tick_count > PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS)) {
+		shell_error(shell, "Measured tick count must be 1-%u",
+			    PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS);
+		return -ERANGE;
+	}
+
+	return run_physics_profile(shell, 0U, measured_tick_count);
+}
+
+static int cmd_profile_chain(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t link_count;
+	int err = parse_u32(shell, "chain link count", argv[1], &link_count);
+	if (err != 0) {
+		return err;
+	}
+	if ((link_count < PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MIN_LINKS) ||
+	    (link_count > PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MAX_LINKS)) {
+		shell_error(shell, "Chain link count must be %u-%u",
+			    PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MIN_LINKS,
+			    PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MAX_LINKS);
+		return -ERANGE;
+	}
+
+	uint32_t measured_tick_count = PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS;
+	if (argc == 3U) {
+		err = parse_u32(shell, "measured tick count", argv[2], &measured_tick_count);
+		if (err != 0) {
+			return err;
+		}
+	}
+	if ((measured_tick_count == 0U) ||
+	    (measured_tick_count > PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS)) {
+		shell_error(shell, "Measured tick count must be 1-%u",
+			    PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS);
+		return -ERANGE;
+	}
+
+	return run_physics_profile(shell, (uint16_t)link_count, measured_tick_count);
 }
 
 static int cmd_reboot_bootloader(const struct shell *shell, size_t argc, char **argv)
@@ -1161,6 +1216,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(reboot_commands,
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	profile_commands,
+	SHELL_CMD_ARG(chain, NULL,
+		      SHELL_HELP("Compare a deterministic revolute-chain fixture.",
+				 "<links> [ticks] (links 1-8, default 2000 ticks; simulation must "
+				 "be paused)"),
+		      cmd_profile_chain, 2, 1),
 	SHELL_CMD_ARG(
 		compare, NULL,
 		SHELL_HELP("Compare isolated grid and brute-force physics replays.",
