@@ -12,6 +12,7 @@ from serial_shell import SerialShellSession
 
 
 CAPTURE_COMMAND = "picosystem display capture"
+DEFAULT_CAPTURE_TIMEOUT_SECONDS = 120.0
 BEGIN_PATTERN = re.compile(
     r"^FRAMEBUFFER_BEGIN width=(\d+) height=(\d+) format=([a-z0-9]+) bytes=(\d+)$"
 )
@@ -113,7 +114,7 @@ def parse_capture(output: str) -> FramebufferCapture:
 
 def capture_framebuffer(
     session: SerialShellSession,
-    timeout_seconds: float = 60.0,
+    timeout_seconds: float = DEFAULT_CAPTURE_TIMEOUT_SECONDS,
 ) -> FramebufferCapture:
     response = session.run(CAPTURE_COMMAND, timeout_seconds=timeout_seconds)
     return parse_capture(response)
@@ -188,7 +189,7 @@ def write_png(
 def capture_to_png(
     session: SerialShellSession,
     path: Path,
-    timeout_seconds: float = 60.0,
+    timeout_seconds: float = DEFAULT_CAPTURE_TIMEOUT_SECONDS,
     owner_uid: int | None = None,
     owner_gid: int | None = None,
 ) -> FramebufferCapture:

@@ -683,6 +683,13 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 		record_presented_snapshot(&snapshot, full_redraw, superseded_count, render_time_us,
 					  &dirty_stats);
 		k_mutex_unlock(&renderer.framebuffer_mutex);
+#if defined(CONFIG_TOY_FACTORY_CORE1_FULL_FRAME_RENDERER)
+		/* Leave a bounded handoff window after each continuous full frame. Without
+		 * it, this priority -1 coordinator can reacquire the framebuffer before a
+		 * waiting shell capture ever runs.
+		 */
+		k_msleep(1);
+#endif
 
 		if (full_redraw && !core1_full_frame_renderer_enabled()) {
 			LOG_INF("Asynchronous full redraw: %u us present, %u us renderer wall time",

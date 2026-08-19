@@ -485,6 +485,14 @@ of its 4 KiB canary-measured stack. Paused hardware checks also produced
 identical core-0/core-1 pixels for both the live scene and dense stress frame,
 then restored the original framebuffer exactly.
 
+The priority -1 coordinator leaves a one-millisecond handoff window after each
+frame so a waiting framebuffer reader cannot starve. A subsequent clean
+4,365-tick run sustained 119.9 Hz simulation and 29.8 fps with zero skipped
+ticks. A coherent capture while paused completed in 7.1 seconds. Capturing while
+the simulation runs deliberately freezes presentation and took about 99 seconds,
+but simulation remained at 120.0 Hz with zero skipped ticks. The host capture
+timeout is therefore 120 seconds; deterministic automation should pause first.
+
 GitHub Actions runs `make check` and builds the PIO, PIO/DMA, and PL022/DMA
 variants for every pull request and push to `main`. Tests that need a connected
 PicoSystem remain part of the physical smoke-test boundary rather than hosted CI.

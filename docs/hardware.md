@@ -288,5 +288,16 @@ deadline scheduler recovered every tick. Paused live-scene and dense-frame
 checks produced byte-identical core-0/core-1 results and restored the original
 framebuffer after each comparison.
 
+Because the fast coordinator runs at priority -1, it leaves a one-millisecond
+handoff window after every frame and uses nonblocking framebuffer acquisition.
+This prevents continuous presentation from starving the lower-priority USB
+shell and prevents mutex priority inheritance from promoting a long capture
+above simulation. With that policy, a clean 4,365-tick run held 119.9 Hz and
+29.8 fps with zero skipped ticks. A paused capture completed in 7.1 seconds.
+A live capture held the coherent framebuffer for about 99 seconds and therefore
+froze presentation, but all 16,240 simulation ticks completed at 120.0 Hz with
+zero skips. Pause before capture for deterministic automation and practical
+latency.
+
 On a cold power-on, the backlight remained visually dark until the completed
 frame appeared; no bright or white startup flash was observed.
