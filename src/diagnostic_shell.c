@@ -387,21 +387,28 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.max_dirty_snapshot_age_us);
 	shell_print(shell,
 		    "physics: bodies=%u, segments=%u, joints=%u distance/%u revolute/%u "
-		    "prismatic, contacts=%u, "
+		    "prismatic, sensors=%u, contacts=%u, "
 		    "candidates=%u/%u, "
 		    "grid=%u/%u cells, solver=%u/%u, contact solver=%u visits, %u cached, "
 		    "%u changed, "
 		    "fallback=%s",
 		    snapshot.game.body_count, snapshot.game.static_segment_count,
 		    snapshot.game.distance_joint_count, snapshot.game.revolute_joint_count,
-		    snapshot.game.prismatic_joint_count, snapshot.game.contact_count,
-		    snapshot.game.candidate_pair_count, snapshot.game.possible_pair_count,
-		    snapshot.game.occupied_grid_cell_count, PICOSYSTEM_PHYSICS_GRID_CELL_COUNT,
-		    snapshot.game.solver_iteration_count, PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
-		    snapshot.game.solver_contact_visit_count,
+		    snapshot.game.prismatic_joint_count, snapshot.game.box_sensor_count,
+		    snapshot.game.contact_count, snapshot.game.candidate_pair_count,
+		    snapshot.game.possible_pair_count, snapshot.game.occupied_grid_cell_count,
+		    PICOSYSTEM_PHYSICS_GRID_CELL_COUNT, snapshot.game.solver_iteration_count,
+		    PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS, snapshot.game.solver_contact_visit_count,
 		    snapshot.game.solver_cached_contact_count,
 		    snapshot.game.solver_changed_contact_count,
 		    snapshot.game.broad_phase_fallback ? "yes" : "no");
+	shell_print(shell,
+		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
+		    "sensor entries=%u",
+		    snapshot.game.active_contact_pair_count, snapshot.game.sensor_overlap_count,
+		    snapshot.game.contact_event_count, snapshot.game.contact_begin_event_count,
+		    snapshot.game.contact_stay_event_count, snapshot.game.contact_end_event_count,
+		    snapshot.game.sensor_entry_count);
 	shell_print(
 		shell,
 		"focus #%u %s: simulation=(%u,%u), displayed=(%u,%u), "
@@ -562,18 +569,25 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->last_snapshot_age_us, game->max_dirty_snapshot_age_us);
 	shell_print(shell,
 		    "physics: bodies=%u, segments=%u, joints=%u distance/%u revolute/%u "
-		    "prismatic, contacts=%u, "
+		    "prismatic, sensors=%u, contacts=%u, "
 		    "candidates=%u/%u, "
 		    "grid=%u/%u cells, solver=%u/%u, contact solver=%u visits, %u cached, "
 		    "%u changed, "
 		    "fallback=%s",
 		    game->body_count, game->static_segment_count, game->distance_joint_count,
-		    game->revolute_joint_count, game->prismatic_joint_count, game->contact_count,
-		    game->candidate_pair_count, game->possible_pair_count,
+		    game->revolute_joint_count, game->prismatic_joint_count, game->box_sensor_count,
+		    game->contact_count, game->candidate_pair_count, game->possible_pair_count,
 		    game->occupied_grid_cell_count, PICOSYSTEM_PHYSICS_GRID_CELL_COUNT,
 		    game->solver_iteration_count, PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
 		    game->solver_contact_visit_count, game->solver_cached_contact_count,
 		    game->solver_changed_contact_count, game->broad_phase_fallback ? "yes" : "no");
+	shell_print(shell,
+		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
+		    "sensor entries=%u",
+		    game->active_contact_pair_count, game->sensor_overlap_count,
+		    game->contact_event_count, game->contact_begin_event_count,
+		    game->contact_stay_event_count, game->contact_end_event_count,
+		    game->sensor_entry_count);
 	shell_print(shell,
 		    "focus #%u %s: simulation=(%u,%u), displayed=(%u,%u), "
 		    "velocity=(%d,%d) px/s, angle=%08x, angular=%d mrad/s",

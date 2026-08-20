@@ -18,7 +18,7 @@
 #define GAME_FRICTION               PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
 #define GAME_PRISMATIC_MOTOR_SPEED  PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
 #define GAME_PRISMATIC_REVERSE_SLOP PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 32)
-#define GAME_WORLD_HASH_VERSION     UINT32_C(6)
+#define GAME_WORLD_HASH_VERSION     UINT32_C(7)
 #define FNV1A_OFFSET_BASIS          UINT32_C(2166136261)
 #define FNV1A_PRIME                 UINT32_C(16777619)
 
@@ -179,6 +179,14 @@ static const struct picosystem_physics_segment_config canonical_segments[] = {
 	},
 };
 
+static const struct picosystem_physics_box_sensor_config canonical_box_sensors[] = {
+	{
+		.center = {.x = FIXED(70), .y = FIXED(124)},
+		.half_extent = {.x = FIXED(30), .y = FIXED(10)},
+		.id = 501U,
+	},
+};
+
 static const struct picosystem_physics_revolute_joint_config canonical_revolute_joints[] = {
 	{
 		.local_anchor_a = {.x = -FIXED(10)},
@@ -238,6 +246,9 @@ _Static_assert(sizeof(canonical_revolute_joints) / sizeof(canonical_revolute_joi
 _Static_assert(sizeof(canonical_prismatic_joints) / sizeof(canonical_prismatic_joints[0]) ==
 		       PICOSYSTEM_GAME_PRISMATIC_JOINT_COUNT,
 	       "canonical prismatic-joint count must match the public contract");
+_Static_assert(sizeof(canonical_box_sensors) / sizeof(canonical_box_sensors[0]) ==
+		       PICOSYSTEM_GAME_BOX_SENSOR_COUNT,
+	       "canonical box-sensor count must match the public contract");
 _Static_assert(PICOSYSTEM_GAME_BODY_COUNT <= PICOSYSTEM_PHYSICS_MAX_BODIES,
 	       "canonical bodies must fit physics storage");
 _Static_assert(PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT <= PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS,
@@ -248,6 +259,8 @@ _Static_assert(PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT <= PICOSYSTEM_PHYSICS_MAX_RE
 	       "canonical revolute joints must fit physics storage");
 _Static_assert(PICOSYSTEM_GAME_PRISMATIC_JOINT_COUNT <= PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS,
 	       "canonical prismatic joints must fit physics storage");
+_Static_assert(PICOSYSTEM_GAME_BOX_SENSOR_COUNT <= PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS,
+	       "canonical box sensors must fit physics storage");
 
 static void increment_saturated(uint32_t *value)
 {
@@ -276,6 +289,7 @@ int picosystem_game_world_reset(struct picosystem_game_world *world)
 		return err;
 	}
 	world->logic_tick_count = 0U;
+	world->sensor_entry_count = 0U;
 
 	for (size_t index = 0U; index < PICOSYSTEM_GAME_BODY_COUNT; ++index) {
 		if (canonical_bodies[index].shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
@@ -292,6 +306,13 @@ int picosystem_game_world_reset(struct picosystem_game_world *world)
 	for (size_t index = 0U; index < PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT; ++index) {
 		err = picosystem_physics_world_add_static_segment(&world->physics,
 								  &canonical_segments[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (size_t index = 0U; index < PICOSYSTEM_GAME_BOX_SENSOR_COUNT; ++index) {
+		err = picosystem_physics_world_add_box_sensor(&world->physics,
+							      &canonical_box_sensors[index]);
 		if (err != 0) {
 			return err;
 		}
@@ -346,6 +367,22 @@ static int update_prismatic_drive(struct picosystem_game_world *world)
 	return err;
 }
 
+static int process_contact_events(struct picosystem_game_world *world)
+{
+	for (uint16_t index = 0U; index < world->physics.contact_event_count; ++index) {
+		const struct picosystem_physics_contact_event *const event =
+			picosystem_physics_world_contact_event_at(&world->physics, index);
+		if (event == NULL) {
+			return -ERANGE;
+		}
+		if ((event->type == PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_BOX_SENSOR) &&
+		    (event->phase == PICOSYSTEM_PHYSICS_CONTACT_EVENT_BEGIN)) {
+			increment_saturated(&world->sensor_entry_count);
+		}
+	}
+	return 0;
+}
+
 static int game_world_step(struct picosystem_game_world *world,
 			   const struct picosystem_game_input *input,
 			   enum picosystem_physics_step_mode mode,
@@ -370,6 +407,10 @@ static int game_world_step(struct picosystem_game_world *world,
 	};
 	err = picosystem_physics_world_step_profiled(&world->physics, &acceleration, mode, clock,
 						     profile);
+	if (err != 0) {
+		return err;
+	}
+	err = process_contact_events(world);
 	if (err != 0) {
 		return err;
 	}
@@ -408,11 +449,13 @@ uint32_t picosystem_game_world_hash(const struct picosystem_game_world *world)
 	    (world->physics.static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||
 	    (world->physics.distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
 	    (world->physics.revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
-	    (world->physics.prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS)) {
+	    (world->physics.prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS) ||
+	    (world->physics.box_sensor_count > PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS)) {
 		return 0U;
 	}
 
 	uint32_t hash = fnv1a_u32(FNV1A_OFFSET_BASIS, GAME_WORLD_HASH_VERSION);
 	hash = fnv1a_u32(hash, world->logic_tick_count);
+	hash = fnv1a_u32(hash, world->sensor_entry_count);
 	return fnv1a_u32(hash, picosystem_physics_world_hash(&world->physics));
 }

@@ -153,10 +153,10 @@ three updates and 10,000 ticks for 120 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes a 728-byte immutable snapshot of
+Simulation uses Q16.16 positions and publishes a 744-byte immutable snapshot of
 up to 12 circle or oriented-box bodies, eight physical static segments, and 16
 render-only guide segments, plus eight render records each for distance and
-revolute joints, on every update.
+revolute joints and one canonical box sensor, on every update.
 Two slots and a short spin-lock-protected copy prevent the renderer from
 observing partially updated state. A saturated semaphore is only a wake-up
 hint: if two or more simulation states arrive during a panel period, the
@@ -246,7 +246,7 @@ at 29.8 fps. Concurrent rendering and USB activity produced 5,143 updates over
 8.333 ms and a 25.008 ms maximum; faster intervening updates recovered most
 deadlines.
 
-The current powered Machine Lab adds eight fixed-capacity prismatic slots and
+The preceding powered Machine Lab adds eight fixed-capacity prismatic slots and
 uses one for a motorized world rail with creation-relative travel limits. Its
 20,020-byte physics world uses compact per-body velocity revisions to cache
 unchanged contact and prismatic rows; the serialized profiling workspace is
@@ -264,6 +264,37 @@ presentation averaged 29.8 fps. It recorded eight skipped ticks, a five-tick
 worst backlog, and mean/maximum physics time of 5.788/9.786 ms. A settled
 sampled tick skipped 16 of 42 scheduled contact visits. Main, render, and core-1
 stack high-water marks were 3,648/4,096, 3,588/4,096, and 344/4,096 bytes.
+
+The current sensor/contact-event image adds eight fixed-capacity axis-aligned
+box sensors, exact circle/box overlap tests, persistent pair masks, and a
+258-record lifecycle-event buffer. Each event is six bytes and is pair-level
+even when a physical manifold has two points. The sensor mask fits in existing
+grid-cell padding, so the 16 x 16 scratch grid remains 1,024 bytes. The physics
+world is 21,804 bytes, the complete game world is 21,812 bytes, each immutable
+render snapshot is 744 bytes, and the serialized profile workspace is 31,208
+bytes. The conservative image uses 214,908 bytes of Zephyr RAM and 193,336
+bytes of flash.
+
+The recommended image places its 16,480-byte inlined physics step in SRAM to
+avoid XIP contention with the core-1 raster worker. It uses 238,532 bytes of the
+255 KiB Zephyr region and 198,560 bytes of flash, retaining 22,588 bytes of
+linker RAM headroom plus the separately reserved 8 KiB core-1 area. Main,
+render, shell-profile, and core-1 stack high-water marks were 3,632/4,096,
+3,668/4,096, 3,856/5,120, and 336/4,096 bytes.
+
+The PIM559 reproduced reset/right-30/right-30-up-15 hashes `e631a02b`,
+`94f6dc64`, and `e82a9f5c`, plus framebuffer CRC-32 `dd67545b` at tick 45. Its
+schema-version-7 isolated 1,000-tick grid profile averaged 2.723 ms, reached a
+3.584 ms p95 and 4.722 ms maximum, and recorded no 8.333 ms budget violations.
+The brute-force reference averaged 2.998 ms; both modes ended at `1d58dedd`
+with exact state agreement. Grid filtering retained 8.017 of 70 possible pairs
+and 0.685 of seven body/sensor tests per tick. Both modes produced 182 begin,
+523 stay, and 182 end events. A clean 4,978-tick concurrent window held 120.0
+Hz with zero skipped ticks while full-frame presentation averaged 29.8 fps.
+Mean complete-update/physics/snapshot time was 5.046/4.356/0.689 ms; four
+updates exceeded 8.333 ms and the worst backlog was three ticks. A paused scene
+check produced identical core-0/core-1 pixels in 9.728 ms and restored the
+framebuffer exactly.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.

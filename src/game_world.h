@@ -24,6 +24,7 @@
 #define PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT    0U
 #define PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT    3U
 #define PICOSYSTEM_GAME_PRISMATIC_JOINT_COUNT   1U
+#define PICOSYSTEM_GAME_BOX_SENSOR_COUNT        1U
 #define PICOSYSTEM_GAME_FOCUS_BODY_INDEX        0U
 
 struct picosystem_game_input {
@@ -35,6 +36,7 @@ struct picosystem_game_input {
 struct picosystem_game_world {
 	struct picosystem_physics_world physics;
 	uint32_t logic_tick_count;
+	uint32_t sensor_entry_count;
 };
 
 /* Restore the canonical deterministic powered-mechanism lab at tick zero. */

@@ -11,16 +11,17 @@
 #include "game_world.h"
 #include "physics_chain_fixture.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0x58ed1623)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xc79a2439)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x107b9aa0)
-#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x4c0e614b)
+#define EXPECTED_RESET_HASH          UINT32_C(0xe631a02b)
+#define EXPECTED_RIGHT_30_HASH       UINT32_C(0x94f6dc64)
+#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0xe82a9f5c)
+#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x146c4a5e)
 #define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
 #define CHAIN_CONVERGENCE_TOLERANCE  PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
 #define ANGULAR_BOUNDARY_TOLERANCE   PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 12)
 #define CANONICAL_POSSIBLE_PAIR_COUNT                                                              \
 	(((PICOSYSTEM_GAME_BODY_COUNT * (PICOSYSTEM_GAME_BODY_COUNT - 1U)) / 2U) +                 \
-	 (PICOSYSTEM_GAME_BODY_COUNT * PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT))
+	 (PICOSYSTEM_GAME_BODY_COUNT * PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT) +                     \
+	 (PICOSYSTEM_GAME_BODY_COUNT * PICOSYSTEM_GAME_BOX_SENSOR_COUNT))
 
 static void assert_vector_equal(const struct picosystem_physics_vector *left,
 				const struct picosystem_physics_vector *right)
@@ -33,13 +34,16 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 			       const struct picosystem_game_world *right)
 {
 	assert(left->logic_tick_count == right->logic_tick_count);
+	assert(left->sensor_entry_count == right->sensor_entry_count);
 	assert(left->physics.max_speed_per_tick == right->physics.max_speed_per_tick);
 	assert(left->physics.body_count == right->physics.body_count);
 	assert(left->physics.static_segment_count == right->physics.static_segment_count);
 	assert(left->physics.distance_joint_count == right->physics.distance_joint_count);
 	assert(left->physics.revolute_joint_count == right->physics.revolute_joint_count);
 	assert(left->physics.prismatic_joint_count == right->physics.prismatic_joint_count);
+	assert(left->physics.box_sensor_count == right->physics.box_sensor_count);
 	assert(left->physics.contact_count == right->physics.contact_count);
+	assert(left->physics.contact_event_count == right->physics.contact_event_count);
 	assert(left->physics.last_candidate_pair_count == right->physics.last_candidate_pair_count);
 	assert(left->physics.last_possible_pair_count == right->physics.last_possible_pair_count);
 	assert(left->physics.last_occupied_grid_cell_count ==
@@ -52,6 +56,8 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 		       right->physics.grid_cells[index].body_mask);
 		assert(left->physics.grid_cells[index].static_segment_mask ==
 		       right->physics.grid_cells[index].static_segment_mask);
+		assert(left->physics.grid_cells[index].box_sensor_mask ==
+		       right->physics.grid_cells[index].box_sensor_mask);
 	}
 
 	for (uint16_t index = 0U; index < left->physics.body_count; ++index) {
@@ -74,6 +80,33 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 		assert(left_body->shape == right_body->shape);
 		assert(left->physics.solver_velocity_revisions[index] ==
 		       right->physics.solver_velocity_revisions[index]);
+		assert(left->physics.active_body_contact_masks[index] ==
+		       right->physics.active_body_contact_masks[index]);
+		assert(left->physics.active_segment_contact_masks[index] ==
+		       right->physics.active_segment_contact_masks[index]);
+		assert(left->physics.active_sensor_contact_masks[index] ==
+		       right->physics.active_sensor_contact_masks[index]);
+	}
+
+	for (uint16_t index = 0U; index < left->physics.box_sensor_count; ++index) {
+		const struct picosystem_physics_box_sensor *const left_sensor =
+			&left->physics.box_sensors[index];
+		const struct picosystem_physics_box_sensor *const right_sensor =
+			&right->physics.box_sensors[index];
+		assert_vector_equal(&left_sensor->center, &right_sensor->center);
+		assert_vector_equal(&left_sensor->half_extent, &right_sensor->half_extent);
+		assert(left_sensor->id == right_sensor->id);
+	}
+
+	for (uint16_t index = 0U; index < left->physics.contact_event_count; ++index) {
+		const struct picosystem_physics_contact_event *const left_event =
+			&left->physics.contact_events[index];
+		const struct picosystem_physics_contact_event *const right_event =
+			&right->physics.contact_events[index];
+		assert(left_event->body_a_id == right_event->body_a_id);
+		assert(left_event->body_b_id == right_event->body_b_id);
+		assert(left_event->type == right_event->type);
+		assert(left_event->phase == right_event->phase);
 	}
 
 	for (uint16_t index = 0U; index < left->physics.static_segment_count; ++index) {
@@ -220,7 +253,10 @@ static void test_canonical_reset_and_golden_replay(void)
 	assert(world.physics.distance_joint_count == PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT);
 	assert(world.physics.revolute_joint_count == PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT);
 	assert(world.physics.prismatic_joint_count == PICOSYSTEM_GAME_PRISMATIC_JOINT_COUNT);
+	assert(world.physics.box_sensor_count == PICOSYSTEM_GAME_BOX_SENSOR_COUNT);
 	assert(world.physics.contact_count == 0U);
+	assert(world.physics.contact_event_count == 0U);
+	assert(world.sensor_entry_count == 0U);
 	assert(world.physics.revolute_joints[0].motor_enabled == 1U);
 	assert(world.physics.revolute_joints[0].limit_enabled == 0U);
 	for (uint16_t index = 1U; index < (world.physics.revolute_joint_count - 1U); ++index) {
@@ -602,6 +638,9 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	uint8_t maximum_solver_iteration_count = 0U;
 	bool saw_positive_prismatic_motor = false;
 	bool saw_negative_prismatic_motor = false;
+	bool saw_sensor_stay = false;
+	bool saw_sensor_end = false;
+	uint32_t observed_sensor_begin_count = 0U;
 
 	for (uint32_t step = 0U; step < 10000U; ++step) {
 		const size_t input_index = (step / 250U) % (sizeof(inputs) / sizeof(inputs[0]));
@@ -669,6 +708,20 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 				saw_static_contact = true;
 			}
 		}
+		for (uint16_t index = 0U; index < world.physics.contact_event_count; ++index) {
+			const struct picosystem_physics_contact_event *const event =
+				&world.physics.contact_events[index];
+			if (event->type != PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_BOX_SENSOR) {
+				continue;
+			}
+			if (event->phase == PICOSYSTEM_PHYSICS_CONTACT_EVENT_BEGIN) {
+				++observed_sensor_begin_count;
+			} else if (event->phase == PICOSYSTEM_PHYSICS_CONTACT_EVENT_STAY) {
+				saw_sensor_stay = true;
+			} else if (event->phase == PICOSYSTEM_PHYSICS_CONTACT_EVENT_END) {
+				saw_sensor_end = true;
+			}
+		}
 	}
 
 	assert(saw_body_contact);
@@ -676,6 +729,10 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	assert(saw_candidate_reduction);
 	assert(saw_positive_prismatic_motor);
 	assert(saw_negative_prismatic_motor);
+	assert(observed_sensor_begin_count > 0U);
+	assert(world.sensor_entry_count == observed_sensor_begin_count);
+	assert(saw_sensor_stay);
+	assert(saw_sensor_end);
 	fprintf(stderr,
 		"candidate range: %u-%u/%u, max contacts: %u, max solver: %u, max angular "
 		"limit violation: %d q16 rad, max prismatic violation: %d q16 px\n",

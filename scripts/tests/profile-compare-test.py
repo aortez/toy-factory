@@ -24,7 +24,7 @@ MODULE_SPEC.loader.exec_module(profile_compare)
 
 def profile_output(
     *,
-    schema: int = 6,
+    schema: int = 7,
     fixture: str = "canonical",
     chain_links: int = 0,
     states_match: str = "yes",
@@ -59,9 +59,9 @@ def profile_output(
             quality_field = ""
         lines.append(
             f"PROFILE_MODE mode={mode} hash={final_hash} "
-            f"clock_reads_min=46 clock_reads_max=46{quality_field}"
+            f"clock_reads_min=56 clock_reads_max=56{quality_field}"
         )
-        for stage in sorted(profile_compare.STAGE_NAMES):
+        for stage in sorted(profile_compare.STAGE_NAMES_BY_SCHEMA[schema]):
             mean = total_mean if stage == "total" else 20
             lines.append(
                 f"PROFILE_STAGE mode={mode} stage={stage} samples=2000 "
@@ -82,7 +82,7 @@ class ProfileCompareTest(unittest.TestCase):
     def test_parses_complete_versioned_profile(self) -> None:
         result = profile_compare.parse_profile(profile_output())
 
-        self.assertEqual(result["schema_version"], 6)
+        self.assertEqual(result["schema_version"], 7)
         self.assertEqual(result["fixture"], "canonical")
         self.assertEqual(result["chain_link_count"], 0)
         self.assertEqual(result["measured_ticks_per_mode"], 2000)
@@ -91,7 +91,7 @@ class ProfileCompareTest(unittest.TestCase):
             result["modes"]["grid"]["work"]["possible_pairs"]["mean_per_tick"],
             76.0,
         )
-        self.assertEqual(result["clock"]["estimated_read_overhead_us_per_step"], 1.472)
+        self.assertEqual(result["clock"]["estimated_read_overhead_us_per_step"], 1.792)
         self.assertEqual(result["resources"]["shell_stack_used_bytes"], 2704)
         self.assertEqual(
             result["modes"]["grid"]["quality"]["maximum_revolute_anchor_error_pixels"],
@@ -148,13 +148,25 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertIn("joint_limit_solver_visits", work)
 
     def test_schema_six_includes_prismatic_work(self) -> None:
-        result = profile_compare.parse_profile(profile_output())
+        result = profile_compare.parse_profile(profile_output(schema=6))
 
         work = result["modes"]["grid"]["work"]
         self.assertIn("prismatic_joints", work)
         self.assertIn("prismatic_motors", work)
         self.assertIn("prismatic_limits", work)
         self.assertIn("solver_cached_contacts", work)
+
+    def test_schema_seven_includes_sensor_and_event_work(self) -> None:
+        result = profile_compare.parse_profile(profile_output())
+
+        work = result["modes"]["grid"]["work"]
+        self.assertIn("body_sensor_tests", work)
+        self.assertIn("active_contact_pairs", work)
+        self.assertIn("sensor_overlaps", work)
+        self.assertIn("contact_begin_events", work)
+        self.assertIn("contact_stay_events", work)
+        self.assertIn("contact_end_events", work)
+        self.assertIn("narrow_body_sensor", result["modes"]["grid"]["stages"])
 
     def test_parses_revolute_chain_fixture(self) -> None:
         result = profile_compare.parse_profile(
