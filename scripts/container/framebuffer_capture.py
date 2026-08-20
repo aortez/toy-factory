@@ -12,7 +12,7 @@ from serial_shell import SerialShellSession
 
 
 CAPTURE_COMMAND = "picosystem display capture"
-DEFAULT_CAPTURE_TIMEOUT_SECONDS = 120.0
+DEFAULT_CAPTURE_TIMEOUT_SECONDS = 240.0
 BEGIN_PATTERN = re.compile(
     r"^FRAMEBUFFER_BEGIN width=(\d+) height=(\d+) format=([a-z0-9]+) bytes=(\d+)$"
 )

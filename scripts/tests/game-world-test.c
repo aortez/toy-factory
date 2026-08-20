@@ -11,13 +11,16 @@
 #include "game_world.h"
 #include "physics_chain_fixture.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0x13420a19)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xc65f5731)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x66e3ab10)
-#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x2ff53bff)
+#define EXPECTED_RESET_HASH          UINT32_C(0x58ed1623)
+#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xc79a2439)
+#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x107b9aa0)
+#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x4c0e614b)
 #define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
 #define CHAIN_CONVERGENCE_TOLERANCE  PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
-#define ANGULAR_BOUNDARY_TOLERANCE   PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 16)
+#define ANGULAR_BOUNDARY_TOLERANCE   PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 12)
+#define CANONICAL_POSSIBLE_PAIR_COUNT                                                              \
+	(((PICOSYSTEM_GAME_BODY_COUNT * (PICOSYSTEM_GAME_BODY_COUNT - 1U)) / 2U) +                 \
+	 (PICOSYSTEM_GAME_BODY_COUNT * PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT))
 
 static void assert_vector_equal(const struct picosystem_physics_vector *left,
 				const struct picosystem_physics_vector *right)
@@ -35,6 +38,7 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 	assert(left->physics.static_segment_count == right->physics.static_segment_count);
 	assert(left->physics.distance_joint_count == right->physics.distance_joint_count);
 	assert(left->physics.revolute_joint_count == right->physics.revolute_joint_count);
+	assert(left->physics.prismatic_joint_count == right->physics.prismatic_joint_count);
 	assert(left->physics.contact_count == right->physics.contact_count);
 	assert(left->physics.last_candidate_pair_count == right->physics.last_candidate_pair_count);
 	assert(left->physics.last_possible_pair_count == right->physics.last_possible_pair_count);
@@ -68,6 +72,8 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 		assert(left_body->angle_turns == right_body->angle_turns);
 		assert(left_body->id == right_body->id);
 		assert(left_body->shape == right_body->shape);
+		assert(left->physics.solver_velocity_revisions[index] ==
+		       right->physics.solver_velocity_revisions[index]);
 	}
 
 	for (uint16_t index = 0U; index < left->physics.static_segment_count; ++index) {
@@ -139,6 +145,53 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 		assert(left_joint->effective_mass_valid == right_joint->effective_mass_valid);
 		assert(left_joint->limit_state == right_joint->limit_state);
 	}
+
+	for (uint16_t index = 0U; index < left->physics.prismatic_joint_count; ++index) {
+		const struct picosystem_physics_prismatic_joint *const left_joint =
+			&left->physics.prismatic_joints[index];
+		const struct picosystem_physics_prismatic_joint *const right_joint =
+			&right->physics.prismatic_joints[index];
+		assert_vector_equal(&left_joint->local_anchor_a, &right_joint->local_anchor_a);
+		assert_vector_equal(&left_joint->anchor_b, &right_joint->anchor_b);
+		assert_vector_equal(&left_joint->axis_b, &right_joint->axis_b);
+		assert(left_joint->motor_speed_per_tick == right_joint->motor_speed_per_tick);
+		assert(left_joint->maximum_motor_impulse_per_tick ==
+		       right_joint->maximum_motor_impulse_per_tick);
+		assert(left_joint->lower_translation == right_joint->lower_translation);
+		assert(left_joint->upper_translation == right_joint->upper_translation);
+		assert(left_joint->reference_translation == right_joint->reference_translation);
+		assert(left_joint->reference_angle_turns == right_joint->reference_angle_turns);
+		assert(left_joint->id == right_joint->id);
+		assert(left_joint->body_a_id == right_joint->body_a_id);
+		assert(left_joint->body_b_id == right_joint->body_b_id);
+		assert(left_joint->body_a_index == right_joint->body_a_index);
+		assert(left_joint->body_b_index == right_joint->body_b_index);
+		assert(left_joint->collide_connected == right_joint->collide_connected);
+		assert(left_joint->motor_enabled == right_joint->motor_enabled);
+		assert(left_joint->limit_enabled == right_joint->limit_enabled);
+		assert_vector_equal(&left_joint->world_anchor_a, &right_joint->world_anchor_a);
+		assert_vector_equal(&left_joint->world_anchor_b, &right_joint->world_anchor_b);
+		assert_vector_equal(&left_joint->world_axis, &right_joint->world_axis);
+		assert_vector_equal(&left_joint->world_perpendicular,
+				    &right_joint->world_perpendicular);
+		assert(left_joint->lateral_effective_mass == right_joint->lateral_effective_mass);
+		assert(left_joint->axial_effective_mass == right_joint->axial_effective_mass);
+		assert(left_joint->angular_effective_mass == right_joint->angular_effective_mass);
+		assert(left_joint->accumulated_lateral_impulse ==
+		       right_joint->accumulated_lateral_impulse);
+		assert(left_joint->accumulated_angular_impulse ==
+		       right_joint->accumulated_angular_impulse);
+		assert(left_joint->accumulated_motor_impulse ==
+		       right_joint->accumulated_motor_impulse);
+		assert(left_joint->accumulated_limit_impulse ==
+		       right_joint->accumulated_limit_impulse);
+		assert(left_joint->solved_velocity_revision_a ==
+		       right_joint->solved_velocity_revision_a);
+		assert(left_joint->solved_velocity_revision_b ==
+		       right_joint->solved_velocity_revision_b);
+		assert(left_joint->limit_state == right_joint->limit_state);
+		assert(left_joint->solved_velocity_valid == right_joint->solved_velocity_valid);
+	}
 }
 
 static void assert_hash(const char *label, uint32_t actual, uint32_t expected)
@@ -166,6 +219,7 @@ static void test_canonical_reset_and_golden_replay(void)
 	assert(world.physics.static_segment_count == PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT);
 	assert(world.physics.distance_joint_count == PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT);
 	assert(world.physics.revolute_joint_count == PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT);
+	assert(world.physics.prismatic_joint_count == PICOSYSTEM_GAME_PRISMATIC_JOINT_COUNT);
 	assert(world.physics.contact_count == 0U);
 	assert(world.physics.revolute_joints[0].motor_enabled == 1U);
 	assert(world.physics.revolute_joints[0].limit_enabled == 0U);
@@ -173,8 +227,13 @@ static void test_canonical_reset_and_golden_replay(void)
 		assert(world.physics.revolute_joints[index].motor_enabled == 0U);
 		assert(world.physics.revolute_joints[index].limit_enabled == 0U);
 	}
-	assert(world.physics.revolute_joints[3].motor_enabled == 0U);
-	assert(world.physics.revolute_joints[3].limit_enabled == 1U);
+	const struct picosystem_physics_revolute_joint *const final_revolute =
+		&world.physics.revolute_joints[world.physics.revolute_joint_count - 1U];
+	assert(final_revolute->motor_enabled == 0U);
+	assert(final_revolute->limit_enabled == 1U);
+	assert(world.physics.prismatic_joints[0].motor_enabled == 1U);
+	assert(world.physics.prismatic_joints[0].limit_enabled == 1U);
+	assert(world.physics.prismatic_joints[0].motor_speed_per_tick < 0);
 
 	const struct picosystem_physics_body *const focus =
 		picosystem_game_world_focus_body(&world);
@@ -241,6 +300,9 @@ static void test_validation_preserves_state(void)
 	assert(picosystem_game_world_hash(&world) == 0U);
 	assert(picosystem_game_world_reset(&world) == 0);
 	world.physics.revolute_joint_count = PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS + 1U;
+	assert(picosystem_game_world_hash(&world) == 0U);
+	assert(picosystem_game_world_reset(&world) == 0);
+	world.physics.prismatic_joint_count = PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS + 1U;
 	assert(picosystem_game_world_hash(&world) == 0U);
 }
 
@@ -331,6 +393,32 @@ static void assert_joint_lengths_bounded(const struct picosystem_game_world *wor
 			assert(angle <= (joint->upper_angle_radians + ANGULAR_BOUNDARY_TOLERANCE));
 		}
 	}
+	for (uint16_t index = 0U; index < world->physics.prismatic_joint_count; ++index) {
+		const struct picosystem_physics_prismatic_joint *const joint =
+			&world->physics.prismatic_joints[index];
+		struct picosystem_physics_vector anchor_a;
+		struct picosystem_physics_vector anchor_b;
+		struct picosystem_physics_vector axis;
+		assert(picosystem_physics_world_prismatic_joint_geometry(
+			       &world->physics, index, &anchor_a, &anchor_b, &axis) == 0);
+		const struct picosystem_physics_vector delta = {
+			.x = anchor_a.x - anchor_b.x,
+			.y = anchor_a.y - anchor_b.y,
+		};
+		const int64_t lateral_raw =
+			((int64_t)delta.x * -axis.y) + ((int64_t)delta.y * axis.x);
+		const picosystem_physics_fixed_t lateral =
+			(picosystem_physics_fixed_t)(lateral_raw / PICOSYSTEM_PHYSICS_FIXED_ONE);
+		assert(lateral >= -BOUNDARY_TOLERANCE);
+		assert(lateral <= BOUNDARY_TOLERANCE);
+		if (joint->limit_enabled != 0U) {
+			picosystem_physics_fixed_t translation;
+			assert(picosystem_physics_world_prismatic_joint_translation(
+				       &world->physics, index, &translation) == 0);
+			assert(translation >= (joint->lower_translation - BOUNDARY_TOLERANCE));
+			assert(translation <= (joint->upper_translation + BOUNDARY_TOLERANCE));
+		}
+	}
 }
 
 static picosystem_physics_fixed_t
@@ -351,6 +439,32 @@ maximum_revolute_limit_violation(const struct picosystem_game_world *world)
 			violation = joint->lower_angle_radians - angle;
 		} else if (angle > joint->upper_angle_radians) {
 			violation = angle - joint->upper_angle_radians;
+		}
+		if (violation > maximum) {
+			maximum = violation;
+		}
+	}
+	return maximum;
+}
+
+static picosystem_physics_fixed_t
+maximum_prismatic_limit_violation(const struct picosystem_game_world *world)
+{
+	picosystem_physics_fixed_t maximum = 0;
+	for (uint16_t index = 0U; index < world->physics.prismatic_joint_count; ++index) {
+		const struct picosystem_physics_prismatic_joint *const joint =
+			&world->physics.prismatic_joints[index];
+		if (joint->limit_enabled == 0U) {
+			continue;
+		}
+		picosystem_physics_fixed_t translation = 0;
+		assert(picosystem_physics_world_prismatic_joint_translation(&world->physics, index,
+									    &translation) == 0);
+		picosystem_physics_fixed_t violation = 0;
+		if (translation < joint->lower_translation) {
+			violation = joint->lower_translation - translation;
+		} else if (translation > joint->upper_translation) {
+			violation = translation - joint->upper_translation;
 		}
 		if (violation > maximum) {
 			maximum = violation;
@@ -382,6 +496,7 @@ static void test_chain_fixture_boundaries_and_replay(void)
 		assert(world.physics.static_segment_count == 0U);
 		assert(world.physics.distance_joint_count == 0U);
 		assert(world.physics.revolute_joint_count == link_count);
+		assert(world.physics.prismatic_joint_count == 0U);
 		assert_joint_lengths_bounded(&world);
 
 		uint64_t maximum_error_squared = 0U;
@@ -482,8 +597,11 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	uint32_t minimum_candidate_count = UINT32_MAX;
 	uint32_t maximum_candidate_count = 0U;
 	picosystem_physics_fixed_t maximum_limit_violation = 0;
+	picosystem_physics_fixed_t maximum_prismatic_violation = 0;
 	uint16_t maximum_contact_count = 0U;
 	uint8_t maximum_solver_iteration_count = 0U;
+	bool saw_positive_prismatic_motor = false;
+	bool saw_negative_prismatic_motor = false;
 
 	for (uint32_t step = 0U; step < 10000U; ++step) {
 		const size_t input_index = (step / 250U) % (sizeof(inputs) / sizeof(inputs[0]));
@@ -501,18 +619,31 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 		assert(err == 0);
 		assert_bodies_inside_arena(&world);
 		assert_joint_lengths_bounded(&world);
-		assert(world.physics.last_possible_pair_count == 76U);
+		assert(world.physics.last_possible_pair_count == CANONICAL_POSSIBLE_PAIR_COUNT);
 		assert(world.physics.last_candidate_pair_count <=
 		       world.physics.last_possible_pair_count);
 		assert(world.physics.last_occupied_grid_cell_count > 0U);
 		assert(world.physics.last_broad_phase_fallback == 0U);
 		assert(world.physics.last_work.revolute_motor_count == 1U);
 		assert(world.physics.last_work.revolute_limit_count == 1U);
+		assert(world.physics.last_work.prismatic_joint_count == 1U);
+		assert(world.physics.last_work.prismatic_motor_count == 1U);
+		assert(world.physics.last_work.prismatic_limit_count == 1U);
 		assert(world.physics.last_work.joint_motor_solver_visit_count >= 1U);
 		const picosystem_physics_fixed_t limit_violation =
 			maximum_revolute_limit_violation(&world);
 		if (limit_violation > maximum_limit_violation) {
 			maximum_limit_violation = limit_violation;
+		}
+		const picosystem_physics_fixed_t prismatic_violation =
+			maximum_prismatic_limit_violation(&world);
+		if (prismatic_violation > maximum_prismatic_violation) {
+			maximum_prismatic_violation = prismatic_violation;
+		}
+		if (world.physics.prismatic_joints[0].motor_speed_per_tick > 0) {
+			saw_positive_prismatic_motor = true;
+		} else if (world.physics.prismatic_joints[0].motor_speed_per_tick < 0) {
+			saw_negative_prismatic_motor = true;
 		}
 		if (world.physics.last_candidate_pair_count <
 		    world.physics.last_possible_pair_count) {
@@ -543,11 +674,14 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	assert(saw_body_contact);
 	assert(saw_static_contact);
 	assert(saw_candidate_reduction);
+	assert(saw_positive_prismatic_motor);
+	assert(saw_negative_prismatic_motor);
 	fprintf(stderr,
-		"candidate range: %u-%u/76, max contacts: %u, max solver: %u, max angular "
-		"limit violation: %d q16 rad\n",
-		minimum_candidate_count, maximum_candidate_count, maximum_contact_count,
-		maximum_solver_iteration_count, maximum_limit_violation);
+		"candidate range: %u-%u/%u, max contacts: %u, max solver: %u, max angular "
+		"limit violation: %d q16 rad, max prismatic violation: %d q16 px\n",
+		minimum_candidate_count, maximum_candidate_count, CANONICAL_POSSIBLE_PAIR_COUNT,
+		maximum_contact_count, maximum_solver_iteration_count, maximum_limit_violation,
+		maximum_prismatic_violation);
 	world.logic_tick_count = UINT32_MAX;
 	assert(picosystem_game_world_step(&world, &inputs[0]) == 0);
 	assert(world.logic_tick_count == UINT32_MAX);

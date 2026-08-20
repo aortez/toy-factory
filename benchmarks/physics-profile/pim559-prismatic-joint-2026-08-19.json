@@ -1,0 +1,595 @@
+{
+  "benchmark": "isolated-physics-grid-reference",
+  "chain_link_count": 0,
+  "clock": {
+    "back_to_back_delta_cycles": 146,
+    "estimated_read_overhead_us_per_step": 49.056,
+    "frequency_hz": 125000000,
+    "histogram": {
+      "coarse_bin_count": 64,
+      "coarse_bin_us": 128,
+      "fine_bin_count": 64,
+      "fine_bin_us": 32
+    }
+  },
+  "fixture": "canonical",
+  "measured_ticks_per_mode": 1000,
+  "modes": {
+    "grid": {
+      "clock_reads_per_step": {
+        "maximum": 42,
+        "minimum": 42
+      },
+      "final_hash": "4ed9cc6f",
+      "quality": {
+        "maximum_prismatic_angular_error_q16": 302,
+        "maximum_prismatic_angular_error_radians": 0.004608,
+        "maximum_prismatic_lateral_error_pixels": 0.088486,
+        "maximum_prismatic_lateral_error_q16": 5799,
+        "maximum_prismatic_limit_violation_pixels": 0.065063,
+        "maximum_prismatic_limit_violation_q16": 4264,
+        "maximum_revolute_anchor_error_pixels": 0.813919,
+        "maximum_revolute_anchor_error_q16": 53341,
+        "maximum_revolute_limit_violation_q16": 2739,
+        "maximum_revolute_limit_violation_radians": 0.041794
+      },
+      "stages": {
+        "box_geometry": {
+          "budget_violations": 0,
+          "maximum_us": 276,
+          "mean_us": 43,
+          "minimum_us": 28,
+          "p50_us": 64,
+          "p95_us": 64,
+          "p99_us": 160,
+          "samples": 1000
+        },
+        "broad_phase": {
+          "budget_violations": 0,
+          "maximum_us": 1040,
+          "mean_us": 639,
+          "minimum_us": 569,
+          "p50_us": 640,
+          "p95_us": 832,
+          "p99_us": 896,
+          "samples": 1000
+        },
+        "final_clamp": {
+          "budget_violations": 0,
+          "maximum_us": 360,
+          "mean_us": 43,
+          "minimum_us": 28,
+          "p50_us": 64,
+          "p95_us": 64,
+          "p99_us": 128,
+          "samples": 1000
+        },
+        "force_integrate": {
+          "budget_violations": 0,
+          "maximum_us": 554,
+          "mean_us": 190,
+          "minimum_us": 114,
+          "p50_us": 192,
+          "p95_us": 320,
+          "p99_us": 480,
+          "samples": 1000
+        },
+        "narrow_body_body": {
+          "budget_violations": 0,
+          "maximum_us": 785,
+          "mean_us": 142,
+          "minimum_us": 46,
+          "p50_us": 128,
+          "p95_us": 384,
+          "p99_us": 544,
+          "samples": 1000
+        },
+        "narrow_body_segment": {
+          "budget_violations": 0,
+          "maximum_us": 995,
+          "mean_us": 219,
+          "minimum_us": 51,
+          "p50_us": 192,
+          "p95_us": 480,
+          "p99_us": 672,
+          "samples": 1000
+        },
+        "other": {
+          "budget_violations": 0,
+          "maximum_us": 732,
+          "mean_us": 313,
+          "minimum_us": 234,
+          "p50_us": 320,
+          "p95_us": 512,
+          "p99_us": 576,
+          "samples": 1000
+        },
+        "position_correction": {
+          "budget_violations": 0,
+          "maximum_us": 1389,
+          "mean_us": 755,
+          "minimum_us": 560,
+          "p50_us": 736,
+          "p95_us": 1056,
+          "p99_us": 1152,
+          "samples": 1000
+        },
+        "total": {
+          "budget_violations": 0,
+          "maximum_us": 6379,
+          "mean_us": 3535,
+          "minimum_us": 2576,
+          "p50_us": 3328,
+          "p95_us": 4992,
+          "p99_us": 5504,
+          "samples": 1000
+        },
+        "velocity_solver": {
+          "budget_violations": 0,
+          "maximum_us": 2990,
+          "mean_us": 1189,
+          "minimum_us": 753,
+          "p50_us": 1024,
+          "p95_us": 2176,
+          "p99_us": 2432,
+          "samples": 1000
+        }
+      },
+      "work": {
+        "body_body_tests": {
+          "maximum_per_tick": 5,
+          "mean_per_tick": 1.206,
+          "total": 1206
+        },
+        "body_segment_tests": {
+          "maximum_per_tick": 8,
+          "mean_per_tick": 4.126,
+          "total": 4126
+        },
+        "broad_phase_fallbacks": {
+          "maximum_per_tick": 0,
+          "mean_per_tick": 0.0,
+          "total": 0
+        },
+        "candidate_pairs": {
+          "maximum_per_tick": 13,
+          "mean_per_tick": 7.332,
+          "total": 7332
+        },
+        "contact_points": {
+          "maximum_per_tick": 6,
+          "mean_per_tick": 0.681,
+          "total": 681
+        },
+        "distance_joints": {
+          "maximum_per_tick": 0,
+          "mean_per_tick": 0.0,
+          "total": 0
+        },
+        "grid_cell_insertions": {
+          "maximum_per_tick": 128,
+          "mean_per_tick": 116.095,
+          "total": 116095
+        },
+        "joint_collision_filters": {
+          "maximum_per_tick": 2,
+          "mean_per_tick": 2.0,
+          "total": 2000
+        },
+        "joint_limit_position_correction_changes": {
+          "maximum_per_tick": 2,
+          "mean_per_tick": 0.167,
+          "total": 167
+        },
+        "joint_limit_position_correction_visits": {
+          "maximum_per_tick": 3,
+          "mean_per_tick": 2.002,
+          "total": 2002
+        },
+        "joint_limit_solver_changes": {
+          "maximum_per_tick": 8,
+          "mean_per_tick": 1.407,
+          "total": 1407
+        },
+        "joint_limit_solver_visits": {
+          "maximum_per_tick": 8,
+          "mean_per_tick": 2.041,
+          "total": 2041
+        },
+        "joint_motor_solver_changes": {
+          "maximum_per_tick": 8,
+          "mean_per_tick": 2.541,
+          "total": 2541
+        },
+        "joint_motor_solver_visits": {
+          "maximum_per_tick": 14,
+          "mean_per_tick": 8.377,
+          "total": 8377
+        },
+        "joint_position_correction_visits": {
+          "maximum_per_tick": 7,
+          "mean_per_tick": 4.006,
+          "total": 4006
+        },
+        "joint_solver_changes": {
+          "maximum_per_tick": 28,
+          "mean_per_tick": 22.331,
+          "total": 22331
+        },
+        "joint_solver_visits": {
+          "maximum_per_tick": 28,
+          "mean_per_tick": 28.0,
+          "total": 28000
+        },
+        "manifolds": {
+          "maximum_per_tick": 4,
+          "mean_per_tick": 0.481,
+          "total": 481
+        },
+        "maximum_grid_cell_occupancy": {
+          "maximum_per_tick": 4,
+          "mean_per_tick": 2.723,
+          "total": 2723
+        },
+        "occupied_grid_cells": {
+          "maximum_per_tick": 110,
+          "mean_per_tick": 99.565,
+          "total": 99565
+        },
+        "position_correction_visits": {
+          "maximum_per_tick": 6,
+          "mean_per_tick": 0.681,
+          "total": 681
+        },
+        "possible_pairs": {
+          "maximum_per_tick": 63,
+          "mean_per_tick": 63.0,
+          "total": 63000
+        },
+        "prismatic_joints": {
+          "maximum_per_tick": 1,
+          "mean_per_tick": 1.0,
+          "total": 1000
+        },
+        "prismatic_limits": {
+          "maximum_per_tick": 1,
+          "mean_per_tick": 1.0,
+          "total": 1000
+        },
+        "prismatic_motors": {
+          "maximum_per_tick": 1,
+          "mean_per_tick": 1.0,
+          "total": 1000
+        },
+        "revolute_joints": {
+          "maximum_per_tick": 3,
+          "mean_per_tick": 3.0,
+          "total": 3000
+        },
+        "revolute_limits": {
+          "maximum_per_tick": 1,
+          "mean_per_tick": 1.0,
+          "total": 1000
+        },
+        "revolute_motors": {
+          "maximum_per_tick": 1,
+          "mean_per_tick": 1.0,
+          "total": 1000
+        },
+        "solver_cached_contacts": {
+          "maximum_per_tick": 18,
+          "mean_per_tick": 1.265,
+          "total": 1265
+        },
+        "solver_changed_contacts": {
+          "maximum_per_tick": 36,
+          "mean_per_tick": 2.646,
+          "total": 2646
+        },
+        "solver_contact_visits": {
+          "maximum_per_tick": 42,
+          "mean_per_tick": 4.767,
+          "total": 4767
+        },
+        "solver_iterations": {
+          "maximum_per_tick": 7,
+          "mean_per_tick": 7.0,
+          "total": 7000
+        }
+      }
+    },
+    "reference": {
+      "clock_reads_per_step": {
+        "maximum": 42,
+        "minimum": 42
+      },
+      "final_hash": "4ed9cc6f",
+      "quality": {
+        "maximum_prismatic_angular_error_q16": 302,
+        "maximum_prismatic_angular_error_radians": 0.004608,
+        "maximum_prismatic_lateral_error_pixels": 0.088486,
+        "maximum_prismatic_lateral_error_q16": 5799,
+        "maximum_prismatic_limit_violation_pixels": 0.065063,
+        "maximum_prismatic_limit_violation_q16": 4264,
+        "maximum_revolute_anchor_error_pixels": 0.813919,
+        "maximum_revolute_anchor_error_q16": 53341,
+        "maximum_revolute_limit_violation_q16": 2739,
+        "maximum_revolute_limit_violation_radians": 0.041794
+      },
+      "stages": {
+        "box_geometry": {
+          "budget_violations": 0,
+          "maximum_us": 273,
+          "mean_us": 43,
+          "minimum_us": 28,
+          "p50_us": 64,
+          "p95_us": 64,
+          "p99_us": 64,
+          "samples": 1000
+        },
+        "broad_phase": {
+          "budget_violations": 0,
+          "maximum_us": 487,
+          "mean_us": 86,
+          "minimum_us": 72,
+          "p50_us": 96,
+          "p95_us": 96,
+          "p99_us": 288,
+          "samples": 1000
+        },
+        "final_clamp": {
+          "budget_violations": 0,
+          "maximum_us": 271,
+          "mean_us": 44,
+          "minimum_us": 28,
+          "p50_us": 64,
+          "p95_us": 64,
+          "p99_us": 128,
+          "samples": 1000
+        },
+        "force_integrate": {
+          "budget_violations": 0,
+          "maximum_us": 516,
+          "mean_us": 188,
+          "minimum_us": 121,
+          "p50_us": 192,
+          "p95_us": 288,
+          "p99_us": 448,
+          "samples": 1000
+        },
+        "narrow_body_body": {
+          "budget_violations": 0,
+          "maximum_us": 829,
+          "mean_us": 420,
+          "minimum_us": 309,
+          "p50_us": 416,
+          "p95_us": 640,
+          "p99_us": 736,
+          "samples": 1000
+        },
+        "narrow_body_segment": {
+          "budget_violations": 0,
+          "maximum_us": 1354,
+          "mean_us": 684,
+          "minimum_us": 536,
+          "p50_us": 640,
+          "p95_us": 928,
+          "p99_us": 1152,
+          "samples": 1000
+        },
+        "other": {
+          "budget_violations": 0,
+          "maximum_us": 732,
+          "mean_us": 302,
+          "minimum_us": 231,
+          "p50_us": 320,
+          "p95_us": 480,
+          "p99_us": 544,
+          "samples": 1000
+        },
+        "position_correction": {
+          "budget_violations": 0,
+          "maximum_us": 1262,
+          "mean_us": 711,
+          "minimum_us": 513,
+          "p50_us": 704,
+          "p95_us": 960,
+          "p99_us": 1088,
+          "samples": 1000
+        },
+        "total": {
+          "budget_violations": 0,
+          "maximum_us": 6227,
+          "mean_us": 3662,
+          "minimum_us": 2756,
+          "p50_us": 3456,
+          "p95_us": 4992,
+          "p99_us": 5632,
+          "samples": 1000
+        },
+        "velocity_solver": {
+          "budget_violations": 0,
+          "maximum_us": 3093,
+          "mean_us": 1183,
+          "minimum_us": 749,
+          "p50_us": 1024,
+          "p95_us": 2016,
+          "p99_us": 2432,
+          "samples": 1000
+        }
+      },
+      "work": {
+        "body_body_tests": {
+          "maximum_per_tick": 19,
+          "mean_per_tick": 19.0,
+          "total": 19000
+        },
+        "body_segment_tests": {
+          "maximum_per_tick": 42,
+          "mean_per_tick": 42.0,
+          "total": 42000
+        },
+        "broad_phase_fallbacks": {
+          "maximum_per_tick": 0,
+          "mean_per_tick": 0.0,
+          "total": 0
+        },
+        "candidate_pairs": {
+          "maximum_per_tick": 63,
+          "mean_per_tick": 63.0,
+          "total": 63000
+        },
+        "contact_points": {
+          "maximum_per_tick": 6,
+          "mean_per_tick": 0.681,
+          "total": 681
+        },
+        "distance_joints": {
+          "maximum_per_tick": 0,
+          "mean_per_tick": 0.0,
+          "total": 0
+        },
+        "grid_cell_insertions": {
+          "maximum_per_tick": 0,
+          "mean_per_tick": 0.0,
+          "total": 0
+        },
+        "joint_collision_filters": {
+          "maximum_per_tick": 2,
+          "mean_per_tick": 2.0,
+          "total": 2000
+        },
+        "joint_limit_position_correction_changes": {
+          "maximum_per_tick": 2,
+          "mean_per_tick": 0.167,
+          "total": 167
+        },
+        "joint_limit_position_correction_visits": {
+          "maximum_per_tick": 3,
+          "mean_per_tick": 2.002,
+          "total": 2002
+        },
+        "joint_limit_solver_changes": {
+          "maximum_per_tick": 8,
+          "mean_per_tick": 1.407,
+          "total": 1407
+        },
+        "joint_limit_solver_visits": {
+          "maximum_per_tick": 8,
+          "mean_per_tick": 2.041,
+          "total": 2041
+        },
+        "joint_motor_solver_changes": {
+          "maximum_per_tick": 8,
+          "mean_per_tick": 2.541,
+          "total": 2541
+        },
+        "joint_motor_solver_visits": {
+          "maximum_per_tick": 14,
+          "mean_per_tick": 8.377,
+          "total": 8377
+        },
+        "joint_position_correction_visits": {
+          "maximum_per_tick": 7,
+          "mean_per_tick": 4.006,
+          "total": 4006
+        },
+        "joint_solver_changes": {
+          "maximum_per_tick": 28,
+          "mean_per_tick": 22.331,
+          "total": 22331
+        },
+        "joint_solver_visits": {
+          "maximum_per_tick": 28,
+          "mean_per_tick": 28.0,
+          "total": 28000
+        },
+        "manifolds": {
+          "maximum_per_tick": 4,
+          "mean_per_tick": 0.481,
+          "total": 481
+        },
+        "maximum_grid_cell_occupancy": {
+          "maximum_per_tick": 0,
+          "mean_per_tick": 0.0,
+          "total": 0
+        },
+        "occupied_grid_cells": {
+          "maximum_per_tick": 0,
+          "mean_per_tick": 0.0,
+          "total": 0
+        },
+        "position_correction_visits": {
+          "maximum_per_tick": 6,
+          "mean_per_tick": 0.681,
+          "total": 681
+        },
+        "possible_pairs": {
+          "maximum_per_tick": 63,
+          "mean_per_tick": 63.0,
+          "total": 63000
+        },
+        "prismatic_joints": {
+          "maximum_per_tick": 1,
+          "mean_per_tick": 1.0,
+          "total": 1000
+        },
+        "prismatic_limits": {
+          "maximum_per_tick": 1,
+          "mean_per_tick": 1.0,
+          "total": 1000
+        },
+        "prismatic_motors": {
+          "maximum_per_tick": 1,
+          "mean_per_tick": 1.0,
+          "total": 1000
+        },
+        "revolute_joints": {
+          "maximum_per_tick": 3,
+          "mean_per_tick": 3.0,
+          "total": 3000
+        },
+        "revolute_limits": {
+          "maximum_per_tick": 1,
+          "mean_per_tick": 1.0,
+          "total": 1000
+        },
+        "revolute_motors": {
+          "maximum_per_tick": 1,
+          "mean_per_tick": 1.0,
+          "total": 1000
+        },
+        "solver_cached_contacts": {
+          "maximum_per_tick": 18,
+          "mean_per_tick": 1.265,
+          "total": 1265
+        },
+        "solver_changed_contacts": {
+          "maximum_per_tick": 36,
+          "mean_per_tick": 2.646,
+          "total": 2646
+        },
+        "solver_contact_visits": {
+          "maximum_per_tick": 42,
+          "mean_per_tick": 4.767,
+          "total": 4767
+        },
+        "solver_iterations": {
+          "maximum_per_tick": 7,
+          "mean_per_tick": 7.0,
+          "total": 7000
+        }
+      }
+    }
+  },
+  "resources": {
+    "shell_stack_size_bytes": 5120,
+    "shell_stack_used_bytes": 3848
+  },
+  "schema_version": 6,
+  "verification": {
+    "hashes_match": true,
+    "states_match": true
+  },
+  "warmup_ticks_per_mode": 120
+}

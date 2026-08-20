@@ -38,12 +38,15 @@ struct authoritative_snapshot {
 		distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
 	struct picosystem_physics_revolute_joint
 		revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
+	struct picosystem_physics_prismatic_joint
+		prismatic_joints[PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS];
 	picosystem_physics_fixed_t max_speed_per_tick;
 	uint32_t logic_tick_count;
 	uint16_t body_count;
 	uint16_t static_segment_count;
 	uint16_t distance_joint_count;
 	uint16_t revolute_joint_count;
+	uint16_t prismatic_joint_count;
 };
 
 struct profile_workspace {
@@ -92,11 +95,15 @@ static const char *const work_names[] = {
 	"position_correction_visits",
 	"solver_iterations",
 	"solver_contact_visits",
+	"solver_cached_contacts",
 	"solver_changed_contacts",
 	"distance_joints",
 	"revolute_joints",
 	"revolute_motors",
 	"revolute_limits",
+	"prismatic_joints",
+	"prismatic_motors",
+	"prismatic_limits",
 	"joint_position_correction_visits",
 	"joint_limit_position_correction_visits",
 	"joint_limit_position_correction_changes",
@@ -209,6 +216,8 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 		return work->solver_iteration_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SOLVER_CONTACT_VISITS:
 		return work->solver_contact_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SOLVER_CACHED_CONTACTS:
+		return work->solver_cached_contact_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SOLVER_CHANGED_CONTACTS:
 		return work->solver_changed_contact_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_DISTANCE_JOINTS:
@@ -219,6 +228,12 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 		return work->revolute_motor_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_REVOLUTE_LIMITS:
 		return work->revolute_limit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_PRISMATIC_JOINTS:
+		return work->prismatic_joint_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_PRISMATIC_MOTORS:
+		return work->prismatic_motor_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_PRISMATIC_LIMITS:
+		return work->prismatic_limit_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_POSITION_CORRECTION_VISITS:
 		return work->joint_position_correction_visit_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_LIMIT_POSITION_CORRECTION_VISITS:
@@ -345,6 +360,7 @@ static void capture_authoritative_state(const struct picosystem_game_world *worl
 		.static_segment_count = world->physics.static_segment_count,
 		.distance_joint_count = world->physics.distance_joint_count,
 		.revolute_joint_count = world->physics.revolute_joint_count,
+		.prismatic_joint_count = world->physics.prismatic_joint_count,
 	};
 	memcpy(snapshot->bodies, world->physics.bodies,
 	       world->physics.body_count * sizeof(snapshot->bodies[0]));
@@ -354,6 +370,8 @@ static void capture_authoritative_state(const struct picosystem_game_world *worl
 	       world->physics.distance_joint_count * sizeof(snapshot->distance_joints[0]));
 	memcpy(snapshot->revolute_joints, world->physics.revolute_joints,
 	       world->physics.revolute_joint_count * sizeof(snapshot->revolute_joints[0]));
+	memcpy(snapshot->prismatic_joints, world->physics.prismatic_joints,
+	       world->physics.prismatic_joint_count * sizeof(snapshot->prismatic_joints[0]));
 }
 
 static bool body_equal(const struct picosystem_physics_body *left,
@@ -414,6 +432,28 @@ static bool revolute_joint_equal(const struct picosystem_physics_revolute_joint 
 	       (left->limit_enabled == right->limit_enabled);
 }
 
+static bool prismatic_joint_equal(const struct picosystem_physics_prismatic_joint *left,
+				  const struct picosystem_physics_prismatic_joint *right)
+{
+	return (left->local_anchor_a.x == right->local_anchor_a.x) &&
+	       (left->local_anchor_a.y == right->local_anchor_a.y) &&
+	       (left->anchor_b.x == right->anchor_b.x) && (left->anchor_b.y == right->anchor_b.y) &&
+	       (left->axis_b.x == right->axis_b.x) && (left->axis_b.y == right->axis_b.y) &&
+	       (left->motor_speed_per_tick == right->motor_speed_per_tick) &&
+	       (left->maximum_motor_impulse_per_tick == right->maximum_motor_impulse_per_tick) &&
+	       (left->lower_translation == right->lower_translation) &&
+	       (left->upper_translation == right->upper_translation) &&
+	       (left->reference_translation == right->reference_translation) &&
+	       (left->reference_angle_turns == right->reference_angle_turns) &&
+	       (left->id == right->id) && (left->body_a_id == right->body_a_id) &&
+	       (left->body_b_id == right->body_b_id) &&
+	       (left->body_a_index == right->body_a_index) &&
+	       (left->body_b_index == right->body_b_index) &&
+	       (left->collide_connected == right->collide_connected) &&
+	       (left->motor_enabled == right->motor_enabled) &&
+	       (left->limit_enabled == right->limit_enabled);
+}
+
 static bool authoritative_state_matches(const struct picosystem_game_world *world,
 					const struct authoritative_snapshot *snapshot)
 {
@@ -422,7 +462,8 @@ static bool authoritative_state_matches(const struct picosystem_game_world *worl
 	    (world->physics.body_count != snapshot->body_count) ||
 	    (world->physics.static_segment_count != snapshot->static_segment_count) ||
 	    (world->physics.distance_joint_count != snapshot->distance_joint_count) ||
-	    (world->physics.revolute_joint_count != snapshot->revolute_joint_count)) {
+	    (world->physics.revolute_joint_count != snapshot->revolute_joint_count) ||
+	    (world->physics.prismatic_joint_count != snapshot->prismatic_joint_count)) {
 		return false;
 	}
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
@@ -445,6 +486,12 @@ static bool authoritative_state_matches(const struct picosystem_game_world *worl
 	for (uint16_t index = 0U; index < snapshot->revolute_joint_count; ++index) {
 		if (!revolute_joint_equal(&world->physics.revolute_joints[index],
 					  &snapshot->revolute_joints[index])) {
+			return false;
+		}
+	}
+	for (uint16_t index = 0U; index < snapshot->prismatic_joint_count; ++index) {
+		if (!prismatic_joint_equal(&world->physics.prismatic_joints[index],
+					   &snapshot->prismatic_joints[index])) {
 			return false;
 		}
 	}
@@ -537,6 +584,70 @@ static int maximum_revolute_limit_violation(const struct picosystem_game_world *
 	return 0;
 }
 
+static int maximum_prismatic_quality(const struct picosystem_game_world *world,
+				     uint32_t *maximum_lateral_error,
+				     uint32_t *maximum_angular_error,
+				     uint32_t *maximum_limit_violation)
+{
+	uint32_t lateral_maximum = 0U;
+	uint32_t angular_maximum = 0U;
+	uint32_t limit_maximum = 0U;
+	for (uint16_t index = 0U; index < world->physics.prismatic_joint_count; ++index) {
+		const struct picosystem_physics_prismatic_joint *const joint =
+			&world->physics.prismatic_joints[index];
+		struct picosystem_physics_vector anchor_a;
+		struct picosystem_physics_vector anchor_b;
+		struct picosystem_physics_vector axis;
+		int err = picosystem_physics_world_prismatic_joint_geometry(
+			&world->physics, index, &anchor_a, &anchor_b, &axis);
+		if (err != 0) {
+			return err;
+		}
+		const int64_t delta_x = (int64_t)anchor_a.x - anchor_b.x;
+		const int64_t delta_y = (int64_t)anchor_a.y - anchor_b.y;
+		const int64_t lateral =
+			((delta_x * -axis.y) + (delta_y * axis.x)) / PICOSYSTEM_PHYSICS_FIXED_ONE;
+		const uint32_t lateral_absolute = (uint32_t)((lateral < 0) ? -lateral : lateral);
+		if (lateral_absolute > lateral_maximum) {
+			lateral_maximum = lateral_absolute;
+		}
+
+		picosystem_physics_fixed_t angle;
+		err = picosystem_physics_world_prismatic_joint_angle(&world->physics, index,
+								     &angle);
+		if (err != 0) {
+			return err;
+		}
+		const uint32_t angular_absolute = (uint32_t)((angle < 0) ? -angle : angle);
+		if (angular_absolute > angular_maximum) {
+			angular_maximum = angular_absolute;
+		}
+
+		if (joint->limit_enabled == 0U) {
+			continue;
+		}
+		picosystem_physics_fixed_t translation;
+		err = picosystem_physics_world_prismatic_joint_translation(&world->physics, index,
+									   &translation);
+		if (err != 0) {
+			return err;
+		}
+		uint32_t violation = 0U;
+		if (translation < joint->lower_translation) {
+			violation = (uint32_t)(joint->lower_translation - translation);
+		} else if (translation > joint->upper_translation) {
+			violation = (uint32_t)(translation - joint->upper_translation);
+		}
+		if (violation > limit_maximum) {
+			limit_maximum = violation;
+		}
+	}
+	*maximum_lateral_error = lateral_maximum;
+	*maximum_angular_error = angular_maximum;
+	*maximum_limit_violation = limit_maximum;
+	return 0;
+}
+
 static int reset_profile_world(enum picosystem_physics_profile_fixture fixture,
 			       uint16_t chain_link_count)
 {
@@ -583,6 +694,9 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 	};
 	uint64_t maximum_anchor_error_squared = 0U;
 	uint32_t maximum_limit_violation = 0U;
+	uint32_t maximum_prismatic_lateral_error = 0U;
+	uint32_t maximum_prismatic_angular_error = 0U;
+	uint32_t maximum_prismatic_limit_violation = 0U;
 	for (uint32_t measured_tick = 0U; measured_tick < measured_tick_count; ++measured_tick) {
 		const uint32_t replay_tick =
 			PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS + measured_tick;
@@ -611,6 +725,24 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 		}
 		if (limit_violation > maximum_limit_violation) {
 			maximum_limit_violation = limit_violation;
+		}
+		uint32_t prismatic_lateral_error;
+		uint32_t prismatic_angular_error;
+		uint32_t prismatic_limit_violation;
+		err = maximum_prismatic_quality(&workspace.world, &prismatic_lateral_error,
+						&prismatic_angular_error,
+						&prismatic_limit_violation);
+		if (err != 0) {
+			return err;
+		}
+		if (prismatic_lateral_error > maximum_prismatic_lateral_error) {
+			maximum_prismatic_lateral_error = prismatic_lateral_error;
+		}
+		if (prismatic_angular_error > maximum_prismatic_angular_error) {
+			maximum_prismatic_angular_error = prismatic_angular_error;
+		}
+		if (prismatic_limit_violation > maximum_prismatic_limit_violation) {
+			maximum_prismatic_limit_violation = prismatic_limit_violation;
 		}
 
 		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
@@ -645,6 +777,9 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 	mode_result->maximum_revolute_anchor_error_q16 =
 		integer_square_root(maximum_anchor_error_squared);
 	mode_result->maximum_revolute_limit_violation_q16 = maximum_limit_violation;
+	mode_result->maximum_prismatic_lateral_error_q16 = maximum_prismatic_lateral_error;
+	mode_result->maximum_prismatic_angular_error_q16 = maximum_prismatic_angular_error;
+	mode_result->maximum_prismatic_limit_violation_q16 = maximum_prismatic_limit_violation;
 	return 0;
 }
 

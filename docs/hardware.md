@@ -153,10 +153,10 @@ three updates and 10,000 ticks for 120 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes a 600-byte immutable snapshot of
-up to 12 circle or oriented-box bodies and eight static segments, plus eight
-render records for distance joints and eight for revolute joints, on every
-update.
+Simulation uses Q16.16 positions and publishes a 728-byte immutable snapshot of
+up to 12 circle or oriented-box bodies, eight physical static segments, and 16
+render-only guide segments, plus eight render records each for distance and
+revolute joints, on every update.
 Two slots and a short spin-lock-protected copy prevent the renderer from
 observing partially updated state. A saturated semaphore is only a wake-up
 hint: if two or more simulation states arrive during a panel period, the
@@ -228,7 +228,7 @@ more than one pixel apart, with a four-pass hard limit. Isolated 4-, 6-, and
 pass counts were 1.000, 1.172, and 2.552, and maximum anchor errors were 0.495,
 1.118, and 1.158 pixels. The 8-link maximum was 5.188 ms.
 
-The current motor-and-limit lab expands each revolute slot with a bounded motor
+The preceding motor-and-limit lab expands each revolute slot with a bounded motor
 row, creation-relative angular range, and per-step limit state. Its physics
 world is 16,364 bytes, its profiling workspace is 23,984 bytes, and the
 recommended full-frame image uses 206,404 bytes of Zephyr RAM plus 184,216
@@ -245,6 +245,25 @@ held 119.9 Hz with seven skipped ticks while full-frame presentation remained
 at 29.8 fps. Concurrent rendering and USB activity produced 5,143 updates over
 8.333 ms and a 25.008 ms maximum; faster intervening updates recovered most
 deadlines.
+
+The current powered Machine Lab adds eight fixed-capacity prismatic slots and
+uses one for a motorized world rail with creation-relative travel limits. Its
+20,020-byte physics world uses compact per-body velocity revisions to cache
+unchanged contact and prismatic rows; the serialized profiling workspace is
+28,672 bytes. The recommended image uses 216,260 bytes of Zephyr RAM and
+192,148 bytes of flash, leaving about 44 KiB in the 255 KiB region in addition
+to the separately reserved 8 KiB core-1 area.
+
+The PIM559 reproduced reset/right-30/right-30-up-15 hashes `58ed1623`,
+`c79a2439`, and `107b9aa0`, plus framebuffer CRC-32 `410a58ac` at tick 45. Its
+isolated 1,000-tick grid profile averaged 3.535 ms, reached a 4.992 ms p95 and
+6.379 ms maximum, and recorded no 8.333 ms budget violations. The brute-force
+reference averaged 3.662 ms; both modes ended at `4ed9cc6f` with exact state
+agreement. A concurrent 3,798-tick window held 119.2 Hz while full-frame
+presentation averaged 29.8 fps. It recorded eight skipped ticks, a five-tick
+worst backlog, and mean/maximum physics time of 5.788/9.786 ms. A settled
+sampled tick skipped 16 of 42 scheduled contact visits. Main, render, and core-1
+stack high-water marks were 3,648/4,096, 3,588/4,096, and 344/4,096 bytes.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.
@@ -340,6 +359,12 @@ A live capture held the coherent framebuffer for about 99 seconds and therefore
 froze presentation, but all 16,240 simulation ticks completed at 120.0 Hz with
 zero skips. Pause before capture for deterministic automation and practical
 latency.
+
+The heavier powered Machine Lab exceeded the earlier 120-second live-capture
+deadline and needed about one additional minute of held-DTR draining to finish
+the pending output. The host capture timeout is now 240 seconds. This is a
+bounded diagnostic fallback, not a gameplay workload; pause before capture so
+the shell has the full core-0 idle budget and the selected frame remains exact.
 
 On a cold power-on, the backlight remained visually dark until the completed
 frame appeared; no bright or white startup flash was observed.

@@ -6,9 +6,45 @@ followed by the same bounded input replay; the recorded artifact states its
 measured tick count. Timing covers isolated physics steps with rendering and
 snapshot publication disabled.
 
+## Motorized prismatic joint and contact cache
+
+The current schema-version-6 canonical result is in
+[pim559-prismatic-joint-2026-08-19.json](pim559-prismatic-joint-2026-08-19.json).
+It was captured with:
+
+```sh
+make profile-ab PROFILE_TICKS=1000 \
+  PROFILE_OUT=benchmarks/physics-profile/pim559-prismatic-joint-2026-08-19.json
+```
+
+The seven-body Machine Lab combines a powered three-link revolute chain with a
+world-anchored vertical press. The press motor reverses at its creation-relative
+-48/0-pixel stops. Contact and prismatic solver rows retain compact per-body
+velocity revision stamps, so later global passes skip a row until one of its
+bodies changes velocity.
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Candidates/tick | Cached contacts/tick | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 3,535 us | 3,328 us | 4,992 us | 5,504 us | 6,379 us | 7.332 | 1.265 | 0 |
+| Brute-force reference | 3,662 us | 3,456 us | 4,992 us | 5,632 us | 6,227 us | 63.0 | 1.265 | 0 |
+
+Both modes ended at hash `4ed9cc6f` with exact authoritative-state agreement.
+The grid rejected 88.4% of possible pairs and was 1.04 times faster overall.
+The cache skipped 1,265 of 4,767 scheduled contact visits while 2,646 visits
+changed an impulse. Maximum revolute-anchor separation was 0.814 pixels;
+maximum revolute-limit, prismatic-angular, and prismatic-limit violations were
+0.0418 radian, 0.00461 radian, and 0.0651 pixels. Maximum prismatic lateral
+error was 0.0885 pixels. Quality sampling ran after each timed step. Shell stack
+high-water was 3,848 of 5,120 bytes.
+
+In a concurrent 3,798-tick device window, simulation held 119.2 Hz while the
+full-frame renderer presented at 29.8 fps. Mean physics time was 5.788 ms, eight
+ticks were skipped, and the worst backlog was five ticks. A settled sampled
+tick skipped 16 of 42 scheduled contact visits.
+
 ## Revolute motors and angular limits
 
-The current schema-version-5 canonical result is in
+The preceding schema-version-5 canonical result is in
 [pim559-joint-motors-2026-08-18.json](pim559-joint-motors-2026-08-18.json). It
 was captured with:
 

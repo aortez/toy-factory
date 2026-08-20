@@ -62,11 +62,18 @@ SCHEMA_5_WORK_NAMES = SCHEMA_4_WORK_NAMES | {
     "joint_limit_solver_visits",
     "joint_limit_solver_changes",
 }
+SCHEMA_6_WORK_NAMES = SCHEMA_5_WORK_NAMES | {
+    "prismatic_joints",
+    "prismatic_motors",
+    "prismatic_limits",
+    "solver_cached_contacts",
+}
 WORK_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_WORK_NAMES,
     3: SCHEMA_3_WORK_NAMES,
     4: SCHEMA_4_WORK_NAMES,
     5: SCHEMA_5_WORK_NAMES,
+    6: SCHEMA_6_WORK_NAMES,
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 
@@ -170,6 +177,12 @@ def parse_profile(output: str) -> dict[str, object]:
             "max_revolute_anchor_error_q16",
             "max_revolute_limit_violation_q16",
         }
+        if schema_version >= 6:
+            mode_keys |= {
+                "max_prismatic_lateral_error_q16",
+                "max_prismatic_angular_error_q16",
+                "max_prismatic_limit_violation_q16",
+            }
     for line in output.splitlines():
         fields = parse_fields(line, "PROFILE_MODE")
         if fields is None:
@@ -195,6 +208,18 @@ def parse_profile(output: str) -> dict[str, object]:
             fields.get("max_revolute_limit_violation_q16", "0"),
             "max_revolute_limit_violation_q16",
         )
+        maximum_prismatic_lateral_error_q16 = parse_unsigned(
+            fields.get("max_prismatic_lateral_error_q16", "0"),
+            "max_prismatic_lateral_error_q16",
+        )
+        maximum_prismatic_angular_error_q16 = parse_unsigned(
+            fields.get("max_prismatic_angular_error_q16", "0"),
+            "max_prismatic_angular_error_q16",
+        )
+        maximum_prismatic_limit_violation_q16 = parse_unsigned(
+            fields.get("max_prismatic_limit_violation_q16", "0"),
+            "max_prismatic_limit_violation_q16",
+        )
         modes[mode] = {
             "final_hash": f"{final_hash:08x}",
             "clock_reads_per_step": {
@@ -211,6 +236,24 @@ def parse_profile(output: str) -> dict[str, object]:
                 ),
                 "maximum_revolute_limit_violation_radians": round(
                     maximum_revolute_limit_violation_q16 / 65536, 6
+                ),
+                "maximum_prismatic_lateral_error_q16": (
+                    maximum_prismatic_lateral_error_q16
+                ),
+                "maximum_prismatic_lateral_error_pixels": round(
+                    maximum_prismatic_lateral_error_q16 / 65536, 6
+                ),
+                "maximum_prismatic_angular_error_q16": (
+                    maximum_prismatic_angular_error_q16
+                ),
+                "maximum_prismatic_angular_error_radians": round(
+                    maximum_prismatic_angular_error_q16 / 65536, 6
+                ),
+                "maximum_prismatic_limit_violation_q16": (
+                    maximum_prismatic_limit_violation_q16
+                ),
+                "maximum_prismatic_limit_violation_pixels": round(
+                    maximum_prismatic_limit_violation_q16 / 65536, 6
                 ),
             },
             "stages": {},

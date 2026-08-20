@@ -23,8 +23,8 @@
 #define PLAYFIELD_WIDTH      (PLAYFIELD_RIGHT - PLAYFIELD_LEFT + 1U)
 #define PLAYFIELD_HEIGHT     (PLAYFIELD_BOTTOM - PLAYFIELD_TOP + 1U)
 #define BACKGROUND_TILE_SIZE 12U
-#define HEADER_TEXT          "JOINT LAB 120HZ"
-#define HEADER_TEXT_X        52
+#define HEADER_TEXT          "MACHINE LAB 120HZ"
+#define HEADER_TEXT_X        22
 #define HEADER_TEXT_Y        7
 #define HEADER_TEXT_SCALE    2U
 
@@ -54,7 +54,7 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 		return -EINVAL;
 	}
 	if ((snapshot->body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
-	    (snapshot->static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||
+	    (snapshot->static_segment_count > PICOSYSTEM_SCENE_MAX_SEGMENTS) ||
 	    (snapshot->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
 	    (snapshot->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS)) {
 		return -ERANGE;

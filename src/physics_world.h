@@ -21,6 +21,7 @@
 #define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS   8U
 #define PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS   8U
 #define PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS   8U
+#define PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS  8U
 #define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS   2U
 #define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN    UINT32_C(0x40000000)
 #define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS 16U
@@ -33,9 +34,10 @@
 	 (PICOSYSTEM_PHYSICS_MAX_BODIES * PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS))
 #define PICOSYSTEM_PHYSICS_MAX_CONTACTS                                                            \
 	(PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS * PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS)
-#define PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS            7U
-#define PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS 4U
-#define PICOSYSTEM_PHYSICS_WORLD_BODY_ID                0U
+#define PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS             7U
+#define PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS  4U
+#define PICOSYSTEM_PHYSICS_PRISMATIC_POSITION_ITERATIONS 4U
+#define PICOSYSTEM_PHYSICS_WORLD_BODY_ID                 0U
 
 typedef int32_t picosystem_physics_fixed_t;
 
@@ -80,11 +82,15 @@ struct picosystem_physics_work_counters {
 	uint32_t position_correction_visit_count;
 	uint32_t solver_iteration_count;
 	uint32_t solver_contact_visit_count;
+	uint32_t solver_cached_contact_count;
 	uint32_t solver_changed_contact_count;
 	uint32_t distance_joint_count;
 	uint32_t revolute_joint_count;
 	uint32_t revolute_motor_count;
 	uint32_t revolute_limit_count;
+	uint32_t prismatic_joint_count;
+	uint32_t prismatic_motor_count;
+	uint32_t prismatic_limit_count;
 	uint32_t joint_position_correction_visit_count;
 	uint32_t joint_limit_position_correction_visit_count;
 	uint32_t joint_limit_position_correction_changed_count;
@@ -176,6 +182,28 @@ struct picosystem_physics_revolute_joint_config {
 	uint8_t limit_enabled;
 };
 
+/*
+ * Anchor B and axis B are world-space when body_b_id is zero and body-local otherwise.
+ * Positive motor speed moves body A along axis B relative to body B. Translation limits are
+ * signed Q16.16 pixels relative to the joint's creation pose. The solver constrains lateral
+ * motion and relative rotation while leaving axial translation free.
+ */
+struct picosystem_physics_prismatic_joint_config {
+	struct picosystem_physics_vector local_anchor_a;
+	struct picosystem_physics_vector anchor_b;
+	struct picosystem_physics_vector axis_b;
+	picosystem_physics_fixed_t motor_speed_per_tick;
+	picosystem_physics_fixed_t maximum_motor_impulse_per_tick;
+	picosystem_physics_fixed_t lower_translation;
+	picosystem_physics_fixed_t upper_translation;
+	uint16_t id;
+	uint16_t body_a_id;
+	uint16_t body_b_id;
+	uint8_t collide_connected;
+	uint8_t motor_enabled;
+	uint8_t limit_enabled;
+};
+
 struct picosystem_physics_body {
 	struct picosystem_physics_vector center;
 	struct picosystem_physics_vector velocity_per_tick;
@@ -251,6 +279,44 @@ struct picosystem_physics_revolute_joint {
 	uint8_t limit_state;
 };
 
+struct picosystem_physics_prismatic_joint {
+	/* Persistent configuration included in the authoritative hash. */
+	struct picosystem_physics_vector local_anchor_a;
+	struct picosystem_physics_vector anchor_b;
+	struct picosystem_physics_vector axis_b;
+	picosystem_physics_fixed_t motor_speed_per_tick;
+	picosystem_physics_fixed_t maximum_motor_impulse_per_tick;
+	picosystem_physics_fixed_t lower_translation;
+	picosystem_physics_fixed_t upper_translation;
+	picosystem_physics_fixed_t reference_translation;
+	uint32_t reference_angle_turns;
+	uint16_t id;
+	uint16_t body_a_id;
+	uint16_t body_b_id;
+	uint8_t body_a_index;
+	uint8_t body_b_index;
+	uint8_t collide_connected;
+	uint8_t motor_enabled;
+	uint8_t limit_enabled;
+
+	/* Scratch solver state rebuilt every step and excluded from the hash. */
+	struct picosystem_physics_vector world_anchor_a;
+	struct picosystem_physics_vector world_anchor_b;
+	struct picosystem_physics_vector world_axis;
+	struct picosystem_physics_vector world_perpendicular;
+	picosystem_physics_fixed_t lateral_effective_mass;
+	picosystem_physics_fixed_t axial_effective_mass;
+	picosystem_physics_fixed_t angular_effective_mass;
+	picosystem_physics_fixed_t accumulated_lateral_impulse;
+	picosystem_physics_fixed_t accumulated_angular_impulse;
+	picosystem_physics_fixed_t accumulated_motor_impulse;
+	picosystem_physics_fixed_t accumulated_limit_impulse;
+	uint16_t solved_velocity_revision_a;
+	uint16_t solved_velocity_revision_b;
+	uint8_t limit_state;
+	uint8_t solved_velocity_valid;
+};
+
 enum picosystem_physics_contact_type {
 	PICOSYSTEM_PHYSICS_CONTACT_BODY,
 	PICOSYSTEM_PHYSICS_CONTACT_STATIC_SEGMENT,
@@ -265,10 +331,13 @@ struct picosystem_physics_contact {
 	picosystem_physics_fixed_t accumulated_normal_impulse;
 	picosystem_physics_fixed_t accumulated_tangent_impulse;
 	picosystem_physics_fixed_t position_correction_scale;
+	uint16_t solved_velocity_revision_a;
+	uint16_t solved_velocity_revision_b;
 	uint8_t body_a_index;
 	uint8_t body_b_index;
 	uint8_t segment_index;
 	uint8_t type;
+	uint8_t solved_velocity_valid;
 };
 
 /* Scratch occupancy rebuilt on every update and excluded from authoritative hashes. */
@@ -285,8 +354,12 @@ struct picosystem_physics_world {
 		distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
 	struct picosystem_physics_revolute_joint
 		revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
+	struct picosystem_physics_prismatic_joint
+		prismatic_joints[PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS];
 	struct picosystem_physics_contact contacts[PICOSYSTEM_PHYSICS_MAX_CONTACTS];
 	struct picosystem_physics_grid_cell grid_cells[PICOSYSTEM_PHYSICS_GRID_CELL_COUNT];
+	/* Revisions change with every solver velocity mutation and are excluded from hashes. */
+	uint16_t solver_velocity_revisions[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	struct picosystem_physics_work_counters last_work;
 	picosystem_physics_fixed_t max_speed_per_tick;
 	uint32_t last_candidate_pair_count;
@@ -295,6 +368,7 @@ struct picosystem_physics_world {
 	uint16_t static_segment_count;
 	uint16_t distance_joint_count;
 	uint16_t revolute_joint_count;
+	uint16_t prismatic_joint_count;
 	uint16_t contact_count;
 	uint16_t last_occupied_grid_cell_count;
 	uint8_t last_broad_phase_fallback;
@@ -319,6 +393,14 @@ int picosystem_physics_world_add_distance_joint(
 int picosystem_physics_world_add_revolute_joint(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_revolute_joint_config *config);
+int picosystem_physics_world_add_prismatic_joint(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_prismatic_joint_config *config);
+
+/* Change one enabled prismatic motor target without changing any other state. */
+int picosystem_physics_world_set_prismatic_motor_speed(
+	struct picosystem_physics_world *world, size_t index,
+	picosystem_physics_fixed_t motor_speed_per_tick);
 
 /* Advance exactly one tick with a global acceleration expressed in pixels/tick^2. */
 int picosystem_physics_world_step(
@@ -354,6 +436,23 @@ int picosystem_physics_world_revolute_joint_anchors(
 
 /* Resolve signed Q16.16 radians relative to one revolute joint's creation pose. */
 int picosystem_physics_world_revolute_joint_angle(
+	const struct picosystem_physics_world *world, size_t index,
+	picosystem_physics_fixed_t *relative_angle_radians);
+
+/* Resolve one prismatic joint's current anchors and positive world-space rail axis. */
+int picosystem_physics_world_prismatic_joint_geometry(
+	const struct picosystem_physics_world *world, size_t index,
+	struct picosystem_physics_vector *world_anchor_a,
+	struct picosystem_physics_vector *world_anchor_b,
+	struct picosystem_physics_vector *world_axis);
+
+/* Resolve signed Q16.16 pixels along the rail relative to the creation pose. */
+int picosystem_physics_world_prismatic_joint_translation(
+	const struct picosystem_physics_world *world, size_t index,
+	picosystem_physics_fixed_t *relative_translation);
+
+/* Resolve signed Q16.16 radians relative to the rotation locked at creation. */
+int picosystem_physics_world_prismatic_joint_angle(
 	const struct picosystem_physics_world *world, size_t index,
 	picosystem_physics_fixed_t *relative_angle_radians);
 

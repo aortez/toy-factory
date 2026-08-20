@@ -90,6 +90,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Measure deterministic 4/6/8-link timing and revolute-anchor quality on the PIM559.
 - [x] Improve long-chain constraint convergence within the existing 120 Hz budget.
 - [x] Add bounded revolute motors and creation-relative angular limits with profiling.
-- [ ] Add sliders, conveyors, springs, sensors, and sleeping.
+- [x] Add bounded prismatic sliders, motors, and creation-relative travel limits.
+- [ ] Add conveyors, springs, sensors, and sleeping.
 - [ ] Add a bounded rope or soft-body subsystem.
 - [ ] Evaluate granular materials and approximate force fields.
