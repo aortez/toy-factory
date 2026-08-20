@@ -2,7 +2,7 @@
 
 Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
-![Toy Factory multi-link revolute-joint lab](docs/images/joint-lab.png)
+![Toy Factory powered machine lab](docs/images/machine-lab.png)
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:
@@ -14,14 +14,14 @@ path:
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and supports both damage-region and
   continuous full-frame presentation;
-- runs a deterministic eight-body circle-and-box lab at an exact 120 Hz fixed
+- runs a deterministic seven-body circle-and-box lab at an exact 120 Hz fixed
   step with Q16.16 linear/angular motion, gravity, friction, and restitution;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
-- supports bounded bilateral distance joints and revolute point constraints,
-  motors, and creation-relative angular limits between two bodies or a body and
-  a fixed world anchor, with one pendulum and a powered four-link chain in the
-  canonical lab;
+- supports bounded bilateral distance joints, revolute point constraints, and
+  prismatic rails between two bodies or a body and a fixed world anchor;
+- drives bounded revolute and prismatic motors against creation-relative limits,
+  with a powered three-link chain and reciprocating press in the canonical lab;
 - publishes fixed-size state snapshots to an independent renderer;
 - launches a bounded bare-metal worker on RP2040 core 1 for deterministic
   full-scene rasterization while Zephyr, physics, USB, and display drivers stay
@@ -135,10 +135,11 @@ The physical gesture remains the recovery path for a blank or broken image:
 4. Run `make update` again.
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
-show a dark checkerboard arena, four circles, four spinning boxes, two diagonal
-ramps, cyan boundaries, a yellow pendulum-radius guide, and a white
-`JOINT LAB 120HZ` heading. The chain's world hinge is motorized and its far-end
-hinge stops at plus or minus one radian relative to the reset pose. The world
+show a dark checkerboard arena, three circles, four moving boxes, two diagonal
+ramps, cyan boundaries and press rails, yellow hinge pins, and a white
+`MACHINE LAB 120HZ` heading. The chain's world hinge is motorized, its far-end
+hinge stops at plus or minus one radian relative to the reset pose, and the
+press reverses at the ends of its 48-pixel vertical stroke. The world
 advances on exact rational 120 Hz deadlines. Normal presentation restores each
 moved body's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
@@ -282,11 +283,12 @@ integration, geometry, broad phase, body/body and body/segment narrow phase,
 position correction, velocity solving, final clamping, unattributed
 validation/instrumentation work, and the total. Deterministic counters report
 candidate filtering, grid population, manifolds, contacts, connected-body
-collision filters, distance/revolute joint, motor, and limit counts, separate
-anchor/limit correction and velocity-row visits, and fallbacks. Schema version
-5 identifies the fixture and reports both maximum revolute-anchor separation
-and angular-limit violation; those quality checks run outside the timed physics
-step.
+collision filters, distance/revolute/prismatic joint, motor, and limit counts, separate
+anchor/limit correction, cached/changed contact work, velocity-row visits, and
+fallbacks. Schema version
+6 identifies the fixture and reports maximum revolute-anchor separation,
+angular-limit violation, prismatic lateral/angular error, and prismatic-limit
+violation; those quality checks run outside the timed physics step.
 
 `make profile-ab` handles pause/resume around the canonical command.
 `make profile-chain` keeps one USB session open while running the requested
@@ -414,8 +416,8 @@ shape, configured bus frequency, PL022/PIO polling behavior, and both DMA paths.
 
 ## Game-loop architecture
 
-The authoritative fixed-point bodies, static segments, distance and revolute
-joints, uniform-grid candidate filter, contact generation, sequential-impulse
+The authoritative fixed-point bodies, static segments, distance, revolute, and
+prismatic joints, uniform-grid candidate filter, contact generation, sequential-impulse
 response, and stable field-by-field hash live in
 [`src/physics_world.c`](src/physics_world.c). Canonical scene construction,
 input-to-acceleration mapping, game ticks, and the outer hash live in
@@ -430,7 +432,7 @@ The priority-1 USB shell runs only while higher-priority work is blocked; once
 two or more simulation deadlines are due, the main loop reserves a
 one-millisecond recovery window so diagnostics and the bootloader command cannot
 remain starved. An isolated late tick may catch up and reach its normal sleep
-without paying that extra delay. The main thread publishes a 600-byte immutable
+without paying that extra delay. The main thread publishes a 728-byte immutable
 render snapshot into one of two slots under a short spin lock. A saturated
 semaphore wakes the renderer, which coalesces obsolete snapshots instead of
 making simulation wait.
@@ -478,37 +480,44 @@ serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The default image uses 200,428 bytes of its 255 KiB Zephyr RAM region (76.76%)
-and 179,740 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 210,268 bytes of its 255 KiB Zephyr RAM region (80.53%)
+and 187,660 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer,
-16,364-byte fixed-capacity physics world with a 1,024-byte scratch grid, eight
-distance-joint slots, eight motor/limit-capable revolute-joint slots, and
-per-step deterministic counters, a 23,984-byte serialized benchmark workspace,
-two 600-byte render snapshots, a 4,096-byte shell stack, a 4,096-byte renderer stack,
+20,020-byte fixed-capacity physics world with a 1,024-byte scratch grid and eight
+slots each for distance, motor/limit-capable revolute, and motor/limit-capable
+prismatic joints, plus per-step deterministic counters, a 28,672-byte serialized
+benchmark workspace, two 728-byte render snapshots, a 5,120-byte shell stack, a
+4,096-byte renderer stack,
 display-profile result storage, and a 1,024-byte shell TX ring. The fast image
-uses 206,404 bytes of that region (79.05%) and 184,216 bytes of flash,
+uses 216,260 bytes of that region (82.82%) and 192,148 bytes of flash,
 including 5,376 bytes of SRAM-resident raster code. Both images also reserve
 8 KiB outside Zephyr's region for the core-1 mailbox and stack. The fast image
-retains about 53 KiB of Zephyr RAM headroom. Full frames bypass the staging
+retains about 44 KiB of Zephyr RAM headroom. Full frames bypass the staging
 buffer with one contiguous write.
 
-On the tested PIM559, the recommended fast image sustained 29.8 fps across
-4,896 presented frames while completing 18,494 simulation ticks at 120.0 Hz
-with zero skipped ticks. A full core-1 raster took 9.667 ms (9.935 ms observed
-maximum), and the 62.5 MHz DMA transfer took 19.242 ms. There were 244 isolated
-updates over the 8.333 ms simulation budget, with a 28.890 ms observed maximum;
-the deadline scheduler recovered without dropping a tick. Core 1 used 376 bytes
-of its 4 KiB canary-measured stack. Paused hardware checks also produced
-identical core-0/core-1 pixels for both the live scene and dense stress frame,
-then restored the original framebuffer exactly.
+On the tested PIM559, the recommended fast Machine Lab image completed a
+3,798-tick live window at 119.2 Hz while presenting 948 frames at 29.8 fps. It
+recorded eight skipped ticks, a five-tick worst backlog, and 474 updates over
+the 8.333 ms budget. Mean/maximum complete update time was 6.600/10.529 ms;
+physics alone was 5.788/9.786 ms and snapshot publication was 0.811/2.527 ms.
+A settled sampled tick skipped 16 of 42 scheduled contact visits while 17
+visits changed an impulse. A paused hardware check rendered the same live scene
+on both cores with CRC-32 `14dc7135`; core 1 took 9.444 ms and the original
+framebuffer was restored exactly.
 
-The priority -1 coordinator leaves a one-millisecond handoff window after each
-frame so a waiting framebuffer reader cannot starve. A subsequent clean
+On the preceding, lighter dual-core scene, the priority -1 coordinator left a
+one-millisecond handoff window after each frame so a waiting framebuffer reader
+could not starve. A subsequent clean
 4,365-tick run sustained 119.9 Hz simulation and 29.8 fps with zero skipped
 ticks. A coherent capture while paused completed in 7.1 seconds. Capturing while
 the simulation runs deliberately freezes presentation and took about 99 seconds,
-but simulation remained at 120.0 Hz with zero skipped ticks. The host capture
-timeout is therefore 120 seconds; deterministic automation should pause first.
+but simulation remained at 120.0 Hz with zero skipped ticks.
+
+The heavier Machine Lab can take more than 120 seconds to stream a live frame;
+after that old deadline, finishing the pending shell output required about one
+additional minute with DTR held. The host timeout is therefore 240 seconds.
+Pause before capture for practical latency, stable timing, and deterministic
+automation.
 
 GitHub Actions runs `make check` and builds the PIO, PIO/DMA, and PL022/DMA
 variants for every pull request and push to `main`. Tests that need a connected
@@ -631,7 +640,18 @@ budget. A longer 14,416-tick live window held 120.0 Hz simulation and 29.8 fps
 presentation, with one isolated skipped tick amid USB profiling and status
 activity.
 
-The current motor-and-limit image gives the world pin a bounded 1/96-radian
+The current powered Machine Lab hashes to `58ed1623` at reset, `c79a2439` after
+30 right ticks, and `107b9aa0` after a further 15 up ticks. The exact tick-45
+frame shown above is CRC-32 `410a58ac`; the 10,000-tick native replay ends at
+`4c0e614b`. Its schema-version-6 PIM559 profile averaged 3.535 ms on the grid
+and 3.662 ms through the brute-force reference, with zero budget violations and
+exact final state agreement at `4ed9cc6f`. Grid filtering retained 7.332 of 63
+possible pairs per tick. Maximum revolute-anchor, angular-limit, prismatic
+lateral, prismatic-angular, and travel-limit errors were 0.814 pixels, 0.0418
+radian, 0.0885 pixels, 0.00461 radian, and 0.0651 pixels. The contact cache
+skipped 1.265 of 4.767 scheduled visits per isolated tick.
+
+The preceding motor-and-limit image gives the world pin a bounded 1/96-radian
 per-tick target and limits the final hinge to plus or minus one radian from its
 creation pose. Native reset/right-30/right-30-up-15 hashes are `13420a19`,
 `c65f5731`, and `66e3ab10`; the 10,000-tick replay ends at `2ff53bff`. The

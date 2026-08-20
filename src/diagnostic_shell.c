@@ -363,14 +363,18 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.graphics.last_present_height,
 		    snapshot.game.graphics.present_count);
 	shell_print(shell,
-		    "simulation: ticks=%u, window=%u (%u.%u Hz), update=%u us (max=%u), "
+		    "simulation: ticks=%u, window=%u (%u.%u Hz), update=%u/%u/%u us "
+		    "last/mean/max, physics=%u/%u/%u, snapshot=%u/%u/%u, "
 		    "backlog=%u, "
 		    "skipped=%u, over-budget=%u",
 		    snapshot.game.logic_tick_count, snapshot.game.measured_logic_tick_count,
 		    simulation_rate_tenths / 10U, simulation_rate_tenths % 10U,
-		    snapshot.game.last_update_time_us, snapshot.game.max_update_time_us,
-		    snapshot.game.max_backlog_ticks, snapshot.game.skipped_tick_count,
-		    snapshot.game.over_budget_tick_count);
+		    snapshot.game.last_update_time_us, snapshot.game.mean_update_time_us,
+		    snapshot.game.max_update_time_us, snapshot.game.last_physics_time_us,
+		    snapshot.game.mean_physics_time_us, snapshot.game.max_physics_time_us,
+		    snapshot.game.last_snapshot_time_us, snapshot.game.mean_snapshot_time_us,
+		    snapshot.game.max_snapshot_time_us, snapshot.game.max_backlog_ticks,
+		    snapshot.game.skipped_tick_count, snapshot.game.over_budget_tick_count);
 	shell_print(shell,
 		    "render: running=%s, frames=%u, window=%u (%u.%u fps), snapshots=%u "
 		    "published/%u superseded, "
@@ -382,15 +386,21 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.superseded_snapshot_count, snapshot.game.last_snapshot_age_us,
 		    snapshot.game.max_dirty_snapshot_age_us);
 	shell_print(shell,
-		    "physics: bodies=%u, segments=%u, joints=%u distance/%u revolute, contacts=%u, "
+		    "physics: bodies=%u, segments=%u, joints=%u distance/%u revolute/%u "
+		    "prismatic, contacts=%u, "
 		    "candidates=%u/%u, "
-		    "grid=%u/%u cells, solver=%u/%u, fallback=%s",
+		    "grid=%u/%u cells, solver=%u/%u, contact solver=%u visits, %u cached, "
+		    "%u changed, "
+		    "fallback=%s",
 		    snapshot.game.body_count, snapshot.game.static_segment_count,
 		    snapshot.game.distance_joint_count, snapshot.game.revolute_joint_count,
-		    snapshot.game.contact_count, snapshot.game.candidate_pair_count,
-		    snapshot.game.possible_pair_count, snapshot.game.occupied_grid_cell_count,
-		    PICOSYSTEM_PHYSICS_GRID_CELL_COUNT, snapshot.game.solver_iteration_count,
-		    PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
+		    snapshot.game.prismatic_joint_count, snapshot.game.contact_count,
+		    snapshot.game.candidate_pair_count, snapshot.game.possible_pair_count,
+		    snapshot.game.occupied_grid_cell_count, PICOSYSTEM_PHYSICS_GRID_CELL_COUNT,
+		    snapshot.game.solver_iteration_count, PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
+		    snapshot.game.solver_contact_visit_count,
+		    snapshot.game.solver_cached_contact_count,
+		    snapshot.game.solver_changed_contact_count,
 		    snapshot.game.broad_phase_fallback ? "yes" : "no");
 	shell_print(
 		shell,
@@ -519,13 +529,18 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    graphics->last_present_time_us,
 		    graphics->last_present_throughput_kib_per_second);
 	shell_print(shell,
-		    "simulation: ticks=%u, window=%u (%u.%u Hz), update=%u us (max=%u), "
+		    "simulation: ticks=%u, window=%u (%u.%u Hz), update=%u/%u/%u us "
+		    "last/mean/max, physics=%u/%u/%u, snapshot=%u/%u/%u, "
 		    "backlog=%u, "
 		    "skipped=%u, over-budget=%u",
 		    game->logic_tick_count, game->measured_logic_tick_count,
 		    simulation_rate_tenths / 10U, simulation_rate_tenths % 10U,
-		    game->last_update_time_us, game->max_update_time_us, game->max_backlog_ticks,
-		    game->skipped_tick_count, game->over_budget_tick_count);
+		    game->last_update_time_us, game->mean_update_time_us, game->max_update_time_us,
+		    game->last_physics_time_us, game->mean_physics_time_us,
+		    game->max_physics_time_us, game->last_snapshot_time_us,
+		    game->mean_snapshot_time_us, game->max_snapshot_time_us,
+		    game->max_backlog_ticks, game->skipped_tick_count,
+		    game->over_budget_tick_count);
 	shell_print(shell,
 		    "renderer: running=%s, mode=%s, frames=%u, window=%u (%u.%u fps), "
 		    "wall=%u us, full=%u, error=%d",
@@ -546,15 +561,19 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->published_snapshot_count, game->superseded_snapshot_count,
 		    game->last_snapshot_age_us, game->max_dirty_snapshot_age_us);
 	shell_print(shell,
-		    "physics: bodies=%u, segments=%u, joints=%u distance/%u revolute, contacts=%u, "
+		    "physics: bodies=%u, segments=%u, joints=%u distance/%u revolute/%u "
+		    "prismatic, contacts=%u, "
 		    "candidates=%u/%u, "
-		    "grid=%u/%u cells, solver=%u/%u, fallback=%s",
+		    "grid=%u/%u cells, solver=%u/%u, contact solver=%u visits, %u cached, "
+		    "%u changed, "
+		    "fallback=%s",
 		    game->body_count, game->static_segment_count, game->distance_joint_count,
-		    game->revolute_joint_count, game->contact_count, game->candidate_pair_count,
-		    game->possible_pair_count, game->occupied_grid_cell_count,
-		    PICOSYSTEM_PHYSICS_GRID_CELL_COUNT, game->solver_iteration_count,
-		    PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
-		    game->broad_phase_fallback ? "yes" : "no");
+		    game->revolute_joint_count, game->prismatic_joint_count, game->contact_count,
+		    game->candidate_pair_count, game->possible_pair_count,
+		    game->occupied_grid_cell_count, PICOSYSTEM_PHYSICS_GRID_CELL_COUNT,
+		    game->solver_iteration_count, PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS,
+		    game->solver_contact_visit_count, game->solver_cached_contact_count,
+		    game->solver_changed_contact_count, game->broad_phase_fallback ? "yes" : "no");
 	shell_print(shell,
 		    "focus #%u %s: simulation=(%u,%u), displayed=(%u,%u), "
 		    "velocity=(%d,%d) px/s, angle=%08x, angular=%d mrad/s",
@@ -1006,12 +1025,18 @@ static void print_profile_result(const struct shell *shell,
 		shell_print(shell,
 			    "PROFILE_MODE mode=%s hash=%08x clock_reads_min=%u clock_reads_max=%u "
 			    "max_revolute_anchor_error_q16=%u "
-			    "max_revolute_limit_violation_q16=%u",
+			    "max_revolute_limit_violation_q16=%u "
+			    "max_prismatic_lateral_error_q16=%u "
+			    "max_prismatic_angular_error_q16=%u "
+			    "max_prismatic_limit_violation_q16=%u",
 			    mode_name, mode_result->final_hash,
 			    mode_result->minimum_clock_reads_per_step,
 			    mode_result->maximum_clock_reads_per_step,
 			    mode_result->maximum_revolute_anchor_error_q16,
-			    mode_result->maximum_revolute_limit_violation_q16);
+			    mode_result->maximum_revolute_limit_violation_q16,
+			    mode_result->maximum_prismatic_lateral_error_q16,
+			    mode_result->maximum_prismatic_angular_error_q16,
+			    mode_result->maximum_prismatic_limit_violation_q16);
 
 		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
 			const struct picosystem_physics_profile_stage_summary *const summary =

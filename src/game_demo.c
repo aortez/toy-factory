@@ -97,7 +97,7 @@ BUILD_ASSERT(RENDER_THREAD_PRIORITY < CONFIG_SHELL_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_MAIN_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_SHELL_THREAD_PRIORITY);
 #endif
-BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 640U);
+BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 768U);
 
 static bool core1_full_frame_renderer_enabled(void)
 {
@@ -120,6 +120,23 @@ static void add_saturated(uint32_t *value, uint32_t increment)
 	}
 }
 
+static void add_u64_saturated(uint64_t *value, uint32_t increment)
+{
+	if (increment > (UINT64_MAX - *value)) {
+		*value = UINT64_MAX;
+	} else {
+		*value += increment;
+	}
+}
+
+static uint32_t mean_time_us(uint64_t total, uint32_t count)
+{
+	if (count == 0U) {
+		return 0U;
+	}
+	return (uint32_t)MIN(total / count, UINT32_MAX);
+}
+
 static uint32_t cycles_to_us(uint32_t cycles)
 {
 	return MAX(k_cyc_to_us_floor32(cycles), 1U);
@@ -128,6 +145,11 @@ static uint32_t cycles_to_us(uint32_t cycles)
 static int16_t fixed_to_pixel(int32_t value)
 {
 	return (int16_t)(value / PICOSYSTEM_GAME_FIXED_ONE);
+}
+
+static int32_t fixed_multiply(int32_t left, int32_t right)
+{
+	return (int32_t)(((int64_t)left * right) / PICOSYSTEM_GAME_FIXED_ONE);
 }
 
 static int16_t quantize_joint_pixel(int16_t value)
@@ -299,6 +321,64 @@ static bool joint_render_state_matches(const struct picosystem_scene_joint *left
 	       (left->anchor_b_x == right->anchor_b_x) && (left->anchor_b_y == right->anchor_b_y);
 }
 
+static int append_prismatic_guides(const struct picosystem_game_demo_state *state,
+				   struct picosystem_scene_snapshot *snapshot)
+{
+	for (uint16_t index = 0U; index < state->world.physics.prismatic_joint_count; ++index) {
+		const struct picosystem_physics_prismatic_joint *const joint =
+			&state->world.physics.prismatic_joints[index];
+		if ((joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) ||
+		    (joint->limit_enabled == 0U)) {
+			continue;
+		}
+		if ((snapshot->static_segment_count + 2U) > ARRAY_SIZE(snapshot->static_segments)) {
+			return -ENOSPC;
+		}
+
+		const struct picosystem_physics_body *const body =
+			&state->world.physics.bodies[joint->body_a_index];
+		int32_t guide_offset = body->radius;
+		if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
+			guide_offset = MAX(body->half_extent.x, body->half_extent.y);
+		}
+		guide_offset += PICOSYSTEM_PHYSICS_FIXED_FROM_INT(4);
+		const int32_t lower = joint->reference_translation + joint->lower_translation;
+		const int32_t upper = joint->reference_translation + joint->upper_translation;
+		const struct picosystem_physics_vector perpendicular = {
+			.x = -joint->axis_b.y,
+			.y = joint->axis_b.x,
+		};
+		const struct picosystem_physics_vector lower_center = {
+			.x = joint->anchor_b.x + fixed_multiply(joint->axis_b.x, lower),
+			.y = joint->anchor_b.y + fixed_multiply(joint->axis_b.y, lower),
+		};
+		const struct picosystem_physics_vector upper_center = {
+			.x = joint->anchor_b.x + fixed_multiply(joint->axis_b.x, upper),
+			.y = joint->anchor_b.y + fixed_multiply(joint->axis_b.y, upper),
+		};
+		const struct picosystem_physics_vector offset = {
+			.x = fixed_multiply(perpendicular.x, guide_offset),
+			.y = fixed_multiply(perpendicular.y, guide_offset),
+		};
+
+		snapshot->static_segments[snapshot->static_segment_count++] =
+			(struct picosystem_scene_segment){
+				.start_x = fixed_to_pixel(lower_center.x + offset.x),
+				.start_y = fixed_to_pixel(lower_center.y + offset.y),
+				.end_x = fixed_to_pixel(upper_center.x + offset.x),
+				.end_y = fixed_to_pixel(upper_center.y + offset.y),
+			};
+		snapshot->static_segments[snapshot->static_segment_count++] =
+			(struct picosystem_scene_segment){
+				.start_x = fixed_to_pixel(lower_center.x - offset.x),
+				.start_y = fixed_to_pixel(lower_center.y - offset.y),
+				.end_x = fixed_to_pixel(upper_center.x - offset.x),
+				.end_y = fixed_to_pixel(upper_center.y - offset.y),
+			};
+	}
+	return 0;
+}
+
 static size_t build_dirty_regions(const struct picosystem_scene_snapshot *snapshot,
 				  const struct picosystem_scene_snapshot *presented,
 				  struct picosystem_rect *regions)
@@ -425,10 +505,14 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			.end_y = fixed_to_pixel(segment->end.y),
 		};
 	}
+	int err = append_prismatic_guides(state, snapshot);
+	if (err != 0) {
+		return err;
+	}
 	for (uint16_t index = 0U; index < snapshot->distance_joint_count; ++index) {
 		struct picosystem_physics_vector anchor_a;
 		struct picosystem_physics_vector anchor_b;
-		const int err = picosystem_physics_world_distance_joint_endpoints(
+		err = picosystem_physics_world_distance_joint_endpoints(
 			&state->world.physics, index, &anchor_a, &anchor_b);
 		if (err != 0) {
 			return err;
@@ -460,8 +544,8 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 	for (uint16_t index = 0U; index < snapshot->revolute_joint_count; ++index) {
 		struct picosystem_physics_vector anchor_a;
 		struct picosystem_physics_vector anchor_b;
-		const int err = picosystem_physics_world_revolute_joint_anchors(
-			&state->world.physics, index, &anchor_a, &anchor_b);
+		err = picosystem_physics_world_revolute_joint_anchors(&state->world.physics, index,
+								      &anchor_a, &anchor_b);
 		if (err != 0) {
 			return err;
 		}
@@ -855,6 +939,13 @@ int picosystem_game_demo_reset(struct picosystem_game_demo_state *state)
 	state->over_budget_tick_count = 0U;
 	state->last_update_time_us = 0U;
 	state->max_update_time_us = 0U;
+	state->last_physics_time_us = 0U;
+	state->max_physics_time_us = 0U;
+	state->last_snapshot_time_us = 0U;
+	state->max_snapshot_time_us = 0U;
+	state->total_physics_time_us = 0U;
+	state->total_snapshot_time_us = 0U;
+	state->measured_update_count = 0U;
 	state->max_backlog_ticks = 0U;
 	state->redraw_request_sequence = redraw_request_sequence;
 	state->snapshot_sequence = snapshot_sequence;
@@ -882,13 +973,24 @@ int picosystem_game_demo_update(struct picosystem_game_demo_state *state,
 	if (err != 0) {
 		return err;
 	}
+	const uint32_t physics_end_cycles = k_cycle_get_32();
 
 	err = publish_snapshot(state, true);
 	if (err != 0) {
 		return err;
 	}
 
-	const uint32_t elapsed_us = cycles_to_us(k_cycle_get_32() - start_cycles);
+	const uint32_t end_cycles = k_cycle_get_32();
+	const uint32_t physics_us = cycles_to_us(physics_end_cycles - start_cycles);
+	const uint32_t snapshot_us = cycles_to_us(end_cycles - physics_end_cycles);
+	const uint32_t elapsed_us = cycles_to_us(end_cycles - start_cycles);
+	state->last_physics_time_us = physics_us;
+	state->max_physics_time_us = MAX(state->max_physics_time_us, physics_us);
+	state->last_snapshot_time_us = snapshot_us;
+	state->max_snapshot_time_us = MAX(state->max_snapshot_time_us, snapshot_us);
+	add_u64_saturated(&state->total_physics_time_us, physics_us);
+	add_u64_saturated(&state->total_snapshot_time_us, snapshot_us);
+	increment_saturated(&state->measured_update_count);
 	state->last_update_time_us = elapsed_us;
 	state->max_update_time_us = MAX(state->max_update_time_us, elapsed_us);
 	if (elapsed_us > (USEC_PER_SEC / PICOSYSTEM_GAME_TICK_RATE_HZ)) {
@@ -943,6 +1045,12 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 	const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
 	const struct game_renderer_metrics render_metrics = renderer.metrics;
 	k_spin_unlock(&renderer.lock, key);
+	uint64_t total_update_time_us = state->total_physics_time_us;
+	if (state->total_snapshot_time_us > (UINT64_MAX - total_update_time_us)) {
+		total_update_time_us = UINT64_MAX;
+	} else {
+		total_update_time_us += state->total_snapshot_time_us;
+	}
 
 	*stats = (struct picosystem_game_demo_stats){
 		.graphics = render_metrics.graphics,
@@ -952,7 +1060,17 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.skipped_tick_count = state->skipped_tick_count,
 		.over_budget_tick_count = state->over_budget_tick_count,
 		.last_update_time_us = state->last_update_time_us,
+		.mean_update_time_us =
+			mean_time_us(total_update_time_us, state->measured_update_count),
 		.max_update_time_us = state->max_update_time_us,
+		.last_physics_time_us = state->last_physics_time_us,
+		.mean_physics_time_us =
+			mean_time_us(state->total_physics_time_us, state->measured_update_count),
+		.max_physics_time_us = state->max_physics_time_us,
+		.last_snapshot_time_us = state->last_snapshot_time_us,
+		.mean_snapshot_time_us =
+			mean_time_us(state->total_snapshot_time_us, state->measured_update_count),
+		.max_snapshot_time_us = state->max_snapshot_time_us,
 		.max_backlog_ticks = state->max_backlog_ticks,
 		.published_snapshot_count = render_metrics.published_snapshot_count,
 		.superseded_snapshot_count = render_metrics.superseded_snapshot_count,
@@ -975,6 +1093,12 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.render_stack_used_bytes = render_metrics.render_stack_used_bytes,
 		.candidate_pair_count = state->world.physics.last_candidate_pair_count,
 		.possible_pair_count = state->world.physics.last_possible_pair_count,
+		.solver_contact_visit_count =
+			state->world.physics.last_work.solver_contact_visit_count,
+		.solver_cached_contact_count =
+			state->world.physics.last_work.solver_cached_contact_count,
+		.solver_changed_contact_count =
+			state->world.physics.last_work.solver_changed_contact_count,
 		.focus_angle_turns = focus->angle_turns,
 		.focus_angular_velocity_milliradians_per_second =
 			angular_velocity_to_milliradians_per_second(
@@ -983,6 +1107,7 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.static_segment_count = state->world.physics.static_segment_count,
 		.distance_joint_count = state->world.physics.distance_joint_count,
 		.revolute_joint_count = state->world.physics.revolute_joint_count,
+		.prismatic_joint_count = state->world.physics.prismatic_joint_count,
 		.contact_count = state->world.physics.contact_count,
 		.occupied_grid_cell_count = state->world.physics.last_occupied_grid_cell_count,
 		.focus_body_id = focus->id,

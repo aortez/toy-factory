@@ -13,40 +13,49 @@
 #include <stdint.h>
 #include <string.h>
 
-#define PHYSICS_POSITION_LIMIT               PICOSYSTEM_PHYSICS_FIXED_FROM_INT(1024)
-#define PHYSICS_VELOCITY_LIMIT               PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
-#define PHYSICS_ACCELERATION_LIMIT           PICOSYSTEM_PHYSICS_FIXED_ONE
-#define PHYSICS_RADIUS_MINIMUM               PICOSYSTEM_PHYSICS_FIXED_ONE
-#define PHYSICS_RADIUS_LIMIT                 PICOSYSTEM_PHYSICS_FIXED_FROM_INT(128)
-#define PHYSICS_HALF_EXTENT_MINIMUM          PICOSYSTEM_PHYSICS_FIXED_ONE
-#define PHYSICS_HALF_EXTENT_LIMIT            PICOSYSTEM_PHYSICS_FIXED_FROM_INT(64)
-#define PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT     PICOSYSTEM_PHYSICS_FIXED_FROM_INT(128)
-#define PHYSICS_JOINT_DISTANCE_MINIMUM       PICOSYSTEM_PHYSICS_FIXED_ONE
-#define PHYSICS_JOINT_DISTANCE_LIMIT         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(256)
-#define PHYSICS_INVERSE_MASS_MINIMUM         (PICOSYSTEM_PHYSICS_FIXED_ONE / 16)
-#define PHYSICS_INVERSE_MASS_MAXIMUM         (PICOSYSTEM_PHYSICS_FIXED_ONE * 4)
-#define PHYSICS_INVERSE_INERTIA_MAXIMUM      (PICOSYSTEM_PHYSICS_FIXED_ONE * 8)
-#define PHYSICS_ANGULAR_VELOCITY_LIMIT       (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
-#define PHYSICS_TAU_FIXED                    INT32_C(411775)
-#define PHYSICS_PI_FIXED                     (PHYSICS_TAU_FIXED / 2)
-#define PHYSICS_JOINT_MOTOR_IMPULSE_LIMIT    PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
-#define PHYSICS_JOINT_LIMIT_IMPULSE_LIMIT    PICOSYSTEM_PHYSICS_FIXED_FROM_INT(256)
-#define PHYSICS_JOINT_ANGULAR_SLOP           (PHYSICS_TAU_FIXED / 360)
-#define PHYSICS_JOINT_MAX_ANGULAR_CORRECTION (PHYSICS_TAU_FIXED / 24)
-#define PHYSICS_POSITION_SLOP                (PICOSYSTEM_PHYSICS_FIXED_ONE / 256)
-#define PHYSICS_JOINT_POSITION_SLOP          (PICOSYSTEM_PHYSICS_FIXED_ONE / 128)
-#define PHYSICS_JOINT_CORRECTION_SCALE       (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
-#define PHYSICS_JOINT_MAX_CORRECTION         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
-#define PHYSICS_REVOLUTE_POSITION_TARGET     PICOSYSTEM_PHYSICS_FIXED_ONE
-#define PHYSICS_BOUNCE_THRESHOLD             (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
-#define PHYSICS_HASH_VERSION                 UINT32_C(7)
-#define FNV1A_OFFSET_BASIS                   UINT32_C(2166136261)
-#define FNV1A_PRIME                          UINT32_C(16777619)
-#define STATIC_BODY_INDEX                    UINT8_MAX
-#define STATIC_SEGMENT_INDEX                 UINT8_MAX
-#define TRIG_QUARTER_SAMPLE_SHIFT            24U
-#define TRIG_QUARTER_SAMPLE_COUNT            64U
-#define TRIG_QUARTER_PHASE_MASK              UINT32_C(0x3fffffff)
+#define PHYSICS_POSITION_LIMIT                    PICOSYSTEM_PHYSICS_FIXED_FROM_INT(1024)
+#define PHYSICS_VELOCITY_LIMIT                    PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
+#define PHYSICS_ACCELERATION_LIMIT                PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_RADIUS_MINIMUM                    PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_RADIUS_LIMIT                      PICOSYSTEM_PHYSICS_FIXED_FROM_INT(128)
+#define PHYSICS_HALF_EXTENT_MINIMUM               PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_HALF_EXTENT_LIMIT                 PICOSYSTEM_PHYSICS_FIXED_FROM_INT(64)
+#define PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT          PICOSYSTEM_PHYSICS_FIXED_FROM_INT(128)
+#define PHYSICS_JOINT_DISTANCE_MINIMUM            PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_JOINT_DISTANCE_LIMIT              PICOSYSTEM_PHYSICS_FIXED_FROM_INT(256)
+#define PHYSICS_JOINT_REFERENCE_TRANSLATION_LIMIT (PHYSICS_POSITION_LIMIT * 3)
+#define PHYSICS_JOINT_AXIS_COMPONENT_LIMIT        PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_JOINT_AXIS_MINIMUM_LENGTH         (PICOSYSTEM_PHYSICS_FIXED_ONE / 16)
+#define PHYSICS_INVERSE_MASS_MINIMUM              (PICOSYSTEM_PHYSICS_FIXED_ONE / 16)
+#define PHYSICS_INVERSE_MASS_MAXIMUM              (PICOSYSTEM_PHYSICS_FIXED_ONE * 4)
+#define PHYSICS_INVERSE_INERTIA_MAXIMUM           (PICOSYSTEM_PHYSICS_FIXED_ONE * 8)
+#define PHYSICS_ANGULAR_VELOCITY_LIMIT            (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
+#define PHYSICS_TAU_FIXED                         INT32_C(411775)
+#define PHYSICS_PI_FIXED                          (PHYSICS_TAU_FIXED / 2)
+#define PHYSICS_JOINT_MOTOR_IMPULSE_LIMIT         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
+#define PHYSICS_JOINT_LIMIT_IMPULSE_LIMIT         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(256)
+#define PHYSICS_JOINT_ANGULAR_SLOP                (PHYSICS_TAU_FIXED / 360)
+#define PHYSICS_JOINT_MAX_ANGULAR_CORRECTION      (PHYSICS_TAU_FIXED / 24)
+#define PHYSICS_POSITION_SLOP                     (PICOSYSTEM_PHYSICS_FIXED_ONE / 256)
+#define PHYSICS_JOINT_POSITION_SLOP               (PICOSYSTEM_PHYSICS_FIXED_ONE / 128)
+#define PHYSICS_JOINT_CORRECTION_SCALE            (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
+#define PHYSICS_JOINT_MAX_CORRECTION              PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
+#define PHYSICS_REVOLUTE_POSITION_TARGET          PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_PRISMATIC_POSITION_TARGET         PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_BOUNCE_THRESHOLD                  (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
+#define PHYSICS_HASH_VERSION                      UINT32_C(8)
+#define FNV1A_OFFSET_BASIS                        UINT32_C(2166136261)
+#define FNV1A_PRIME                               UINT32_C(16777619)
+#define STATIC_BODY_INDEX                         UINT8_MAX
+#define STATIC_SEGMENT_INDEX                      UINT8_MAX
+#define TRIG_QUARTER_SAMPLE_SHIFT                 24U
+#define TRIG_QUARTER_SAMPLE_COUNT                 64U
+#define TRIG_QUARTER_PHASE_MASK                   UINT32_C(0x3fffffff)
+#define PHYSICS_MAX_SOLVER_VELOCITY_REVISIONS_PER_BODY                                             \
+	(PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS *                                                    \
+	 ((2U * PICOSYSTEM_PHYSICS_MAX_CONTACTS) + PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS +        \
+	  (3U * PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) +                                          \
+	  (4U * PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS)))
 #define PHYSICS_GRID_CELL_SIZE_FIXED                                                               \
 	PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS)
 #define PHYSICS_GRID_WIDTH_FIXED                                                                   \
@@ -66,6 +75,8 @@ _Static_assert(PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS <= UINT8_MAX,
 	       "distance-joint indices must fit in one byte");
 _Static_assert(PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS <= UINT8_MAX,
 	       "revolute-joint indices must fit in one byte");
+_Static_assert(PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS <= UINT8_MAX,
+	       "prismatic-joint indices must fit in one byte");
 _Static_assert(PICOSYSTEM_PHYSICS_GRID_COLUMNS <= UINT8_MAX,
 	       "grid columns must fit in a cell range");
 _Static_assert(PICOSYSTEM_PHYSICS_GRID_ROWS <= UINT8_MAX, "grid rows must fit in a cell range");
@@ -78,8 +89,12 @@ _Static_assert(PICOSYSTEM_PHYSICS_MAX_CONTACTS >= (PICOSYSTEM_PHYSICS_MAX_CANDID
 	       "contact storage must cover every brute-force manifold");
 _Static_assert(PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS <= UINT8_MAX,
 	       "solver iteration diagnostics must fit in uint8_t");
+_Static_assert(PHYSICS_MAX_SOLVER_VELOCITY_REVISIONS_PER_BODY <= UINT16_MAX,
+	       "per-step solver velocity revisions must fit in uint16_t");
 _Static_assert(PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS <= UINT8_MAX,
 	       "position iterations must fit in uint8_t");
+_Static_assert(PICOSYSTEM_PHYSICS_PRISMATIC_POSITION_ITERATIONS <= UINT8_MAX,
+	       "prismatic position iterations must fit in uint8_t");
 
 struct box_geometry {
 	struct picosystem_physics_vector axis_x;
@@ -127,6 +142,13 @@ enum revolute_limit_state {
 	REVOLUTE_LIMIT_LOWER,
 	REVOLUTE_LIMIT_UPPER,
 	REVOLUTE_LIMIT_EQUAL,
+};
+
+enum prismatic_limit_state {
+	PRISMATIC_LIMIT_INACTIVE,
+	PRISMATIC_LIMIT_LOWER,
+	PRISMATIC_LIMIT_UPPER,
+	PRISMATIC_LIMIT_EQUAL,
 };
 
 static bool profiler_is_active(const struct physics_step_profiler *profiler)
@@ -426,6 +448,19 @@ body_local_point_to_world(const struct picosystem_physics_body *body,
 	return vector_add(&body->center, &offset);
 }
 
+static struct picosystem_physics_vector
+body_local_vector_to_world(const struct picosystem_physics_body *body,
+			   const struct picosystem_physics_vector *local_vector)
+{
+	struct box_geometry geometry;
+	box_geometry_from_body(body, &geometry);
+	const struct picosystem_physics_vector along_x =
+		vector_scale(&geometry.axis_x, local_vector->x);
+	const struct picosystem_physics_vector along_y =
+		vector_scale(&geometry.axis_y, local_vector->y);
+	return vector_add(&along_x, &along_y);
+}
+
 static void box_vertices_from_geometry(
 	const struct picosystem_physics_body *body, const struct box_geometry *geometry,
 	struct picosystem_physics_vector vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT])
@@ -579,6 +614,55 @@ revolute_joint_config_is_valid(const struct picosystem_physics_revolute_joint_co
 			return false;
 		}
 	} else if ((config->lower_angle_radians != 0) || (config->upper_angle_radians != 0)) {
+		return false;
+	}
+
+	const picosystem_physics_fixed_t anchor_b_limit =
+		(config->body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID)
+			? PHYSICS_POSITION_LIMIT
+			: PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT;
+	return vector_is_bounded(&config->anchor_b, anchor_b_limit);
+}
+
+static bool
+prismatic_joint_config_is_valid(const struct picosystem_physics_prismatic_joint_config *config)
+{
+	if ((config == NULL) || (config->id == 0U) ||
+	    (config->body_a_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) ||
+	    ((config->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) &&
+	     (config->body_a_id == config->body_b_id)) ||
+	    (config->collide_connected > 1U) || (config->motor_enabled > 1U) ||
+	    (config->limit_enabled > 1U) ||
+	    !vector_is_bounded(&config->local_anchor_a, PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT) ||
+	    !vector_is_bounded(&config->axis_b, PHYSICS_JOINT_AXIS_COMPONENT_LIMIT)) {
+		return false;
+	}
+
+	const uint64_t minimum_axis_length_squared =
+		(uint64_t)PHYSICS_JOINT_AXIS_MINIMUM_LENGTH * PHYSICS_JOINT_AXIS_MINIMUM_LENGTH;
+	if (vector_length_squared_raw(&config->axis_b) < minimum_axis_length_squared) {
+		return false;
+	}
+	if (config->motor_enabled != 0U) {
+		if (!fixed_is_bounded(config->motor_speed_per_tick, PHYSICS_VELOCITY_LIMIT) ||
+		    (config->maximum_motor_impulse_per_tick <= 0) ||
+		    (config->maximum_motor_impulse_per_tick > PHYSICS_JOINT_MOTOR_IMPULSE_LIMIT)) {
+			return false;
+		}
+	} else if ((config->motor_speed_per_tick != 0) ||
+		   (config->maximum_motor_impulse_per_tick != 0)) {
+		return false;
+	}
+	if (config->limit_enabled != 0U) {
+		if (!fixed_is_bounded(config->lower_translation, PHYSICS_JOINT_DISTANCE_LIMIT) ||
+		    !fixed_is_bounded(config->upper_translation, PHYSICS_JOINT_DISTANCE_LIMIT) ||
+		    (config->lower_translation > config->upper_translation) ||
+		    ((config->lower_translation != config->upper_translation) &&
+		     ((config->upper_translation - config->lower_translation) <
+		      (2 * PHYSICS_JOINT_POSITION_SLOP)))) {
+			return false;
+		}
+	} else if ((config->lower_translation != 0) || (config->upper_translation != 0)) {
 		return false;
 	}
 
@@ -765,6 +849,51 @@ static bool revolute_joint_is_valid(const struct picosystem_physics_revolute_joi
 	       body_local_anchor_is_valid(&world->bodies[joint->body_b_index], &joint->anchor_b);
 }
 
+static bool unit_vector_is_valid(const struct picosystem_physics_vector *vector)
+{
+	const uint64_t length_squared = vector_length_squared_raw(vector);
+	const uint64_t minimum_length = PICOSYSTEM_PHYSICS_FIXED_ONE - 2;
+	return (length_squared >= (minimum_length * minimum_length)) &&
+	       (length_squared <=
+		(uint64_t)PICOSYSTEM_PHYSICS_FIXED_ONE * PICOSYSTEM_PHYSICS_FIXED_ONE);
+}
+
+static bool prismatic_joint_is_valid(const struct picosystem_physics_prismatic_joint *joint,
+				     const struct picosystem_physics_world *world)
+{
+	const struct picosystem_physics_prismatic_joint_config config = {
+		.local_anchor_a = joint->local_anchor_a,
+		.anchor_b = joint->anchor_b,
+		.axis_b = joint->axis_b,
+		.motor_speed_per_tick = joint->motor_speed_per_tick,
+		.maximum_motor_impulse_per_tick = joint->maximum_motor_impulse_per_tick,
+		.lower_translation = joint->lower_translation,
+		.upper_translation = joint->upper_translation,
+		.id = joint->id,
+		.body_a_id = joint->body_a_id,
+		.body_b_id = joint->body_b_id,
+		.collide_connected = joint->collide_connected,
+		.motor_enabled = joint->motor_enabled,
+		.limit_enabled = joint->limit_enabled,
+	};
+	if (!prismatic_joint_config_is_valid(&config) || !unit_vector_is_valid(&joint->axis_b) ||
+	    !fixed_is_bounded(joint->reference_translation,
+			      PHYSICS_JOINT_REFERENCE_TRANSLATION_LIMIT) ||
+	    (joint->body_a_index >= world->body_count) ||
+	    (world->bodies[joint->body_a_index].id != joint->body_a_id) ||
+	    !body_local_anchor_is_valid(&world->bodies[joint->body_a_index],
+					&joint->local_anchor_a)) {
+		return false;
+	}
+
+	if (joint->body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		return joint->body_b_index == STATIC_BODY_INDEX;
+	}
+	return (joint->body_b_index < world->body_count) &&
+	       (world->bodies[joint->body_b_index].id == joint->body_b_id) &&
+	       body_local_anchor_is_valid(&world->bodies[joint->body_b_index], &joint->anchor_b);
+}
+
 static bool world_is_valid(const struct picosystem_physics_world *world)
 {
 	if ((world == NULL) || (world->max_speed_per_tick <= 0) ||
@@ -773,6 +902,7 @@ static bool world_is_valid(const struct picosystem_physics_world *world)
 	    (world->static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||
 	    (world->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
 	    (world->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
+	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS) ||
 	    (world->contact_count > PICOSYSTEM_PHYSICS_MAX_CONTACTS)) {
 		return false;
 	}
@@ -820,6 +950,18 @@ static bool world_is_valid(const struct picosystem_physics_world *world)
 		for (uint16_t prior = 0U; prior < joint_index; ++prior) {
 			if (world->revolute_joints[prior].id ==
 			    world->revolute_joints[joint_index].id) {
+				return false;
+			}
+		}
+	}
+
+	for (uint16_t joint_index = 0U; joint_index < world->prismatic_joint_count; ++joint_index) {
+		if (!prismatic_joint_is_valid(&world->prismatic_joints[joint_index], world)) {
+			return false;
+		}
+		for (uint16_t prior = 0U; prior < joint_index; ++prior) {
+			if (world->prismatic_joints[prior].id ==
+			    world->prismatic_joints[joint_index].id) {
 				return false;
 			}
 		}
@@ -933,6 +1075,57 @@ static void revolute_joint_anchors(const struct picosystem_physics_world *world,
 		body_local_point_to_world(&world->bodies[joint->body_b_index], &joint->anchor_b);
 }
 
+static uint32_t
+prismatic_joint_relative_angle_turns(const struct picosystem_physics_world *world,
+				     const struct picosystem_physics_prismatic_joint *joint)
+{
+	const uint32_t body_a_angle = world->bodies[joint->body_a_index].angle_turns;
+	const uint32_t body_b_angle = (joint->body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID)
+					      ? 0U
+					      : world->bodies[joint->body_b_index].angle_turns;
+	return body_a_angle - body_b_angle;
+}
+
+static picosystem_physics_fixed_t
+prismatic_joint_relative_angle_radians(const struct picosystem_physics_world *world,
+				       const struct picosystem_physics_prismatic_joint *joint)
+{
+	const uint32_t relative_turns = prismatic_joint_relative_angle_turns(world, joint);
+	return angle_turn_delta_to_radians(relative_turns - joint->reference_angle_turns);
+}
+
+static void prismatic_joint_geometry(const struct picosystem_physics_world *world,
+				     const struct picosystem_physics_prismatic_joint *joint,
+				     struct picosystem_physics_vector *world_anchor_a,
+				     struct picosystem_physics_vector *world_anchor_b,
+				     struct picosystem_physics_vector *world_axis)
+{
+	*world_anchor_a = body_local_point_to_world(&world->bodies[joint->body_a_index],
+						    &joint->local_anchor_a);
+	if (joint->body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		*world_anchor_b = joint->anchor_b;
+		*world_axis = joint->axis_b;
+		return;
+	}
+	*world_anchor_b =
+		body_local_point_to_world(&world->bodies[joint->body_b_index], &joint->anchor_b);
+	*world_axis =
+		body_local_vector_to_world(&world->bodies[joint->body_b_index], &joint->axis_b);
+}
+
+static picosystem_physics_fixed_t
+prismatic_joint_translation(const struct picosystem_physics_world *world,
+			    const struct picosystem_physics_prismatic_joint *joint)
+{
+	struct picosystem_physics_vector world_anchor_a;
+	struct picosystem_physics_vector world_anchor_b;
+	struct picosystem_physics_vector world_axis;
+	prismatic_joint_geometry(world, joint, &world_anchor_a, &world_anchor_b, &world_axis);
+	const struct picosystem_physics_vector delta =
+		vector_subtract(&world_anchor_a, &world_anchor_b);
+	return vector_dot(&delta, &world_axis) - joint->reference_translation;
+}
+
 static struct picosystem_physics_vector
 body_velocity_at_point(const struct picosystem_physics_body *body,
 		       const struct picosystem_physics_vector *point)
@@ -1003,6 +1196,22 @@ distance_joint_direction_inverse_mass(const struct picosystem_physics_world *wor
 	return sum;
 }
 
+static picosystem_physics_fixed_t
+prismatic_joint_direction_inverse_mass(const struct picosystem_physics_world *world,
+				       const struct picosystem_physics_prismatic_joint *joint,
+				       const struct picosystem_physics_vector *world_anchor_a,
+				       const struct picosystem_physics_vector *world_anchor_b,
+				       const struct picosystem_physics_vector *direction)
+{
+	picosystem_physics_fixed_t sum = body_direction_inverse_mass(
+		&world->bodies[joint->body_a_index], world_anchor_a, direction);
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		sum += body_direction_inverse_mass(&world->bodies[joint->body_b_index],
+						   world_anchor_b, direction);
+	}
+	return sum;
+}
+
 static void add_body_point_inverse_mass(const struct picosystem_physics_body *body,
 					const struct picosystem_physics_vector *point,
 					struct physics_symmetric_matrix *matrix)
@@ -1063,6 +1272,18 @@ revolute_joint_angular_effective_mass(const struct picosystem_physics_world *wor
 {
 	return fixed_divide(PICOSYSTEM_PHYSICS_FIXED_ONE,
 			    revolute_joint_angular_inverse_mass(world, joint));
+}
+
+static picosystem_physics_fixed_t
+prismatic_joint_angular_effective_mass(const struct picosystem_physics_world *world,
+				       const struct picosystem_physics_prismatic_joint *joint)
+{
+	picosystem_physics_fixed_t inverse_mass =
+		world->bodies[joint->body_a_index].inverse_inertia;
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		inverse_mass += world->bodies[joint->body_b_index].inverse_inertia;
+	}
+	return fixed_divide(PICOSYSTEM_PHYSICS_FIXED_ONE, inverse_mass);
 }
 
 static struct picosystem_physics_vector
@@ -1926,6 +2147,20 @@ static bool body_pair_collision_is_disabled(const struct picosystem_physics_worl
 			return true;
 		}
 	}
+	for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
+		const struct picosystem_physics_prismatic_joint *const joint =
+			&world->prismatic_joints[index];
+		if ((joint->body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) ||
+		    (joint->collide_connected != 0U)) {
+			continue;
+		}
+		if (((joint->body_a_index == body_a_index) &&
+		     (joint->body_b_index == body_b_index)) ||
+		    ((joint->body_a_index == body_b_index) &&
+		     (joint->body_b_index == body_a_index))) {
+			return true;
+		}
+	}
 	return false;
 }
 
@@ -2046,35 +2281,57 @@ static void apply_position_correction(struct picosystem_physics_world *world,
 	}
 }
 
-static void apply_body_impulse(struct picosystem_physics_body *body,
+static void apply_body_impulse(struct picosystem_physics_world *world, uint8_t body_index,
 			       const struct picosystem_physics_vector *point,
 			       const struct picosystem_physics_vector *direction,
 			       picosystem_physics_fixed_t impulse, picosystem_physics_fixed_t sign)
 {
+	struct picosystem_physics_body *const body = &world->bodies[body_index];
 	const picosystem_physics_fixed_t signed_impulse = fixed_multiply(impulse, sign);
 	const picosystem_physics_fixed_t velocity_change =
 		fixed_multiply(signed_impulse, body->inverse_mass);
-	body->velocity_per_tick.x += fixed_multiply(direction->x, velocity_change);
-	body->velocity_per_tick.y += fixed_multiply(direction->y, velocity_change);
+	const picosystem_physics_fixed_t velocity_change_x =
+		fixed_multiply(direction->x, velocity_change);
+	const picosystem_physics_fixed_t velocity_change_y =
+		fixed_multiply(direction->y, velocity_change);
+	body->velocity_per_tick.x += velocity_change_x;
+	body->velocity_per_tick.y += velocity_change_y;
 
 	const struct picosystem_physics_vector lever = vector_subtract(point, &body->center);
 	const picosystem_physics_fixed_t angular_impulse =
 		fixed_multiply(vector_cross(&lever, direction), signed_impulse);
-	body->angular_velocity_per_tick += fixed_multiply(body->inverse_inertia, angular_impulse);
+	const picosystem_physics_fixed_t angular_velocity_change =
+		fixed_multiply(body->inverse_inertia, angular_impulse);
+	body->angular_velocity_per_tick += angular_velocity_change;
+	if ((velocity_change_x != 0) || (velocity_change_y != 0) ||
+	    (angular_velocity_change != 0)) {
+		++world->solver_velocity_revisions[body_index];
+	}
 }
 
-static void apply_body_vector_impulse(struct picosystem_physics_body *body,
+static void apply_body_vector_impulse(struct picosystem_physics_world *world, uint8_t body_index,
 				      const struct picosystem_physics_vector *point,
 				      const struct picosystem_physics_vector *impulse, bool negate)
 {
+	struct picosystem_physics_body *const body = &world->bodies[body_index];
 	const struct picosystem_physics_vector signed_impulse =
 		negate ? vector_negate(impulse) : *impulse;
-	body->velocity_per_tick.x += fixed_multiply(signed_impulse.x, body->inverse_mass);
-	body->velocity_per_tick.y += fixed_multiply(signed_impulse.y, body->inverse_mass);
+	const picosystem_physics_fixed_t velocity_change_x =
+		fixed_multiply(signed_impulse.x, body->inverse_mass);
+	const picosystem_physics_fixed_t velocity_change_y =
+		fixed_multiply(signed_impulse.y, body->inverse_mass);
+	body->velocity_per_tick.x += velocity_change_x;
+	body->velocity_per_tick.y += velocity_change_y;
 
 	const struct picosystem_physics_vector lever = vector_subtract(point, &body->center);
 	const picosystem_physics_fixed_t angular_impulse = vector_cross(&lever, &signed_impulse);
-	body->angular_velocity_per_tick += fixed_multiply(body->inverse_inertia, angular_impulse);
+	const picosystem_physics_fixed_t angular_velocity_change =
+		fixed_multiply(body->inverse_inertia, angular_impulse);
+	body->angular_velocity_per_tick += angular_velocity_change;
+	if ((velocity_change_x != 0) || (velocity_change_y != 0) ||
+	    (angular_velocity_change != 0)) {
+		++world->solver_velocity_revisions[body_index];
+	}
 }
 
 static void apply_contact_impulse(struct picosystem_physics_world *world,
@@ -2082,17 +2339,54 @@ static void apply_contact_impulse(struct picosystem_physics_world *world,
 				  const struct picosystem_physics_vector *direction,
 				  picosystem_physics_fixed_t impulse)
 {
-	apply_body_impulse(&world->bodies[contact->body_a_index], &contact->point, direction,
-			   impulse, -PICOSYSTEM_PHYSICS_FIXED_ONE);
+	apply_body_impulse(world, contact->body_a_index, &contact->point, direction, impulse,
+			   -PICOSYSTEM_PHYSICS_FIXED_ONE);
 	if (contact->type == PICOSYSTEM_PHYSICS_CONTACT_BODY) {
-		apply_body_impulse(&world->bodies[contact->body_b_index], &contact->point,
-				   direction, impulse, PICOSYSTEM_PHYSICS_FIXED_ONE);
+		apply_body_impulse(world, contact->body_b_index, &contact->point, direction,
+				   impulse, PICOSYSTEM_PHYSICS_FIXED_ONE);
 	}
+}
+
+static bool contact_solved_velocity_matches(const struct picosystem_physics_world *world,
+					    const struct picosystem_physics_contact *contact)
+{
+	if (contact->solved_velocity_valid == 0U) {
+		return false;
+	}
+
+	if (world->solver_velocity_revisions[contact->body_a_index] !=
+	    contact->solved_velocity_revision_a) {
+		return false;
+	}
+	if (contact->type == PICOSYSTEM_PHYSICS_CONTACT_STATIC_SEGMENT) {
+		return true;
+	}
+
+	return world->solver_velocity_revisions[contact->body_b_index] ==
+	       contact->solved_velocity_revision_b;
+}
+
+static void cache_contact_solved_velocity(const struct picosystem_physics_world *world,
+					  struct picosystem_physics_contact *contact)
+{
+	contact->solved_velocity_revision_a =
+		world->solver_velocity_revisions[contact->body_a_index];
+	contact->solved_velocity_revision_b = 0U;
+	if (contact->type == PICOSYSTEM_PHYSICS_CONTACT_BODY) {
+		contact->solved_velocity_revision_b =
+			world->solver_velocity_revisions[contact->body_b_index];
+	}
+	contact->solved_velocity_valid = 1U;
 }
 
 static bool solve_contact_velocity(struct picosystem_physics_world *world,
 				   struct picosystem_physics_contact *contact)
 {
+	if (contact_solved_velocity_matches(world, contact)) {
+		++world->last_work.solver_cached_contact_count;
+		return false;
+	}
+
 	const picosystem_physics_fixed_t normal_inverse_mass =
 		contact_direction_inverse_mass(world, contact, &contact->normal);
 	struct picosystem_physics_vector relative = contact_relative_velocity(world, contact);
@@ -2124,6 +2418,7 @@ static bool solve_contact_velocity(struct picosystem_physics_world *world,
 	const picosystem_physics_fixed_t applied_tangent =
 		contact->accumulated_tangent_impulse - previous_tangent;
 	apply_contact_impulse(world, contact, &tangent, applied_tangent);
+	cache_contact_solved_velocity(world, contact);
 	return (applied_normal != 0) || (applied_tangent != 0);
 }
 
@@ -2227,10 +2522,10 @@ static bool solve_distance_joint_velocity(struct picosystem_physics_world *world
 	const picosystem_physics_fixed_t impulse =
 		fixed_divide(-velocity, joint->direction_inverse_mass);
 	joint->accumulated_impulse += impulse;
-	apply_body_impulse(&world->bodies[joint->body_a_index], &joint->world_anchor_a,
-			   &joint->normal, impulse, -PICOSYSTEM_PHYSICS_FIXED_ONE);
+	apply_body_impulse(world, joint->body_a_index, &joint->world_anchor_a, &joint->normal,
+			   impulse, -PICOSYSTEM_PHYSICS_FIXED_ONE);
 	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
-		apply_body_impulse(&world->bodies[joint->body_b_index], &joint->world_anchor_b,
+		apply_body_impulse(world, joint->body_b_index, &joint->world_anchor_b,
 				   &joint->normal, impulse, PICOSYSTEM_PHYSICS_FIXED_ONE);
 	}
 	return impulse != 0;
@@ -2435,11 +2730,20 @@ apply_revolute_joint_angular_impulse(struct picosystem_physics_world *world,
 				     picosystem_physics_fixed_t impulse)
 {
 	struct picosystem_physics_body *const body_a = &world->bodies[joint->body_a_index];
-	body_a->angular_velocity_per_tick += fixed_multiply(body_a->inverse_inertia, impulse);
+	const picosystem_physics_fixed_t change_a =
+		fixed_multiply(body_a->inverse_inertia, impulse);
+	body_a->angular_velocity_per_tick += change_a;
+	if (change_a != 0) {
+		++world->solver_velocity_revisions[joint->body_a_index];
+	}
 	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
 		struct picosystem_physics_body *const body_b = &world->bodies[joint->body_b_index];
-		body_b->angular_velocity_per_tick -=
-			fixed_multiply(body_b->inverse_inertia, impulse);
+		const picosystem_physics_fixed_t change_b =
+			-fixed_multiply(body_b->inverse_inertia, impulse);
+		body_b->angular_velocity_per_tick += change_b;
+		if (change_b != 0) {
+			++world->solver_velocity_revisions[joint->body_b_index];
+		}
 	}
 }
 
@@ -2522,16 +2826,420 @@ static bool solve_revolute_joint_velocity(struct picosystem_physics_world *world
 		const struct picosystem_physics_vector impulse =
 			matrix_transform(&effective_mass, &negated_relative);
 		joint->accumulated_impulse = vector_add(&joint->accumulated_impulse, &impulse);
-		apply_body_vector_impulse(&world->bodies[joint->body_a_index],
-					  &joint->world_anchor_a, &impulse, true);
+		apply_body_vector_impulse(world, joint->body_a_index, &joint->world_anchor_a,
+					  &impulse, true);
 		if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
-			apply_body_vector_impulse(&world->bodies[joint->body_b_index],
+			apply_body_vector_impulse(world, joint->body_b_index,
 						  &joint->world_anchor_b, &impulse, false);
 		}
 		changed = (impulse.x != 0) || (impulse.y != 0);
 	}
 	changed |= solve_revolute_joint_motor(world, joint);
 	changed |= solve_revolute_joint_limit(world, joint);
+	return changed;
+}
+
+static void apply_prismatic_joint_angular_position_impulse(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_prismatic_joint *joint, picosystem_physics_fixed_t impulse)
+{
+	struct picosystem_physics_body *const body_a = &world->bodies[joint->body_a_index];
+	apply_body_angle_delta(body_a, fixed_multiply(body_a->inverse_inertia, impulse));
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		struct picosystem_physics_body *const body_b = &world->bodies[joint->body_b_index];
+		apply_body_angle_delta(body_b, -fixed_multiply(body_b->inverse_inertia, impulse));
+	}
+}
+
+static bool apply_prismatic_joint_direction_position_correction(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_prismatic_joint *joint,
+	const struct picosystem_physics_vector *world_anchor_a,
+	const struct picosystem_physics_vector *world_anchor_b,
+	const struct picosystem_physics_vector *direction, picosystem_physics_fixed_t error)
+{
+	if (fixed_absolute(error) <= PHYSICS_JOINT_POSITION_SLOP) {
+		return false;
+	}
+	error += (error > 0) ? -PHYSICS_JOINT_POSITION_SLOP : PHYSICS_JOINT_POSITION_SLOP;
+	error = fixed_clamp(error, -PHYSICS_JOINT_MAX_CORRECTION, PHYSICS_JOINT_MAX_CORRECTION);
+	const picosystem_physics_fixed_t correction =
+		-fixed_multiply(error, PHYSICS_JOINT_CORRECTION_SCALE);
+	const picosystem_physics_fixed_t inverse_mass = prismatic_joint_direction_inverse_mass(
+		world, joint, world_anchor_a, world_anchor_b, direction);
+	const picosystem_physics_fixed_t impulse = fixed_divide(correction, inverse_mass);
+	apply_body_position_impulse(&world->bodies[joint->body_a_index], world_anchor_a, direction,
+				    impulse, PICOSYSTEM_PHYSICS_FIXED_ONE);
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		apply_body_position_impulse(&world->bodies[joint->body_b_index], world_anchor_b,
+					    direction, impulse, -PICOSYSTEM_PHYSICS_FIXED_ONE);
+	}
+	return impulse != 0;
+}
+
+static bool apply_prismatic_joint_lateral_position_correction(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_prismatic_joint *joint)
+{
+	struct picosystem_physics_vector world_anchor_a;
+	struct picosystem_physics_vector world_anchor_b;
+	struct picosystem_physics_vector world_axis;
+	prismatic_joint_geometry(world, joint, &world_anchor_a, &world_anchor_b, &world_axis);
+	const struct picosystem_physics_vector perpendicular = {
+		.x = -world_axis.y,
+		.y = world_axis.x,
+	};
+	const struct picosystem_physics_vector delta =
+		vector_subtract(&world_anchor_a, &world_anchor_b);
+	const picosystem_physics_fixed_t error = vector_dot(&delta, &perpendicular);
+	return apply_prismatic_joint_direction_position_correction(
+		world, joint, &world_anchor_a, &world_anchor_b, &perpendicular, error);
+}
+
+static bool apply_prismatic_joint_angular_position_correction(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_prismatic_joint *joint)
+{
+	picosystem_physics_fixed_t error = prismatic_joint_relative_angle_radians(world, joint);
+	if (fixed_absolute(error) <= PHYSICS_JOINT_ANGULAR_SLOP) {
+		return false;
+	}
+	error += (error > 0) ? -PHYSICS_JOINT_ANGULAR_SLOP : PHYSICS_JOINT_ANGULAR_SLOP;
+	error = fixed_clamp(error, -PHYSICS_JOINT_MAX_ANGULAR_CORRECTION,
+			    PHYSICS_JOINT_MAX_ANGULAR_CORRECTION);
+	const picosystem_physics_fixed_t correction = -error;
+	const picosystem_physics_fixed_t impulse =
+		fixed_multiply(correction, prismatic_joint_angular_effective_mass(world, joint));
+	apply_prismatic_joint_angular_position_impulse(world, joint, impulse);
+	return impulse != 0;
+}
+
+static picosystem_physics_fixed_t
+prismatic_joint_limit_error(const struct picosystem_physics_world *world,
+			    const struct picosystem_physics_prismatic_joint *joint)
+{
+	if (joint->limit_enabled == 0U) {
+		return 0;
+	}
+	const picosystem_physics_fixed_t translation = prismatic_joint_translation(world, joint);
+	if (joint->lower_translation == joint->upper_translation) {
+		return translation - joint->lower_translation;
+	}
+	if (translation < joint->lower_translation) {
+		return translation - joint->lower_translation;
+	}
+	if (translation > joint->upper_translation) {
+		return translation - joint->upper_translation;
+	}
+	return 0;
+}
+
+static bool apply_prismatic_joint_limit_position_correction(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_prismatic_joint *joint)
+{
+	if (joint->limit_enabled == 0U) {
+		return false;
+	}
+	++world->last_work.joint_limit_position_correction_visit_count;
+	const picosystem_physics_fixed_t error = prismatic_joint_limit_error(world, joint);
+	if (fixed_absolute(error) <= PHYSICS_JOINT_POSITION_SLOP) {
+		return false;
+	}
+
+	struct picosystem_physics_vector world_anchor_a;
+	struct picosystem_physics_vector world_anchor_b;
+	struct picosystem_physics_vector world_axis;
+	prismatic_joint_geometry(world, joint, &world_anchor_a, &world_anchor_b, &world_axis);
+	const bool changed = apply_prismatic_joint_direction_position_correction(
+		world, joint, &world_anchor_a, &world_anchor_b, &world_axis, error);
+	if (changed) {
+		++world->last_work.joint_limit_position_correction_changed_count;
+	}
+	return changed;
+}
+
+static bool apply_prismatic_joint_position_pass(struct picosystem_physics_world *world,
+						bool reverse)
+{
+	bool correction_changed = false;
+	for (uint16_t visit = 0U; visit < world->prismatic_joint_count; ++visit) {
+		const uint16_t index =
+			reverse ? (uint16_t)(world->prismatic_joint_count - visit - 1U) : visit;
+		const struct picosystem_physics_prismatic_joint *const joint =
+			&world->prismatic_joints[index];
+		correction_changed |=
+			apply_prismatic_joint_lateral_position_correction(world, joint);
+		correction_changed |=
+			apply_prismatic_joint_angular_position_correction(world, joint);
+		correction_changed |= apply_prismatic_joint_limit_position_correction(world, joint);
+		++world->last_work.joint_position_correction_visit_count;
+	}
+	return correction_changed;
+}
+
+static bool prismatic_joint_positions_within_target(const struct picosystem_physics_world *world)
+{
+	for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
+		const struct picosystem_physics_prismatic_joint *const joint =
+			&world->prismatic_joints[index];
+		struct picosystem_physics_vector world_anchor_a;
+		struct picosystem_physics_vector world_anchor_b;
+		struct picosystem_physics_vector world_axis;
+		prismatic_joint_geometry(world, joint, &world_anchor_a, &world_anchor_b,
+					 &world_axis);
+		const struct picosystem_physics_vector perpendicular = {
+			.x = -world_axis.y,
+			.y = world_axis.x,
+		};
+		const struct picosystem_physics_vector delta =
+			vector_subtract(&world_anchor_a, &world_anchor_b);
+		if (fixed_absolute(vector_dot(&delta, &perpendicular)) >
+		    PHYSICS_PRISMATIC_POSITION_TARGET) {
+			return false;
+		}
+		if (fixed_absolute(prismatic_joint_relative_angle_radians(world, joint)) >
+		    PHYSICS_JOINT_ANGULAR_SLOP) {
+			return false;
+		}
+		if (fixed_absolute(prismatic_joint_limit_error(world, joint)) >
+		    PHYSICS_PRISMATIC_POSITION_TARGET) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static void prepare_prismatic_joint(struct picosystem_physics_world *world,
+				    struct picosystem_physics_prismatic_joint *joint)
+{
+	prismatic_joint_geometry(world, joint, &joint->world_anchor_a, &joint->world_anchor_b,
+				 &joint->world_axis);
+	joint->world_perpendicular = (struct picosystem_physics_vector){
+		.x = -joint->world_axis.y,
+		.y = joint->world_axis.x,
+	};
+	const picosystem_physics_fixed_t lateral_inverse_mass =
+		prismatic_joint_direction_inverse_mass(world, joint, &joint->world_anchor_a,
+						       &joint->world_anchor_b,
+						       &joint->world_perpendicular);
+	const picosystem_physics_fixed_t axial_inverse_mass =
+		prismatic_joint_direction_inverse_mass(world, joint, &joint->world_anchor_a,
+						       &joint->world_anchor_b, &joint->world_axis);
+	joint->lateral_effective_mass =
+		fixed_divide(PICOSYSTEM_PHYSICS_FIXED_ONE, lateral_inverse_mass);
+	joint->axial_effective_mass =
+		fixed_divide(PICOSYSTEM_PHYSICS_FIXED_ONE, axial_inverse_mass);
+	joint->angular_effective_mass = prismatic_joint_angular_effective_mass(world, joint);
+	joint->accumulated_lateral_impulse = 0;
+	joint->accumulated_angular_impulse = 0;
+	joint->accumulated_motor_impulse = 0;
+	joint->accumulated_limit_impulse = 0;
+	joint->limit_state = PRISMATIC_LIMIT_INACTIVE;
+	joint->solved_velocity_valid = 0U;
+	if (joint->motor_enabled != 0U) {
+		++world->last_work.prismatic_motor_count;
+	}
+	if (joint->limit_enabled == 0U) {
+		return;
+	}
+	++world->last_work.prismatic_limit_count;
+	const picosystem_physics_fixed_t translation = prismatic_joint_translation(world, joint);
+	if (joint->lower_translation == joint->upper_translation) {
+		joint->limit_state = PRISMATIC_LIMIT_EQUAL;
+	} else if (translation <= (joint->lower_translation + PHYSICS_JOINT_POSITION_SLOP)) {
+		joint->limit_state = PRISMATIC_LIMIT_LOWER;
+	} else if (translation >= (joint->upper_translation - PHYSICS_JOINT_POSITION_SLOP)) {
+		joint->limit_state = PRISMATIC_LIMIT_UPPER;
+	}
+}
+
+static struct picosystem_physics_vector
+prismatic_joint_relative_velocity(const struct picosystem_physics_world *world,
+				  const struct picosystem_physics_prismatic_joint *joint)
+{
+	const struct picosystem_physics_vector velocity_a =
+		body_velocity_at_point(&world->bodies[joint->body_a_index], &joint->world_anchor_a);
+	if (joint->body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		return velocity_a;
+	}
+	const struct picosystem_physics_vector velocity_b =
+		body_velocity_at_point(&world->bodies[joint->body_b_index], &joint->world_anchor_b);
+	return vector_subtract(&velocity_a, &velocity_b);
+}
+
+static picosystem_physics_fixed_t
+prismatic_joint_relative_angular_velocity(const struct picosystem_physics_world *world,
+					  const struct picosystem_physics_prismatic_joint *joint)
+{
+	const picosystem_physics_fixed_t body_b_velocity =
+		(joint->body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID)
+			? 0
+			: world->bodies[joint->body_b_index].angular_velocity_per_tick;
+	return fixed_difference_bounded(
+		world->bodies[joint->body_a_index].angular_velocity_per_tick, body_b_velocity,
+		PHYSICS_VELOCITY_LIMIT);
+}
+
+static void
+apply_prismatic_joint_linear_impulse(struct picosystem_physics_world *world,
+				     const struct picosystem_physics_prismatic_joint *joint,
+				     const struct picosystem_physics_vector *direction,
+				     picosystem_physics_fixed_t impulse)
+{
+	apply_body_impulse(world, joint->body_a_index, &joint->world_anchor_a, direction, impulse,
+			   PICOSYSTEM_PHYSICS_FIXED_ONE);
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		apply_body_impulse(world, joint->body_b_index, &joint->world_anchor_b, direction,
+				   impulse, -PICOSYSTEM_PHYSICS_FIXED_ONE);
+	}
+}
+
+static void
+apply_prismatic_joint_angular_impulse(struct picosystem_physics_world *world,
+				      const struct picosystem_physics_prismatic_joint *joint,
+				      picosystem_physics_fixed_t impulse)
+{
+	struct picosystem_physics_body *const body_a = &world->bodies[joint->body_a_index];
+	const picosystem_physics_fixed_t change_a =
+		fixed_multiply(body_a->inverse_inertia, impulse);
+	body_a->angular_velocity_per_tick += change_a;
+	if (change_a != 0) {
+		++world->solver_velocity_revisions[joint->body_a_index];
+	}
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		struct picosystem_physics_body *const body_b = &world->bodies[joint->body_b_index];
+		const picosystem_physics_fixed_t change_b =
+			-fixed_multiply(body_b->inverse_inertia, impulse);
+		body_b->angular_velocity_per_tick += change_b;
+		if (change_b != 0) {
+			++world->solver_velocity_revisions[joint->body_b_index];
+		}
+	}
+}
+
+static bool solve_prismatic_joint_motor(struct picosystem_physics_world *world,
+					struct picosystem_physics_prismatic_joint *joint)
+{
+	if (joint->motor_enabled == 0U) {
+		return false;
+	}
+	++world->last_work.joint_motor_solver_visit_count;
+	const struct picosystem_physics_vector relative =
+		prismatic_joint_relative_velocity(world, joint);
+	const picosystem_physics_fixed_t axial_velocity = vector_dot(&relative, &joint->world_axis);
+	const picosystem_physics_fixed_t velocity_error = fixed_difference_bounded(
+		joint->motor_speed_per_tick, axial_velocity, PHYSICS_VELOCITY_LIMIT);
+	const picosystem_physics_fixed_t impulse_delta = fixed_clamp(
+		fixed_multiply(velocity_error, joint->axial_effective_mass),
+		-joint->maximum_motor_impulse_per_tick, joint->maximum_motor_impulse_per_tick);
+	const picosystem_physics_fixed_t previous = joint->accumulated_motor_impulse;
+	joint->accumulated_motor_impulse =
+		fixed_clamp(previous + impulse_delta, -joint->maximum_motor_impulse_per_tick,
+			    joint->maximum_motor_impulse_per_tick);
+	const picosystem_physics_fixed_t applied = joint->accumulated_motor_impulse - previous;
+	apply_prismatic_joint_linear_impulse(world, joint, &joint->world_axis, applied);
+	if (applied != 0) {
+		++world->last_work.joint_motor_solver_changed_count;
+	}
+	return applied != 0;
+}
+
+static bool solve_prismatic_joint_limit(struct picosystem_physics_world *world,
+					struct picosystem_physics_prismatic_joint *joint)
+{
+	if (joint->limit_state == PRISMATIC_LIMIT_INACTIVE) {
+		return false;
+	}
+	++world->last_work.joint_limit_solver_visit_count;
+	const struct picosystem_physics_vector relative =
+		prismatic_joint_relative_velocity(world, joint);
+	const picosystem_physics_fixed_t axial_velocity = vector_dot(&relative, &joint->world_axis);
+	const picosystem_physics_fixed_t velocity_error =
+		fixed_difference_bounded(0, axial_velocity, PHYSICS_VELOCITY_LIMIT);
+	const picosystem_physics_fixed_t impulse_delta =
+		fixed_clamp(fixed_multiply(velocity_error, joint->axial_effective_mass),
+			    -PHYSICS_JOINT_LIMIT_IMPULSE_LIMIT, PHYSICS_JOINT_LIMIT_IMPULSE_LIMIT);
+	const picosystem_physics_fixed_t previous = joint->accumulated_limit_impulse;
+	const picosystem_physics_fixed_t candidate = previous + impulse_delta;
+	if (joint->limit_state == PRISMATIC_LIMIT_LOWER) {
+		joint->accumulated_limit_impulse =
+			fixed_clamp(candidate, 0, PHYSICS_JOINT_LIMIT_IMPULSE_LIMIT);
+	} else if (joint->limit_state == PRISMATIC_LIMIT_UPPER) {
+		joint->accumulated_limit_impulse =
+			fixed_clamp(candidate, -PHYSICS_JOINT_LIMIT_IMPULSE_LIMIT, 0);
+	} else {
+		joint->accumulated_limit_impulse =
+			fixed_clamp(candidate, -PHYSICS_JOINT_LIMIT_IMPULSE_LIMIT,
+				    PHYSICS_JOINT_LIMIT_IMPULSE_LIMIT);
+	}
+	const picosystem_physics_fixed_t applied = joint->accumulated_limit_impulse - previous;
+	apply_prismatic_joint_linear_impulse(world, joint, &joint->world_axis, applied);
+	if (applied != 0) {
+		++world->last_work.joint_limit_solver_changed_count;
+	}
+	return applied != 0;
+}
+
+static bool
+prismatic_joint_solved_velocity_matches(const struct picosystem_physics_world *world,
+					const struct picosystem_physics_prismatic_joint *joint)
+{
+	if (joint->solved_velocity_valid == 0U) {
+		return false;
+	}
+
+	if (world->solver_velocity_revisions[joint->body_a_index] !=
+	    joint->solved_velocity_revision_a) {
+		return false;
+	}
+	if (joint->body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		return true;
+	}
+
+	return world->solver_velocity_revisions[joint->body_b_index] ==
+	       joint->solved_velocity_revision_b;
+}
+
+static void cache_prismatic_joint_solved_velocity(const struct picosystem_physics_world *world,
+						  struct picosystem_physics_prismatic_joint *joint)
+{
+	joint->solved_velocity_revision_a = world->solver_velocity_revisions[joint->body_a_index];
+	joint->solved_velocity_revision_b = 0U;
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		joint->solved_velocity_revision_b =
+			world->solver_velocity_revisions[joint->body_b_index];
+	}
+	joint->solved_velocity_valid = 1U;
+}
+
+static bool solve_prismatic_joint_velocity(struct picosystem_physics_world *world,
+					   struct picosystem_physics_prismatic_joint *joint)
+{
+	if (prismatic_joint_solved_velocity_matches(world, joint)) {
+		return false;
+	}
+
+	struct picosystem_physics_vector relative = prismatic_joint_relative_velocity(world, joint);
+	const picosystem_physics_fixed_t lateral_velocity =
+		vector_dot(&relative, &joint->world_perpendicular);
+	const picosystem_physics_fixed_t lateral_impulse =
+		fixed_multiply(-lateral_velocity, joint->lateral_effective_mass);
+	joint->accumulated_lateral_impulse += lateral_impulse;
+	apply_prismatic_joint_linear_impulse(world, joint, &joint->world_perpendicular,
+					     lateral_impulse);
+
+	const picosystem_physics_fixed_t relative_angular_velocity =
+		prismatic_joint_relative_angular_velocity(world, joint);
+	const picosystem_physics_fixed_t angular_impulse =
+		fixed_multiply(-relative_angular_velocity, joint->angular_effective_mass);
+	joint->accumulated_angular_impulse += angular_impulse;
+	apply_prismatic_joint_angular_impulse(world, joint, angular_impulse);
+
+	bool changed = (lateral_impulse != 0) || (angular_impulse != 0);
+	changed |= solve_prismatic_joint_motor(world, joint);
+	changed |= solve_prismatic_joint_limit(world, joint);
+	cache_prismatic_joint_solved_velocity(world, joint);
 	return changed;
 }
 
@@ -2779,6 +3487,99 @@ int picosystem_physics_world_add_revolute_joint(
 	return 0;
 }
 
+int picosystem_physics_world_add_prismatic_joint(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_prismatic_joint_config *config)
+{
+	if ((world == NULL) || (config == NULL)) {
+		return -EINVAL;
+	}
+	if (!world_is_valid(world) || !prismatic_joint_config_is_valid(config)) {
+		return -ERANGE;
+	}
+	if (world->prismatic_joint_count >= PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS) {
+		return -ENOSPC;
+	}
+	for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
+		if (world->prismatic_joints[index].id == config->id) {
+			return -EEXIST;
+		}
+	}
+
+	const int body_a_index = body_index_for_id(world, config->body_a_id);
+	if (body_a_index < 0) {
+		return body_a_index;
+	}
+	if (!body_local_anchor_is_valid(&world->bodies[body_a_index], &config->local_anchor_a)) {
+		return -ERANGE;
+	}
+	int body_b_index = STATIC_BODY_INDEX;
+	if (config->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		body_b_index = body_index_for_id(world, config->body_b_id);
+		if (body_b_index < 0) {
+			return body_b_index;
+		}
+		if (!body_local_anchor_is_valid(&world->bodies[body_b_index], &config->anchor_b)) {
+			return -ERANGE;
+		}
+	}
+
+	struct picosystem_physics_prismatic_joint *const joint =
+		&world->prismatic_joints[world->prismatic_joint_count];
+	*joint = (struct picosystem_physics_prismatic_joint){
+		.local_anchor_a = config->local_anchor_a,
+		.anchor_b = config->anchor_b,
+		.motor_speed_per_tick = config->motor_speed_per_tick,
+		.maximum_motor_impulse_per_tick = config->maximum_motor_impulse_per_tick,
+		.lower_translation = config->lower_translation,
+		.upper_translation = config->upper_translation,
+		.id = config->id,
+		.body_a_id = config->body_a_id,
+		.body_b_id = config->body_b_id,
+		.body_a_index = (uint8_t)body_a_index,
+		.body_b_index = (uint8_t)body_b_index,
+		.collide_connected = config->collide_connected,
+		.motor_enabled = config->motor_enabled,
+		.limit_enabled = config->limit_enabled,
+	};
+	const struct picosystem_physics_vector unit_x = {
+		.x = PICOSYSTEM_PHYSICS_FIXED_ONE,
+	};
+	(void)normalize_vector(&config->axis_b, &joint->axis_b, &unit_x);
+	joint->reference_angle_turns = prismatic_joint_relative_angle_turns(world, joint);
+	struct picosystem_physics_vector world_anchor_a;
+	struct picosystem_physics_vector world_anchor_b;
+	struct picosystem_physics_vector world_axis;
+	prismatic_joint_geometry(world, joint, &world_anchor_a, &world_anchor_b, &world_axis);
+	const struct picosystem_physics_vector delta =
+		vector_subtract(&world_anchor_a, &world_anchor_b);
+	joint->reference_translation = vector_dot(&delta, &world_axis);
+	++world->prismatic_joint_count;
+	return 0;
+}
+
+int picosystem_physics_world_set_prismatic_motor_speed(
+	struct picosystem_physics_world *world, size_t index,
+	picosystem_physics_fixed_t motor_speed_per_tick)
+{
+	if (world == NULL) {
+		return -EINVAL;
+	}
+	if (!world_is_valid(world) ||
+	    !fixed_is_bounded(motor_speed_per_tick, PHYSICS_VELOCITY_LIMIT)) {
+		return -ERANGE;
+	}
+	if (index >= world->prismatic_joint_count) {
+		return -ENOENT;
+	}
+	struct picosystem_physics_prismatic_joint *const joint = &world->prismatic_joints[index];
+	if (joint->motor_enabled == 0U) {
+		return -ENOTSUP;
+	}
+	joint->motor_speed_per_tick = motor_speed_per_tick;
+	return 0;
+}
+
 static int physics_world_step(struct picosystem_physics_world *world,
 			      const struct picosystem_physics_vector *global_acceleration_per_tick,
 			      bool force_brute_force, const struct picosystem_physics_clock *clock,
@@ -2808,6 +3609,7 @@ static int physics_world_step(struct picosystem_physics_world *world,
 	memset(&world->last_work, 0, sizeof(world->last_work));
 	world->last_work.distance_joint_count = world->distance_joint_count;
 	world->last_work.revolute_joint_count = world->revolute_joint_count;
+	world->last_work.prismatic_joint_count = world->prismatic_joint_count;
 
 	uint32_t section_start = profiler_section_begin(&profiler);
 	for (uint16_t index = 0U; index < world->body_count; ++index) {
@@ -2855,6 +3657,14 @@ static int physics_world_step(struct picosystem_physics_world *world,
 			break;
 		}
 	}
+	for (uint8_t iteration = 0U; iteration < PICOSYSTEM_PHYSICS_PRISMATIC_POSITION_ITERATIONS;
+	     ++iteration) {
+		const bool reverse = (iteration & 1U) != 0U;
+		const bool correction_changed = apply_prismatic_joint_position_pass(world, reverse);
+		if (!correction_changed || prismatic_joint_positions_within_target(world)) {
+			break;
+		}
+	}
 	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_POSITION_CORRECTION,
 			     section_start);
 
@@ -2865,11 +3675,14 @@ static int physics_world_step(struct picosystem_physics_world *world,
 	for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
 		prepare_revolute_joint(world, &world->revolute_joints[index]);
 	}
+	for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
+		prepare_prismatic_joint(world, &world->prismatic_joints[index]);
+	}
 	world->last_solver_iteration_count = 0U;
 	for (uint8_t iteration = 0U;
 	     (iteration < PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS) &&
 	     ((world->contact_count > 0U) || (world->distance_joint_count > 0U) ||
-	      (world->revolute_joint_count > 0U));
+	      (world->revolute_joint_count > 0U) || (world->prismatic_joint_count > 0U));
 	     ++iteration) {
 		bool impulse_changed = false;
 		for (uint16_t index = 0U; index < world->contact_count; ++index) {
@@ -2893,6 +3706,15 @@ static int physics_world_step(struct picosystem_physics_world *world,
 		for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
 			const bool joint_changed = solve_revolute_joint_velocity(
 				world, &world->revolute_joints[index]);
+			impulse_changed |= joint_changed;
+			++world->last_work.joint_solver_visit_count;
+			if (joint_changed) {
+				++world->last_work.joint_solver_changed_count;
+			}
+		}
+		for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
+			const bool joint_changed = solve_prismatic_joint_velocity(
+				world, &world->prismatic_joints[index]);
 			impulse_changed |= joint_changed;
 			++world->last_work.joint_solver_visit_count;
 			if (joint_changed) {
@@ -3034,6 +3856,81 @@ int picosystem_physics_world_revolute_joint_angle(
 	return 0;
 }
 
+int picosystem_physics_world_prismatic_joint_geometry(
+	const struct picosystem_physics_world *world, size_t index,
+	struct picosystem_physics_vector *world_anchor_a,
+	struct picosystem_physics_vector *world_anchor_b,
+	struct picosystem_physics_vector *world_axis)
+{
+	if ((world == NULL) || (world_anchor_a == NULL) || (world_anchor_b == NULL) ||
+	    (world_axis == NULL)) {
+		return -EINVAL;
+	}
+	if ((world->body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
+	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS)) {
+		return -ERANGE;
+	}
+	if (index >= world->prismatic_joint_count) {
+		return -ENOENT;
+	}
+	const struct picosystem_physics_prismatic_joint *const joint =
+		&world->prismatic_joints[index];
+	if (!prismatic_joint_is_valid(joint, world)) {
+		return -ERANGE;
+	}
+
+	prismatic_joint_geometry(world, joint, world_anchor_a, world_anchor_b, world_axis);
+	return 0;
+}
+
+int picosystem_physics_world_prismatic_joint_translation(
+	const struct picosystem_physics_world *world, size_t index,
+	picosystem_physics_fixed_t *relative_translation)
+{
+	if ((world == NULL) || (relative_translation == NULL)) {
+		return -EINVAL;
+	}
+	if ((world->body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
+	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS)) {
+		return -ERANGE;
+	}
+	if (index >= world->prismatic_joint_count) {
+		return -ENOENT;
+	}
+	const struct picosystem_physics_prismatic_joint *const joint =
+		&world->prismatic_joints[index];
+	if (!prismatic_joint_is_valid(joint, world)) {
+		return -ERANGE;
+	}
+
+	*relative_translation = prismatic_joint_translation(world, joint);
+	return 0;
+}
+
+int picosystem_physics_world_prismatic_joint_angle(
+	const struct picosystem_physics_world *world, size_t index,
+	picosystem_physics_fixed_t *relative_angle_radians)
+{
+	if ((world == NULL) || (relative_angle_radians == NULL)) {
+		return -EINVAL;
+	}
+	if ((world->body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
+	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS)) {
+		return -ERANGE;
+	}
+	if (index >= world->prismatic_joint_count) {
+		return -ENOENT;
+	}
+	const struct picosystem_physics_prismatic_joint *const joint =
+		&world->prismatic_joints[index];
+	if (!prismatic_joint_is_valid(joint, world)) {
+		return -ERANGE;
+	}
+
+	*relative_angle_radians = prismatic_joint_relative_angle_radians(world, joint);
+	return 0;
+}
+
 int picosystem_physics_body_box_vertices(
 	const struct picosystem_physics_body *body,
 	struct picosystem_physics_vector vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT])
@@ -3059,7 +3956,8 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 	if ((world == NULL) || (world->body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
 	    (world->static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||
 	    (world->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
-	    (world->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS)) {
+	    (world->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
+	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS)) {
 		return 0U;
 	}
 
@@ -3069,6 +3967,7 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 	hash = fnv1a_u32(hash, world->static_segment_count);
 	hash = fnv1a_u32(hash, world->distance_joint_count);
 	hash = fnv1a_u32(hash, world->revolute_joint_count);
+	hash = fnv1a_u32(hash, world->prismatic_joint_count);
 	for (uint16_t index = 0U; index < world->body_count; ++index) {
 		const struct picosystem_physics_body *const body = &world->bodies[index];
 		hash = fnv1a_u32(hash, body->id);
@@ -3133,6 +4032,30 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 		hash = fnv1a_u32(hash, (uint32_t)joint->maximum_motor_impulse_per_tick);
 		hash = fnv1a_u32(hash, (uint32_t)joint->lower_angle_radians);
 		hash = fnv1a_u32(hash, (uint32_t)joint->upper_angle_radians);
+		hash = fnv1a_u32(hash, joint->reference_angle_turns);
+	}
+	for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
+		const struct picosystem_physics_prismatic_joint *const joint =
+			&world->prismatic_joints[index];
+		hash = fnv1a_u32(hash, joint->id);
+		hash = fnv1a_u32(hash, joint->body_a_id);
+		hash = fnv1a_u32(hash, joint->body_b_id);
+		hash = fnv1a_u32(hash, joint->body_a_index);
+		hash = fnv1a_u32(hash, joint->body_b_index);
+		hash = fnv1a_u32(hash, joint->collide_connected);
+		hash = fnv1a_u32(hash, joint->motor_enabled);
+		hash = fnv1a_u32(hash, joint->limit_enabled);
+		hash = fnv1a_u32(hash, (uint32_t)joint->local_anchor_a.x);
+		hash = fnv1a_u32(hash, (uint32_t)joint->local_anchor_a.y);
+		hash = fnv1a_u32(hash, (uint32_t)joint->anchor_b.x);
+		hash = fnv1a_u32(hash, (uint32_t)joint->anchor_b.y);
+		hash = fnv1a_u32(hash, (uint32_t)joint->axis_b.x);
+		hash = fnv1a_u32(hash, (uint32_t)joint->axis_b.y);
+		hash = fnv1a_u32(hash, (uint32_t)joint->motor_speed_per_tick);
+		hash = fnv1a_u32(hash, (uint32_t)joint->maximum_motor_impulse_per_tick);
+		hash = fnv1a_u32(hash, (uint32_t)joint->lower_translation);
+		hash = fnv1a_u32(hash, (uint32_t)joint->upper_translation);
+		hash = fnv1a_u32(hash, (uint32_t)joint->reference_translation);
 		hash = fnv1a_u32(hash, joint->reference_angle_turns);
 	}
 	return hash;
