@@ -15,7 +15,7 @@ from serial_shell import SerialShellError, SerialShellSession
 
 
 MODE_NAMES = {"grid", "reference"}
-STAGE_NAMES = {
+SCHEMA_2_STAGE_NAMES = {
     "force_integrate",
     "box_geometry",
     "broad_phase",
@@ -27,6 +27,8 @@ STAGE_NAMES = {
     "other",
     "total",
 }
+SCHEMA_7_STAGE_NAMES = SCHEMA_2_STAGE_NAMES | {"narrow_body_sensor"}
+STAGE_NAMES = SCHEMA_7_STAGE_NAMES
 SCHEMA_2_WORK_NAMES = {
     "possible_pairs",
     "candidate_pairs",
@@ -68,12 +70,29 @@ SCHEMA_6_WORK_NAMES = SCHEMA_5_WORK_NAMES | {
     "prismatic_limits",
     "solver_cached_contacts",
 }
+SCHEMA_7_WORK_NAMES = SCHEMA_6_WORK_NAMES | {
+    "body_sensor_tests",
+    "active_contact_pairs",
+    "sensor_overlaps",
+    "contact_begin_events",
+    "contact_stay_events",
+    "contact_end_events",
+}
 WORK_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_WORK_NAMES,
     3: SCHEMA_3_WORK_NAMES,
     4: SCHEMA_4_WORK_NAMES,
     5: SCHEMA_5_WORK_NAMES,
     6: SCHEMA_6_WORK_NAMES,
+    7: SCHEMA_7_WORK_NAMES,
+}
+STAGE_NAMES_BY_SCHEMA = {
+    2: SCHEMA_2_STAGE_NAMES,
+    3: SCHEMA_2_STAGE_NAMES,
+    4: SCHEMA_2_STAGE_NAMES,
+    5: SCHEMA_2_STAGE_NAMES,
+    6: SCHEMA_2_STAGE_NAMES,
+    7: SCHEMA_7_STAGE_NAMES,
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 
@@ -154,6 +173,7 @@ def parse_profile(output: str) -> dict[str, object]:
         begin_keys |= {"fixture", "chain_links"}
     require_keys(begin, begin_keys, "PROFILE_BEGIN")
     work_names = WORK_NAMES_BY_SCHEMA[schema_version]
+    stage_names = STAGE_NAMES_BY_SCHEMA[schema_version]
     ticks = parse_unsigned(begin["ticks"], "ticks")
     if ticks == 0:
         raise ProfileError("ticks must be positive")
@@ -281,7 +301,7 @@ def parse_profile(output: str) -> dict[str, object]:
         require_keys(fields, stage_keys, line)
         mode = fields["mode"]
         stage = fields["stage"]
-        if mode not in modes or stage not in STAGE_NAMES:
+        if mode not in modes or stage not in stage_names:
             raise ProfileError(f"unexpected stage '{mode}/{stage}'")
         stages = modes[mode]["stages"]
         assert isinstance(stages, dict)
@@ -325,7 +345,7 @@ def parse_profile(output: str) -> dict[str, object]:
         }
 
     for mode, mode_result in modes.items():
-        if set(mode_result["stages"]) != STAGE_NAMES:
+        if set(mode_result["stages"]) != stage_names:
             raise ProfileError(f"{mode} does not contain every timing stage")
         if set(mode_result["work"]) != work_names:
             raise ProfileError(f"{mode} does not contain every work metric")

@@ -5,25 +5,27 @@ RP2040. Every milestone must run through the same platform-neutral C code on the
 host and device, remain remotely stepable at exact tick boundaries, and produce
 stable authoritative hashes.
 
-This document describes the intended architecture and the current motorized
-prismatic-joint milestone. Later milestones may revise measured
+This document describes the intended architecture and the current deterministic
+sensor/contact-event milestone. Later milestones may revise measured
 capacities, but they must retain the ownership, determinism, and overload
 contracts defined here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 216,260 bytes of the linker's 255 KiB Zephyr
-RAM region and 192,148 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 238,532 bytes of the linker's 255 KiB Zephyr
+RAM region and 198,560 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
-physics world is 20,020 bytes, including its 1,024-byte scratch grid and eight
-slots each for distance, revolute, and prismatic joints. The serialized A/B
-workspace is 28,672 bytes, is inactive during
+physics world is 21,804 bytes, including its 1,024-byte scratch grid, eight
+slots each for distance, revolute, and prismatic joints and box sensors, and
+bounded pair-event storage. The serialized A/B
+workspace is 31,208 bytes, is inactive during
 normal play, and avoids placing a second world on a thread stack. The profile
-command uses a 5,120-byte shell stack after an earlier prismatic prototype
-measured 3,920 of 4,096 bytes and left too little recovery margin. The
+command uses a 5,120-byte shell stack and currently reaches 3,856 bytes. The
 renderer reached 3,204 bytes while bringing up the larger scene snapshot, so
 its bounded stack was raised from 3,584 to 4,096 bytes. The linked image retains
-roughly 44 KiB of Zephyr RAM headroom. Physical timing acceptance
+22,588 bytes of Zephyr RAM headroom. The fast build also places the 16,480-byte
+inlined physics step in SRAM; this avoids core-0/core-1 XIP contention while
+the second core rasterizes a full scene. Physical timing acceptance
 is recorded after each candidate/solver configuration passes the native
 containment and oracle gates.
 
@@ -86,14 +88,19 @@ platform-neutral layers are:
 game input -> game world -> physics world -> immutable render snapshot
 ```
 
-The physics world owns fixed-capacity body, static-segment, distance-joint,
-revolute-joint, prismatic-joint, and contact arrays.
+The physics world owns fixed-capacity body, static-segment, box-sensor,
+distance-joint, revolute-joint, prismatic-joint, physical-contact, and
+pair-event arrays.
 It is stored in static RAM because the application's main and renderer stacks
 are deliberately bounded. Contacts are scratch results from the current update
-and are excluded from the authoritative hash; body state, static geometry,
-persistent joint configuration, numeric configuration, and game tick count are
-hashed field by field in stable order. Per-step joint endpoints, normals,
-effective mass, and accumulated impulse are rebuilt scratch state and excluded.
+and are excluded from the authoritative hash. The published event array is also
+current-step scratch, but prior-active body/body, body/segment, and body/sensor
+pair masks are persistent because the next step's event phase depends on them.
+Body state, static geometry, sensor configuration, active-pair masks,
+persistent joint configuration, numeric configuration, game tick count, and
+the canonical sensor-entry counter are hashed field by field in stable order.
+Per-step joint endpoints, normals, effective mass, accumulated impulse, and
+event payloads are rebuilt scratch state and excluded.
 
 Bodies and shapes receive stable numeric identifiers. Array order is never
 derived from addresses, hash tables, allocation order, or unstable sorting.
@@ -110,18 +117,22 @@ Each update performs these bounded phases in order:
 4. compute each box's orientation basis once for the contact pass and reuse each
    static segment's precomputed normal;
 5. populate the uniform grid and deduplicate candidate pairs into fixed bitsets;
-6. enumerate those candidates in stable body/segment index order;
+6. enumerate those candidates in stable body/body, body/segment, and
+   body/sensor index order;
 7. generate circle-circle, circle-box, box-box, circle-segment, and box-segment
-   contacts;
+   contacts plus exact circle/box sensor overlaps;
 8. apply bounded contact, distance-joint, revolute-joint, and prismatic-joint positional
    correction;
 9. run at most seven sequential-impulse contact and joint velocity iterations;
    and
-10. publish counters and the newest immutable state.
+10. classify pair-level `BEGIN`, `STAY`, and `END` events, then publish counters
+    and the newest immutable state.
 
 Production uses a 16 x 16 screen-space grid of 16-pixel cells covering the
 half-open range from 0 through 256 on each axis. Each cell stores one 16-bit body
-mask and one eight-bit static-segment mask. Inclusive fixed-point AABBs occupy
+mask, one eight-bit static-segment mask, and one eight-bit box-sensor mask.
+The sensor mask occupies existing cell padding, so the grid remains 1,024 bytes.
+Inclusive fixed-point AABBs occupy
 every touched cell; deduplicated pair masks are then consumed in the same order
 as the reference brute-force loops, preserving contact and solver order. Any
 geometry outside the grid causes an explicit whole-step brute-force fallback.
@@ -132,8 +143,9 @@ contact, and authoritative hash over mixed 12-body replays.
 
 Every physics step publishes deterministic work counters for possible and
 retained pairs, cell insertions and occupancy, split narrow-phase tests,
-manifolds and contact points, positional-correction visits, solver iterations
-and visits, cached and changed contact rows, changed joint impulses, joint,
+manifolds and contact points, active contact pairs, sensor overlaps,
+contact-event phases, positional-correction visits, solver iterations and
+visits, cached and changed contact rows, changed joint impulses, joint,
 motor, and limit counts,
 separate motor/limit row work, and unexpected broad-phase fallbacks.
 These counters are fixed-size scratch diagnostics and do not participate in the
@@ -143,10 +155,11 @@ The platform-neutral step API optionally accepts a caller-provided wrapping
 32-bit cycle clock. No Zephyr header or clock is referenced by the physics or
 game-world modules. A profiled call divides elapsed cycles into force/integration,
 box geometry, grid/reference broad phase, body/body narrow phase, body/segment
-narrow phase, positional correction, velocity solving, and final clamping.
+narrow phase, body/sensor narrow phase, positional correction, velocity solving,
+and final clamping.
 `other` is the difference between the complete public step and those regions;
 it includes state validation plus timing-boundary overhead. `total` covers the
-complete valid physics step. The canonical seven-body scene performs 42 clock
+complete valid physics step. The canonical seven-body scene performs 56 clock
 reads per measured step; the report includes a back-to-back clock-read delta so
 instrumentation cost remains visible rather than silently folded into a result.
 
@@ -168,7 +181,8 @@ histogram-derived p50/p95/p99, exact maximum, and 1/120-second budget violations
 without per-tick logging. `make profile-ab` preserves the live run/pause mode
 and writes the canonical result. `make profile-chain` profiles a comma-separated
 set of link counts over one USB session and writes an aggregate result. The
-version-6 protocol identifies the fixture and reports maximum revolute-anchor
+version-7 protocol adds sensor/contact-event work while retaining the fixture
+and maximum revolute-anchor
 separation, angular-limit violation, prismatic lateral/angular error, and
 prismatic-limit violation for each mode. Those quality calculations run after
 the measured step, so they do not contaminate the stage timings.
@@ -250,7 +264,34 @@ excluded from the authoritative hash. Fixed-capacity configuration, creation
 references, motor targets, limits, and collision policy remain persistent and
 are hashed field by field.
 
-## Current milestone: powered machine lab
+## Sensors and contact events
+
+A box sensor is a fixed axis-aligned region with a stable nonzero identifier.
+It participates in the same grid as physical geometry but never creates a
+manifold, applies position correction, or changes velocity. Circle overlap uses
+the exact closest point on the sensor box. Oriented-box overlap uses SAT across
+the sensor's two axes and the body's two axes, which rejects corner cases where
+the two AABBs overlap but the shapes do not. Edge-only touching is not an
+overlap, matching the engine's strict physical-contact boundary.
+
+Every current or previously active body/body, body/static-segment, and
+body/box-sensor pair emits exactly one pair-level event per step. A newly active
+pair emits `BEGIN`, a continuing pair emits `STAY`, and a pair that ceased to be
+active emits `END`; inactive pairs emit nothing. A two-point physical manifold
+still produces one event. Events are ordered by body A, then ascending body B,
+segment, and sensor index. Publication iterates the union of current and prior
+active masks, so quiet pairs consume no event-scan work. The fixed 258-record
+buffer covers every physical pair plus all 12-by-8 body/sensor pairs, and an
+unexpected capacity failure returns `-EOVERFLOW` instead of truncating output.
+
+The canonical sensor has ID 501 and spans a 60 x 20 pixel region. Its `BEGIN`
+events increment a saturated game-world entry counter. The sensor configuration,
+prior-active masks, and entry counter are authoritative; the current event array
+and work counters are scratch. This makes reset, native replay, remote exact
+stepping, and device framebuffer assertions agree without retaining redundant
+event payloads in the hash.
+
+## Current milestone: sensor-equipped machine lab
 
 The flashable rigid-body lab contains:
 
@@ -269,16 +310,21 @@ The flashable rigid-body lab contains:
   one-radian limit on the final hinge;
 - a world-anchored prismatic press with a bounded motor that reverses at its
   creation-relative -48/0-pixel travel limits;
+- one fixed box sensor with exact circle/box overlap and a visible entry count;
+- pair-level `BEGIN`, `STAY`, and `END` events for physical contacts and sensor
+  overlaps;
 - old/new dirty footprints for every moved body, merged when they overlap; and
-- body, filtered/possible-pair, grid occupancy, fallback, contact, solver,
-  timing, and deterministic-hash diagnostics.
+- body, filtered/possible-pair, grid occupancy, fallback, contact, sensor/event,
+  solver, timing, and deterministic-hash diagnostics.
 
 The milestone compile-time capacities are 12 dynamic bodies, eight static
 segments, eight distance joints, eight revolute joints, eight prismatic joints,
-two contact points per
-candidate manifold, and 324 contact slots:
+eight box sensors, two contact points per candidate manifold, 324 physical
+contact slots, and 258 pair-event slots:
 enough for every possible body-body and body-segment combination at those
-limits. The native oracle fills all 12 body slots while the flashable lab uses
+limits plus every body/sensor combination. The native capacity test activates
+the complete pair universe in one step. The grid/reference oracle fills all 12
+body slots while the flashable lab uses
 seven to preserve its 120 Hz device budget. The capacities are deliberately
 higher than the canonical demo population, so contact exhaustion cannot
 partially update a valid world. These are milestone
@@ -287,6 +333,8 @@ limits, not the eventual product scale.
 The D-pad tilts the acceleration field while preserving neutral downward
 gravity. Yellow pins make every revolute anchor visible. Two cyan, render-only
 rails show the press stroke without increasing broad-phase or contact work.
+A magenta sensor border turns green while occupied, and the `Sxx` header field
+counts entries modulo 100 without affecting the underlying saturated counter.
 A still performs the asynchronous full-redraw comparison and B keeps the
 bounded piezo test. Remote directional input has the same physics meaning as the
 physical D-pad.
@@ -322,30 +370,38 @@ The native suite covers:
 - cell-boundary collisions and distant-pair rejection;
 - explicit out-of-grid brute-force fallback;
 - exact grid/reference equality for bodies and contacts over 1,000 mixed ticks;
+- sensor validation/capacity preservation, circle corner cases, and rotated-box
+  SAT rejection;
+- physical and sensor `BEGIN`/`STAY`/`END` lifecycle ordering, quiet termination,
+  and full 258-event capacity;
+- exact grid/reference sensor/event equality over 1,000 mixed ticks;
 - arena containment over long replay;
 - deterministic reset and 10,000-tick replay;
 - authoritative hash changes and reset recovery; and
 - undefined-behavior sanitizer execution.
 
-The native canonical reset is `58ed1623`, right-30 is `c79a2439`, the
-right-30/up-15 sequence reaches tick 45 at `107b9aa0`, and a 10,000-tick replay
-is `4c0e614b`. The bounded replay reduces 63 possible pairs to between three and
-14 grid candidates, reaches nine contacts, never falls back, keeps every hinge
+The native canonical reset is `e631a02b`, right-30 is `94f6dc64`, the
+right-30/up-15 sequence reaches tick 45 at `e82a9f5c`, and a 10,000-tick replay
+is `146c4a5e`. The bounded replay reduces 70 possible pairs to between three and
+15 grid candidates, reaches nine contacts, exercises every event phase, never
+falls back, keeps every hinge
 and rail within the configured arena tolerances, holds the angular stop within
 0.0175 radian, and holds the press travel stop within 0.0964 pixel. The PIM559
 reproduced all three short hashes and the tick-45 framebuffer CRC-32
-`410a58ac`.
+`dd67545b`.
 
-Its isolated 1,000-tick profile averaged 3.535 ms for the grid path and 3.662
-ms for the brute-force reference, with no budget violations and exact final
-state agreement at `4ed9cc6f`. The grid retained 7.332 of 63 possible pairs per
-tick. Maximum revolute-anchor, angular-limit, prismatic-lateral,
+Its schema-version-7 isolated 1,000-tick profile averaged 2.723 ms for the grid
+path and 2.998 ms for the brute-force reference, with no budget violations and
+exact final state agreement at `1d58dedd`. The grid retained 8.017 of 70
+possible pairs and 0.685 of seven body/sensor tests per tick. Both modes
+observed 224 sensor overlaps and emitted 182 begin, 523 stay, and 182 end events.
+Maximum revolute-anchor, angular-limit, prismatic-lateral,
 prismatic-angular, and travel-limit errors were 0.814 pixels, 0.0418 radian,
-0.0885 pixels, 0.00461 radian, and 0.0651 pixels. The contact cache skipped
-1.265 of 4.767 scheduled visits per isolated tick. In a concurrent 3,798-tick
-window, the device ran at 119.2 Hz while presenting at 29.8 fps, with eight
-skipped ticks and a five-tick worst backlog. Mean/maximum physics time was
-5.788/9.786 ms.
+0.0885 pixels, 0.00461 radian, and 0.0651 pixels. In a clean concurrent
+4,978-tick window, the SRAM-resident fast physics step held 120.0 Hz while
+presenting at 29.8 fps, with zero skipped ticks and a three-tick worst backlog.
+Mean/maximum physics time was 4.356/19.664 ms; only four complete updates
+exceeded the 8.333 ms budget.
 
 For historical comparison, the preceding revolute motor-and-limit image used
 eight bodies, one distance joint, and a four-link chain. Its PIM559 profile
@@ -383,7 +439,7 @@ are design references rather than code to port.
 
 ## Planned extensions
 
-1. Add springs, conveyors, sensors, and sleeping on top of the slider primitive.
+1. Add springs, conveyors, and sleeping on top of the slider and event primitives.
 2. Add capsules and a position-based rope/soft-body subsystem with deliberate
    rigid-body coupling.
 3. Evaluate bounded granular materials and approximate gravity or magnetic

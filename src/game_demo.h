@@ -80,6 +80,12 @@ struct picosystem_game_demo_stats {
 	uint32_t render_stack_used_bytes;
 	uint32_t candidate_pair_count;
 	uint32_t possible_pair_count;
+	uint32_t active_contact_pair_count;
+	uint32_t sensor_overlap_count;
+	uint32_t contact_begin_event_count;
+	uint32_t contact_stay_event_count;
+	uint32_t contact_end_event_count;
+	uint32_t sensor_entry_count;
 	uint32_t solver_contact_visit_count;
 	uint32_t solver_cached_contact_count;
 	uint32_t solver_changed_contact_count;
@@ -90,7 +96,9 @@ struct picosystem_game_demo_stats {
 	uint16_t distance_joint_count;
 	uint16_t revolute_joint_count;
 	uint16_t prismatic_joint_count;
+	uint16_t box_sensor_count;
 	uint16_t contact_count;
+	uint16_t contact_event_count;
 	uint16_t occupied_grid_cell_count;
 	uint16_t focus_body_id;
 	uint16_t focus_x;

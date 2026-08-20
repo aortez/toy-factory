@@ -22,6 +22,8 @@ path:
   prismatic rails between two bodies or a body and a fixed world anchor;
 - drives bounded revolute and prismatic motors against creation-relative limits,
   with a powered three-link chain and reciprocating press in the canonical lab;
+- detects exact circle/box overlap against bounded fixed box sensors and emits
+  deterministic pair-level `BEGIN`, `STAY`, and `END` contact events;
 - publishes fixed-size state snapshots to an independent renderer;
 - launches a bounded bare-metal worker on RP2040 core 1 for deterministic
   full-scene rasterization while Zephyr, physics, USB, and display drivers stay
@@ -136,10 +138,11 @@ The physical gesture remains the recovery path for a blank or broken image:
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
 show a dark checkerboard arena, three circles, four moving boxes, two diagonal
-ramps, cyan boundaries and press rails, yellow hinge pins, and a white
-`MACHINE LAB 120HZ` heading. The chain's world hinge is motorized, its far-end
+ramps, cyan boundaries and press rails, yellow hinge pins, a magenta sensor,
+and a white `MACHINE LAB 120HZ` heading. The chain's world hinge is motorized, its far-end
 hinge stops at plus or minus one radian relative to the reset pose, and the
-press reverses at the ends of its 48-pixel vertical stroke. The world
+press reverses at the ends of its 48-pixel vertical stroke. The sensor turns
+green while any body overlaps it; the `Sxx` header counter records entries. The world
 advances on exact rational 120 Hz deadlines. Normal presentation restores each
 moved body's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
@@ -245,8 +248,8 @@ picosystem reboot bootloader
 `picosystem status` returns current uptime and software LED mode alongside one
 coherent hardware snapshot containing buttons, USB/charger state, the most
 recent battery sample and its age, framebuffer/presentation timing, game-loop
-rate and skipped ticks, snapshot age, body/contact counts, focus-body state, and
-both application-thread stack high-water marks.
+rate and skipped ticks, snapshot age, body/contact/sensor counts, lifecycle-event
+phases, focus-body state, and both application-thread stack high-water marks.
 `buttons` is a compact live-input view.
 `display sync` reports GP8 edge timing, refresh frequency, blanking-pulse width,
 qualification state, wait latency, and fallback counts. Passing `off` bypasses
@@ -279,14 +282,15 @@ Both commands warm up each implementation for 120 ticks, measure the requested
 replay through the uniform grid and the brute-force reference, and reject any
 final hash or field-by-field state mismatch. Timings are accumulated in
 fixed-size histograms instead of being logged per tick. The report separates
-integration, geometry, broad phase, body/body and body/segment narrow phase,
+integration, geometry, broad phase, body/body, body/segment, and body/sensor narrow phase,
 position correction, velocity solving, final clamping, unattributed
 validation/instrumentation work, and the total. Deterministic counters report
-candidate filtering, grid population, manifolds, contacts, connected-body
+candidate filtering, grid population, manifolds, contact points and pair events,
+sensor tests/overlaps, connected-body
 collision filters, distance/revolute/prismatic joint, motor, and limit counts, separate
 anchor/limit correction, cached/changed contact work, velocity-row visits, and
 fallbacks. Schema version
-6 identifies the fixture and reports maximum revolute-anchor separation,
+7 identifies the fixture and reports maximum revolute-anchor separation,
 angular-limit violation, prismatic lateral/angular error, and prismatic-limit
 violation; those quality checks run outside the timed physics step.
 
@@ -343,8 +347,8 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "66e3ab10",
-    "framebuffer_crc32": "0633575c"
+    "hash": "e82a9f5c",
+    "framebuffer_crc32": "dd67545b"
   }
 }
 ```
@@ -416,9 +420,9 @@ shape, configured bus frequency, PL022/PIO polling behavior, and both DMA paths.
 
 ## Game-loop architecture
 
-The authoritative fixed-point bodies, static segments, distance, revolute, and
-prismatic joints, uniform-grid candidate filter, contact generation, sequential-impulse
-response, and stable field-by-field hash live in
+The authoritative fixed-point bodies, static segments, box sensors, distance,
+revolute, and prismatic joints, uniform-grid candidate filter, contact/event
+generation, sequential-impulse response, and stable field-by-field hash live in
 [`src/physics_world.c`](src/physics_world.c). Canonical scene construction,
 input-to-acceleration mapping, game ticks, and the outer hash live in
 [`src/game_world.c`](src/game_world.c). Neither module has a Zephyr, scheduler,
@@ -432,7 +436,7 @@ The priority-1 USB shell runs only while higher-priority work is blocked; once
 two or more simulation deadlines are due, the main loop reserves a
 one-millisecond recovery window so diagnostics and the bootloader command cannot
 remain starved. An isolated late tick may catch up and reach its normal sleep
-without paying that extra delay. The main thread publishes a 728-byte immutable
+without paying that extra delay. The main thread publishes a 744-byte immutable
 render snapshot into one of two slots under a short spin lock. A saturated
 semaphore wakes the renderer, which coalesces obsolete snapshots instead of
 making simulation wait.
@@ -474,36 +478,38 @@ framebuffer is allocated.
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation and also runs native rigid-body collision/capacity, 1,000-tick
-grid/brute-force oracle, 10,000-tick game-world replay/boundary, deadline-scheduler,
+generation and also runs native rigid-body collision/capacity, exact sensor
+overlap/contact-lifecycle, 1,000-tick grid/brute-force oracle, 10,000-tick
+game-world replay/boundary, deadline-scheduler,
 serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The default image uses 210,268 bytes of its 255 KiB Zephyr RAM region (80.53%)
-and 187,660 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 214,908 bytes of its 255 KiB Zephyr RAM region (82.30%)
+and 193,336 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer,
-20,020-byte fixed-capacity physics world with a 1,024-byte scratch grid and eight
+21,804-byte fixed-capacity physics world with a 1,024-byte scratch grid and eight
 slots each for distance, motor/limit-capable revolute, and motor/limit-capable
-prismatic joints, plus per-step deterministic counters, a 28,672-byte serialized
-benchmark workspace, two 728-byte render snapshots, a 5,120-byte shell stack, a
+prismatic joints and box sensors, plus bounded contact-event storage, per-step
+deterministic counters, a 31,208-byte serialized benchmark workspace, two
+744-byte render snapshots, a 5,120-byte shell stack, a
 4,096-byte renderer stack,
 display-profile result storage, and a 1,024-byte shell TX ring. The fast image
-uses 216,260 bytes of that region (82.82%) and 192,148 bytes of flash,
-including 5,376 bytes of SRAM-resident raster code. Both images also reserve
+uses 238,532 bytes of that region (91.35%) and 198,560 bytes of flash. It keeps
+the 16,480-byte inlined physics step and 5,376 bytes of raster code in SRAM so
+the two cores do not contend for XIP flash during a frame. Both images also reserve
 8 KiB outside Zephyr's region for the core-1 mailbox and stack. The fast image
-retains about 44 KiB of Zephyr RAM headroom. Full frames bypass the staging
+retains 22,588 bytes of Zephyr RAM headroom. Full frames bypass the staging
 buffer with one contiguous write.
 
-On the tested PIM559, the recommended fast Machine Lab image completed a
-3,798-tick live window at 119.2 Hz while presenting 948 frames at 29.8 fps. It
-recorded eight skipped ticks, a five-tick worst backlog, and 474 updates over
-the 8.333 ms budget. Mean/maximum complete update time was 6.600/10.529 ms;
-physics alone was 5.788/9.786 ms and snapshot publication was 0.811/2.527 ms.
-A settled sampled tick skipped 16 of 42 scheduled contact visits while 17
-visits changed an impulse. A paused hardware check rendered the same live scene
-on both cores with CRC-32 `14dc7135`; core 1 took 9.444 ms and the original
-framebuffer was restored exactly.
+On the tested PIM559, the recommended fast sensor/contact-event image completed
+a clean 4,978-tick window at 120.0 Hz while presenting 1,235 frames at 29.8 fps.
+It recorded zero skipped ticks, a three-tick worst backlog, and four updates
+over the 8.333 ms budget. Mean/maximum complete update time was 5.046/20.427 ms;
+physics alone was 4.356/19.664 ms and snapshot publication was 0.689/5.402 ms.
+The exact device sequence reproduced tick 45 at hash `e82a9f5c` and framebuffer
+CRC-32 `dd67545b`. A paused hardware check rendered the same live scene on both
+cores with matching pixels in 9.728 ms and restored the original framebuffer.
 
 On the preceding, lighter dual-core scene, the priority -1 coordinator left a
 one-millisecond handoff window after each frame so a waiting framebuffer reader
@@ -640,16 +646,17 @@ budget. A longer 14,416-tick live window held 120.0 Hz simulation and 29.8 fps
 presentation, with one isolated skipped tick amid USB profiling and status
 activity.
 
-The current powered Machine Lab hashes to `58ed1623` at reset, `c79a2439` after
-30 right ticks, and `107b9aa0` after a further 15 up ticks. The exact tick-45
-frame shown above is CRC-32 `410a58ac`; the 10,000-tick native replay ends at
-`4c0e614b`. Its schema-version-6 PIM559 profile averaged 3.535 ms on the grid
-and 3.662 ms through the brute-force reference, with zero budget violations and
-exact final state agreement at `4ed9cc6f`. Grid filtering retained 7.332 of 63
-possible pairs per tick. Maximum revolute-anchor, angular-limit, prismatic
-lateral, prismatic-angular, and travel-limit errors were 0.814 pixels, 0.0418
-radian, 0.0885 pixels, 0.00461 radian, and 0.0651 pixels. The contact cache
-skipped 1.265 of 4.767 scheduled visits per isolated tick.
+The current powered Machine Lab hashes to `e631a02b` at reset, `94f6dc64` after
+30 right ticks, and `e82a9f5c` after a further 15 up ticks. The exact tick-45
+frame is CRC-32 `dd67545b`; the 10,000-tick native replay ends at `146c4a5e`.
+Its schema-version-7 PIM559 profile averaged 2.723 ms on the grid and 2.998 ms
+through the brute-force reference, with zero budget violations and exact final
+state agreement at `1d58dedd`. Grid filtering retained 8.017 of 70 possible
+pairs and only 0.685 of seven possible body/sensor tests per tick. The replay
+produced 182 `BEGIN`, 523 `STAY`, and 182 `END` events in each mode. Maximum
+revolute-anchor, angular-limit, prismatic-lateral, prismatic-angular, and
+travel-limit errors were 0.814 pixels, 0.0418 radian, 0.0885 pixels, 0.00461
+radian, and 0.0651 pixels.
 
 The preceding motor-and-limit image gives the world pin a bounded 1/96-radian
 per-tick target and limits the final hinge to plus or minus one radian from its

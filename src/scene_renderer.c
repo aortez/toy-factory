@@ -27,6 +27,9 @@
 #define HEADER_TEXT_X        22
 #define HEADER_TEXT_Y        7
 #define HEADER_TEXT_SCALE    2U
+#define SENSOR_COUNT_TEXT_X  2
+#define SENSOR_COUNT_TEXT_Y  10
+#define SENSOR_COUNT_SCALE   1U
 
 static const picosystem_color_t body_colors[] = {
 	PICOSYSTEM_COLOR_YELLOW,  PICOSYSTEM_COLOR_CYAN, PICOSYSTEM_COLOR_GREEN,
@@ -56,8 +59,20 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 	if ((snapshot->body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
 	    (snapshot->static_segment_count > PICOSYSTEM_SCENE_MAX_SEGMENTS) ||
 	    (snapshot->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
-	    (snapshot->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS)) {
+	    (snapshot->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
+	    (snapshot->box_sensor_count > PICOSYSTEM_SCENE_MAX_BOX_SENSORS)) {
 		return -ERANGE;
+	}
+	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
+		const struct picosystem_rect *const bounds = &snapshot->box_sensors[index].bounds;
+		if ((bounds->width == 0U) || (bounds->height == 0U) ||
+		    (bounds->x >= PICOSYSTEM_GRAPHICS_WIDTH) ||
+		    (bounds->y >= PICOSYSTEM_GRAPHICS_HEIGHT) ||
+		    (bounds->width > (PICOSYSTEM_GRAPHICS_WIDTH - bounds->x)) ||
+		    (bounds->height > (PICOSYSTEM_GRAPHICS_HEIGHT - bounds->y)) ||
+		    (snapshot->box_sensors[index].active > 1U)) {
+			return -ERANGE;
+		}
 	}
 	return 0;
 }
@@ -321,6 +336,69 @@ render_static_segments(const struct picosystem_scene_snapshot *snapshot,
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC void
+render_box_sensors(const struct picosystem_scene_snapshot *snapshot,
+		   const struct picosystem_rect *clip,
+		   struct picosystem_scene_render_progress *progress)
+{
+	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS, index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_BOUNDS);
+		const struct picosystem_scene_box_sensor *const sensor =
+			&snapshot->box_sensors[index];
+		if ((clip != NULL) &&
+		    !picosystem_scene_rectangles_intersect(&sensor->bounds, clip)) {
+			continue;
+		}
+
+		const int16_t left = (int16_t)sensor->bounds.x;
+		const int16_t top = (int16_t)sensor->bounds.y;
+		const int16_t right = (int16_t)(sensor->bounds.x + sensor->bounds.width - 1U);
+		const int16_t bottom = (int16_t)(sensor->bounds.y + sensor->bounds.height - 1U);
+		const picosystem_color_t color =
+			(sensor->active != 0U) ? PICOSYSTEM_COLOR_GREEN : PICOSYSTEM_COLOR_MAGENTA;
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS, index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_OUTLINE);
+		picosystem_graphics_draw_line_clipped(clip, left, top, right, top, color);
+		picosystem_graphics_draw_line_clipped(clip, right, top, right, bottom, color);
+		picosystem_graphics_draw_line_clipped(clip, right, bottom, left, bottom, color);
+		picosystem_graphics_draw_line_clipped(clip, left, bottom, left, top, color);
+	}
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC int render_header(const struct picosystem_scene_snapshot *snapshot,
+						   const struct picosystem_rect *clip)
+{
+	int err;
+	if (clip == NULL) {
+		err = picosystem_graphics_draw_text(HEADER_TEXT_X, HEADER_TEXT_Y, HEADER_TEXT,
+						    HEADER_TEXT_SCALE, PICOSYSTEM_COLOR_WHITE);
+	} else {
+		err = picosystem_graphics_draw_text_clipped(clip, HEADER_TEXT_X, HEADER_TEXT_Y,
+							    HEADER_TEXT, HEADER_TEXT_SCALE,
+							    PICOSYSTEM_COLOR_WHITE);
+	}
+	if (err != 0) {
+		return err;
+	}
+
+	const uint32_t displayed_count = snapshot->sensor_entry_count % 100U;
+	const char count_text[] = {
+		'S',
+		(char)('0' + (displayed_count / 10U)),
+		(char)('0' + (displayed_count % 10U)),
+		'\0',
+	};
+	if (clip == NULL) {
+		return picosystem_graphics_draw_text(SENSOR_COUNT_TEXT_X, SENSOR_COUNT_TEXT_Y,
+						     count_text, SENSOR_COUNT_SCALE,
+						     PICOSYSTEM_COLOR_GREEN);
+	}
+	return picosystem_graphics_draw_text_clipped(clip, SENSOR_COUNT_TEXT_X, SENSOR_COUNT_TEXT_Y,
+						     count_text, SENSOR_COUNT_SCALE,
+						     PICOSYSTEM_COLOR_GREEN);
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC void
 render_world_joint_guide(const struct picosystem_scene_joint *joint,
 			 const struct picosystem_rect *clip)
 {
@@ -481,6 +559,9 @@ picosystem_scene_render_full_observed(const struct picosystem_scene_snapshot *sn
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	render_playfield_background(&playfield);
+	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS, 0U,
+			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
+	render_box_sensors(snapshot, NULL, progress);
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	render_static_segments(snapshot, NULL, progress);
@@ -502,8 +583,7 @@ picosystem_scene_render_full_observed(const struct picosystem_scene_snapshot *sn
 
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_HEADER, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
-	err = picosystem_graphics_draw_text(HEADER_TEXT_X, HEADER_TEXT_Y, HEADER_TEXT,
-					    HEADER_TEXT_SCALE, PICOSYSTEM_COLOR_WHITE);
+	err = render_header(snapshot, NULL);
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_COMPLETE, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	return err;
@@ -537,6 +617,9 @@ picosystem_scene_render_region_observed(const struct picosystem_scene_snapshot *
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	render_playfield_background(region);
+	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS, 0U,
+			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
+	render_box_sensors(snapshot, region, progress);
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	render_static_segments(snapshot, region, progress);
@@ -558,9 +641,7 @@ picosystem_scene_render_region_observed(const struct picosystem_scene_snapshot *
 
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_HEADER, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
-	err = picosystem_graphics_draw_text_clipped(region, HEADER_TEXT_X, HEADER_TEXT_Y,
-						    HEADER_TEXT, HEADER_TEXT_SCALE,
-						    PICOSYSTEM_COLOR_WHITE);
+	err = render_header(snapshot, region);
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_COMPLETE, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	return err;
@@ -583,6 +664,8 @@ const char *picosystem_scene_render_stage_name(enum picosystem_scene_render_stag
 		return "clear";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND:
 		return "background";
+	case PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS:
+		return "sensors";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS:
 		return "segments";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS:

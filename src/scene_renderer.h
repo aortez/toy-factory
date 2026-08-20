@@ -15,6 +15,7 @@
 
 #define PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT 3U
 #define PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS      3U
+#define PICOSYSTEM_SCENE_MAX_BOX_SENSORS            1U
 #define PICOSYSTEM_SCENE_MAX_SEGMENTS                                                              \
 	(PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS + (2U * PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS))
 
@@ -47,20 +48,29 @@ struct picosystem_scene_joint {
 	uint16_t target_radius;
 };
 
+struct picosystem_scene_box_sensor {
+	struct picosystem_rect bounds;
+	uint16_t id;
+	uint8_t active;
+};
+
 /* Immutable, self-contained input copied to the auxiliary core before rasterization. */
 struct picosystem_scene_snapshot {
 	int64_t published_uptime_ticks;
 	uint32_t sequence;
 	uint32_t logic_tick_count;
 	uint32_t redraw_request_sequence;
+	uint32_t sensor_entry_count;
 	uint16_t body_count;
 	uint16_t static_segment_count;
 	uint16_t distance_joint_count;
 	uint16_t revolute_joint_count;
+	uint16_t box_sensor_count;
 	struct picosystem_scene_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	struct picosystem_scene_segment static_segments[PICOSYSTEM_SCENE_MAX_SEGMENTS];
 	struct picosystem_scene_joint distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
 	struct picosystem_scene_joint revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
+	struct picosystem_scene_box_sensor box_sensors[PICOSYSTEM_SCENE_MAX_BOX_SENSORS];
 };
 
 enum picosystem_scene_render_stage {
@@ -68,6 +78,7 @@ enum picosystem_scene_render_stage {
 	PICOSYSTEM_SCENE_RENDER_STAGE_VALIDATE,
 	PICOSYSTEM_SCENE_RENDER_STAGE_CLEAR,
 	PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND,
+	PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_BODIES,

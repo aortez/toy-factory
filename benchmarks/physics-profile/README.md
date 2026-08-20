@@ -6,9 +6,44 @@ followed by the same bounded input replay; the recorded artifact states its
 measured tick count. Timing covers isolated physics steps with rendering and
 snapshot publication disabled.
 
+## Box sensor and contact lifecycle events
+
+The current schema-version-7 canonical result is in
+[pim559-contact-events-2026-08-19.json](pim559-contact-events-2026-08-19.json).
+It was captured from the recommended dual-core image with:
+
+```sh
+make profile-ab PROFILE_TICKS=1000 \
+  PROFILE_OUT=benchmarks/physics-profile/pim559-contact-events-2026-08-19.json
+```
+
+The seven-body Machine Lab adds one fixed box sensor and pair-level `BEGIN`,
+`STAY`, and `END` events for physical contacts and sensor overlaps. The fast
+image places its 16,480-byte inlined physics step in SRAM so core 0 does not
+compete with core-1 rasterization for XIP flash.
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Candidates/tick | Sensor tests/tick | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 2,723 us | 2,560 us | 3,584 us | 4,224 us | 4,722 us | 8.017 | 0.685 | 0 |
+| Brute-force reference | 2,998 us | 2,944 us | 3,968 us | 4,352 us | 5,017 us | 70.0 | 7.0 | 0 |
+
+Both modes ended at hash `1d58dedd` with exact authoritative-state agreement.
+The grid rejected 88.5% of possible pairs and was 1.10 times faster overall.
+Each mode observed 224 sensor overlaps and emitted 182 begin, 523 stay, and 182
+end events over the measured replay. Maximum revolute-anchor, angular-limit,
+prismatic-lateral, prismatic-angular, and travel-limit errors were 0.814 pixels,
+0.0418 radian, 0.0885 pixels, 0.00461 radian, and 0.0651 pixels. Shell stack
+high-water was 3,856 of 5,120 bytes.
+
+In a clean concurrent 4,978-tick device window, simulation held 120.0 Hz with
+zero skipped ticks while full-frame presentation remained at 29.8 fps. Mean
+complete-update, physics, and snapshot-publication times were 5.046, 4.356, and
+0.689 ms. Four updates exceeded 8.333 ms; the maximum was 20.427 ms and the
+worst scheduler backlog was three ticks.
+
 ## Motorized prismatic joint and contact cache
 
-The current schema-version-6 canonical result is in
+The preceding schema-version-6 canonical result is in
 [pim559-prismatic-joint-2026-08-19.json](pim559-prismatic-joint-2026-08-19.json).
 It was captured with:
 

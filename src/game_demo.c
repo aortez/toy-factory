@@ -29,7 +29,7 @@ LOG_MODULE_REGISTER(picosystem_game_demo, LOG_LEVEL_INF);
 #define MAX_DIRTY_REGIONS                                                                          \
 	((PICOSYSTEM_PHYSICS_MAX_BODIES +                                                          \
 	  (PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS * PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT) + \
-	  PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) *                                                \
+	  PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS + PICOSYSTEM_SCENE_MAX_BOX_SENSORS + 1U) *        \
 	 2U)
 #define RENDER_THREAD_STACK_SIZE 4096U
 #if defined(CONFIG_TOY_FACTORY_CORE1_FULL_FRAME_RENDERER)
@@ -98,6 +98,7 @@ BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_MAIN_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_SHELL_THREAD_PRIORITY);
 #endif
 BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 768U);
+BUILD_ASSERT(PICOSYSTEM_GAME_BOX_SENSOR_COUNT <= PICOSYSTEM_SCENE_MAX_BOX_SENSORS);
 
 static bool core1_full_frame_renderer_enabled(void)
 {
@@ -203,7 +204,8 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 	if ((left->body_count != right->body_count) ||
 	    (left->static_segment_count != right->static_segment_count) ||
 	    (left->distance_joint_count != right->distance_joint_count) ||
-	    (left->revolute_joint_count != right->revolute_joint_count)) {
+	    (left->revolute_joint_count != right->revolute_joint_count) ||
+	    (left->box_sensor_count != right->box_sensor_count)) {
 		return false;
 	}
 
@@ -223,6 +225,19 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 		    (left_segment->start_y != right_segment->start_y) ||
 		    (left_segment->end_x != right_segment->end_x) ||
 		    (left_segment->end_y != right_segment->end_y)) {
+			return false;
+		}
+	}
+	for (uint16_t index = 0U; index < left->box_sensor_count; ++index) {
+		const struct picosystem_scene_box_sensor *const left_sensor =
+			&left->box_sensors[index];
+		const struct picosystem_scene_box_sensor *const right_sensor =
+			&right->box_sensors[index];
+		if ((left_sensor->id != right_sensor->id) ||
+		    (left_sensor->bounds.x != right_sensor->bounds.x) ||
+		    (left_sensor->bounds.y != right_sensor->bounds.y) ||
+		    (left_sensor->bounds.width != right_sensor->bounds.width) ||
+		    (left_sensor->bounds.height != right_sensor->bounds.height)) {
 			return false;
 		}
 	}
@@ -424,6 +439,19 @@ static size_t build_dirty_regions(const struct picosystem_scene_snapshot *snapsh
 		regions[count++] =
 			picosystem_scene_revolute_joint_bounds(&snapshot->revolute_joints[index]);
 	}
+	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
+		if (snapshot->box_sensors[index].active != presented->box_sensors[index].active) {
+			regions[count++] = snapshot->box_sensors[index].bounds;
+		}
+	}
+	if (snapshot->sensor_entry_count != presented->sensor_entry_count) {
+		regions[count++] = (struct picosystem_rect){
+			.x = 2U,
+			.y = 10U,
+			.width = 18U,
+			.height = 7U,
+		};
+	}
 	return merge_dirty_regions(regions, count, true);
 }
 
@@ -461,11 +489,16 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 		.sequence = sequence,
 		.logic_tick_count = state->world.logic_tick_count,
 		.redraw_request_sequence = state->redraw_request_sequence,
+		.sensor_entry_count = state->world.sensor_entry_count,
 		.body_count = state->world.physics.body_count,
 		.static_segment_count = state->world.physics.static_segment_count,
 		.distance_joint_count = state->world.physics.distance_joint_count,
 		.revolute_joint_count = state->world.physics.revolute_joint_count,
+		.box_sensor_count = state->world.physics.box_sensor_count,
 	};
+	if (snapshot->box_sensor_count > ARRAY_SIZE(snapshot->box_sensors)) {
+		return -ENOSPC;
+	}
 
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
 		const struct picosystem_physics_body *const body =
@@ -503,6 +536,36 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			.start_y = fixed_to_pixel(segment->start.y),
 			.end_x = fixed_to_pixel(segment->end.x),
 			.end_y = fixed_to_pixel(segment->end.y),
+		};
+	}
+	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
+		const struct picosystem_physics_box_sensor *const sensor =
+			&state->world.physics.box_sensors[index];
+		const int16_t left = fixed_to_pixel(sensor->center.x - sensor->half_extent.x);
+		const int16_t top = fixed_to_pixel(sensor->center.y - sensor->half_extent.y);
+		const int16_t right = fixed_to_pixel(sensor->center.x + sensor->half_extent.x);
+		const int16_t bottom = fixed_to_pixel(sensor->center.y + sensor->half_extent.y);
+		if ((left < 0) || (top < 0) || (right < left) || (bottom < top) ||
+		    (right >= PICOSYSTEM_GRAPHICS_WIDTH) ||
+		    (bottom >= PICOSYSTEM_GRAPHICS_HEIGHT)) {
+			return -ERANGE;
+		}
+		bool active = false;
+		const uint8_t sensor_mask = (uint8_t)(UINT8_C(1) << index);
+		for (uint16_t body = 0U; body < state->world.physics.body_count; ++body) {
+			active |= (state->world.physics.active_sensor_contact_masks[body] &
+				   sensor_mask) != 0U;
+		}
+		snapshot->box_sensors[index] = (struct picosystem_scene_box_sensor){
+			.bounds =
+				{
+					.x = (uint16_t)left,
+					.y = (uint16_t)top,
+					.width = (uint16_t)(right - left + 1),
+					.height = (uint16_t)(bottom - top + 1),
+				},
+			.id = sensor->id,
+			.active = active ? 1U : 0U,
 		};
 	}
 	int err = append_prismatic_guides(state, snapshot);
@@ -1093,6 +1156,14 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.render_stack_used_bytes = render_metrics.render_stack_used_bytes,
 		.candidate_pair_count = state->world.physics.last_candidate_pair_count,
 		.possible_pair_count = state->world.physics.last_possible_pair_count,
+		.active_contact_pair_count =
+			state->world.physics.last_work.active_contact_pair_count,
+		.sensor_overlap_count = state->world.physics.last_work.sensor_overlap_count,
+		.contact_begin_event_count =
+			state->world.physics.last_work.contact_begin_event_count,
+		.contact_stay_event_count = state->world.physics.last_work.contact_stay_event_count,
+		.contact_end_event_count = state->world.physics.last_work.contact_end_event_count,
+		.sensor_entry_count = state->world.sensor_entry_count,
 		.solver_contact_visit_count =
 			state->world.physics.last_work.solver_contact_visit_count,
 		.solver_cached_contact_count =
@@ -1108,7 +1179,9 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.distance_joint_count = state->world.physics.distance_joint_count,
 		.revolute_joint_count = state->world.physics.revolute_joint_count,
 		.prismatic_joint_count = state->world.physics.prismatic_joint_count,
+		.box_sensor_count = state->world.physics.box_sensor_count,
 		.contact_count = state->world.physics.contact_count,
+		.contact_event_count = state->world.physics.contact_event_count,
 		.occupied_grid_cell_count = state->world.physics.last_occupied_grid_cell_count,
 		.focus_body_id = focus->id,
 		.focus_x = (uint16_t)fixed_to_pixel(focus->center.x),

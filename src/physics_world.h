@@ -22,6 +22,7 @@
 #define PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS   8U
 #define PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS   8U
 #define PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS  8U
+#define PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS       8U
 #define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS   2U
 #define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN    UINT32_C(0x40000000)
 #define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS 16U
@@ -34,6 +35,9 @@
 	 (PICOSYSTEM_PHYSICS_MAX_BODIES * PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS))
 #define PICOSYSTEM_PHYSICS_MAX_CONTACTS                                                            \
 	(PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS * PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS)
+#define PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS                                                      \
+	(PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS +                                                  \
+	 (PICOSYSTEM_PHYSICS_MAX_BODIES * PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS))
 #define PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS             7U
 #define PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS  4U
 #define PICOSYSTEM_PHYSICS_PRISMATIC_POSITION_ITERATIONS 4U
@@ -52,6 +56,7 @@ enum picosystem_physics_profile_stage {
 	PICOSYSTEM_PHYSICS_PROFILE_BROAD_PHASE,
 	PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_BODY,
 	PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_SEGMENT,
+	PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_SENSOR,
 	PICOSYSTEM_PHYSICS_PROFILE_POSITION_CORRECTION,
 	PICOSYSTEM_PHYSICS_PROFILE_VELOCITY_SOLVER,
 	PICOSYSTEM_PHYSICS_PROFILE_FINAL_CLAMP,
@@ -76,9 +81,15 @@ struct picosystem_physics_work_counters {
 	uint32_t maximum_grid_cell_occupancy;
 	uint32_t body_body_narrow_phase_test_count;
 	uint32_t body_segment_narrow_phase_test_count;
+	uint32_t body_sensor_narrow_phase_test_count;
 	uint32_t joint_collision_filter_count;
 	uint32_t manifold_count;
 	uint32_t contact_point_count;
+	uint32_t active_contact_pair_count;
+	uint32_t sensor_overlap_count;
+	uint32_t contact_begin_event_count;
+	uint32_t contact_stay_event_count;
+	uint32_t contact_end_event_count;
 	uint32_t position_correction_visit_count;
 	uint32_t solver_iteration_count;
 	uint32_t solver_contact_visit_count;
@@ -149,6 +160,13 @@ struct picosystem_physics_segment_config {
 	struct picosystem_physics_vector end;
 	picosystem_physics_fixed_t restitution;
 	picosystem_physics_fixed_t friction;
+	uint16_t id;
+};
+
+/* A fixed, axis-aligned overlap region that never applies collision response. */
+struct picosystem_physics_box_sensor_config {
+	struct picosystem_physics_vector center;
+	struct picosystem_physics_vector half_extent;
 	uint16_t id;
 };
 
@@ -225,6 +243,12 @@ struct picosystem_physics_static_segment {
 	struct picosystem_physics_vector normal;
 	picosystem_physics_fixed_t restitution;
 	picosystem_physics_fixed_t friction;
+	uint16_t id;
+};
+
+struct picosystem_physics_box_sensor {
+	struct picosystem_physics_vector center;
+	struct picosystem_physics_vector half_extent;
 	uint16_t id;
 };
 
@@ -322,6 +346,27 @@ enum picosystem_physics_contact_type {
 	PICOSYSTEM_PHYSICS_CONTACT_STATIC_SEGMENT,
 };
 
+/* Events are pair-level even when a physical manifold contains two contact points. */
+enum picosystem_physics_contact_event_type {
+	PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_BODY,
+	PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_STATIC_SEGMENT,
+	PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_BOX_SENSOR,
+};
+
+enum picosystem_physics_contact_event_phase {
+	PICOSYSTEM_PHYSICS_CONTACT_EVENT_BEGIN,
+	PICOSYSTEM_PHYSICS_CONTACT_EVENT_STAY,
+	PICOSYSTEM_PHYSICS_CONTACT_EVENT_END,
+};
+
+/* body_b_id identifies a body, static segment, or box sensor according to type. */
+struct picosystem_physics_contact_event {
+	uint16_t body_a_id;
+	uint16_t body_b_id;
+	uint8_t type;
+	uint8_t phase;
+};
+
 /* Scratch contact state rebuilt on every update and excluded from authoritative hashes. */
 struct picosystem_physics_contact {
 	struct picosystem_physics_vector point;
@@ -344,6 +389,7 @@ struct picosystem_physics_contact {
 struct picosystem_physics_grid_cell {
 	uint16_t body_mask;
 	uint8_t static_segment_mask;
+	uint8_t box_sensor_mask;
 };
 
 struct picosystem_physics_world {
@@ -356,8 +402,15 @@ struct picosystem_physics_world {
 		revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
 	struct picosystem_physics_prismatic_joint
 		prismatic_joints[PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS];
+	struct picosystem_physics_box_sensor box_sensors[PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS];
 	struct picosystem_physics_contact contacts[PICOSYSTEM_PHYSICS_MAX_CONTACTS];
+	struct picosystem_physics_contact_event
+		contact_events[PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS];
 	struct picosystem_physics_grid_cell grid_cells[PICOSYSTEM_PHYSICS_GRID_CELL_COUNT];
+	/* Pair masks persist so the next step can classify begin/stay/end deterministically. */
+	uint16_t active_body_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	uint8_t active_segment_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	uint8_t active_sensor_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	/* Revisions change with every solver velocity mutation and are excluded from hashes. */
 	uint16_t solver_velocity_revisions[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	struct picosystem_physics_work_counters last_work;
@@ -369,7 +422,9 @@ struct picosystem_physics_world {
 	uint16_t distance_joint_count;
 	uint16_t revolute_joint_count;
 	uint16_t prismatic_joint_count;
+	uint16_t box_sensor_count;
 	uint16_t contact_count;
+	uint16_t contact_event_count;
 	uint16_t last_occupied_grid_cell_count;
 	uint8_t last_broad_phase_fallback;
 	uint8_t last_solver_iteration_count;
@@ -387,6 +442,9 @@ int picosystem_physics_world_add_box(struct picosystem_physics_world *world,
 int picosystem_physics_world_add_static_segment(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_segment_config *config);
+int picosystem_physics_world_add_box_sensor(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_box_sensor_config *config);
 int picosystem_physics_world_add_distance_joint(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_distance_joint_config *config);
@@ -421,6 +479,11 @@ int picosystem_physics_world_step_profiled(
 
 const struct picosystem_physics_body *
 picosystem_physics_world_body_at(const struct picosystem_physics_world *world, size_t index);
+
+/* Return one current-step pair event, or NULL for an invalid world/index. */
+const struct picosystem_physics_contact_event *
+picosystem_physics_world_contact_event_at(const struct picosystem_physics_world *world,
+					  size_t index);
 
 /* Resolve the current world-space endpoints of one distance joint. */
 int picosystem_physics_world_distance_joint_endpoints(

@@ -13,6 +13,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#if defined(CONFIG_TOY_FACTORY_CORE1_FULL_FRAME_RENDERER)
+/* Keep the inlined physics step off XIP while core 1 rasterizes from SRAM. */
+#define PICOSYSTEM_PHYSICS_RAMFUNC __attribute__((section(".ramfunc")))
+#else
+#define PICOSYSTEM_PHYSICS_RAMFUNC
+#endif
+
 #define PHYSICS_POSITION_LIMIT                    PICOSYSTEM_PHYSICS_FIXED_FROM_INT(1024)
 #define PHYSICS_VELOCITY_LIMIT                    PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
 #define PHYSICS_ACCELERATION_LIMIT                PICOSYSTEM_PHYSICS_FIXED_ONE
@@ -43,7 +50,7 @@
 #define PHYSICS_REVOLUTE_POSITION_TARGET          PICOSYSTEM_PHYSICS_FIXED_ONE
 #define PHYSICS_PRISMATIC_POSITION_TARGET         PICOSYSTEM_PHYSICS_FIXED_ONE
 #define PHYSICS_BOUNCE_THRESHOLD                  (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
-#define PHYSICS_HASH_VERSION                      UINT32_C(8)
+#define PHYSICS_HASH_VERSION                      UINT32_C(9)
 #define FNV1A_OFFSET_BASIS                        UINT32_C(2166136261)
 #define FNV1A_PRIME                               UINT32_C(16777619)
 #define STATIC_BODY_INDEX                         UINT8_MAX
@@ -77,6 +84,9 @@ _Static_assert(PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS <= UINT8_MAX,
 	       "revolute-joint indices must fit in one byte");
 _Static_assert(PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS <= UINT8_MAX,
 	       "prismatic-joint indices must fit in one byte");
+_Static_assert(PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS <= UINT8_MAX,
+	       "box-sensor indices must fit in one byte");
+_Static_assert(PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS <= 8U, "sensor occupancy must fit in uint8_t");
 _Static_assert(PICOSYSTEM_PHYSICS_GRID_COLUMNS <= UINT8_MAX,
 	       "grid columns must fit in a cell range");
 _Static_assert(PICOSYSTEM_PHYSICS_GRID_ROWS <= UINT8_MAX, "grid rows must fit in a cell range");
@@ -87,6 +97,8 @@ _Static_assert(PICOSYSTEM_PHYSICS_MAX_CONTACTS <= UINT16_MAX,
 _Static_assert(PICOSYSTEM_PHYSICS_MAX_CONTACTS >= (PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS *
 						   PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS),
 	       "contact storage must cover every brute-force manifold");
+_Static_assert(PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS <= UINT16_MAX,
+	       "contact-event count must fit in the public world field");
 _Static_assert(PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS <= UINT8_MAX,
 	       "solver iteration diagnostics must fit in uint8_t");
 _Static_assert(PHYSICS_MAX_SOLVER_VELOCITY_REVISIONS_PER_BODY <= UINT16_MAX,
@@ -118,6 +130,13 @@ struct physics_grid_range {
 struct physics_candidate_sets {
 	uint16_t body_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	uint8_t static_segment_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	uint8_t box_sensor_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+};
+
+struct physics_contact_pair_masks {
+	uint16_t body_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	uint8_t static_segment_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	uint8_t box_sensor_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 };
 
 struct contact_point_candidate {
@@ -561,6 +580,16 @@ static bool segment_config_is_valid(const struct picosystem_physics_segment_conf
 	return vector_length_squared_raw(&extent) >= minimum_length_squared;
 }
 
+static bool box_sensor_config_is_valid(const struct picosystem_physics_box_sensor_config *config)
+{
+	return (config != NULL) && (config->id != 0U) &&
+	       vector_is_bounded(&config->center, PHYSICS_POSITION_LIMIT) &&
+	       (config->half_extent.x >= PHYSICS_HALF_EXTENT_MINIMUM) &&
+	       (config->half_extent.x <= PHYSICS_HALF_EXTENT_LIMIT) &&
+	       (config->half_extent.y >= PHYSICS_HALF_EXTENT_MINIMUM) &&
+	       (config->half_extent.y <= PHYSICS_HALF_EXTENT_LIMIT);
+}
+
 static bool
 distance_joint_config_is_valid(const struct picosystem_physics_distance_joint_config *config)
 {
@@ -775,6 +804,16 @@ static bool segment_is_valid(const struct picosystem_physics_static_segment *seg
 		(PICOSYSTEM_PHYSICS_FIXED_ONE / 16));
 }
 
+static bool sensor_is_valid(const struct picosystem_physics_box_sensor *sensor)
+{
+	const struct picosystem_physics_box_sensor_config config = {
+		.center = sensor->center,
+		.half_extent = sensor->half_extent,
+		.id = sensor->id,
+	};
+	return box_sensor_config_is_valid(&config);
+}
+
 static bool body_local_anchor_is_valid(const struct picosystem_physics_body *body,
 				       const struct picosystem_physics_vector *anchor)
 {
@@ -903,8 +942,21 @@ static bool world_is_valid(const struct picosystem_physics_world *world)
 	    (world->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
 	    (world->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
 	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS) ||
-	    (world->contact_count > PICOSYSTEM_PHYSICS_MAX_CONTACTS)) {
+	    (world->box_sensor_count > PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS) ||
+	    (world->contact_count > PICOSYSTEM_PHYSICS_MAX_CONTACTS) ||
+	    (world->contact_event_count > PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS)) {
 		return false;
+	}
+
+	for (uint16_t sensor_index = 0U; sensor_index < world->box_sensor_count; ++sensor_index) {
+		if (!sensor_is_valid(&world->box_sensors[sensor_index])) {
+			return false;
+		}
+		for (uint16_t prior = 0U; prior < sensor_index; ++prior) {
+			if (world->box_sensors[prior].id == world->box_sensors[sensor_index].id) {
+				return false;
+			}
+		}
 	}
 
 	for (uint16_t body_index = 0U; body_index < world->body_count; ++body_index) {
@@ -964,6 +1016,34 @@ static bool world_is_valid(const struct picosystem_physics_world *world)
 			    world->prismatic_joints[joint_index].id) {
 				return false;
 			}
+		}
+	}
+
+	const uint16_t valid_body_mask =
+		(uint16_t)((UINT16_C(1) << world->body_count) - UINT16_C(1));
+	const uint8_t valid_segment_mask =
+		(uint8_t)((world->static_segment_count == 8U)
+				  ? UINT8_MAX
+				  : ((UINT16_C(1) << world->static_segment_count) - UINT16_C(1)));
+	const uint8_t valid_sensor_mask =
+		(uint8_t)((world->box_sensor_count == 8U)
+				  ? UINT8_MAX
+				  : ((UINT16_C(1) << world->box_sensor_count) - UINT16_C(1)));
+	for (uint16_t body_index = 0U; body_index < PICOSYSTEM_PHYSICS_MAX_BODIES; ++body_index) {
+		const uint16_t lower_body_mask =
+			(uint16_t)((UINT16_C(1) << (body_index + 1U)) - UINT16_C(1));
+		const bool configured_body = body_index < world->body_count;
+		if ((!configured_body &&
+		     ((world->active_body_contact_masks[body_index] != 0U) ||
+		      (world->active_segment_contact_masks[body_index] != 0U) ||
+		      (world->active_sensor_contact_masks[body_index] != 0U))) ||
+		    ((world->active_body_contact_masks[body_index] &
+		      (uint16_t)(~valid_body_mask | lower_body_mask)) != 0U) ||
+		    ((world->active_segment_contact_masks[body_index] &
+		      (uint8_t)~valid_segment_mask) != 0U) ||
+		    ((world->active_sensor_contact_masks[body_index] &
+		      (uint8_t)~valid_sensor_mask) != 0U)) {
+			return false;
 		}
 	}
 
@@ -2014,6 +2094,83 @@ static void segment_aabb(const struct picosystem_physics_static_segment *segment
 	};
 }
 
+static void sensor_aabb(const struct picosystem_physics_box_sensor *sensor,
+			struct physics_aabb *aabb)
+{
+	*aabb = (struct physics_aabb){
+		.minimum_x = sensor->center.x - sensor->half_extent.x,
+		.minimum_y = sensor->center.y - sensor->half_extent.y,
+		.maximum_x = sensor->center.x + sensor->half_extent.x,
+		.maximum_y = sensor->center.y + sensor->half_extent.y,
+	};
+}
+
+static bool circle_overlaps_sensor(const struct picosystem_physics_body *body,
+				   const struct picosystem_physics_box_sensor *sensor)
+{
+	const picosystem_physics_fixed_t delta_x =
+		fixed_absolute(body->center.x - sensor->center.x);
+	const picosystem_physics_fixed_t delta_y =
+		fixed_absolute(body->center.y - sensor->center.y);
+	const picosystem_physics_fixed_t outside_x =
+		fixed_maximum(delta_x - sensor->half_extent.x, 0);
+	const picosystem_physics_fixed_t outside_y =
+		fixed_maximum(delta_y - sensor->half_extent.y, 0);
+	const uint64_t distance_squared =
+		(uint64_t)(((int64_t)outside_x * outside_x) + ((int64_t)outside_y * outside_y));
+	const uint64_t radius_squared = (uint64_t)((int64_t)body->radius * body->radius);
+	return distance_squared < radius_squared;
+}
+
+static picosystem_physics_fixed_t
+sensor_projection_radius(const struct picosystem_physics_box_sensor *sensor,
+			 const struct picosystem_physics_vector *axis)
+{
+	return fixed_multiply(fixed_absolute(axis->x), sensor->half_extent.x) +
+	       fixed_multiply(fixed_absolute(axis->y), sensor->half_extent.y);
+}
+
+static bool box_overlaps_sensor(const struct picosystem_physics_body *body,
+				const struct box_geometry *geometry,
+				const struct picosystem_physics_box_sensor *sensor)
+{
+	const struct picosystem_physics_vector unit_x = {
+		.x = PICOSYSTEM_PHYSICS_FIXED_ONE,
+	};
+	const struct picosystem_physics_vector unit_y = {
+		.y = PICOSYSTEM_PHYSICS_FIXED_ONE,
+	};
+	const struct picosystem_physics_vector axes[] = {
+		unit_x,
+		unit_y,
+		geometry->axis_x,
+		geometry->axis_y,
+	};
+	const struct picosystem_physics_vector delta =
+		vector_subtract(&body->center, &sensor->center);
+	for (size_t index = 0U; index < (sizeof(axes) / sizeof(axes[0])); ++index) {
+		const picosystem_physics_fixed_t distance =
+			fixed_absolute(vector_dot(&delta, &axes[index]));
+		const picosystem_physics_fixed_t radius =
+			box_projection_radius(body, geometry, &axes[index]) +
+			sensor_projection_radius(sensor, &axes[index]);
+		if (distance >= radius) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool body_overlaps_sensor(const struct picosystem_physics_body *body,
+				 const struct box_geometry *geometry,
+				 const struct picosystem_physics_box_sensor *sensor)
+{
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
+		return circle_overlaps_sensor(body, sensor);
+	}
+	return box_overlaps_sensor(body, geometry, sensor);
+}
+
 static bool grid_range_from_aabb(const struct physics_aabb *aabb, struct physics_grid_range *range)
 {
 	if ((aabb->minimum_x < 0) || (aabb->minimum_y < 0) || (aabb->maximum_x < aabb->minimum_x) ||
@@ -2040,24 +2197,27 @@ static void clear_grid(struct picosystem_physics_world *world)
 
 static void occupy_grid_range(struct picosystem_physics_world *world,
 			      const struct physics_grid_range *range, uint16_t body_mask,
-			      uint8_t static_segment_mask)
+			      uint8_t static_segment_mask, uint8_t box_sensor_mask)
 {
 	for (uint16_t row = range->minimum_row; row <= range->maximum_row; ++row) {
 		for (uint16_t column = range->minimum_column; column <= range->maximum_column;
 		     ++column) {
 			const size_t index = (row * PICOSYSTEM_PHYSICS_GRID_COLUMNS) + column;
 			struct picosystem_physics_grid_cell *const cell = &world->grid_cells[index];
-			if ((cell->body_mask == 0U) && (cell->static_segment_mask == 0U)) {
+			if ((cell->body_mask == 0U) && (cell->static_segment_mask == 0U) &&
+			    (cell->box_sensor_mask == 0U)) {
 				++world->last_occupied_grid_cell_count;
 				++world->last_work.occupied_grid_cell_count;
 			}
 			cell->body_mask |= body_mask;
 			cell->static_segment_mask |= static_segment_mask;
+			cell->box_sensor_mask |= box_sensor_mask;
 			++world->last_work.grid_cell_insertion_count;
 			const uint32_t occupancy =
 				(uint32_t)__builtin_popcount((unsigned int)cell->body_mask) +
 				(uint32_t)__builtin_popcount(
-					(unsigned int)cell->static_segment_mask);
+					(unsigned int)cell->static_segment_mask) +
+				(uint32_t)__builtin_popcount((unsigned int)cell->box_sensor_mask);
 			if (occupancy > world->last_work.maximum_grid_cell_occupancy) {
 				world->last_work.maximum_grid_cell_occupancy = occupancy;
 			}
@@ -2083,6 +2243,7 @@ static void collect_grid_candidates(const struct picosystem_physics_world *world
 			candidates->body_masks[body_index] |=
 				cell->body_mask & (uint16_t)~through_current;
 			candidates->static_segment_masks[body_index] |= cell->static_segment_mask;
+			candidates->box_sensor_masks[body_index] |= cell->box_sensor_mask;
 		}
 	}
 }
@@ -2103,7 +2264,7 @@ build_grid_candidates(struct picosystem_physics_world *world,
 			clear_grid(world);
 			return false;
 		}
-		occupy_grid_range(world, &range, (uint16_t)(UINT16_C(1) << body_index), 0U);
+		occupy_grid_range(world, &range, (uint16_t)(UINT16_C(1) << body_index), 0U, 0U);
 	}
 
 	for (uint8_t segment_index = 0U; segment_index < world->static_segment_count;
@@ -2115,7 +2276,18 @@ build_grid_candidates(struct picosystem_physics_world *world,
 			clear_grid(world);
 			return false;
 		}
-		occupy_grid_range(world, &range, 0U, (uint8_t)(UINT8_C(1) << segment_index));
+		occupy_grid_range(world, &range, 0U, (uint8_t)(UINT8_C(1) << segment_index), 0U);
+	}
+
+	for (uint8_t sensor_index = 0U; sensor_index < world->box_sensor_count; ++sensor_index) {
+		struct physics_aabb aabb;
+		sensor_aabb(&world->box_sensors[sensor_index], &aabb);
+		struct physics_grid_range range;
+		if (!grid_range_from_aabb(&aabb, &range)) {
+			clear_grid(world);
+			return false;
+		}
+		occupy_grid_range(world, &range, 0U, 0U, (uint8_t)(UINT8_C(1) << sensor_index));
 	}
 
 	collect_grid_candidates(world, candidates);
@@ -2127,7 +2299,8 @@ static uint32_t possible_pair_count(const struct picosystem_physics_world *world
 	const uint32_t body_count = world->body_count;
 	const uint32_t body_pair_count =
 		(body_count < 2U) ? 0U : (body_count * (body_count - 1U)) / 2U;
-	return body_pair_count + (body_count * world->static_segment_count);
+	return body_pair_count + (body_count * world->static_segment_count) +
+	       (body_count * world->box_sensor_count);
 }
 
 static bool body_pair_collision_is_disabled(const struct picosystem_physics_world *world,
@@ -2164,10 +2337,109 @@ static bool body_pair_collision_is_disabled(const struct picosystem_physics_worl
 	return false;
 }
 
+static int append_contact_event(struct picosystem_physics_world *world, uint16_t body_a_id,
+				uint16_t body_b_id, uint8_t type, bool was_active, bool is_active)
+{
+	if (!was_active && !is_active) {
+		return 0;
+	}
+	if (world->contact_event_count >= PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS) {
+		return -EOVERFLOW;
+	}
+
+	uint8_t phase = PICOSYSTEM_PHYSICS_CONTACT_EVENT_STAY;
+	if (!was_active) {
+		phase = PICOSYSTEM_PHYSICS_CONTACT_EVENT_BEGIN;
+		++world->last_work.contact_begin_event_count;
+	} else if (!is_active) {
+		phase = PICOSYSTEM_PHYSICS_CONTACT_EVENT_END;
+		++world->last_work.contact_end_event_count;
+	} else {
+		++world->last_work.contact_stay_event_count;
+	}
+	if (is_active) {
+		++world->last_work.active_contact_pair_count;
+	}
+
+	world->contact_events[world->contact_event_count++] =
+		(struct picosystem_physics_contact_event){
+			.body_a_id = body_a_id,
+			.body_b_id = body_b_id,
+			.type = type,
+			.phase = phase,
+		};
+	return 0;
+}
+
+static int publish_contact_events(struct picosystem_physics_world *world,
+				  const struct physics_contact_pair_masks *current)
+{
+	world->contact_event_count = 0U;
+	for (uint8_t body_a = 0U; body_a < world->body_count; ++body_a) {
+		uint16_t body_mask =
+			world->active_body_contact_masks[body_a] | current->body_masks[body_a];
+		while (body_mask != 0U) {
+			const uint8_t body_b = (uint8_t)__builtin_ctz((unsigned int)body_mask);
+			const uint16_t mask = (uint16_t)(UINT16_C(1) << body_b);
+			const int err = append_contact_event(
+				world, world->bodies[body_a].id, world->bodies[body_b].id,
+				PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_BODY,
+				(world->active_body_contact_masks[body_a] & mask) != 0U,
+				(current->body_masks[body_a] & mask) != 0U);
+			if (err != 0) {
+				return err;
+			}
+			body_mask &= (uint16_t)(body_mask - UINT16_C(1));
+		}
+
+		uint8_t segment_mask = world->active_segment_contact_masks[body_a] |
+				       current->static_segment_masks[body_a];
+		while (segment_mask != 0U) {
+			const uint8_t segment = (uint8_t)__builtin_ctz((unsigned int)segment_mask);
+			const uint8_t mask = (uint8_t)(UINT8_C(1) << segment);
+			const int err = append_contact_event(
+				world, world->bodies[body_a].id, world->static_segments[segment].id,
+				PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_STATIC_SEGMENT,
+				(world->active_segment_contact_masks[body_a] & mask) != 0U,
+				(current->static_segment_masks[body_a] & mask) != 0U);
+			if (err != 0) {
+				return err;
+			}
+			segment_mask &= (uint8_t)(segment_mask - UINT8_C(1));
+		}
+
+		uint8_t sensor_mask = world->active_sensor_contact_masks[body_a] |
+				      current->box_sensor_masks[body_a];
+		while (sensor_mask != 0U) {
+			const uint8_t sensor = (uint8_t)__builtin_ctz((unsigned int)sensor_mask);
+			const uint8_t mask = (uint8_t)(UINT8_C(1) << sensor);
+			const int err = append_contact_event(
+				world, world->bodies[body_a].id, world->box_sensors[sensor].id,
+				PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_BOX_SENSOR,
+				(world->active_sensor_contact_masks[body_a] & mask) != 0U,
+				(current->box_sensor_masks[body_a] & mask) != 0U);
+			if (err != 0) {
+				return err;
+			}
+			sensor_mask &= (uint8_t)(sensor_mask - UINT8_C(1));
+		}
+	}
+
+	memcpy(world->active_body_contact_masks, current->body_masks,
+	       sizeof(world->active_body_contact_masks));
+	memcpy(world->active_segment_contact_masks, current->static_segment_masks,
+	       sizeof(world->active_segment_contact_masks));
+	memcpy(world->active_sensor_contact_masks, current->box_sensor_masks,
+	       sizeof(world->active_sensor_contact_masks));
+	return 0;
+}
+
 static int build_contacts(struct picosystem_physics_world *world, bool force_brute_force,
-			  struct physics_step_profiler *profiler)
+			  struct physics_step_profiler *profiler,
+			  struct physics_contact_pair_masks *contact_pairs)
 {
 	world->contact_count = 0U;
+	memset(contact_pairs, 0, sizeof(*contact_pairs));
 	world->last_candidate_pair_count = 0U;
 	world->last_possible_pair_count = possible_pair_count(world);
 	world->last_work.possible_pair_count = world->last_possible_pair_count;
@@ -2216,6 +2488,7 @@ static int build_contacts(struct picosystem_physics_world *world, bool force_bru
 				return err;
 			}
 			if (world->contact_count > previous_contact_count) {
+				contact_pairs->body_masks[body_a] |= body_b_mask;
 				++world->last_work.manifold_count;
 			}
 		}
@@ -2242,10 +2515,30 @@ static int build_contacts(struct picosystem_physics_world *world, bool force_bru
 				return err;
 			}
 			if (world->contact_count > previous_contact_count) {
+				contact_pairs->static_segment_masks[body_a] |= segment_mask;
 				++world->last_work.manifold_count;
 			}
 		}
 		profiler_section_end(profiler, PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_SEGMENT,
+				     section_start);
+
+		section_start = profiler_section_begin(profiler);
+		for (uint8_t sensor = 0U; sensor < world->box_sensor_count; ++sensor) {
+			const uint8_t sensor_mask = (uint8_t)(UINT8_C(1) << sensor);
+			if (!use_brute_force &&
+			    ((candidates.box_sensor_masks[body_a] & sensor_mask) == 0U)) {
+				continue;
+			}
+			++world->last_candidate_pair_count;
+			++world->last_work.candidate_pair_count;
+			++world->last_work.body_sensor_narrow_phase_test_count;
+			if (body_overlaps_sensor(&world->bodies[body_a], &geometries[body_a],
+						 &world->box_sensors[sensor])) {
+				contact_pairs->box_sensor_masks[body_a] |= sensor_mask;
+				++world->last_work.sensor_overlap_count;
+			}
+		}
+		profiler_section_end(profiler, PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_SENSOR,
 				     section_start);
 	}
 	world->last_work.contact_point_count = world->contact_count;
@@ -3375,6 +3668,34 @@ int picosystem_physics_world_add_static_segment(
 	return 0;
 }
 
+int picosystem_physics_world_add_box_sensor(
+	struct picosystem_physics_world *world,
+	const struct picosystem_physics_box_sensor_config *config)
+{
+	if ((world == NULL) || (config == NULL)) {
+		return -EINVAL;
+	}
+	if (!world_is_valid(world) || !box_sensor_config_is_valid(config)) {
+		return -ERANGE;
+	}
+	if (world->box_sensor_count >= PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS) {
+		return -ENOSPC;
+	}
+	for (uint16_t index = 0U; index < world->box_sensor_count; ++index) {
+		if (world->box_sensors[index].id == config->id) {
+			return -EEXIST;
+		}
+	}
+
+	world->box_sensors[world->box_sensor_count] = (struct picosystem_physics_box_sensor){
+		.center = config->center,
+		.half_extent = config->half_extent,
+		.id = config->id,
+	};
+	++world->box_sensor_count;
+	return 0;
+}
+
 int picosystem_physics_world_add_distance_joint(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_distance_joint_config *config)
@@ -3580,10 +3901,11 @@ int picosystem_physics_world_set_prismatic_motor_speed(
 	return 0;
 }
 
-static int physics_world_step(struct picosystem_physics_world *world,
-			      const struct picosystem_physics_vector *global_acceleration_per_tick,
-			      bool force_brute_force, const struct picosystem_physics_clock *clock,
-			      struct picosystem_physics_step_profile *profile)
+static PICOSYSTEM_PHYSICS_RAMFUNC int
+physics_world_step(struct picosystem_physics_world *world,
+		   const struct picosystem_physics_vector *global_acceleration_per_tick,
+		   bool force_brute_force, const struct picosystem_physics_clock *clock,
+		   struct picosystem_physics_step_profile *profile)
 {
 	if ((world == NULL) || (global_acceleration_per_tick == NULL)) {
 		return -EINVAL;
@@ -3625,7 +3947,8 @@ static int physics_world_step(struct picosystem_physics_world *world,
 	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_FORCE_AND_INTEGRATE,
 			     section_start);
 
-	int err = build_contacts(world, force_brute_force, &profiler);
+	struct physics_contact_pair_masks contact_pairs;
+	int err = build_contacts(world, force_brute_force, &profiler, &contact_pairs);
 	if (err != 0) {
 		return err;
 	}
@@ -3736,6 +4059,11 @@ static int physics_world_step(struct picosystem_physics_world *world,
 		clamp_body_angular_speed(&world->bodies[index]);
 	}
 	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_FINAL_CLAMP, section_start);
+
+	err = publish_contact_events(world, &contact_pairs);
+	if (err != 0) {
+		return err;
+	}
 	if (profile != NULL) {
 		profile->work = world->last_work;
 	}
@@ -3780,6 +4108,18 @@ picosystem_physics_world_body_at(const struct picosystem_physics_world *world, s
 		return NULL;
 	}
 	return &world->bodies[index];
+}
+
+const struct picosystem_physics_contact_event *
+picosystem_physics_world_contact_event_at(const struct picosystem_physics_world *world,
+					  size_t index)
+{
+	if ((world == NULL) ||
+	    (world->contact_event_count > PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS) ||
+	    (index >= world->contact_event_count)) {
+		return NULL;
+	}
+	return &world->contact_events[index];
 }
 
 int picosystem_physics_world_distance_joint_endpoints(
@@ -3957,7 +4297,8 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 	    (world->static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||
 	    (world->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
 	    (world->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
-	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS)) {
+	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS) ||
+	    (world->box_sensor_count > PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS)) {
 		return 0U;
 	}
 
@@ -3968,6 +4309,7 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 	hash = fnv1a_u32(hash, world->distance_joint_count);
 	hash = fnv1a_u32(hash, world->revolute_joint_count);
 	hash = fnv1a_u32(hash, world->prismatic_joint_count);
+	hash = fnv1a_u32(hash, world->box_sensor_count);
 	for (uint16_t index = 0U; index < world->body_count; ++index) {
 		const struct picosystem_physics_body *const body = &world->bodies[index];
 		hash = fnv1a_u32(hash, body->id);
@@ -3998,6 +4340,15 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 		hash = fnv1a_u32(hash, (uint32_t)segment->normal.y);
 		hash = fnv1a_u32(hash, (uint32_t)segment->restitution);
 		hash = fnv1a_u32(hash, (uint32_t)segment->friction);
+	}
+	for (uint16_t index = 0U; index < world->box_sensor_count; ++index) {
+		const struct picosystem_physics_box_sensor *const sensor =
+			&world->box_sensors[index];
+		hash = fnv1a_u32(hash, sensor->id);
+		hash = fnv1a_u32(hash, (uint32_t)sensor->center.x);
+		hash = fnv1a_u32(hash, (uint32_t)sensor->center.y);
+		hash = fnv1a_u32(hash, (uint32_t)sensor->half_extent.x);
+		hash = fnv1a_u32(hash, (uint32_t)sensor->half_extent.y);
 	}
 	for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
 		const struct picosystem_physics_distance_joint *const joint =
@@ -4057,6 +4408,11 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 		hash = fnv1a_u32(hash, (uint32_t)joint->upper_translation);
 		hash = fnv1a_u32(hash, (uint32_t)joint->reference_translation);
 		hash = fnv1a_u32(hash, joint->reference_angle_turns);
+	}
+	for (uint16_t index = 0U; index < world->body_count; ++index) {
+		hash = fnv1a_u32(hash, world->active_body_contact_masks[index]);
+		hash = fnv1a_u32(hash, world->active_segment_contact_masks[index]);
+		hash = fnv1a_u32(hash, world->active_sensor_contact_masks[index]);
 	}
 	return hash;
 }
