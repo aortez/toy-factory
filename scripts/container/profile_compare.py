@@ -78,6 +78,14 @@ SCHEMA_7_WORK_NAMES = SCHEMA_6_WORK_NAMES | {
     "contact_stay_events",
     "contact_end_events",
 }
+SCHEMA_8_WORK_NAMES = SCHEMA_7_WORK_NAMES | {
+    "awake_bodies",
+    "sleeping_bodies",
+    "body_sleep_transitions",
+    "body_wake_transitions",
+    "sleeping_contacts",
+    "sleeping_joints",
+}
 WORK_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_WORK_NAMES,
     3: SCHEMA_3_WORK_NAMES,
@@ -85,6 +93,7 @@ WORK_NAMES_BY_SCHEMA = {
     5: SCHEMA_5_WORK_NAMES,
     6: SCHEMA_6_WORK_NAMES,
     7: SCHEMA_7_WORK_NAMES,
+    8: SCHEMA_8_WORK_NAMES,
 }
 STAGE_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_STAGE_NAMES,
@@ -93,6 +102,7 @@ STAGE_NAMES_BY_SCHEMA = {
     5: SCHEMA_2_STAGE_NAMES,
     6: SCHEMA_2_STAGE_NAMES,
     7: SCHEMA_7_STAGE_NAMES,
+    8: SCHEMA_7_STAGE_NAMES,
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 
@@ -179,9 +189,9 @@ def parse_profile(output: str) -> dict[str, object]:
         raise ProfileError("ticks must be positive")
     fixture = begin.get("fixture", "canonical")
     chain_link_count = parse_unsigned(begin.get("chain_links", "0"), "chain_links")
-    if fixture == "canonical":
+    if fixture in {"canonical", "canonical_neutral"}:
         if chain_link_count != 0:
-            raise ProfileError("canonical fixture must report zero chain links")
+            raise ProfileError(f"{fixture} fixture must report zero chain links")
     elif fixture == "revolute_chain":
         if not 1 <= chain_link_count <= 8:
             raise ProfileError("revolute-chain fixture must report 1-8 links")
@@ -529,9 +539,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("port", help="USB CDC ACM device")
     parser.add_argument("output", type=Path, help="versioned JSON artifact path")
     parser.add_argument("--ticks", type=int, default=2000, help="measured ticks per mode")
-    parser.add_argument(
+    fixture_group = parser.add_mutually_exclusive_group()
+    fixture_group.add_argument(
         "--chain-links",
         help="profile comma-separated revolute-chain link counts instead of the canonical world",
+    )
+    fixture_group.add_argument(
+        "--neutral",
+        action="store_true",
+        help="profile the canonical world settling under neutral input",
     )
     parser.add_argument("--owner-uid", type=int, help="set artifact owner UID")
     parser.add_argument("--owner-gid", type=int, help="set artifact owner GID")
@@ -582,6 +598,13 @@ def main() -> int:
                             )
                         cases[str(link_count)] = case
                     result = chain_scaling_result(link_counts, args.ticks, cases)
+                elif args.neutral:
+                    output = session.run(
+                        f"picosystem profile sleep {args.ticks}", timeout_seconds=120.0
+                    )
+                    result = parse_profile(output)
+                    if result["fixture"] != "canonical_neutral":
+                        raise ProfileError("device returned a non-neutral fixture")
                 else:
                     output = session.run(
                         f"picosystem profile compare {args.ticks}", timeout_seconds=120.0

@@ -63,6 +63,12 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 	    (snapshot->box_sensor_count > PICOSYSTEM_SCENE_MAX_BOX_SENSORS)) {
 		return -ERANGE;
 	}
+	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
+		if ((snapshot->bodies[index].shape > PICOSYSTEM_PHYSICS_SHAPE_BOX) ||
+		    (snapshot->bodies[index].sleeping > 1U)) {
+			return -ERANGE;
+		}
+	}
 	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
 		const struct picosystem_rect *const bounds = &snapshot->box_sensors[index].bounds;
 		if ((bounds->width == 0U) || (bounds->height == 0U) ||
@@ -262,7 +268,11 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_body(const struct picosystem_scene_b
 						 const struct picosystem_rect *clip,
 						 struct picosystem_scene_render_progress *progress)
 {
-	const picosystem_color_t color = body_colors[(body->id - 1U) % ARRAY_SIZE(body_colors)];
+	const picosystem_color_t color =
+		(body->sleeping != 0U) ? PICOSYSTEM_COLOR_BLUE
+				       : body_colors[(body->id - 1U) % ARRAY_SIZE(body_colors)];
+	const picosystem_color_t detail_color =
+		(body->sleeping != 0U) ? PICOSYSTEM_COLOR_WHITE : PICOSYSTEM_COLOR_BLACK;
 	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, body_index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_FILL_0);
@@ -280,15 +290,14 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_body(const struct picosystem_scene_b
 			const size_t next = (index + 1U) % PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT;
 			picosystem_graphics_draw_line_clipped(
 				clip, body->vertices[index].x, body->vertices[index].y,
-				body->vertices[next].x, body->vertices[next].y,
-				PICOSYSTEM_COLOR_BLACK);
+				body->vertices[next].x, body->vertices[next].y, detail_color);
 		}
 		const int16_t face_x = (body->vertices[1].x + body->vertices[2].x) / 2;
 		const int16_t face_y = (body->vertices[1].y + body->vertices[2].y) / 2;
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, body_index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_FACE);
 		picosystem_graphics_draw_line_clipped(clip, body->center_x, body->center_y, face_x,
-						      face_y, PICOSYSTEM_COLOR_BLACK);
+						      face_y, detail_color);
 		return 0;
 	}
 

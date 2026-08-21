@@ -89,6 +89,12 @@ struct picosystem_game_demo_stats {
 	uint32_t solver_contact_visit_count;
 	uint32_t solver_cached_contact_count;
 	uint32_t solver_changed_contact_count;
+	uint32_t awake_body_count;
+	uint32_t sleeping_body_count;
+	uint32_t body_sleep_transition_count;
+	uint32_t body_wake_transition_count;
+	uint32_t sleeping_contact_count;
+	uint32_t sleeping_joint_count;
 	uint32_t focus_angle_turns;
 	int32_t focus_angular_velocity_milliradians_per_second;
 	uint16_t body_count;
@@ -109,6 +115,7 @@ struct picosystem_game_demo_stats {
 	int16_t focus_velocity_y_pixels_per_second;
 	uint8_t focus_shape;
 	uint8_t solver_iteration_count;
+	bool focus_sleeping;
 	bool broad_phase_fallback;
 	int64_t start_uptime_ms;
 	int render_error;

@@ -24,6 +24,8 @@ path:
   with a powered three-link chain and reciprocating press in the canonical lab;
 - detects exact circle/box overlap against bounded fixed box sensors and emits
   deterministic pair-level `BEGIN`, `STAY`, and `END` contact events;
+- deterministically sleeps whole contact/joint islands after 0.5 seconds of
+  quiet, wakes them through physical interaction, and leaves sensors observational;
 - publishes fixed-size state snapshots to an independent renderer;
 - launches a bounded bare-metal worker on RP2040 core 1 for deterministic
   full-scene rasterization while Zephyr, physics, USB, and display drivers stay
@@ -79,6 +81,8 @@ make sim-reset  # restore canonical tick-zero state while paused
 make sim-step STEPS=1  # advance a paused simulation by exact 1/120-second ticks
 make sim-test  # run the default deterministic hardware sequence
 make screenshot  # save the renderer-owned software framebuffer as a PNG
+make profile-ab  # compare the moving canonical world through grid/reference paths
+make profile-sleep  # profile the canonical world settling under neutral input
 make profile-chain  # benchmark deterministic 4/6/8-link chain scaling
 ```
 
@@ -241,6 +245,7 @@ picosystem game input physical|none|up|down|left|right|up-left|up-right|down-lef
 picosystem game state
 picosystem game run
 picosystem profile compare [ticks]
+picosystem profile sleep [ticks]
 picosystem profile chain <links> [ticks]
 picosystem reboot bootloader
 ```
@@ -276,25 +281,28 @@ published/presented snapshot sequence, and a deterministic hash that excludes
 clocks and performance counters.
 
 `profile compare` requires a paused simulation and runs a separate canonical
-world, leaving the live world untouched. `profile chain` instead builds a
+world, leaving the live world untouched. `profile sleep` uses that world with
+neutral input so stable bodies can settle. `profile chain` instead builds a
 bounded deterministic fixture containing 1-8 short links joined to a world pin.
-Both commands warm up each implementation for 120 ticks, measure the requested
-replay through the uniform grid and the brute-force reference, and reject any
-final hash or field-by-field state mismatch. Timings are accumulated in
+All three commands warm up each implementation for 120 ticks, measure the
+requested replay through the uniform grid and the brute-force reference, and
+reject any final hash or field-by-field state mismatch. Timings are accumulated in
 fixed-size histograms instead of being logged per tick. The report separates
 integration, geometry, broad phase, body/body, body/segment, and body/sensor narrow phase,
 position correction, velocity solving, final clamping, unattributed
 validation/instrumentation work, and the total. Deterministic counters report
 candidate filtering, grid population, manifolds, contact points and pair events,
 sensor tests/overlaps, connected-body
-collision filters, distance/revolute/prismatic joint, motor, and limit counts, separate
-anchor/limit correction, cached/changed contact work, velocity-row visits, and
-fallbacks. Schema version
-7 identifies the fixture and reports maximum revolute-anchor separation,
+collision filters, distance/revolute/prismatic joint, motor, and limit counts,
+awake/sleeping bodies, sleep/wake transitions, skipped sleeping constraints,
+separate anchor/limit correction, cached/changed contact work, velocity-row
+visits, and fallbacks. Schema version
+8 identifies the fixture and reports maximum revolute-anchor separation,
 angular-limit violation, prismatic lateral/angular error, and prismatic-limit
 violation; those quality checks run outside the timed physics step.
 
-`make profile-ab` handles pause/resume around the canonical command.
+`make profile-ab` and `make profile-sleep` handle pause/resume around the two
+canonical commands.
 `make profile-chain` keeps one USB session open while running the requested
 comma-separated link counts, prints a scaling table, and writes one aggregate
 JSON artifact. Both restore the original running/paused mode even after a
@@ -347,7 +355,7 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "e82a9f5c",
+    "hash": "2a43f4e8",
     "framebuffer_crc32": "dd67545b"
   }
 }
@@ -357,6 +365,14 @@ Run another file with:
 
 ```sh
 make sim-test SEQUENCE=path/to/sequence.json
+```
+
+The committed `scripts/sequences/sleep-smoke.json` drives the canonical world to
+its first sleeping body and asserts both the authoritative hash and blue/white
+framebuffer:
+
+```sh
+make sim-test SEQUENCE=scripts/sequences/sleep-smoke.json
 ```
 
 The runner holds one exclusive USB connection, pauses and canonically resets
@@ -485,29 +501,40 @@ serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The default image uses 214,908 bytes of its 255 KiB Zephyr RAM region (82.30%)
-and 193,336 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 215,276 bytes of its 255 KiB Zephyr RAM region (82.44%)
+and 196,328 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer,
-21,804-byte fixed-capacity physics world with a 1,024-byte scratch grid and eight
+21,864-byte fixed-capacity physics world with a 1,024-byte scratch grid and eight
 slots each for distance, motor/limit-capable revolute, and motor/limit-capable
 prismatic joints and box sensors, plus bounded contact-event storage, per-step
-deterministic counters, a 31,208-byte serialized benchmark workspace, two
+deterministic counters, a 31,304-byte serialized benchmark workspace, two
 744-byte render snapshots, a 5,120-byte shell stack, a
 4,096-byte renderer stack,
 display-profile result storage, and a 1,024-byte shell TX ring. The fast image
-uses 238,532 bytes of that region (91.35%) and 198,560 bytes of flash. It keeps
-the 16,480-byte inlined physics step and 5,376 bytes of raster code in SRAM so
+uses 239,220 bytes of that region (91.61%) and 201,876 bytes of flash. It keeps
+the 16,576-byte inlined physics step and 5,376 bytes of raster code in SRAM so
 the two cores do not contend for XIP flash during a frame. Both images also reserve
 8 KiB outside Zephyr's region for the core-1 mailbox and stack. The fast image
-retains 22,588 bytes of Zephyr RAM headroom. Full frames bypass the staging
+retains 21,900 bytes of Zephyr RAM headroom. Full frames bypass the staging
 buffer with one contiguous write.
 
-On the tested PIM559, the recommended fast sensor/contact-event image completed
+On the tested PIM559, the schema-version-8 moving profile averaged 2.792 ms on
+the grid and 3.117 ms through the brute-force reference, with zero budget
+violations and exact final state agreement at `46020daa`. Its changing input
+kept all seven bodies awake. The separate 2,000-tick neutral profile recorded
+one sleep and one wake transition, one sleeping body for 664 sampled body-ticks,
+and 663 sleeping contacts skipped by the solver. Grid/reference state agreed
+exactly at `ea65ce22`; their means were 3.456 and 3.787 ms respectively. This is
+a settled-contact workload, not a direct timing comparison with the moving
+fixture. The exact device sleep sequence reached tick 1,228 at hash `5e0274dc`
+and framebuffer CRC-32 `b78934e6`, with the sleeping body rendered blue/white.
+
+On the tested PIM559, the preceding fast sensor/contact-event image completed
 a clean 4,978-tick window at 120.0 Hz while presenting 1,235 frames at 29.8 fps.
 It recorded zero skipped ticks, a three-tick worst backlog, and four updates
 over the 8.333 ms budget. Mean/maximum complete update time was 5.046/20.427 ms;
 physics alone was 4.356/19.664 ms and snapshot publication was 0.689/5.402 ms.
-The exact device sequence reproduced tick 45 at hash `e82a9f5c` and framebuffer
+The exact device sequence reproduced tick 45 at hash `2a43f4e8` and framebuffer
 CRC-32 `dd67545b`. A paused hardware check rendered the same live scene on both
 cores with matching pixels in 9.728 ms and restored the original framebuffer.
 
@@ -646,17 +673,18 @@ budget. A longer 14,416-tick live window held 120.0 Hz simulation and 29.8 fps
 presentation, with one isolated skipped tick amid USB profiling and status
 activity.
 
-The current powered Machine Lab hashes to `e631a02b` at reset, `94f6dc64` after
-30 right ticks, and `e82a9f5c` after a further 15 up ticks. The exact tick-45
-frame is CRC-32 `dd67545b`; the 10,000-tick native replay ends at `146c4a5e`.
-Its schema-version-7 PIM559 profile averaged 2.723 ms on the grid and 2.998 ms
+The current sleeping Machine Lab hashes to `765185a2` at reset, `4a1dd4fa` after
+30 right ticks, and `2a43f4e8` after a further 15 up ticks. The exact tick-45
+frame is CRC-32 `dd67545b`; the 10,000-tick native replay ends at `52844673`.
+Its schema-version-8 PIM559 profile averaged 2.792 ms on the grid and 3.117 ms
 through the brute-force reference, with zero budget violations and exact final
-state agreement at `1d58dedd`. Grid filtering retained 8.017 of 70 possible
+state agreement at `46020daa`. Grid filtering retained 8.017 of 70 possible
 pairs and only 0.685 of seven possible body/sensor tests per tick. The replay
 produced 182 `BEGIN`, 523 `STAY`, and 182 `END` events in each mode. Maximum
 revolute-anchor, angular-limit, prismatic-lateral, prismatic-angular, and
 travel-limit errors were 0.814 pixels, 0.0418 radian, 0.0885 pixels, 0.00461
-radian, and 0.0651 pixels.
+radian, and 0.0651 pixels. A separate neutral fixture exercised one sleep and
+one wake transition and ended with exact grid/reference agreement at `ea65ce22`.
 
 The preceding motor-and-limit image gives the world pin a bounded 1/96-radian
 per-tick target and limits the final hinge to plus or minus one radian from its

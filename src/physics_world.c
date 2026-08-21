@@ -50,7 +50,9 @@
 #define PHYSICS_REVOLUTE_POSITION_TARGET          PICOSYSTEM_PHYSICS_FIXED_ONE
 #define PHYSICS_PRISMATIC_POSITION_TARGET         PICOSYSTEM_PHYSICS_FIXED_ONE
 #define PHYSICS_BOUNCE_THRESHOLD                  (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
-#define PHYSICS_HASH_VERSION                      UINT32_C(9)
+#define PHYSICS_SLEEP_LINEAR_VELOCITY_THRESHOLD   (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
+#define PHYSICS_SLEEP_ANGULAR_VELOCITY_THRESHOLD  (PICOSYSTEM_PHYSICS_FIXED_ONE / 512)
+#define PHYSICS_HASH_VERSION                      UINT32_C(10)
 #define FNV1A_OFFSET_BASIS                        UINT32_C(2166136261)
 #define FNV1A_PRIME                               UINT32_C(16777619)
 #define STATIC_BODY_INDEX                         UINT8_MAX
@@ -107,6 +109,8 @@ _Static_assert(PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS <= UINT8_MAX,
 	       "position iterations must fit in uint8_t");
 _Static_assert(PICOSYSTEM_PHYSICS_PRISMATIC_POSITION_ITERATIONS <= UINT8_MAX,
 	       "prismatic position iterations must fit in uint8_t");
+_Static_assert(PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS <= UINT16_MAX,
+	       "sleep quiet ticks must fit in uint16_t");
 
 struct box_geometry {
 	struct picosystem_physics_vector axis_x;
@@ -137,6 +141,11 @@ struct physics_contact_pair_masks {
 	uint16_t body_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	uint8_t static_segment_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	uint8_t box_sensor_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+};
+
+struct physics_sleep_graph {
+	uint16_t neighbor_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	uint16_t motor_body_mask;
 };
 
 struct contact_point_candidate {
@@ -944,7 +953,9 @@ static bool world_is_valid(const struct picosystem_physics_world *world)
 	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS) ||
 	    (world->box_sensor_count > PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS) ||
 	    (world->contact_count > PICOSYSTEM_PHYSICS_MAX_CONTACTS) ||
-	    (world->contact_event_count > PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS)) {
+	    (world->contact_event_count > PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS) ||
+	    !vector_is_bounded(&world->last_global_acceleration_per_tick,
+			       PHYSICS_ACCELERATION_LIMIT)) {
 		return false;
 	}
 
@@ -1021,6 +1032,9 @@ static bool world_is_valid(const struct picosystem_physics_world *world)
 
 	const uint16_t valid_body_mask =
 		(uint16_t)((UINT16_C(1) << world->body_count) - UINT16_C(1));
+	if ((world->sleeping_body_mask & (uint16_t)~valid_body_mask) != 0U) {
+		return false;
+	}
 	const uint8_t valid_segment_mask =
 		(uint8_t)((world->static_segment_count == 8U)
 				  ? UINT8_MAX
@@ -1033,10 +1047,20 @@ static bool world_is_valid(const struct picosystem_physics_world *world)
 		const uint16_t lower_body_mask =
 			(uint16_t)((UINT16_C(1) << (body_index + 1U)) - UINT16_C(1));
 		const bool configured_body = body_index < world->body_count;
-		if ((!configured_body &&
-		     ((world->active_body_contact_masks[body_index] != 0U) ||
-		      (world->active_segment_contact_masks[body_index] != 0U) ||
-		      (world->active_sensor_contact_masks[body_index] != 0U))) ||
+		const bool sleeping =
+			(world->sleeping_body_mask & (uint16_t)(UINT16_C(1) << body_index)) != 0U;
+		const uint16_t quiet_ticks = world->sleep_quiet_tick_counts[body_index];
+		if ((!configured_body && ((world->active_body_contact_masks[body_index] != 0U) ||
+					  (world->active_segment_contact_masks[body_index] != 0U) ||
+					  (world->active_sensor_contact_masks[body_index] != 0U) ||
+					  (quiet_ticks != 0U))) ||
+		    (quiet_ticks > PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS) ||
+		    (sleeping && ((quiet_ticks != PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS) ||
+				  (world->bodies[body_index].velocity_per_tick.x != 0) ||
+				  (world->bodies[body_index].velocity_per_tick.y != 0) ||
+				  (world->bodies[body_index].angular_velocity_per_tick != 0))) ||
+		    (!sleeping && configured_body &&
+		     (quiet_ticks == PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS)) ||
 		    ((world->active_body_contact_masks[body_index] &
 		      (uint16_t)(~valid_body_mask | lower_body_mask)) != 0U) ||
 		    ((world->active_segment_contact_masks[body_index] &
@@ -1048,6 +1072,253 @@ static bool world_is_valid(const struct picosystem_physics_world *world)
 	}
 
 	return true;
+}
+
+static uint16_t body_mask_for_index(uint8_t body_index)
+{
+	return (uint16_t)(UINT16_C(1) << body_index);
+}
+
+static uint16_t configured_body_mask(const struct picosystem_physics_world *world)
+{
+	return (uint16_t)((UINT16_C(1) << world->body_count) - UINT16_C(1));
+}
+
+static bool body_index_is_sleeping(const struct picosystem_physics_world *world, uint8_t body_index)
+{
+	return (world->sleeping_body_mask & body_mask_for_index(body_index)) != 0U;
+}
+
+static bool dynamic_pair_is_sleeping(const struct picosystem_physics_world *world,
+				     uint8_t body_a_index, uint16_t body_b_id, uint8_t body_b_index)
+{
+	return body_index_is_sleeping(world, body_a_index) &&
+	       ((body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) ||
+		body_index_is_sleeping(world, body_b_index));
+}
+
+static bool contact_is_sleeping(const struct picosystem_physics_world *world,
+				const struct picosystem_physics_contact *contact)
+{
+	const uint16_t body_b_id = (contact->type == PICOSYSTEM_PHYSICS_CONTACT_BODY)
+					   ? world->bodies[contact->body_b_index].id
+					   : PICOSYSTEM_PHYSICS_WORLD_BODY_ID;
+	return dynamic_pair_is_sleeping(world, contact->body_a_index, body_b_id,
+					contact->body_b_index);
+}
+
+static bool distance_joint_is_sleeping(const struct picosystem_physics_world *world,
+				       const struct picosystem_physics_distance_joint *joint)
+{
+	return dynamic_pair_is_sleeping(world, joint->body_a_index, joint->body_b_id,
+					joint->body_b_index);
+}
+
+static bool revolute_joint_is_sleeping(const struct picosystem_physics_world *world,
+				       const struct picosystem_physics_revolute_joint *joint)
+{
+	return dynamic_pair_is_sleeping(world, joint->body_a_index, joint->body_b_id,
+					joint->body_b_index);
+}
+
+static bool prismatic_joint_is_sleeping(const struct picosystem_physics_world *world,
+					const struct picosystem_physics_prismatic_joint *joint)
+{
+	return dynamic_pair_is_sleeping(world, joint->body_a_index, joint->body_b_id,
+					joint->body_b_index);
+}
+
+static void sleep_graph_add_edge(struct physics_sleep_graph *graph, uint8_t body_a_index,
+				 uint8_t body_b_index)
+{
+	graph->neighbor_masks[body_a_index] |= body_mask_for_index(body_b_index);
+	graph->neighbor_masks[body_b_index] |= body_mask_for_index(body_a_index);
+}
+
+static void sleep_graph_add_joint(struct physics_sleep_graph *graph, uint8_t body_a_index,
+				  uint16_t body_b_id, uint8_t body_b_index)
+{
+	if (body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		sleep_graph_add_edge(graph, body_a_index, body_b_index);
+	}
+}
+
+static void build_sleep_graph(const struct picosystem_physics_world *world,
+			      const struct physics_contact_pair_masks *contact_pairs,
+			      struct physics_sleep_graph *graph)
+{
+	memset(graph, 0, sizeof(*graph));
+	for (uint8_t body_a = 0U; body_a < world->body_count; ++body_a) {
+		uint16_t body_mask = contact_pairs->body_masks[body_a];
+		while (body_mask != 0U) {
+			const uint8_t body_b = (uint8_t)__builtin_ctz((unsigned int)body_mask);
+			sleep_graph_add_edge(graph, body_a, body_b);
+			body_mask &= (uint16_t)(body_mask - UINT16_C(1));
+		}
+	}
+
+	for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
+		const struct picosystem_physics_distance_joint *const joint =
+			&world->distance_joints[index];
+		sleep_graph_add_joint(graph, joint->body_a_index, joint->body_b_id,
+				      joint->body_b_index);
+	}
+	for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
+		const struct picosystem_physics_revolute_joint *const joint =
+			&world->revolute_joints[index];
+		sleep_graph_add_joint(graph, joint->body_a_index, joint->body_b_id,
+				      joint->body_b_index);
+		if (joint->motor_enabled != 0U) {
+			graph->motor_body_mask |= body_mask_for_index(joint->body_a_index);
+			if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+				graph->motor_body_mask |= body_mask_for_index(joint->body_b_index);
+			}
+		}
+	}
+	for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
+		const struct picosystem_physics_prismatic_joint *const joint =
+			&world->prismatic_joints[index];
+		sleep_graph_add_joint(graph, joint->body_a_index, joint->body_b_id,
+				      joint->body_b_index);
+		if (joint->motor_enabled != 0U) {
+			graph->motor_body_mask |= body_mask_for_index(joint->body_a_index);
+			if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+				graph->motor_body_mask |= body_mask_for_index(joint->body_b_index);
+			}
+		}
+	}
+}
+
+static uint16_t sleep_graph_expand_mask(const struct physics_sleep_graph *graph, uint16_t body_mask)
+{
+	uint16_t expanded = body_mask;
+	for (;;) {
+		uint16_t neighbors = 0U;
+		uint16_t remaining = expanded;
+		while (remaining != 0U) {
+			const uint8_t body_index = (uint8_t)__builtin_ctz((unsigned int)remaining);
+			neighbors |= graph->neighbor_masks[body_index];
+			remaining &= (uint16_t)(remaining - UINT16_C(1));
+		}
+		const uint16_t next = expanded | neighbors;
+		if (next == expanded) {
+			return expanded;
+		}
+		expanded = next;
+	}
+}
+
+static uint16_t wake_sleeping_body_mask(struct picosystem_physics_world *world,
+					uint16_t requested_mask, bool record_transition)
+{
+	const uint16_t waking_mask = world->sleeping_body_mask & requested_mask;
+	uint16_t remaining = waking_mask;
+	while (remaining != 0U) {
+		const uint8_t body_index = (uint8_t)__builtin_ctz((unsigned int)remaining);
+		world->sleep_quiet_tick_counts[body_index] = 0U;
+		remaining &= (uint16_t)(remaining - UINT16_C(1));
+	}
+	world->sleeping_body_mask &= (uint16_t)~waking_mask;
+	if (record_transition) {
+		world->last_work.body_wake_transition_count +=
+			(uint32_t)__builtin_popcount((unsigned int)waking_mask);
+	}
+	return waking_mask;
+}
+
+static void wake_interacting_sleepers(struct picosystem_physics_world *world,
+				      const struct physics_sleep_graph *graph)
+{
+	if (world->sleeping_body_mask == 0U) {
+		return;
+	}
+	const uint16_t awake_sources =
+		(configured_body_mask(world) & (uint16_t)~world->sleeping_body_mask) |
+		graph->motor_body_mask;
+	const uint16_t connected_awake = sleep_graph_expand_mask(graph, awake_sources);
+	(void)wake_sleeping_body_mask(world, connected_awake, true);
+}
+
+static bool body_motion_is_quiet(const struct picosystem_physics_body *body)
+{
+	const uint64_t linear_threshold_squared =
+		(uint64_t)((int64_t)PHYSICS_SLEEP_LINEAR_VELOCITY_THRESHOLD *
+			   PHYSICS_SLEEP_LINEAR_VELOCITY_THRESHOLD);
+	return (vector_length_squared_raw(&body->velocity_per_tick) <= linear_threshold_squared) &&
+	       (fixed_absolute(body->angular_velocity_per_tick) <=
+		PHYSICS_SLEEP_ANGULAR_VELOCITY_THRESHOLD);
+}
+
+static void put_body_mask_to_sleep(struct picosystem_physics_world *world, uint16_t body_mask)
+{
+	uint16_t remaining = body_mask;
+	while (remaining != 0U) {
+		const uint8_t body_index = (uint8_t)__builtin_ctz((unsigned int)remaining);
+		struct picosystem_physics_body *const body = &world->bodies[body_index];
+		body->velocity_per_tick = (struct picosystem_physics_vector){0};
+		body->angular_velocity_per_tick = 0;
+		world->sleep_quiet_tick_counts[body_index] = PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS;
+		remaining &= (uint16_t)(remaining - UINT16_C(1));
+	}
+	world->sleeping_body_mask |= body_mask;
+	world->last_work.body_sleep_transition_count +=
+		(uint32_t)__builtin_popcount((unsigned int)body_mask);
+}
+
+static void update_sleep_state(struct picosystem_physics_world *world,
+			       const struct physics_sleep_graph *graph)
+{
+	uint16_t unvisited = configured_body_mask(world);
+	while (unvisited != 0U) {
+		const uint8_t first_body = (uint8_t)__builtin_ctz((unsigned int)unvisited);
+		const uint16_t component =
+			sleep_graph_expand_mask(graph, body_mask_for_index(first_body));
+		unvisited &= (uint16_t)~component;
+
+		if ((world->sleeping_body_mask & component) == component) {
+			continue;
+		}
+
+		bool quiet = (graph->motor_body_mask & component) == 0U;
+		uint16_t minimum_quiet_ticks = PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS;
+		uint16_t remaining = component;
+		while (remaining != 0U) {
+			const uint8_t body_index = (uint8_t)__builtin_ctz((unsigned int)remaining);
+			quiet &= body_motion_is_quiet(&world->bodies[body_index]);
+			if (world->sleep_quiet_tick_counts[body_index] < minimum_quiet_ticks) {
+				minimum_quiet_ticks = world->sleep_quiet_tick_counts[body_index];
+			}
+			remaining &= (uint16_t)(remaining - UINT16_C(1));
+		}
+
+		if (!quiet) {
+			remaining = component;
+			while (remaining != 0U) {
+				const uint8_t body_index =
+					(uint8_t)__builtin_ctz((unsigned int)remaining);
+				world->sleep_quiet_tick_counts[body_index] = 0U;
+				remaining &= (uint16_t)(remaining - UINT16_C(1));
+			}
+			continue;
+		}
+
+		const uint16_t next_quiet_ticks = minimum_quiet_ticks + 1U;
+		if (next_quiet_ticks >= PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS) {
+			put_body_mask_to_sleep(world, component);
+			continue;
+		}
+		remaining = component;
+		while (remaining != 0U) {
+			const uint8_t body_index = (uint8_t)__builtin_ctz((unsigned int)remaining);
+			world->sleep_quiet_tick_counts[body_index] = next_quiet_ticks;
+			remaining &= (uint16_t)(remaining - UINT16_C(1));
+		}
+	}
+
+	world->last_work.sleeping_body_count =
+		(uint32_t)__builtin_popcount((unsigned int)world->sleeping_body_mask);
+	world->last_work.awake_body_count =
+		(uint32_t)world->body_count - world->last_work.sleeping_body_count;
 }
 
 static void clamp_body_speed(struct picosystem_physics_body *body,
@@ -2931,6 +3202,9 @@ static bool apply_revolute_joint_position_pass(struct picosystem_physics_world *
 	for (uint16_t visit = 0U; visit < world->revolute_joint_count; ++visit) {
 		const uint16_t index =
 			reverse ? (uint16_t)(world->revolute_joint_count - visit - 1U) : visit;
+		if (revolute_joint_is_sleeping(world, &world->revolute_joints[index])) {
+			continue;
+		}
 		const bool anchor_changed = apply_revolute_joint_position_correction(
 			world, &world->revolute_joints[index]);
 		(void)apply_revolute_joint_limit_position_correction(
@@ -2946,6 +3220,9 @@ static bool revolute_joint_positions_within_target(const struct picosystem_physi
 	const uint64_t target_squared = (uint64_t)((int64_t)PHYSICS_REVOLUTE_POSITION_TARGET *
 						   PHYSICS_REVOLUTE_POSITION_TARGET);
 	for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
+		if (revolute_joint_is_sleeping(world, &world->revolute_joints[index])) {
+			continue;
+		}
 		struct picosystem_physics_vector anchor_a;
 		struct picosystem_physics_vector anchor_b;
 		revolute_joint_anchors(world, &world->revolute_joints[index], &anchor_a, &anchor_b);
@@ -3261,6 +3538,9 @@ static bool apply_prismatic_joint_position_pass(struct picosystem_physics_world 
 			reverse ? (uint16_t)(world->prismatic_joint_count - visit - 1U) : visit;
 		const struct picosystem_physics_prismatic_joint *const joint =
 			&world->prismatic_joints[index];
+		if (prismatic_joint_is_sleeping(world, joint)) {
+			continue;
+		}
 		correction_changed |=
 			apply_prismatic_joint_lateral_position_correction(world, joint);
 		correction_changed |=
@@ -3276,6 +3556,9 @@ static bool prismatic_joint_positions_within_target(const struct picosystem_phys
 	for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
 		const struct picosystem_physics_prismatic_joint *const joint =
 			&world->prismatic_joints[index];
+		if (prismatic_joint_is_sleeping(world, joint)) {
+			continue;
+		}
 		struct picosystem_physics_vector world_anchor_a;
 		struct picosystem_physics_vector world_anchor_b;
 		struct picosystem_physics_vector world_axis;
@@ -3665,6 +3948,7 @@ int picosystem_physics_world_add_static_segment(
 	};
 	segment_normal_from_endpoints(&segment->start, &segment->end, &segment->normal);
 	++world->static_segment_count;
+	(void)wake_sleeping_body_mask(world, configured_body_mask(world), false);
 	return 0;
 }
 
@@ -3745,6 +4029,11 @@ int picosystem_physics_world_add_distance_joint(
 			.body_b_index = (uint8_t)body_b_index,
 		};
 	++world->distance_joint_count;
+	uint16_t wake_mask = body_mask_for_index((uint8_t)body_a_index);
+	if (config->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		wake_mask |= body_mask_for_index((uint8_t)body_b_index);
+	}
+	(void)wake_sleeping_body_mask(world, wake_mask, false);
 	return 0;
 }
 
@@ -3805,6 +4094,11 @@ int picosystem_physics_world_add_revolute_joint(
 	};
 	joint->reference_angle_turns = revolute_joint_relative_angle_turns(world, joint);
 	++world->revolute_joint_count;
+	uint16_t wake_mask = body_mask_for_index((uint8_t)body_a_index);
+	if (config->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		wake_mask |= body_mask_for_index((uint8_t)body_b_index);
+	}
+	(void)wake_sleeping_body_mask(world, wake_mask, false);
 	return 0;
 }
 
@@ -3876,6 +4170,11 @@ int picosystem_physics_world_add_prismatic_joint(
 		vector_subtract(&world_anchor_a, &world_anchor_b);
 	joint->reference_translation = vector_dot(&delta, &world_axis);
 	++world->prismatic_joint_count;
+	uint16_t wake_mask = body_mask_for_index((uint8_t)body_a_index);
+	if (config->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		wake_mask |= body_mask_for_index((uint8_t)body_b_index);
+	}
+	(void)wake_sleeping_body_mask(world, wake_mask, false);
 	return 0;
 }
 
@@ -3898,7 +4197,34 @@ int picosystem_physics_world_set_prismatic_motor_speed(
 		return -ENOTSUP;
 	}
 	joint->motor_speed_per_tick = motor_speed_per_tick;
+	uint16_t wake_mask = body_mask_for_index(joint->body_a_index);
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		wake_mask |= body_mask_for_index(joint->body_b_index);
+	}
+	(void)wake_sleeping_body_mask(world, wake_mask, false);
 	return 0;
+}
+
+int picosystem_physics_world_wake_body(struct picosystem_physics_world *world, size_t index)
+{
+	if (world == NULL) {
+		return -EINVAL;
+	}
+	if (!world_is_valid(world)) {
+		return -ERANGE;
+	}
+	if (index >= world->body_count) {
+		return -ENOENT;
+	}
+	(void)wake_sleeping_body_mask(world, body_mask_for_index((uint8_t)index), false);
+	return 0;
+}
+
+bool picosystem_physics_world_body_is_sleeping(const struct picosystem_physics_world *world,
+					       size_t index)
+{
+	return (world != NULL) && (world->body_count <= PICOSYSTEM_PHYSICS_MAX_BODIES) &&
+	       (index < world->body_count) && body_index_is_sleeping(world, (uint8_t)index);
 }
 
 static PICOSYSTEM_PHYSICS_RAMFUNC int
@@ -3932,9 +4258,17 @@ physics_world_step(struct picosystem_physics_world *world,
 	world->last_work.distance_joint_count = world->distance_joint_count;
 	world->last_work.revolute_joint_count = world->revolute_joint_count;
 	world->last_work.prismatic_joint_count = world->prismatic_joint_count;
+	if ((world->last_global_acceleration_per_tick.x != global_acceleration_per_tick->x) ||
+	    (world->last_global_acceleration_per_tick.y != global_acceleration_per_tick->y)) {
+		(void)wake_sleeping_body_mask(world, configured_body_mask(world), true);
+		world->last_global_acceleration_per_tick = *global_acceleration_per_tick;
+	}
 
 	uint32_t section_start = profiler_section_begin(&profiler);
 	for (uint16_t index = 0U; index < world->body_count; ++index) {
+		if (body_index_is_sleeping(world, (uint8_t)index)) {
+			continue;
+		}
 		struct picosystem_physics_body *const body = &world->bodies[index];
 		body->velocity_per_tick.x += global_acceleration_per_tick->x;
 		body->velocity_per_tick.y += global_acceleration_per_tick->y;
@@ -3952,13 +4286,52 @@ physics_world_step(struct picosystem_physics_world *world,
 	if (err != 0) {
 		return err;
 	}
+	struct physics_sleep_graph sleep_graph;
+	build_sleep_graph(world, &contact_pairs, &sleep_graph);
+	wake_interacting_sleepers(world, &sleep_graph);
+
+	bool has_awake_constraint = false;
+	for (uint16_t index = 0U; index < world->contact_count; ++index) {
+		if (contact_is_sleeping(world, &world->contacts[index])) {
+			++world->last_work.sleeping_contact_count;
+		} else {
+			has_awake_constraint = true;
+		}
+	}
+	for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
+		if (distance_joint_is_sleeping(world, &world->distance_joints[index])) {
+			++world->last_work.sleeping_joint_count;
+		} else {
+			has_awake_constraint = true;
+		}
+	}
+	for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
+		if (revolute_joint_is_sleeping(world, &world->revolute_joints[index])) {
+			++world->last_work.sleeping_joint_count;
+		} else {
+			has_awake_constraint = true;
+		}
+	}
+	for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
+		if (prismatic_joint_is_sleeping(world, &world->prismatic_joints[index])) {
+			++world->last_work.sleeping_joint_count;
+		} else {
+			has_awake_constraint = true;
+		}
+	}
 
 	section_start = profiler_section_begin(&profiler);
 	for (uint16_t index = 0U; index < world->contact_count; ++index) {
+		if (contact_is_sleeping(world, &world->contacts[index])) {
+			continue;
+		}
 		apply_position_correction(world, &world->contacts[index]);
 		++world->last_work.position_correction_visit_count;
 	}
 	for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
+		if (distance_joint_is_sleeping(world, &world->distance_joints[index])) {
+			continue;
+		}
 		(void)apply_distance_joint_position_correction(world,
 							       &world->distance_joints[index]);
 		++world->last_work.joint_position_correction_visit_count;
@@ -3966,6 +4339,10 @@ physics_world_step(struct picosystem_physics_world *world,
 	for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
 		struct picosystem_physics_revolute_joint *const joint =
 			&world->revolute_joints[index];
+		if (revolute_joint_is_sleeping(world, joint)) {
+			joint->angular_effective_mass = 0;
+			continue;
+		}
 		joint->angular_effective_mass =
 			((joint->motor_enabled != 0U) || (joint->limit_enabled != 0U))
 				? revolute_joint_angular_effective_mass(world, joint)
@@ -3993,22 +4370,32 @@ physics_world_step(struct picosystem_physics_world *world,
 
 	section_start = profiler_section_begin(&profiler);
 	for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
+		if (distance_joint_is_sleeping(world, &world->distance_joints[index])) {
+			continue;
+		}
 		prepare_distance_joint(world, &world->distance_joints[index]);
 	}
 	for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
+		if (revolute_joint_is_sleeping(world, &world->revolute_joints[index])) {
+			continue;
+		}
 		prepare_revolute_joint(world, &world->revolute_joints[index]);
 	}
 	for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
+		if (prismatic_joint_is_sleeping(world, &world->prismatic_joints[index])) {
+			continue;
+		}
 		prepare_prismatic_joint(world, &world->prismatic_joints[index]);
 	}
 	world->last_solver_iteration_count = 0U;
 	for (uint8_t iteration = 0U;
-	     (iteration < PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS) &&
-	     ((world->contact_count > 0U) || (world->distance_joint_count > 0U) ||
-	      (world->revolute_joint_count > 0U) || (world->prismatic_joint_count > 0U));
+	     (iteration < PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS) && has_awake_constraint;
 	     ++iteration) {
 		bool impulse_changed = false;
 		for (uint16_t index = 0U; index < world->contact_count; ++index) {
+			if (contact_is_sleeping(world, &world->contacts[index])) {
+				continue;
+			}
 			const bool contact_changed =
 				solve_contact_velocity(world, &world->contacts[index]);
 			impulse_changed |= contact_changed;
@@ -4018,6 +4405,9 @@ physics_world_step(struct picosystem_physics_world *world,
 			}
 		}
 		for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
+			if (distance_joint_is_sleeping(world, &world->distance_joints[index])) {
+				continue;
+			}
 			const bool joint_changed = solve_distance_joint_velocity(
 				world, &world->distance_joints[index]);
 			impulse_changed |= joint_changed;
@@ -4027,6 +4417,9 @@ physics_world_step(struct picosystem_physics_world *world,
 			}
 		}
 		for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
+			if (revolute_joint_is_sleeping(world, &world->revolute_joints[index])) {
+				continue;
+			}
 			const bool joint_changed = solve_revolute_joint_velocity(
 				world, &world->revolute_joints[index]);
 			impulse_changed |= joint_changed;
@@ -4036,6 +4429,9 @@ physics_world_step(struct picosystem_physics_world *world,
 			}
 		}
 		for (uint16_t index = 0U; index < world->prismatic_joint_count; ++index) {
+			if (prismatic_joint_is_sleeping(world, &world->prismatic_joints[index])) {
+				continue;
+			}
 			const bool joint_changed = solve_prismatic_joint_velocity(
 				world, &world->prismatic_joints[index]);
 			impulse_changed |= joint_changed;
@@ -4054,11 +4450,15 @@ physics_world_step(struct picosystem_physics_world *world,
 
 	section_start = profiler_section_begin(&profiler);
 	for (uint16_t index = 0U; index < world->body_count; ++index) {
+		if (body_index_is_sleeping(world, (uint8_t)index)) {
+			continue;
+		}
 		clamp_body_position(&world->bodies[index]);
 		clamp_body_speed(&world->bodies[index], world->max_speed_per_tick);
 		clamp_body_angular_speed(&world->bodies[index]);
 	}
 	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_FINAL_CLAMP, section_start);
+	update_sleep_state(world, &sleep_graph);
 
 	err = publish_contact_events(world, &contact_pairs);
 	if (err != 0) {
@@ -4310,6 +4710,9 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 	hash = fnv1a_u32(hash, world->revolute_joint_count);
 	hash = fnv1a_u32(hash, world->prismatic_joint_count);
 	hash = fnv1a_u32(hash, world->box_sensor_count);
+	hash = fnv1a_u32(hash, world->sleeping_body_mask);
+	hash = fnv1a_u32(hash, (uint32_t)world->last_global_acceleration_per_tick.x);
+	hash = fnv1a_u32(hash, (uint32_t)world->last_global_acceleration_per_tick.y);
 	for (uint16_t index = 0U; index < world->body_count; ++index) {
 		const struct picosystem_physics_body *const body = &world->bodies[index];
 		hash = fnv1a_u32(hash, body->id);
@@ -4327,6 +4730,7 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 		hash = fnv1a_u32(hash, (uint32_t)body->friction);
 		hash = fnv1a_u32(hash, (uint32_t)body->angular_velocity_per_tick);
 		hash = fnv1a_u32(hash, body->angle_turns);
+		hash = fnv1a_u32(hash, world->sleep_quiet_tick_counts[index]);
 	}
 	for (uint16_t index = 0U; index < world->static_segment_count; ++index) {
 		const struct picosystem_physics_static_segment *const segment =

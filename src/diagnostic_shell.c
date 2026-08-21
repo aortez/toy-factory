@@ -403,6 +403,13 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.solver_changed_contact_count,
 		    snapshot.game.broad_phase_fallback ? "yes" : "no");
 	shell_print(shell,
+		    "sleep: awake=%u, sleeping=%u, transitions=%u sleep/%u wake, "
+		    "constraints skipped=%u contacts/%u joints",
+		    snapshot.game.awake_body_count, snapshot.game.sleeping_body_count,
+		    snapshot.game.body_sleep_transition_count,
+		    snapshot.game.body_wake_transition_count, snapshot.game.sleeping_contact_count,
+		    snapshot.game.sleeping_joint_count);
+	shell_print(shell,
 		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
 		    "sensor entries=%u",
 		    snapshot.game.active_contact_pair_count, snapshot.game.sensor_overlap_count,
@@ -412,12 +419,13 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 	shell_print(
 		shell,
 		"focus #%u %s: simulation=(%u,%u), displayed=(%u,%u), "
-		"velocity=(%d,%d) px/s, angle=%08x, angular=%d mrad/s",
+		"velocity=(%d,%d) px/s, angle=%08x, angular=%d mrad/s, sleep=%s",
 		snapshot.game.focus_body_id, physics_shape_name(snapshot.game.focus_shape),
 		snapshot.game.focus_x, snapshot.game.focus_y, snapshot.game.presented_focus_x,
 		snapshot.game.presented_focus_y, snapshot.game.focus_velocity_x_pixels_per_second,
 		snapshot.game.focus_velocity_y_pixels_per_second, snapshot.game.focus_angle_turns,
-		snapshot.game.focus_angular_velocity_milliradians_per_second);
+		snapshot.game.focus_angular_velocity_milliradians_per_second,
+		snapshot.game.focus_sleeping ? "yes" : "no");
 	shell_print(shell, "main stack high-water: %u/%u bytes",
 		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
 	shell_print(shell, "render stack high-water: %u/%u bytes",
@@ -582,6 +590,12 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->solver_contact_visit_count, game->solver_cached_contact_count,
 		    game->solver_changed_contact_count, game->broad_phase_fallback ? "yes" : "no");
 	shell_print(shell,
+		    "sleep: awake=%u, sleeping=%u, transitions=%u sleep/%u wake, "
+		    "constraints skipped=%u contacts/%u joints",
+		    game->awake_body_count, game->sleeping_body_count,
+		    game->body_sleep_transition_count, game->body_wake_transition_count,
+		    game->sleeping_contact_count, game->sleeping_joint_count);
+	shell_print(shell,
 		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
 		    "sensor entries=%u",
 		    game->active_contact_pair_count, game->sensor_overlap_count,
@@ -590,12 +604,13 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->sensor_entry_count);
 	shell_print(shell,
 		    "focus #%u %s: simulation=(%u,%u), displayed=(%u,%u), "
-		    "velocity=(%d,%d) px/s, angle=%08x, angular=%d mrad/s",
+		    "velocity=(%d,%d) px/s, angle=%08x, angular=%d mrad/s, sleep=%s",
 		    game->focus_body_id, physics_shape_name(game->focus_shape), game->focus_x,
 		    game->focus_y, game->presented_focus_x, game->presented_focus_y,
 		    game->focus_velocity_x_pixels_per_second,
 		    game->focus_velocity_y_pixels_per_second, game->focus_angle_turns,
-		    game->focus_angular_velocity_milliradians_per_second);
+		    game->focus_angular_velocity_milliradians_per_second,
+		    game->focus_sleeping ? "yes" : "no");
 	shell_print(shell, "main stack high-water: %u/%u bytes",
 		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
 	shell_print(shell, "render stack high-water: %u/%u bytes", game->render_stack_used_bytes,
@@ -1088,7 +1103,7 @@ static void print_profile_result(const struct shell *shell,
 }
 
 static int run_physics_profile(const struct shell *shell, uint16_t chain_link_count,
-			       uint32_t measured_tick_count)
+			       bool neutral_fixture, uint32_t measured_tick_count)
 {
 	struct picosystem_game_control_state state;
 	const struct picosystem_game_control_request request = {
@@ -1104,7 +1119,15 @@ static int run_physics_profile(const struct shell *shell, uint16_t chain_link_co
 		return -EBUSY;
 	}
 
-	if (chain_link_count == 0U) {
+	if (neutral_fixture) {
+		shell_print(
+			shell,
+			"Running neutral-settle grid/reference replay for %u measured ticks per "
+			"mode",
+			measured_tick_count);
+		err = picosystem_physics_profile_compare_neutral(measured_tick_count,
+								 &profile_result);
+	} else if (chain_link_count == 0U) {
 		shell_print(
 			shell,
 			"Running canonical grid/reference replay for %u measured ticks per mode",
@@ -1159,7 +1182,27 @@ static int cmd_profile_compare(const struct shell *shell, size_t argc, char **ar
 		return -ERANGE;
 	}
 
-	return run_physics_profile(shell, 0U, measured_tick_count);
+	return run_physics_profile(shell, 0U, false, measured_tick_count);
+}
+
+static int cmd_profile_sleep(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t measured_tick_count = PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS;
+	if (argc == 2U) {
+		const int parse_err =
+			parse_u32(shell, "measured tick count", argv[1], &measured_tick_count);
+		if (parse_err != 0) {
+			return parse_err;
+		}
+	}
+	if ((measured_tick_count == 0U) ||
+	    (measured_tick_count > PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS)) {
+		shell_error(shell, "Measured tick count must be 1-%u",
+			    PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS);
+		return -ERANGE;
+	}
+
+	return run_physics_profile(shell, 0U, true, measured_tick_count);
 }
 
 static int cmd_profile_chain(const struct shell *shell, size_t argc, char **argv)
@@ -1191,7 +1234,7 @@ static int cmd_profile_chain(const struct shell *shell, size_t argc, char **argv
 		return -ERANGE;
 	}
 
-	return run_physics_profile(shell, (uint16_t)link_count, measured_tick_count);
+	return run_physics_profile(shell, (uint16_t)link_count, false, measured_tick_count);
 }
 
 static int cmd_reboot_bootloader(const struct shell *shell, size_t argc, char **argv)
@@ -1267,6 +1310,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		SHELL_HELP("Compare isolated grid and brute-force physics replays.",
 			   "[ticks] (default 2000, maximum 10000; simulation must be paused)"),
 		cmd_profile_compare, 1, 1),
+	SHELL_CMD_ARG(
+		sleep, NULL,
+		SHELL_HELP("Compare the canonical world settling under neutral input.",
+			   "[ticks] (default 2000, maximum 10000; simulation must be paused)"),
+		cmd_profile_sleep, 1, 1),
 	SHELL_SUBCMD_SET_END);
 
 #if defined(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
