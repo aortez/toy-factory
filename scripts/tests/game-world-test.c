@@ -11,10 +11,10 @@
 #include "game_world.h"
 #include "physics_chain_fixture.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0xe631a02b)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0x94f6dc64)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0xe82a9f5c)
-#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x146c4a5e)
+#define EXPECTED_RESET_HASH          UINT32_C(0x765185a2)
+#define EXPECTED_RIGHT_30_HASH       UINT32_C(0x4a1dd4fa)
+#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x2a43f4e8)
+#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x52844673)
 #define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
 #define CHAIN_CONVERGENCE_TOLERANCE  PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
 #define ANGULAR_BOUNDARY_TOLERANCE   PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 12)
@@ -44,6 +44,9 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 	assert(left->physics.box_sensor_count == right->physics.box_sensor_count);
 	assert(left->physics.contact_count == right->physics.contact_count);
 	assert(left->physics.contact_event_count == right->physics.contact_event_count);
+	assert(left->physics.sleeping_body_mask == right->physics.sleeping_body_mask);
+	assert_vector_equal(&left->physics.last_global_acceleration_per_tick,
+			    &right->physics.last_global_acceleration_per_tick);
 	assert(left->physics.last_candidate_pair_count == right->physics.last_candidate_pair_count);
 	assert(left->physics.last_possible_pair_count == right->physics.last_possible_pair_count);
 	assert(left->physics.last_occupied_grid_cell_count ==
@@ -86,6 +89,8 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 		       right->physics.active_segment_contact_masks[index]);
 		assert(left->physics.active_sensor_contact_masks[index] ==
 		       right->physics.active_sensor_contact_masks[index]);
+		assert(left->physics.sleep_quiet_tick_counts[index] ==
+		       right->physics.sleep_quiet_tick_counts[index]);
 	}
 
 	for (uint16_t index = 0U; index < left->physics.box_sensor_count; ++index) {
@@ -640,7 +645,13 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	bool saw_negative_prismatic_motor = false;
 	bool saw_sensor_stay = false;
 	bool saw_sensor_end = false;
+	bool saw_sleep = false;
+	bool saw_wake = false;
 	uint32_t observed_sensor_begin_count = 0U;
+	uint32_t maximum_sleeping_body_count = 0U;
+	uint16_t maximum_quiet_tick_count = 0U;
+	uint32_t first_sleep_tick = UINT32_MAX;
+	uint32_t first_wake_tick = UINT32_MAX;
 
 	for (uint32_t step = 0U; step < 10000U; ++step) {
 		const size_t input_index = (step / 250U) % (sizeof(inputs) / sizeof(inputs[0]));
@@ -669,6 +680,28 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 		assert(world.physics.last_work.prismatic_motor_count == 1U);
 		assert(world.physics.last_work.prismatic_limit_count == 1U);
 		assert(world.physics.last_work.joint_motor_solver_visit_count >= 1U);
+		if (world.physics.last_work.sleeping_body_count > 0U) {
+			saw_sleep = true;
+			if (first_sleep_tick == UINT32_MAX) {
+				first_sleep_tick = world.logic_tick_count;
+			}
+		}
+		if (world.physics.last_work.body_wake_transition_count > 0U) {
+			saw_wake = true;
+			if (first_wake_tick == UINT32_MAX) {
+				first_wake_tick = world.logic_tick_count;
+			}
+		}
+		if (world.physics.last_work.sleeping_body_count > maximum_sleeping_body_count) {
+			maximum_sleeping_body_count = world.physics.last_work.sleeping_body_count;
+		}
+		for (uint16_t index = 0U; index < world.physics.body_count; ++index) {
+			if (world.physics.sleep_quiet_tick_counts[index] >
+			    maximum_quiet_tick_count) {
+				maximum_quiet_tick_count =
+					world.physics.sleep_quiet_tick_counts[index];
+			}
+		}
 		const picosystem_physics_fixed_t limit_violation =
 			maximum_revolute_limit_violation(&world);
 		if (limit_violation > maximum_limit_violation) {
@@ -735,10 +768,14 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	assert(saw_sensor_end);
 	fprintf(stderr,
 		"candidate range: %u-%u/%u, max contacts: %u, max solver: %u, max angular "
-		"limit violation: %d q16 rad, max prismatic violation: %d q16 px\n",
+		"limit violation: %d q16 rad, max prismatic violation: %d q16 px, max "
+		"sleeping: %u, max quiet: %u, first sleep/wake: %u/%u\n",
 		minimum_candidate_count, maximum_candidate_count, CANONICAL_POSSIBLE_PAIR_COUNT,
 		maximum_contact_count, maximum_solver_iteration_count, maximum_limit_violation,
-		maximum_prismatic_violation);
+		maximum_prismatic_violation, maximum_sleeping_body_count, maximum_quiet_tick_count,
+		first_sleep_tick, first_wake_tick);
+	assert(saw_sleep);
+	assert(saw_wake);
 	world.logic_tick_count = UINT32_MAX;
 	assert(picosystem_game_world_step(&world, &inputs[0]) == 0);
 	assert(world.logic_tick_count == UINT32_MAX);
@@ -773,6 +810,31 @@ static void test_reset_replay_is_bit_exact(void)
 	assert_hash("replay-10000", picosystem_game_world_hash(&first), EXPECTED_REPLAY_10000_HASH);
 }
 
+static void test_canonical_neutral_sleep_and_input_wake(void)
+{
+	struct picosystem_game_world world;
+	assert(picosystem_game_world_reset(&world) == 0);
+	const struct picosystem_game_input neutral = {0};
+	uint32_t first_sleep_tick = 0U;
+	for (uint32_t tick = 0U; tick < 5000U; ++tick) {
+		assert(picosystem_game_world_step(&world, &neutral) == 0);
+		if (world.physics.sleeping_body_mask != 0U) {
+			first_sleep_tick = world.logic_tick_count;
+			break;
+		}
+	}
+	assert(first_sleep_tick != 0U);
+	const uint32_t sleeping_body_count =
+		(uint32_t)__builtin_popcount((unsigned int)world.physics.sleeping_body_mask);
+	assert(sleeping_body_count > 0U);
+	const struct picosystem_game_input right = {.horizontal = 1};
+	assert(picosystem_game_world_step(&world, &right) == 0);
+	assert(world.physics.sleeping_body_mask == 0U);
+	assert(world.physics.last_work.body_wake_transition_count == sleeping_body_count);
+	fprintf(stderr, "neutral first sleep/wake: %u/%u (%u bodies)\n", first_sleep_tick,
+		world.logic_tick_count, sleeping_body_count);
+}
+
 int main(void)
 {
 	test_bounded_motion_contacts_and_saturated_tick();
@@ -780,6 +842,7 @@ int main(void)
 	test_validation_preserves_state();
 	test_chain_fixture_boundaries_and_replay();
 	test_reset_replay_is_bit_exact();
+	test_canonical_neutral_sleep_and_input_wake();
 	puts("game-world tests passed");
 	return 0;
 }

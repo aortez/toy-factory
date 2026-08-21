@@ -306,7 +306,7 @@ static bool body_render_state_matches(const struct picosystem_scene_body *left,
 {
 	if ((left->center_x != right->center_x) || (left->center_y != right->center_y) ||
 	    (left->shape != right->shape) || (left->radius != right->radius) ||
-	    (left->id != right->id)) {
+	    (left->id != right->id) || (left->sleeping != right->sleeping)) {
 		return false;
 	}
 	if (left->shape != PICOSYSTEM_PHYSICS_SHAPE_BOX) {
@@ -509,6 +509,8 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			.radius = (uint16_t)fixed_to_pixel(body->radius),
 			.id = body->id,
 			.shape = body->shape,
+			.sleeping = picosystem_physics_world_body_is_sleeping(&state->world.physics,
+									      index),
 		};
 		if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
 			struct picosystem_physics_vector
@@ -1114,6 +1116,8 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 	} else {
 		total_update_time_us += state->total_snapshot_time_us;
 	}
+	const uint32_t sleeping_body_count =
+		(uint32_t)__builtin_popcount((unsigned int)state->world.physics.sleeping_body_mask);
 
 	*stats = (struct picosystem_game_demo_stats){
 		.graphics = render_metrics.graphics,
@@ -1170,6 +1174,14 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 			state->world.physics.last_work.solver_cached_contact_count,
 		.solver_changed_contact_count =
 			state->world.physics.last_work.solver_changed_contact_count,
+		.awake_body_count = (uint32_t)state->world.physics.body_count - sleeping_body_count,
+		.sleeping_body_count = sleeping_body_count,
+		.body_sleep_transition_count =
+			state->world.physics.last_work.body_sleep_transition_count,
+		.body_wake_transition_count =
+			state->world.physics.last_work.body_wake_transition_count,
+		.sleeping_contact_count = state->world.physics.last_work.sleeping_contact_count,
+		.sleeping_joint_count = state->world.physics.last_work.sleeping_joint_count,
 		.focus_angle_turns = focus->angle_turns,
 		.focus_angular_velocity_milliradians_per_second =
 			angular_velocity_to_milliradians_per_second(
@@ -1194,6 +1206,8 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 			velocity_to_pixels_per_second(focus->velocity_per_tick.y),
 		.focus_shape = focus->shape,
 		.solver_iteration_count = state->world.physics.last_solver_iteration_count,
+		.focus_sleeping = picosystem_physics_world_body_is_sleeping(
+			&state->world.physics, PICOSYSTEM_GAME_FOCUS_BODY_INDEX),
 		.broad_phase_fallback = state->world.physics.last_broad_phase_fallback != 0U,
 		.start_uptime_ms = state->start_uptime_ms,
 		.render_error = render_metrics.render_error,

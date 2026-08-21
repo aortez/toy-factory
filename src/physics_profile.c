@@ -44,6 +44,9 @@ struct authoritative_snapshot {
 	uint16_t active_body_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	uint8_t active_segment_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	uint8_t active_sensor_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	uint16_t sleeping_body_mask;
+	uint16_t sleep_quiet_tick_counts[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	struct picosystem_physics_vector last_global_acceleration_per_tick;
 	picosystem_physics_fixed_t max_speed_per_tick;
 	uint32_t logic_tick_count;
 	uint32_t sensor_entry_count;
@@ -67,6 +70,7 @@ K_MUTEX_DEFINE(profile_mutex);
 static const char *const fixture_names[] = {
 	"canonical",
 	"revolute_chain",
+	"canonical_neutral",
 };
 
 static const char *const mode_names[] = {
@@ -127,6 +131,12 @@ static const char *const work_names[] = {
 	"joint_limit_solver_visits",
 	"joint_limit_solver_changes",
 	"broad_phase_fallbacks",
+	"awake_bodies",
+	"sleeping_bodies",
+	"body_sleep_transitions",
+	"body_wake_transitions",
+	"sleeping_contacts",
+	"sleeping_joints",
 };
 
 _Static_assert(sizeof(fixture_names) / sizeof(fixture_names[0]) ==
@@ -193,7 +203,8 @@ static struct picosystem_game_input replay_input(uint32_t tick)
 static struct picosystem_game_input profile_input(enum picosystem_physics_profile_fixture fixture,
 						  uint32_t tick)
 {
-	if (fixture == PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN) {
+	if ((fixture == PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN) ||
+	    (fixture == PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL_NEUTRAL)) {
 		return (struct picosystem_game_input){0};
 	}
 	return replay_input(tick);
@@ -279,6 +290,18 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 		return work->joint_limit_solver_changed_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_BROAD_PHASE_FALLBACKS:
 		return work->broad_phase_fallback_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_AWAKE_BODIES:
+		return work->awake_body_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SLEEPING_BODIES:
+		return work->sleeping_body_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_BODY_SLEEP_TRANSITIONS:
+		return work->body_sleep_transition_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_BODY_WAKE_TRANSITIONS:
+		return work->body_wake_transition_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SLEEPING_CONTACTS:
+		return work->sleeping_contact_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SLEEPING_JOINTS:
+		return work->sleeping_joint_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT:
 	default:
 		return 0U;
@@ -388,7 +411,12 @@ static void capture_authoritative_state(const struct picosystem_game_world *worl
 		.revolute_joint_count = world->physics.revolute_joint_count,
 		.prismatic_joint_count = world->physics.prismatic_joint_count,
 		.box_sensor_count = world->physics.box_sensor_count,
+		.sleeping_body_mask = world->physics.sleeping_body_mask,
+		.last_global_acceleration_per_tick =
+			world->physics.last_global_acceleration_per_tick,
 	};
+	memcpy(snapshot->sleep_quiet_tick_counts, world->physics.sleep_quiet_tick_counts,
+	       sizeof(snapshot->sleep_quiet_tick_counts));
 	memcpy(snapshot->bodies, world->physics.bodies,
 	       world->physics.body_count * sizeof(snapshot->bodies[0]));
 	memcpy(snapshot->static_segments, world->physics.static_segments,
@@ -508,11 +536,20 @@ static bool authoritative_state_matches(const struct picosystem_game_world *worl
 	    (world->physics.distance_joint_count != snapshot->distance_joint_count) ||
 	    (world->physics.revolute_joint_count != snapshot->revolute_joint_count) ||
 	    (world->physics.prismatic_joint_count != snapshot->prismatic_joint_count) ||
-	    (world->physics.box_sensor_count != snapshot->box_sensor_count)) {
+	    (world->physics.box_sensor_count != snapshot->box_sensor_count) ||
+	    (world->physics.sleeping_body_mask != snapshot->sleeping_body_mask) ||
+	    (world->physics.last_global_acceleration_per_tick.x !=
+	     snapshot->last_global_acceleration_per_tick.x) ||
+	    (world->physics.last_global_acceleration_per_tick.y !=
+	     snapshot->last_global_acceleration_per_tick.y)) {
 		return false;
 	}
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
 		if (!body_equal(&world->physics.bodies[index], &snapshot->bodies[index])) {
+			return false;
+		}
+		if (world->physics.sleep_quiet_tick_counts[index] !=
+		    snapshot->sleep_quiet_tick_counts[index]) {
 			return false;
 		}
 		if ((world->physics.active_body_contact_masks[index] !=
@@ -712,6 +749,7 @@ static int reset_profile_world(enum picosystem_physics_profile_fixture fixture,
 {
 	switch (fixture) {
 	case PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL:
+	case PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL_NEUTRAL:
 		return picosystem_game_world_reset(&workspace.world);
 	case PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN:
 		return picosystem_physics_chain_fixture_reset(&workspace.world, chain_link_count);
@@ -853,7 +891,8 @@ static int compare_fixture(enum picosystem_physics_profile_fixture fixture,
 	    (measured_tick_count > PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS)) {
 		return -ERANGE;
 	}
-	if (((fixture == PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL) &&
+	if ((((fixture == PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL) ||
+	      (fixture == PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL_NEUTRAL)) &&
 	     (chain_link_count != 0U)) ||
 	    ((fixture == PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN) &&
 	     ((chain_link_count < PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MIN_LINKS) ||
@@ -915,6 +954,13 @@ int picosystem_physics_profile_compare(uint32_t measured_tick_count,
 				       struct picosystem_physics_profile_result *result)
 {
 	return compare_fixture(PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL, 0U,
+			       measured_tick_count, result);
+}
+
+int picosystem_physics_profile_compare_neutral(uint32_t measured_tick_count,
+					       struct picosystem_physics_profile_result *result)
+{
+	return compare_fixture(PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL_NEUTRAL, 0U,
 			       measured_tick_count, result);
 }
 

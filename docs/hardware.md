@@ -265,7 +265,7 @@ worst backlog, and mean/maximum physics time of 5.788/9.786 ms. A settled
 sampled tick skipped 16 of 42 scheduled contact visits. Main, render, and core-1
 stack high-water marks were 3,648/4,096, 3,588/4,096, and 344/4,096 bytes.
 
-The current sensor/contact-event image adds eight fixed-capacity axis-aligned
+The preceding sensor/contact-event image adds eight fixed-capacity axis-aligned
 box sensors, exact circle/box overlap tests, persistent pair masks, and a
 258-record lifecycle-event buffer. Each event is six bytes and is pair-level
 even when a physical manifold has two points. The sensor mask fits in existing
@@ -282,8 +282,8 @@ linker RAM headroom plus the separately reserved 8 KiB core-1 area. Main,
 render, shell-profile, and core-1 stack high-water marks were 3,632/4,096,
 3,668/4,096, 3,856/5,120, and 336/4,096 bytes.
 
-The PIM559 reproduced reset/right-30/right-30-up-15 hashes `e631a02b`,
-`94f6dc64`, and `e82a9f5c`, plus framebuffer CRC-32 `dd67545b` at tick 45. Its
+The PIM559 reproduced reset/right-30/right-30-up-15 hashes `765185a2`,
+`4a1dd4fa`, and `2a43f4e8`, plus framebuffer CRC-32 `dd67545b` at tick 45. Its
 schema-version-7 isolated 1,000-tick grid profile averaged 2.723 ms, reached a
 3.584 ms p95 and 4.722 ms maximum, and recorded no 8.333 ms budget violations.
 The brute-force reference averaged 2.998 ms; both modes ended at `1d58dedd`
@@ -295,6 +295,27 @@ Mean complete-update/physics/snapshot time was 5.046/4.356/0.689 ms; four
 updates exceeded 8.333 ms and the worst backlog was three ticks. A paused scene
 check produced identical core-0/core-1 pixels in 9.728 ms and restored the
 framebuffer exactly.
+
+The current sleeping image adds an authoritative sleep mask, per-body quiet
+counters, deterministic contact/joint-island wake propagation, and sleep work
+counters. Its physics world is 21,864 bytes, complete game world is 21,872
+bytes, render snapshot remains 744 bytes, and serialized profile workspace is
+31,304 bytes. The conservative image uses 215,276 bytes of Zephyr RAM and
+196,328 bytes of flash. The recommended 62.5 MHz PL022/DMA image places its
+16,576-byte inlined physics step in SRAM and uses 239,220 bytes of the 255 KiB
+Zephyr region plus 201,876 bytes of flash, retaining 21,900 bytes of linker RAM
+headroom in addition to the separately reserved 8 KiB core-1 area.
+
+The PIM559 reproduced reset/right-30/right-30-up-15 hashes `765185a2`,
+`4a1dd4fa`, and `2a43f4e8`, plus framebuffer CRC-32 `dd67545b` at tick 45. Its
+schema-version-8 isolated 1,000-tick moving profile averaged 2.792 ms for the
+grid and 3.117 ms for the brute-force reference, with no 8.333 ms budget
+violations and exact final state agreement at `46020daa`. The 2,000-tick
+neutral profile recorded one sleep and one wake transition, one sleeping body
+for 664 sampled body-ticks, and 663 sleeping contacts skipped by both modes.
+Grid/reference state agreed exactly at `ea65ce22`; means were 3.456 and 3.787
+ms. The deterministic sleep sequence reached tick 1,228 at `5e0274dc` and
+framebuffer CRC-32 `b78934e6`, visibly rendering the sleeping body blue/white.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.

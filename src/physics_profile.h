@@ -13,7 +13,7 @@
 
 #include "physics_world.h"
 
-#define PICOSYSTEM_PHYSICS_PROFILE_SCHEMA_VERSION             7U
+#define PICOSYSTEM_PHYSICS_PROFILE_SCHEMA_VERSION             8U
 #define PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS              2000U
 #define PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS                  10000U
 #define PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS               120U
@@ -29,6 +29,7 @@
 enum picosystem_physics_profile_fixture {
 	PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL,
 	PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN,
+	PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL_NEUTRAL,
 	PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_COUNT,
 };
 
@@ -71,6 +72,12 @@ enum picosystem_physics_profile_work_metric {
 	PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_LIMIT_SOLVER_VISITS,
 	PICOSYSTEM_PHYSICS_PROFILE_WORK_JOINT_LIMIT_SOLVER_CHANGES,
 	PICOSYSTEM_PHYSICS_PROFILE_WORK_BROAD_PHASE_FALLBACKS,
+	PICOSYSTEM_PHYSICS_PROFILE_WORK_AWAKE_BODIES,
+	PICOSYSTEM_PHYSICS_PROFILE_WORK_SLEEPING_BODIES,
+	PICOSYSTEM_PHYSICS_PROFILE_WORK_BODY_SLEEP_TRANSITIONS,
+	PICOSYSTEM_PHYSICS_PROFILE_WORK_BODY_WAKE_TRANSITIONS,
+	PICOSYSTEM_PHYSICS_PROFILE_WORK_SLEEPING_CONTACTS,
+	PICOSYSTEM_PHYSICS_PROFILE_WORK_SLEEPING_JOINTS,
 	PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT,
 };
 
@@ -123,6 +130,8 @@ struct picosystem_physics_profile_result {
 /* Run an isolated canonical replay. The caller owns result; internal scratch is serialized. */
 int picosystem_physics_profile_compare(uint32_t measured_tick_count,
 				       struct picosystem_physics_profile_result *result);
+int picosystem_physics_profile_compare_neutral(uint32_t measured_tick_count,
+					       struct picosystem_physics_profile_result *result);
 int picosystem_physics_profile_compare_chain(uint16_t link_count, uint32_t measured_tick_count,
 					     struct picosystem_physics_profile_result *result);
 

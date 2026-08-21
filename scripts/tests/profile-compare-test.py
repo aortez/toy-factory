@@ -24,7 +24,7 @@ MODULE_SPEC.loader.exec_module(profile_compare)
 
 def profile_output(
     *,
-    schema: int = 7,
+    schema: int = 8,
     fixture: str = "canonical",
     chain_links: int = 0,
     states_match: str = "yes",
@@ -82,7 +82,7 @@ class ProfileCompareTest(unittest.TestCase):
     def test_parses_complete_versioned_profile(self) -> None:
         result = profile_compare.parse_profile(profile_output())
 
-        self.assertEqual(result["schema_version"], 7)
+        self.assertEqual(result["schema_version"], 8)
         self.assertEqual(result["fixture"], "canonical")
         self.assertEqual(result["chain_link_count"], 0)
         self.assertEqual(result["measured_ticks_per_mode"], 2000)
@@ -157,7 +157,7 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertIn("solver_cached_contacts", work)
 
     def test_schema_seven_includes_sensor_and_event_work(self) -> None:
-        result = profile_compare.parse_profile(profile_output())
+        result = profile_compare.parse_profile(profile_output(schema=7))
 
         work = result["modes"]["grid"]["work"]
         self.assertIn("body_sensor_tests", work)
@@ -168,6 +168,17 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertIn("contact_end_events", work)
         self.assertIn("narrow_body_sensor", result["modes"]["grid"]["stages"])
 
+    def test_schema_eight_includes_sleep_work(self) -> None:
+        result = profile_compare.parse_profile(profile_output())
+
+        work = result["modes"]["grid"]["work"]
+        self.assertIn("awake_bodies", work)
+        self.assertIn("sleeping_bodies", work)
+        self.assertIn("body_sleep_transitions", work)
+        self.assertIn("body_wake_transitions", work)
+        self.assertIn("sleeping_contacts", work)
+        self.assertIn("sleeping_joints", work)
+
     def test_parses_revolute_chain_fixture(self) -> None:
         result = profile_compare.parse_profile(
             profile_output(fixture="revolute_chain", chain_links=8)
@@ -175,6 +186,12 @@ class ProfileCompareTest(unittest.TestCase):
 
         self.assertEqual(result["fixture"], "revolute_chain")
         self.assertEqual(result["chain_link_count"], 8)
+
+    def test_parses_neutral_canonical_fixture(self) -> None:
+        result = profile_compare.parse_profile(profile_output(fixture="canonical_neutral"))
+
+        self.assertEqual(result["fixture"], "canonical_neutral")
+        self.assertEqual(result["chain_link_count"], 0)
 
     def test_rejects_invalid_fixture_metadata(self) -> None:
         with self.assertRaisesRegex(profile_compare.ProfileError, "zero chain links"):

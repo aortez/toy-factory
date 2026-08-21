@@ -29,6 +29,7 @@ struct picosystem_scene_body {
 	uint16_t radius;
 	uint16_t id;
 	uint8_t shape;
+	uint8_t sleeping;
 };
 
 struct picosystem_scene_segment {

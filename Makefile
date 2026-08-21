@@ -15,6 +15,7 @@ SEQUENCE ?= scripts/sequences/deterministic-smoke.json
 FAIL_SCREENSHOT ?= artifacts/sequence-failure.png
 PROFILE_TICKS ?= 2000
 PROFILE_OUT ?= artifacts/physics-profile.json
+SLEEP_PROFILE_OUT ?= artifacts/physics-sleep-profile.json
 CHAIN_PROFILE_TICKS ?= 1000
 CHAIN_LINKS ?= 4,6,8
 CHAIN_PROFILE_OUT ?= artifacts/physics-chain-profile.json
@@ -34,7 +35,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 	game-redraw core1-status core1-ping core1-raster core1-scene \
 	display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
 	sim-reset sim-state sim-test \
-	profile profile-ab profile-chain render-profile update-render-profile \
+	profile profile-ab profile-sleep profile-chain render-profile update-render-profile \
 	flash monitor shell
 
 ##@ General
@@ -45,6 +46,7 @@ help: ## Show this list of targets
 	@printf '                    [STEPS=1] [INPUT=none] [OUT=artifacts/screenshot.png]\n'
 	@printf '                    [SEQUENCE=path.json] [FAIL_SCREENSHOT=artifacts/failure.png]\n'
 	@printf '                    [PROFILE_TICKS=2000] [PROFILE_OUT=artifacts/physics-profile.json]\n'
+	@printf '                    [SLEEP_PROFILE_OUT=artifacts/physics-sleep-profile.json]\n'
 	@printf '                    [CHAIN_PROFILE_TICKS=1000] [CHAIN_LINKS=4,6,8]\n'
 	@printf '                    [CHAIN_PROFILE_OUT=artifacts/physics-chain-profile.json]\n'
 	@printf '                    [RENDER_PROFILE_SAMPLES=16] [RENDER_PROFILE_OUT=artifacts/render-profile.json]\n'
@@ -296,6 +298,17 @@ profile-ab: image ## Compare isolated grid/reference physics and save PROFILE_OU
 				"$$port" "/workspace/app/$(PROFILE_OUT)"
 
 profile: profile-ab ## Alias for profile-ab
+
+profile-sleep: image ## Profile the canonical world settling into sleep
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/profile_compare.py \
+				--ticks "$(PROFILE_TICKS)" --neutral \
+				--owner-uid "$$(id -u)" --owner-gid "$$(id -g)" \
+				"$$port" "/workspace/app/$(SLEEP_PROFILE_OUT)"
 
 profile-chain: image ## Profile CHAIN_LINKS=4,6,8 and save CHAIN_PROFILE_OUT=<JSON>
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \

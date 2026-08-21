@@ -7,6 +7,7 @@
 #ifndef PICOSYSTEM_PHYSICS_WORLD_H_
 #define PICOSYSTEM_PHYSICS_WORLD_H_
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -41,6 +42,7 @@
 #define PICOSYSTEM_PHYSICS_SOLVER_ITERATIONS             7U
 #define PICOSYSTEM_PHYSICS_REVOLUTE_POSITION_ITERATIONS  4U
 #define PICOSYSTEM_PHYSICS_PRISMATIC_POSITION_ITERATIONS 4U
+#define PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS             60U
 #define PICOSYSTEM_PHYSICS_WORLD_BODY_ID                 0U
 
 typedef int32_t picosystem_physics_fixed_t;
@@ -112,6 +114,12 @@ struct picosystem_physics_work_counters {
 	uint32_t joint_limit_solver_visit_count;
 	uint32_t joint_limit_solver_changed_count;
 	uint32_t broad_phase_fallback_count;
+	uint32_t awake_body_count;
+	uint32_t sleeping_body_count;
+	uint32_t body_sleep_transition_count;
+	uint32_t body_wake_transition_count;
+	uint32_t sleeping_contact_count;
+	uint32_t sleeping_joint_count;
 };
 
 /* Optional elapsed-cycle sample for one step; the clock may wrap once per section. */
@@ -411,6 +419,10 @@ struct picosystem_physics_world {
 	uint16_t active_body_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	uint8_t active_segment_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	uint8_t active_sensor_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	/* Sleep state is authoritative; scratch contacts and joints rebuild around it. */
+	uint16_t sleeping_body_mask;
+	uint16_t sleep_quiet_tick_counts[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	struct picosystem_physics_vector last_global_acceleration_per_tick;
 	/* Revisions change with every solver velocity mutation and are excluded from hashes. */
 	uint16_t solver_velocity_revisions[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	struct picosystem_physics_work_counters last_work;
@@ -459,6 +471,13 @@ int picosystem_physics_world_add_prismatic_joint(
 int picosystem_physics_world_set_prismatic_motor_speed(
 	struct picosystem_physics_world *world, size_t index,
 	picosystem_physics_fixed_t motor_speed_per_tick);
+
+/* Wake one body explicitly; connected sleeping bodies wake on the next step. */
+int picosystem_physics_world_wake_body(struct picosystem_physics_world *world, size_t index);
+
+/* Report authoritative sleep state for one configured body. */
+bool picosystem_physics_world_body_is_sleeping(const struct picosystem_physics_world *world,
+					       size_t index);
 
 /* Advance exactly one tick with a global acceleration expressed in pixels/tick^2. */
 int picosystem_physics_world_step(

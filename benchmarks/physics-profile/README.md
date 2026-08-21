@@ -6,9 +6,51 @@ followed by the same bounded input replay; the recorded artifact states its
 measured tick count. Timing covers isolated physics steps with rendering and
 snapshot publication disabled.
 
+## Deterministic sleeping and wake propagation
+
+The current schema-version-8 reports are
+[pim559-sleeping-2026-08-19.json](pim559-sleeping-2026-08-19.json) and
+[pim559-sleeping-neutral-2026-08-19.json](pim559-sleeping-neutral-2026-08-19.json).
+They were captured from the recommended dual-core image with:
+
+```sh
+make profile-ab PROFILE_TICKS=1000 \
+  PROFILE_OUT=benchmarks/physics-profile/pim559-sleeping-2026-08-19.json
+make profile-sleep PROFILE_TICKS=2000 \
+  SLEEP_PROFILE_OUT=benchmarks/physics-profile/pim559-sleeping-neutral-2026-08-19.json
+```
+
+The moving canonical fixture continuously changes directional input, keeping
+all seven bodies awake while providing a direct comparison with the preceding
+contact-event profile:
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Candidates/tick | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 2,792 us | 2,688 us | 3,712 us | 4,352 us | 4,832 us | 8.017 | 0 |
+| Brute-force reference | 3,117 us | 2,944 us | 4,096 us | 4,608 us | 5,295 us | 70.0 | 0 |
+
+Both modes ended at `46020daa` with exact authoritative-state agreement. The
+grid was 1.12 times faster overall. Maximum revolute-anchor, angular-limit,
+prismatic-lateral, prismatic-angular, and travel-limit errors were 0.814 pixels,
+0.0418 radian, 0.0885 pixels, 0.00461 radian, and 0.0651 pixels.
+
+The neutral fixture isolates settling and skipped sleep work:
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Sleeping body-ticks | Sleeping contacts | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 3,456 us | 3,456 us | 4,480 us | 4,864 us | 5,392 us | 664 | 663 | 0 |
+| Brute-force reference | 3,787 us | 3,712 us | 4,736 us | 5,248 us | 5,695 us | 664 | 663 | 0 |
+
+Each mode recorded one body sleep and one body wake transition and ended at
+`ea65ce22` with exact state agreement. Motorized joint islands remained awake,
+so this fixture skips a resting contact rather than joint rows. Its settled
+contact population differs from the moving fixture, so the two means are not a
+before/after speedup comparison. Shell stack high-water was 3,856 of 5,120
+bytes.
+
 ## Box sensor and contact lifecycle events
 
-The current schema-version-7 canonical result is in
+The preceding schema-version-7 canonical result is in
 [pim559-contact-events-2026-08-19.json](pim559-contact-events-2026-08-19.json).
 It was captured from the recommended dual-core image with:
 

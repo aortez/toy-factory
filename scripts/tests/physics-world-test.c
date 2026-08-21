@@ -303,6 +303,9 @@ static void assert_step_matches_reference(const struct picosystem_physics_world 
 	assert(grid->contact_count == reference->contact_count);
 	assert(grid->contact_event_count == reference->contact_event_count);
 	assert(grid->last_possible_pair_count == reference->last_possible_pair_count);
+	assert(grid->sleeping_body_mask == reference->sleeping_body_mask);
+	assert_vector_equal(&grid->last_global_acceleration_per_tick,
+			    &reference->last_global_acceleration_per_tick);
 	assert(reference->last_candidate_pair_count == reference->last_possible_pair_count);
 	assert(grid->last_solver_iteration_count == reference->last_solver_iteration_count);
 	assert(grid->last_work.possible_pair_count == reference->last_work.possible_pair_count);
@@ -367,6 +370,15 @@ static void assert_step_matches_reference(const struct picosystem_physics_world 
 	       reference->last_work.joint_limit_solver_visit_count);
 	assert(grid->last_work.joint_limit_solver_changed_count ==
 	       reference->last_work.joint_limit_solver_changed_count);
+	assert(grid->last_work.awake_body_count == reference->last_work.awake_body_count);
+	assert(grid->last_work.sleeping_body_count == reference->last_work.sleeping_body_count);
+	assert(grid->last_work.body_sleep_transition_count ==
+	       reference->last_work.body_sleep_transition_count);
+	assert(grid->last_work.body_wake_transition_count ==
+	       reference->last_work.body_wake_transition_count);
+	assert(grid->last_work.sleeping_contact_count ==
+	       reference->last_work.sleeping_contact_count);
+	assert(grid->last_work.sleeping_joint_count == reference->last_work.sleeping_joint_count);
 	assert(reference->last_work.broad_phase_fallback_count == 0U);
 	assert(picosystem_physics_world_hash(grid) == picosystem_physics_world_hash(reference));
 
@@ -380,6 +392,8 @@ static void assert_step_matches_reference(const struct picosystem_physics_world 
 		       reference->active_segment_contact_masks[index]);
 		assert(grid->active_sensor_contact_masks[index] ==
 		       reference->active_sensor_contact_masks[index]);
+		assert(grid->sleep_quiet_tick_counts[index] ==
+		       reference->sleep_quiet_tick_counts[index]);
 	}
 	for (uint16_t index = 0U; index < grid->box_sensor_count; ++index) {
 		assert_vector_equal(&grid->box_sensors[index].center,
@@ -2138,6 +2152,147 @@ static void test_contact_storage_covers_all_candidates(void)
 	assert(world.last_work.contact_begin_event_count == PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS);
 }
 
+static void step_without_acceleration(struct picosystem_physics_world *world, uint32_t count)
+{
+	for (uint32_t tick = 0U; tick < count; ++tick) {
+		assert(picosystem_physics_world_step(world, &no_acceleration) == 0);
+	}
+}
+
+static void test_sleep_boundary_and_acceleration_wake(void)
+{
+	struct picosystem_physics_world world;
+	init_world(&world, FIXED(2));
+	const struct picosystem_physics_circle_config body = circle_config(1U, 10, 20, 2);
+	assert(picosystem_physics_world_add_circle(&world, &body) == 0);
+	assert(!picosystem_physics_world_body_is_sleeping(NULL, 0U));
+	assert(!picosystem_physics_world_body_is_sleeping(&world, 1U));
+	assert(picosystem_physics_world_wake_body(NULL, 0U) == -EINVAL);
+	assert(picosystem_physics_world_wake_body(&world, 1U) == -ENOENT);
+
+	step_without_acceleration(&world, PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS - 1U);
+	assert(!picosystem_physics_world_body_is_sleeping(&world, 0U));
+	assert(world.sleep_quiet_tick_counts[0] == PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS - 1U);
+	assert(world.last_work.awake_body_count == 1U);
+	assert(world.last_work.sleeping_body_count == 0U);
+
+	assert(picosystem_physics_world_step(&world, &no_acceleration) == 0);
+	assert(picosystem_physics_world_body_is_sleeping(&world, 0U));
+	assert(world.sleep_quiet_tick_counts[0] == PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS);
+	assert(world.last_work.body_sleep_transition_count == 1U);
+	assert(world.last_work.awake_body_count == 0U);
+	assert(world.last_work.sleeping_body_count == 1U);
+	const struct picosystem_physics_vector sleeping_center = world.bodies[0].center;
+
+	assert(picosystem_physics_world_step(&world, &no_acceleration) == 0);
+	assert(picosystem_physics_world_body_is_sleeping(&world, 0U));
+	assert_vector_equal(&world.bodies[0].center, &sleeping_center);
+	assert(world.last_work.body_sleep_transition_count == 0U);
+	assert(world.last_work.body_wake_transition_count == 0U);
+	assert(world.last_solver_iteration_count == 0U);
+
+	const struct picosystem_physics_vector acceleration = {.x = RATIO(1, 16)};
+	assert(picosystem_physics_world_step(&world, &acceleration) == 0);
+	assert(!picosystem_physics_world_body_is_sleeping(&world, 0U));
+	assert(world.last_work.body_wake_transition_count == 1U);
+	assert(world.sleep_quiet_tick_counts[0] == 0U);
+	assert(world.bodies[0].velocity_per_tick.x == acceleration.x);
+	assert(world.bodies[0].center.x == sleeping_center.x + acceleration.x);
+	assert_vector_equal(&world.last_global_acceleration_per_tick, &acceleration);
+
+	struct picosystem_physics_world corrupt = world;
+	corrupt.sleep_quiet_tick_counts[0] = PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS;
+	const struct picosystem_physics_world unchanged = corrupt;
+	assert(picosystem_physics_world_step(&corrupt, &acceleration) == -ERANGE);
+	assert(memcmp(&corrupt, &unchanged, sizeof(corrupt)) == 0);
+}
+
+static void test_sleep_islands_and_motor_exclusion(void)
+{
+	struct picosystem_physics_world island;
+	init_world(&island, FIXED(2));
+	const struct picosystem_physics_circle_config left = circle_config(1U, 0, 0, 1);
+	const struct picosystem_physics_circle_config right = circle_config(2U, 4, 0, 1);
+	assert(picosystem_physics_world_add_circle(&island, &left) == 0);
+	assert(picosystem_physics_world_add_circle(&island, &right) == 0);
+	const struct picosystem_physics_distance_joint_config joint =
+		distance_joint_config(101U, 1U, 2U, 4);
+	assert(picosystem_physics_world_add_distance_joint(&island, &joint) == 0);
+	step_without_acceleration(&island, PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS);
+	assert(picosystem_physics_world_body_is_sleeping(&island, 0U));
+	assert(picosystem_physics_world_body_is_sleeping(&island, 1U));
+	assert(island.last_work.body_sleep_transition_count == 2U);
+
+	assert(picosystem_physics_world_step(&island, &no_acceleration) == 0);
+	assert(island.last_work.sleeping_joint_count == 1U);
+	assert(island.last_work.joint_solver_visit_count == 0U);
+	assert(island.last_solver_iteration_count == 0U);
+	assert(picosystem_physics_world_wake_body(&island, 0U) == 0);
+	assert(!picosystem_physics_world_body_is_sleeping(&island, 0U));
+	assert(picosystem_physics_world_body_is_sleeping(&island, 1U));
+	assert(picosystem_physics_world_step(&island, &no_acceleration) == 0);
+	assert(!picosystem_physics_world_body_is_sleeping(&island, 0U));
+	assert(!picosystem_physics_world_body_is_sleeping(&island, 1U));
+	assert(island.last_work.body_wake_transition_count == 1U);
+	assert(island.sleep_quiet_tick_counts[0] == 1U);
+	assert(island.sleep_quiet_tick_counts[1] == 1U);
+
+	struct picosystem_physics_world motor;
+	init_world(&motor, FIXED(2));
+	const struct picosystem_physics_circle_config rotor = circle_config(1U, 0, 0, 1);
+	assert(picosystem_physics_world_add_circle(&motor, &rotor) == 0);
+	struct picosystem_physics_revolute_joint_config motor_joint =
+		revolute_joint_config(201U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
+	motor_joint.maximum_motor_impulse_per_tick = RATIO(1, 4);
+	motor_joint.motor_enabled = 1U;
+	assert(picosystem_physics_world_add_revolute_joint(&motor, &motor_joint) == 0);
+	step_without_acceleration(&motor, PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS + 10U);
+	assert(!picosystem_physics_world_body_is_sleeping(&motor, 0U));
+	assert(motor.sleep_quiet_tick_counts[0] == 0U);
+	assert(motor.last_work.awake_body_count == 1U);
+}
+
+static void test_contact_wake_and_sleeping_sensor_lifecycle(void)
+{
+	struct picosystem_physics_world collision;
+	init_world(&collision, FIXED(4));
+	const struct picosystem_physics_circle_config target = circle_config(1U, 0, 0, 1);
+	const struct picosystem_physics_circle_config projectile = circle_config(2U, 5, 0, 1);
+	assert(picosystem_physics_world_add_circle(&collision, &target) == 0);
+	assert(picosystem_physics_world_add_circle(&collision, &projectile) == 0);
+	step_without_acceleration(&collision, PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS);
+	assert(collision.sleeping_body_mask == UINT16_C(3));
+	assert(picosystem_physics_world_wake_body(&collision, 1U) == 0);
+	collision.bodies[1].velocity_per_tick.x = -FIXED(4);
+	assert(picosystem_physics_world_step(&collision, &no_acceleration) == 0);
+	assert(collision.contact_count > 0U);
+	assert(!picosystem_physics_world_body_is_sleeping(&collision, 0U));
+	assert(!picosystem_physics_world_body_is_sleeping(&collision, 1U));
+	assert(collision.last_work.body_wake_transition_count == 1U);
+
+	struct picosystem_physics_world sensor_world;
+	init_world(&sensor_world, FIXED(2));
+	const struct picosystem_physics_circle_config observed = circle_config(1U, 0, 0, 1);
+	const struct picosystem_physics_box_sensor_config sensor =
+		box_sensor_config(101U, 0, 0, 4, 4);
+	assert(picosystem_physics_world_add_circle(&sensor_world, &observed) == 0);
+	assert(picosystem_physics_world_add_box_sensor(&sensor_world, &sensor) == 0);
+	step_without_acceleration(&sensor_world, PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS);
+	assert(picosystem_physics_world_body_is_sleeping(&sensor_world, 0U));
+	assert(sensor_world.contact_event_count == 1U);
+	assert_contact_event(&sensor_world, 0U, 1U, 101U,
+			     PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_BOX_SENSOR,
+			     PICOSYSTEM_PHYSICS_CONTACT_EVENT_STAY);
+	assert(picosystem_physics_world_step(&sensor_world, &no_acceleration) == 0);
+	assert(picosystem_physics_world_body_is_sleeping(&sensor_world, 0U));
+	assert(sensor_world.last_work.body_wake_transition_count == 0U);
+	assert(sensor_world.last_work.sensor_overlap_count == 1U);
+	assert(sensor_world.last_work.contact_stay_event_count == 1U);
+	assert_contact_event(&sensor_world, 0U, 1U, 101U,
+			     PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_BOX_SENSOR,
+			     PICOSYSTEM_PHYSICS_CONTACT_EVENT_STAY);
+}
+
 static void test_hash_excludes_scratch_and_diagnostics(void)
 {
 	struct picosystem_physics_world world;
@@ -2305,6 +2460,15 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	changed = world;
 	changed.active_sensor_contact_masks[0] = UINT8_C(1);
 	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.sleeping_body_mask = UINT16_C(1);
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.sleep_quiet_tick_counts[0] = 1U;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.last_global_acceleration_per_tick.x = 1;
+	assert(picosystem_physics_world_hash(&changed) != expected);
 	assert(picosystem_physics_world_hash(NULL) == 0U);
 	assert(picosystem_physics_world_body_at(&world, 0U) == &world.bodies[0]);
 	assert(picosystem_physics_world_body_at(&world, 1U) == NULL);
@@ -2353,6 +2517,9 @@ int main(void)
 	test_profiled_step_and_reference_work();
 	test_uniform_grid_matches_brute_force_oracle();
 	test_contact_storage_covers_all_candidates();
+	test_sleep_boundary_and_acceleration_wake();
+	test_sleep_islands_and_motor_exclusion();
+	test_contact_wake_and_sleeping_sensor_lifecycle();
 	test_hash_excludes_scratch_and_diagnostics();
 	puts("physics-world tests passed");
 	return 0;
