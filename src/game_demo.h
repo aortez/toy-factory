@@ -95,6 +95,12 @@ struct picosystem_game_demo_stats {
 	uint32_t body_wake_transition_count;
 	uint32_t sleeping_contact_count;
 	uint32_t sleeping_joint_count;
+	uint32_t spring_joint_count;
+	uint32_t spring_solver_visit_count;
+	uint32_t spring_solver_changed_count;
+	uint32_t conveyor_contact_count;
+	uint32_t conveyor_solver_visit_count;
+	uint32_t conveyor_solver_changed_count;
 	uint32_t focus_angle_turns;
 	int32_t focus_angular_velocity_milliradians_per_second;
 	uint16_t body_count;

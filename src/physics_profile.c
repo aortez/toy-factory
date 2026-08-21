@@ -137,6 +137,12 @@ static const char *const work_names[] = {
 	"body_wake_transitions",
 	"sleeping_contacts",
 	"sleeping_joints",
+	"spring_joints",
+	"spring_solver_visits",
+	"spring_solver_changes",
+	"conveyor_contacts",
+	"conveyor_solver_visits",
+	"conveyor_solver_changes",
 };
 
 _Static_assert(sizeof(fixture_names) / sizeof(fixture_names[0]) ==
@@ -302,6 +308,18 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 		return work->sleeping_contact_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SLEEPING_JOINTS:
 		return work->sleeping_joint_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SPRING_JOINTS:
+		return work->spring_joint_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SPRING_SOLVER_VISITS:
+		return work->spring_solver_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_SPRING_SOLVER_CHANGES:
+		return work->spring_solver_changed_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_CONVEYOR_CONTACTS:
+		return work->conveyor_contact_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_CONVEYOR_SOLVER_VISITS:
+		return work->conveyor_solver_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_CONVEYOR_SOLVER_CHANGES:
+		return work->conveyor_solver_changed_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT:
 	default:
 		return 0U;
@@ -460,6 +478,7 @@ static bool segment_equal(const struct picosystem_physics_static_segment *left,
 	       (left->end.x == right->end.x) && (left->end.y == right->end.y) &&
 	       (left->normal.x == right->normal.x) && (left->normal.y == right->normal.y) &&
 	       (left->restitution == right->restitution) && (left->friction == right->friction) &&
+	       (left->surface_speed_per_tick == right->surface_speed_per_tick) &&
 	       (left->id == right->id);
 }
 
@@ -477,10 +496,16 @@ static bool distance_joint_equal(const struct picosystem_physics_distance_joint 
 	return (left->local_anchor_a.x == right->local_anchor_a.x) &&
 	       (left->local_anchor_a.y == right->local_anchor_a.y) &&
 	       (left->anchor_b.x == right->anchor_b.x) && (left->anchor_b.y == right->anchor_b.y) &&
-	       (left->target_distance == right->target_distance) && (left->id == right->id) &&
-	       (left->body_a_id == right->body_a_id) && (left->body_b_id == right->body_b_id) &&
+	       (left->target_distance == right->target_distance) &&
+	       (left->spring_angular_frequency_per_tick ==
+		right->spring_angular_frequency_per_tick) &&
+	       (left->spring_damping_ratio == right->spring_damping_ratio) &&
+	       (left->maximum_spring_impulse_per_tick == right->maximum_spring_impulse_per_tick) &&
+	       (left->id == right->id) && (left->body_a_id == right->body_a_id) &&
+	       (left->body_b_id == right->body_b_id) &&
 	       (left->body_a_index == right->body_a_index) &&
-	       (left->body_b_index == right->body_b_index);
+	       (left->body_b_index == right->body_b_index) &&
+	       (left->spring_enabled == right->spring_enabled);
 }
 
 static bool revolute_joint_equal(const struct picosystem_physics_revolute_joint *left,

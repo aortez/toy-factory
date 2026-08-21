@@ -80,6 +80,18 @@ distance_joint_config(uint16_t id, uint16_t body_a_id, uint16_t body_b_id, int32
 	};
 }
 
+static struct picosystem_physics_distance_joint_config
+spring_joint_config(uint16_t id, uint16_t body_a_id, uint16_t body_b_id, int32_t target_distance)
+{
+	struct picosystem_physics_distance_joint_config config =
+		distance_joint_config(id, body_a_id, body_b_id, target_distance);
+	config.spring_angular_frequency_per_tick = RATIO(1, 8);
+	config.spring_damping_ratio = RATIO(1, 2);
+	config.maximum_spring_impulse_per_tick = FIXED(2);
+	config.spring_enabled = 1U;
+	return config;
+}
+
 static struct picosystem_physics_revolute_joint_config
 revolute_joint_config(uint16_t id, uint16_t body_a_id, uint16_t body_b_id)
 {
@@ -185,22 +197,40 @@ static void assert_contact_event(const struct picosystem_physics_world *world, s
 	assert(event->phase == phase);
 }
 
+static void assert_static_segment_equal(const struct picosystem_physics_static_segment *left,
+					const struct picosystem_physics_static_segment *right)
+{
+	assert_vector_equal(&left->start, &right->start);
+	assert_vector_equal(&left->end, &right->end);
+	assert_vector_equal(&left->normal, &right->normal);
+	assert(left->restitution == right->restitution);
+	assert(left->friction == right->friction);
+	assert(left->surface_speed_per_tick == right->surface_speed_per_tick);
+	assert(left->id == right->id);
+}
+
 static void assert_distance_joint_equal(const struct picosystem_physics_distance_joint *left,
 					const struct picosystem_physics_distance_joint *right)
 {
 	assert_vector_equal(&left->local_anchor_a, &right->local_anchor_a);
 	assert_vector_equal(&left->anchor_b, &right->anchor_b);
 	assert(left->target_distance == right->target_distance);
+	assert(left->spring_angular_frequency_per_tick == right->spring_angular_frequency_per_tick);
+	assert(left->spring_damping_ratio == right->spring_damping_ratio);
+	assert(left->maximum_spring_impulse_per_tick == right->maximum_spring_impulse_per_tick);
 	assert(left->id == right->id);
 	assert(left->body_a_id == right->body_a_id);
 	assert(left->body_b_id == right->body_b_id);
 	assert(left->body_a_index == right->body_a_index);
 	assert(left->body_b_index == right->body_b_index);
+	assert(left->spring_enabled == right->spring_enabled);
 	assert_vector_equal(&left->world_anchor_a, &right->world_anchor_a);
 	assert_vector_equal(&left->world_anchor_b, &right->world_anchor_b);
 	assert_vector_equal(&left->normal, &right->normal);
 	assert(left->direction_inverse_mass == right->direction_inverse_mass);
 	assert(left->accumulated_impulse == right->accumulated_impulse);
+	assert(left->spring_softness == right->spring_softness);
+	assert(left->spring_bias_velocity == right->spring_bias_velocity);
 }
 
 static void assert_revolute_joint_equal(const struct picosystem_physics_revolute_joint *left,
@@ -379,6 +409,17 @@ static void assert_step_matches_reference(const struct picosystem_physics_world 
 	assert(grid->last_work.sleeping_contact_count ==
 	       reference->last_work.sleeping_contact_count);
 	assert(grid->last_work.sleeping_joint_count == reference->last_work.sleeping_joint_count);
+	assert(grid->last_work.spring_joint_count == reference->last_work.spring_joint_count);
+	assert(grid->last_work.spring_solver_visit_count ==
+	       reference->last_work.spring_solver_visit_count);
+	assert(grid->last_work.spring_solver_changed_count ==
+	       reference->last_work.spring_solver_changed_count);
+	assert(grid->last_work.conveyor_contact_count ==
+	       reference->last_work.conveyor_contact_count);
+	assert(grid->last_work.conveyor_solver_visit_count ==
+	       reference->last_work.conveyor_solver_visit_count);
+	assert(grid->last_work.conveyor_solver_changed_count ==
+	       reference->last_work.conveyor_solver_changed_count);
 	assert(reference->last_work.broad_phase_fallback_count == 0U);
 	assert(picosystem_physics_world_hash(grid) == picosystem_physics_world_hash(reference));
 
@@ -394,6 +435,10 @@ static void assert_step_matches_reference(const struct picosystem_physics_world 
 		       reference->active_sensor_contact_masks[index]);
 		assert(grid->sleep_quiet_tick_counts[index] ==
 		       reference->sleep_quiet_tick_counts[index]);
+	}
+	for (uint16_t index = 0U; index < grid->static_segment_count; ++index) {
+		assert_static_segment_equal(&grid->static_segments[index],
+					    &reference->static_segments[index]);
 	}
 	for (uint16_t index = 0U; index < grid->box_sensor_count; ++index) {
 		assert_vector_equal(&grid->box_sensors[index].center,
@@ -517,6 +562,9 @@ static void test_duplicate_ids_and_invalid_segments(void)
 	assert(picosystem_physics_world_add_static_segment(&world, &segment) == -EEXIST);
 	segment.id = 9U;
 	segment.end = segment.start;
+	assert(picosystem_physics_world_add_static_segment(&world, &segment) == -ERANGE);
+	segment = horizontal_segment(9U, 5);
+	segment.surface_speed_per_tick = FIXED(17);
 	assert(picosystem_physics_world_add_static_segment(&world, &segment) == -ERANGE);
 	assert(world.static_segment_count == 1U);
 
@@ -2159,6 +2207,226 @@ static void step_without_acceleration(struct picosystem_physics_world *world, ui
 	}
 }
 
+static void test_spring_boundaries_and_setter(void)
+{
+	struct picosystem_physics_world world;
+	init_world(&world, FIXED(4));
+	const struct picosystem_physics_circle_config body = circle_config(1U, 10, 0, 1);
+	assert(picosystem_physics_world_add_circle(&world, &body) == 0);
+	struct picosystem_physics_distance_joint_config spring =
+		spring_joint_config(101U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 10);
+	const uint32_t body_hash = picosystem_physics_world_hash(&world);
+
+	assert(picosystem_physics_world_set_spring_target_distance(NULL, 0U, FIXED(8)) == -EINVAL);
+	assert(picosystem_physics_world_set_spring_target_distance(&world, 0U, FIXED(8)) ==
+	       -ENOENT);
+	struct picosystem_physics_distance_joint_config invalid = spring;
+	invalid.spring_enabled = 2U;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = spring;
+	invalid.spring_angular_frequency_per_tick = RATIO(1, 128);
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = spring;
+	invalid.spring_angular_frequency_per_tick = RATIO(33, 64);
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = spring;
+	invalid.spring_damping_ratio = -1;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = spring;
+	invalid.spring_damping_ratio = FIXED(2) + 1;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = spring;
+	invalid.maximum_spring_impulse_per_tick = 0;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = spring;
+	invalid.maximum_spring_impulse_per_tick = FIXED(8) + 1;
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	invalid = distance_joint_config(101U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 10);
+	invalid.spring_damping_ratio = RATIO(1, 2);
+	assert(picosystem_physics_world_add_distance_joint(&world, &invalid) == -ERANGE);
+	assert(picosystem_physics_world_hash(&world) == body_hash);
+
+	assert(picosystem_physics_world_add_distance_joint(&world, &spring) == 0);
+	assert(world.distance_joints[0].spring_enabled == 1U);
+	const uint32_t spring_hash = picosystem_physics_world_hash(&world);
+	assert(picosystem_physics_world_set_spring_target_distance(&world, 1U, FIXED(8)) ==
+	       -ENOENT);
+	assert(picosystem_physics_world_set_spring_target_distance(&world, 0U, 0) == -ERANGE);
+	assert(picosystem_physics_world_hash(&world) == spring_hash);
+	assert(picosystem_physics_world_set_spring_target_distance(&world, 0U, FIXED(8)) == 0);
+	assert(world.distance_joints[0].target_distance == FIXED(8));
+	assert(picosystem_physics_world_hash(&world) != spring_hash);
+
+	struct picosystem_physics_world hard_world;
+	init_world(&hard_world, FIXED(4));
+	assert(picosystem_physics_world_add_circle(&hard_world, &body) == 0);
+	const struct picosystem_physics_distance_joint_config hard =
+		distance_joint_config(101U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 10);
+	assert(picosystem_physics_world_add_distance_joint(&hard_world, &hard) == 0);
+	assert(picosystem_physics_world_set_spring_target_distance(&hard_world, 0U, FIXED(8)) ==
+	       -ENOTSUP);
+}
+
+static void test_spring_dynamics_sleep_and_reference(void)
+{
+	struct picosystem_physics_world spring_world;
+	init_world(&spring_world, FIXED(4));
+	const struct picosystem_physics_circle_config body = circle_config(1U, 20, 0, 1);
+	assert(picosystem_physics_world_add_circle(&spring_world, &body) == 0);
+	const struct picosystem_physics_distance_joint_config spring =
+		spring_joint_config(101U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 10);
+	assert(picosystem_physics_world_add_distance_joint(&spring_world, &spring) == 0);
+	assert(picosystem_physics_world_step(&spring_world, &no_acceleration) == 0);
+	assert(spring_world.bodies[0].center.x == FIXED(20));
+	assert(spring_world.bodies[0].velocity_per_tick.x < 0);
+	assert(spring_world.last_work.spring_joint_count == 1U);
+	assert(spring_world.last_work.joint_position_correction_visit_count == 0U);
+	assert(spring_world.last_work.spring_solver_visit_count > 0U);
+	assert(spring_world.last_work.spring_solver_changed_count > 0U);
+	for (uint32_t tick = 0U; tick < 120U; ++tick) {
+		assert(picosystem_physics_world_step(&spring_world, &no_acceleration) == 0);
+	}
+	assert_fixed_close(spring_world.bodies[0].center.x, FIXED(10), FIXED(1));
+
+	struct picosystem_physics_world limited;
+	init_world(&limited, FIXED(4));
+	assert(picosystem_physics_world_add_circle(&limited, &body) == 0);
+	struct picosystem_physics_distance_joint_config limited_spring = spring;
+	limited_spring.maximum_spring_impulse_per_tick = RATIO(1, 64);
+	assert(picosystem_physics_world_add_distance_joint(&limited, &limited_spring) == 0);
+	assert(picosystem_physics_world_step(&limited, &no_acceleration) == 0);
+	assert(limited.bodies[0].velocity_per_tick.x == -RATIO(1, 64));
+
+	struct picosystem_physics_world off_center;
+	init_world(&off_center, FIXED(4));
+	const struct picosystem_physics_box_config box = box_config(1U, 20, 0, 2, 4);
+	assert(picosystem_physics_world_add_box(&off_center, &box) == 0);
+	struct picosystem_physics_distance_joint_config offset_spring = spring;
+	offset_spring.local_anchor_a.y = FIXED(4);
+	assert(picosystem_physics_world_add_distance_joint(&off_center, &offset_spring) == 0);
+	assert(picosystem_physics_world_step(&off_center, &no_acceleration) == 0);
+	assert(off_center.bodies[0].angular_velocity_per_tick != 0);
+
+	struct picosystem_physics_world sleeping;
+	init_world(&sleeping, FIXED(4));
+	const struct picosystem_physics_circle_config resting = circle_config(1U, 10, 0, 1);
+	assert(picosystem_physics_world_add_circle(&sleeping, &resting) == 0);
+	assert(picosystem_physics_world_add_distance_joint(&sleeping, &spring) == 0);
+	step_without_acceleration(&sleeping, PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS);
+	assert(picosystem_physics_world_body_is_sleeping(&sleeping, 0U));
+	assert(picosystem_physics_world_set_spring_target_distance(&sleeping, 0U, FIXED(8)) == 0);
+	assert(!picosystem_physics_world_body_is_sleeping(&sleeping, 0U));
+
+	struct picosystem_physics_world gravity_sleeping;
+	init_world(&gravity_sleeping, FIXED(4));
+	struct picosystem_physics_circle_config hanging = circle_config(1U, 0, 10, 1);
+	hanging.restitution = 0;
+	assert(picosystem_physics_world_add_circle(&gravity_sleeping, &hanging) == 0);
+	assert(picosystem_physics_world_add_distance_joint(&gravity_sleeping, &spring) == 0);
+	const struct picosystem_physics_vector gravity = {.y = RATIO(1, 64)};
+	for (uint32_t tick = 0U;
+	     (tick < 2000U) && !picosystem_physics_world_body_is_sleeping(&gravity_sleeping, 0U);
+	     ++tick) {
+		assert(picosystem_physics_world_step(&gravity_sleeping, &gravity) == 0);
+	}
+	assert(picosystem_physics_world_body_is_sleeping(&gravity_sleeping, 0U));
+
+	struct picosystem_physics_world sleeping_pair;
+	init_world(&sleeping_pair, FIXED(4));
+	const struct picosystem_physics_circle_config left = circle_config(1U, -2, 0, 1);
+	const struct picosystem_physics_circle_config right = circle_config(2U, 2, 0, 1);
+	assert(picosystem_physics_world_add_circle(&sleeping_pair, &left) == 0);
+	assert(picosystem_physics_world_add_circle(&sleeping_pair, &right) == 0);
+	const struct picosystem_physics_distance_joint_config pair_spring =
+		spring_joint_config(102U, 1U, 2U, 4);
+	assert(picosystem_physics_world_add_distance_joint(&sleeping_pair, &pair_spring) == 0);
+	step_without_acceleration(&sleeping_pair, PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS);
+	assert(sleeping_pair.sleeping_body_mask == UINT16_C(3));
+	assert(picosystem_physics_world_set_spring_target_distance(&sleeping_pair, 0U, FIXED(3)) ==
+	       0);
+	assert(sleeping_pair.sleeping_body_mask == 0U);
+
+	struct picosystem_physics_world grid = off_center;
+	struct picosystem_physics_world reference = off_center;
+	for (uint32_t tick = 0U; tick < 64U; ++tick) {
+		assert(picosystem_physics_world_step(&grid, &no_acceleration) == 0);
+		assert(picosystem_physics_world_step_reference(&reference, &no_acceleration) == 0);
+		assert_step_matches_reference(&grid, &reference);
+	}
+}
+
+static void init_conveyor_world(struct picosystem_physics_world *world,
+				picosystem_physics_fixed_t surface_speed,
+				picosystem_physics_fixed_t friction)
+{
+	init_world(world, FIXED(4));
+	struct picosystem_physics_circle_config body = circle_config(1U, 0, -1, 2);
+	body.restitution = 0;
+	body.friction = friction;
+	struct picosystem_physics_segment_config segment = horizontal_segment(101U, 0);
+	segment.restitution = 0;
+	segment.friction = friction;
+	segment.surface_speed_per_tick = surface_speed;
+	assert(picosystem_physics_world_add_circle(world, &body) == 0);
+	assert(picosystem_physics_world_add_static_segment(world, &segment) == 0);
+}
+
+static void test_conveyor_direction_setter_sleep_and_reference(void)
+{
+	const struct picosystem_physics_vector gravity = {.y = RATIO(1, 64)};
+	struct picosystem_physics_world forward;
+	init_conveyor_world(&forward, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE);
+	assert(picosystem_physics_world_step(&forward, &gravity) == 0);
+	assert(forward.bodies[0].velocity_per_tick.x > 0);
+	assert(forward.last_work.conveyor_contact_count == 1U);
+	assert(forward.last_work.conveyor_solver_visit_count > 0U);
+	assert(forward.last_work.conveyor_solver_changed_count > 0U);
+
+	struct picosystem_physics_world reverse;
+	init_conveyor_world(&reverse, -RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE);
+	assert(picosystem_physics_world_step(&reverse, &gravity) == 0);
+	assert(reverse.bodies[0].velocity_per_tick.x < 0);
+
+	struct picosystem_physics_world frictionless;
+	init_conveyor_world(&frictionless, RATIO(1, 2), 0);
+	assert(picosystem_physics_world_step(&frictionless, &gravity) == 0);
+	assert(frictionless.bodies[0].velocity_per_tick.x == 0);
+	assert(frictionless.last_work.conveyor_contact_count == 1U);
+	assert(frictionless.last_work.conveyor_solver_changed_count == 0U);
+
+	assert(picosystem_physics_world_set_segment_surface_speed(NULL, 0U, 0) == -EINVAL);
+	assert(picosystem_physics_world_set_segment_surface_speed(&forward, 1U, 0) == -ENOENT);
+	const uint32_t forward_hash = picosystem_physics_world_hash(&forward);
+	assert(picosystem_physics_world_set_segment_surface_speed(&forward, 0U, FIXED(17)) ==
+	       -ERANGE);
+	assert(picosystem_physics_world_hash(&forward) == forward_hash);
+	assert(picosystem_physics_world_set_segment_surface_speed(&forward, 0U, -RATIO(1, 2)) == 0);
+	assert(forward.static_segments[0].surface_speed_per_tick == -RATIO(1, 2));
+	assert(picosystem_physics_world_hash(&forward) != forward_hash);
+
+	struct picosystem_physics_world sleeping;
+	init_conveyor_world(&sleeping, 0, PICOSYSTEM_PHYSICS_FIXED_ONE);
+	for (uint32_t tick = 0U; tick < PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS; ++tick) {
+		assert(picosystem_physics_world_step(&sleeping, &gravity) == 0);
+	}
+	assert(picosystem_physics_world_body_is_sleeping(&sleeping, 0U));
+	assert(picosystem_physics_world_set_segment_surface_speed(&sleeping, 0U, RATIO(1, 2)) == 0);
+	assert(!picosystem_physics_world_body_is_sleeping(&sleeping, 0U));
+	for (uint32_t tick = 0U; tick < PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS + 4U; ++tick) {
+		assert(picosystem_physics_world_step(&sleeping, &gravity) == 0);
+		assert(!picosystem_physics_world_body_is_sleeping(&sleeping, 0U));
+	}
+
+	struct picosystem_physics_world grid;
+	init_conveyor_world(&grid, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE);
+	struct picosystem_physics_world reference = grid;
+	for (uint32_t tick = 0U; tick < 24U; ++tick) {
+		assert(picosystem_physics_world_step(&grid, &gravity) == 0);
+		assert(picosystem_physics_world_step_reference(&reference, &gravity) == 0);
+		assert_step_matches_reference(&grid, &reference);
+	}
+}
+
 static void test_sleep_boundary_and_acceleration_wake(void)
 {
 	struct picosystem_physics_world world;
@@ -2300,8 +2568,11 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	const struct picosystem_physics_circle_config body = circle_config(1U, 0, 0, 1);
 	assert(picosystem_physics_world_add_circle(&world, &body) == 0);
 	const struct picosystem_physics_distance_joint_config joint =
-		distance_joint_config(101U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 1);
+		spring_joint_config(101U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID, 1);
 	assert(picosystem_physics_world_add_distance_joint(&world, &joint) == 0);
+	struct picosystem_physics_segment_config segment = horizontal_segment(501U, 10);
+	segment.surface_speed_per_tick = RATIO(1, 2);
+	assert(picosystem_physics_world_add_static_segment(&world, &segment) == 0);
 	struct picosystem_physics_revolute_joint_config revolute_joint =
 		revolute_joint_config(201U, 1U, PICOSYSTEM_PHYSICS_WORLD_BODY_ID);
 	revolute_joint.motor_speed_per_tick = RATIO(1, 64);
@@ -2352,6 +2623,8 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	world.distance_joints[0].normal.x = INT32_MAX;
 	world.distance_joints[0].direction_inverse_mass = INT32_MAX;
 	world.distance_joints[0].accumulated_impulse = INT32_MIN;
+	world.distance_joints[0].spring_softness = INT32_MAX;
+	world.distance_joints[0].spring_bias_velocity = INT32_MIN;
 	world.revolute_joints[0].world_anchor_a.x = INT32_MAX;
 	world.revolute_joints[0].world_anchor_b.y = INT32_MIN;
 	world.revolute_joints[0].effective_mass_xx = INT32_MAX;
@@ -2383,7 +2656,22 @@ static void test_hash_excludes_scratch_and_diagnostics(void)
 	changed.distance_joints[0].target_distance += 1;
 	assert(picosystem_physics_world_hash(&changed) != expected);
 	changed = world;
+	changed.distance_joints[0].spring_angular_frequency_per_tick += 1;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.distance_joints[0].spring_damping_ratio += 1;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.distance_joints[0].maximum_spring_impulse_per_tick += 1;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.distance_joints[0].spring_enabled = 0U;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
 	changed.distance_joint_count = 0U;
+	assert(picosystem_physics_world_hash(&changed) != expected);
+	changed = world;
+	changed.static_segments[0].surface_speed_per_tick += 1;
 	assert(picosystem_physics_world_hash(&changed) != expected);
 	changed = world;
 	changed.revolute_joints[0].anchor_b.x += 1;
@@ -2517,6 +2805,9 @@ int main(void)
 	test_profiled_step_and_reference_work();
 	test_uniform_grid_matches_brute_force_oracle();
 	test_contact_storage_covers_all_candidates();
+	test_spring_boundaries_and_setter();
+	test_spring_dynamics_sleep_and_reference();
+	test_conveyor_direction_setter_sleep_and_reference();
 	test_sleep_boundary_and_acceleration_wake();
 	test_sleep_islands_and_motor_exclusion();
 	test_contact_wake_and_sleeping_sensor_lifecycle();

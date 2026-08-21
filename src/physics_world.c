@@ -40,6 +40,10 @@
 #define PHYSICS_TAU_FIXED                         INT32_C(411775)
 #define PHYSICS_PI_FIXED                          (PHYSICS_TAU_FIXED / 2)
 #define PHYSICS_JOINT_MOTOR_IMPULSE_LIMIT         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
+#define PHYSICS_SPRING_FREQUENCY_MINIMUM          (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
+#define PHYSICS_SPRING_FREQUENCY_LIMIT            (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
+#define PHYSICS_SPRING_DAMPING_RATIO_LIMIT        (PICOSYSTEM_PHYSICS_FIXED_ONE * 2)
+#define PHYSICS_SPRING_IMPULSE_LIMIT              PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
 #define PHYSICS_JOINT_LIMIT_IMPULSE_LIMIT         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(256)
 #define PHYSICS_JOINT_ANGULAR_SLOP                (PHYSICS_TAU_FIXED / 360)
 #define PHYSICS_JOINT_MAX_ANGULAR_CORRECTION      (PHYSICS_TAU_FIXED / 24)
@@ -52,7 +56,7 @@
 #define PHYSICS_BOUNCE_THRESHOLD                  (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
 #define PHYSICS_SLEEP_LINEAR_VELOCITY_THRESHOLD   (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
 #define PHYSICS_SLEEP_ANGULAR_VELOCITY_THRESHOLD  (PICOSYSTEM_PHYSICS_FIXED_ONE / 512)
-#define PHYSICS_HASH_VERSION                      UINT32_C(10)
+#define PHYSICS_HASH_VERSION                      UINT32_C(11)
 #define FNV1A_OFFSET_BASIS                        UINT32_C(2166136261)
 #define FNV1A_PRIME                               UINT32_C(16777619)
 #define STATIC_BODY_INDEX                         UINT8_MAX
@@ -145,7 +149,7 @@ struct physics_contact_pair_masks {
 
 struct physics_sleep_graph {
 	uint16_t neighbor_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
-	uint16_t motor_body_mask;
+	uint16_t powered_body_mask;
 };
 
 struct contact_point_candidate {
@@ -578,7 +582,8 @@ static bool segment_config_is_valid(const struct picosystem_physics_segment_conf
 	if ((config == NULL) || (config->id == 0U) ||
 	    !vector_is_bounded(&config->start, PHYSICS_POSITION_LIMIT) ||
 	    !vector_is_bounded(&config->end, PHYSICS_POSITION_LIMIT) ||
-	    !material_is_valid(config->restitution) || !material_is_valid(config->friction)) {
+	    !material_is_valid(config->restitution) || !material_is_valid(config->friction) ||
+	    !fixed_is_bounded(config->surface_speed_per_tick, PHYSICS_VELOCITY_LIMIT)) {
 		return false;
 	}
 
@@ -608,7 +613,23 @@ distance_joint_config_is_valid(const struct picosystem_physics_distance_joint_co
 	     (config->body_a_id == config->body_b_id)) ||
 	    !vector_is_bounded(&config->local_anchor_a, PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT) ||
 	    (config->target_distance < PHYSICS_JOINT_DISTANCE_MINIMUM) ||
-	    (config->target_distance > PHYSICS_JOINT_DISTANCE_LIMIT)) {
+	    (config->target_distance > PHYSICS_JOINT_DISTANCE_LIMIT) ||
+	    (config->spring_enabled > 1U)) {
+		return false;
+	}
+	if (config->spring_enabled != 0U) {
+		if ((config->spring_angular_frequency_per_tick <
+		     PHYSICS_SPRING_FREQUENCY_MINIMUM) ||
+		    (config->spring_angular_frequency_per_tick > PHYSICS_SPRING_FREQUENCY_LIMIT) ||
+		    (config->spring_damping_ratio < 0) ||
+		    (config->spring_damping_ratio > PHYSICS_SPRING_DAMPING_RATIO_LIMIT) ||
+		    (config->maximum_spring_impulse_per_tick <= 0) ||
+		    (config->maximum_spring_impulse_per_tick > PHYSICS_SPRING_IMPULSE_LIMIT)) {
+			return false;
+		}
+	} else if ((config->spring_angular_frequency_per_tick != 0) ||
+		   (config->spring_damping_ratio != 0) ||
+		   (config->maximum_spring_impulse_per_tick != 0)) {
 		return false;
 	}
 
@@ -789,6 +810,7 @@ static bool segment_is_valid(const struct picosystem_physics_static_segment *seg
 		.end = segment->end,
 		.restitution = segment->restitution,
 		.friction = segment->friction,
+		.surface_speed_per_tick = segment->surface_speed_per_tick,
 		.id = segment->id,
 	};
 	if (!segment_config_is_valid(&config)) {
@@ -844,9 +866,13 @@ static bool distance_joint_is_valid(const struct picosystem_physics_distance_joi
 		.local_anchor_a = joint->local_anchor_a,
 		.anchor_b = joint->anchor_b,
 		.target_distance = joint->target_distance,
+		.spring_angular_frequency_per_tick = joint->spring_angular_frequency_per_tick,
+		.spring_damping_ratio = joint->spring_damping_ratio,
+		.maximum_spring_impulse_per_tick = joint->maximum_spring_impulse_per_tick,
 		.id = joint->id,
 		.body_a_id = joint->body_a_id,
 		.body_b_id = joint->body_b_id,
+		.spring_enabled = joint->spring_enabled,
 	};
 	if (!distance_joint_config_is_valid(&config) ||
 	    (joint->body_a_index >= world->body_count) ||
@@ -1155,6 +1181,16 @@ static void build_sleep_graph(const struct picosystem_physics_world *world,
 			sleep_graph_add_edge(graph, body_a, body_b);
 			body_mask &= (uint16_t)(body_mask - UINT16_C(1));
 		}
+
+		uint8_t segment_mask = contact_pairs->static_segment_masks[body_a];
+		while (segment_mask != 0U) {
+			const uint8_t segment_index =
+				(uint8_t)__builtin_ctz((unsigned int)segment_mask);
+			if (world->static_segments[segment_index].surface_speed_per_tick != 0) {
+				graph->powered_body_mask |= body_mask_for_index(body_a);
+			}
+			segment_mask &= (uint8_t)(segment_mask - UINT8_C(1));
+		}
 	}
 
 	for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
@@ -1169,9 +1205,10 @@ static void build_sleep_graph(const struct picosystem_physics_world *world,
 		sleep_graph_add_joint(graph, joint->body_a_index, joint->body_b_id,
 				      joint->body_b_index);
 		if (joint->motor_enabled != 0U) {
-			graph->motor_body_mask |= body_mask_for_index(joint->body_a_index);
+			graph->powered_body_mask |= body_mask_for_index(joint->body_a_index);
 			if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
-				graph->motor_body_mask |= body_mask_for_index(joint->body_b_index);
+				graph->powered_body_mask |=
+					body_mask_for_index(joint->body_b_index);
 			}
 		}
 	}
@@ -1181,9 +1218,10 @@ static void build_sleep_graph(const struct picosystem_physics_world *world,
 		sleep_graph_add_joint(graph, joint->body_a_index, joint->body_b_id,
 				      joint->body_b_index);
 		if (joint->motor_enabled != 0U) {
-			graph->motor_body_mask |= body_mask_for_index(joint->body_a_index);
+			graph->powered_body_mask |= body_mask_for_index(joint->body_a_index);
 			if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
-				graph->motor_body_mask |= body_mask_for_index(joint->body_b_index);
+				graph->powered_body_mask |=
+					body_mask_for_index(joint->body_b_index);
 			}
 		}
 	}
@@ -1234,7 +1272,7 @@ static void wake_interacting_sleepers(struct picosystem_physics_world *world,
 	}
 	const uint16_t awake_sources =
 		(configured_body_mask(world) & (uint16_t)~world->sleeping_body_mask) |
-		graph->motor_body_mask;
+		graph->powered_body_mask;
 	const uint16_t connected_awake = sleep_graph_expand_mask(graph, awake_sources);
 	(void)wake_sleeping_body_mask(world, connected_awake, true);
 }
@@ -1279,7 +1317,7 @@ static void update_sleep_state(struct picosystem_physics_world *world,
 			continue;
 		}
 
-		bool quiet = (graph->motor_body_mask & component) == 0U;
+		bool quiet = (graph->powered_body_mask & component) == 0U;
 		uint16_t minimum_quiet_ticks = PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS;
 		uint16_t remaining = component;
 		while (remaining != 0U) {
@@ -2943,9 +2981,40 @@ static void cache_contact_solved_velocity(const struct picosystem_physics_world 
 	contact->solved_velocity_valid = 1U;
 }
 
+static bool contact_has_conveyor(const struct picosystem_physics_world *world,
+				 const struct picosystem_physics_contact *contact)
+{
+	return (contact->type == PICOSYSTEM_PHYSICS_CONTACT_STATIC_SEGMENT) &&
+	       (world->static_segments[contact->segment_index].surface_speed_per_tick != 0);
+}
+
+static picosystem_physics_fixed_t
+contact_surface_tangent_velocity(const struct picosystem_physics_world *world,
+				 const struct picosystem_physics_contact *contact,
+				 const struct picosystem_physics_vector *contact_tangent)
+{
+	if (!contact_has_conveyor(world, contact)) {
+		return 0;
+	}
+
+	const struct picosystem_physics_static_segment *const segment =
+		&world->static_segments[contact->segment_index];
+	const struct picosystem_physics_vector segment_tangent = {
+		.x = segment->normal.y,
+		.y = -segment->normal.x,
+	};
+	const struct picosystem_physics_vector surface_velocity =
+		vector_scale(&segment_tangent, segment->surface_speed_per_tick);
+	return vector_dot(&surface_velocity, contact_tangent);
+}
+
 static bool solve_contact_velocity(struct picosystem_physics_world *world,
 				   struct picosystem_physics_contact *contact)
 {
+	const bool conveyor = contact_has_conveyor(world, contact);
+	if (conveyor) {
+		++world->last_work.conveyor_solver_visit_count;
+	}
 	if (contact_solved_velocity_matches(world, contact)) {
 		++world->last_work.solver_cached_contact_count;
 		return false;
@@ -2971,7 +3040,9 @@ static bool solve_contact_velocity(struct picosystem_physics_world *world,
 	};
 	const picosystem_physics_fixed_t tangent_inverse_mass =
 		contact_direction_inverse_mass(world, contact, &tangent);
-	const picosystem_physics_fixed_t tangent_velocity = vector_dot(&relative, &tangent);
+	const picosystem_physics_fixed_t tangent_velocity =
+		vector_dot(&relative, &tangent) +
+		contact_surface_tangent_velocity(world, contact, &tangent);
 	const picosystem_physics_fixed_t tangent_delta =
 		fixed_divide(-tangent_velocity, tangent_inverse_mass);
 	const picosystem_physics_fixed_t maximum_friction = fixed_multiply(
@@ -2982,6 +3053,9 @@ static bool solve_contact_velocity(struct picosystem_physics_world *world,
 	const picosystem_physics_fixed_t applied_tangent =
 		contact->accumulated_tangent_impulse - previous_tangent;
 	apply_contact_impulse(world, contact, &tangent, applied_tangent);
+	if (conveyor && (applied_tangent != 0)) {
+		++world->last_work.conveyor_solver_changed_count;
+	}
 	cache_contact_solved_velocity(world, contact);
 	return (applied_normal != 0) || (applied_tangent != 0);
 }
@@ -3056,11 +3130,30 @@ apply_distance_joint_position_correction(struct picosystem_physics_world *world,
 static void prepare_distance_joint(struct picosystem_physics_world *world,
 				   struct picosystem_physics_distance_joint *joint)
 {
-	(void)distance_joint_geometry(world, joint, &joint->world_anchor_a, &joint->world_anchor_b,
-				      &joint->normal);
+	const picosystem_physics_fixed_t distance = distance_joint_geometry(
+		world, joint, &joint->world_anchor_a, &joint->world_anchor_b, &joint->normal);
 	joint->direction_inverse_mass = distance_joint_direction_inverse_mass(
 		world, joint, &joint->world_anchor_a, &joint->world_anchor_b, &joint->normal);
 	joint->accumulated_impulse = 0;
+	joint->spring_softness = 0;
+	joint->spring_bias_velocity = 0;
+	if (joint->spring_enabled == 0U) {
+		return;
+	}
+
+	const picosystem_physics_fixed_t effective_mass =
+		fixed_divide(PICOSYSTEM_PHYSICS_FIXED_ONE, joint->direction_inverse_mass);
+	const picosystem_physics_fixed_t angular_frequency_squared = fixed_multiply(
+		joint->spring_angular_frequency_per_tick, joint->spring_angular_frequency_per_tick);
+	const picosystem_physics_fixed_t stiffness =
+		fixed_multiply(effective_mass, angular_frequency_squared);
+	const picosystem_physics_fixed_t damping = fixed_multiply(
+		effective_mass, fixed_multiply(joint->spring_damping_ratio * 2,
+					       joint->spring_angular_frequency_per_tick));
+	joint->spring_softness = fixed_divide(PICOSYSTEM_PHYSICS_FIXED_ONE, damping + stiffness);
+	joint->spring_bias_velocity =
+		fixed_multiply(distance - joint->target_distance,
+			       fixed_multiply(stiffness, joint->spring_softness));
 }
 
 static struct picosystem_physics_vector
@@ -3083,9 +3176,21 @@ static bool solve_distance_joint_velocity(struct picosystem_physics_world *world
 	const struct picosystem_physics_vector relative =
 		distance_joint_relative_velocity(world, joint);
 	const picosystem_physics_fixed_t velocity = vector_dot(&relative, &joint->normal);
-	const picosystem_physics_fixed_t impulse =
-		fixed_divide(-velocity, joint->direction_inverse_mass);
-	joint->accumulated_impulse += impulse;
+	picosystem_physics_fixed_t impulse;
+	if (joint->spring_enabled != 0U) {
+		const picosystem_physics_fixed_t softness_impulse =
+			fixed_multiply(joint->spring_softness, joint->accumulated_impulse);
+		impulse = fixed_divide(-(velocity + joint->spring_bias_velocity + softness_impulse),
+				       joint->direction_inverse_mass + joint->spring_softness);
+		const picosystem_physics_fixed_t previous_impulse = joint->accumulated_impulse;
+		joint->accumulated_impulse = fixed_clamp(previous_impulse + impulse,
+							 -joint->maximum_spring_impulse_per_tick,
+							 joint->maximum_spring_impulse_per_tick);
+		impulse = joint->accumulated_impulse - previous_impulse;
+	} else {
+		impulse = fixed_divide(-velocity, joint->direction_inverse_mass);
+		joint->accumulated_impulse += impulse;
+	}
 	apply_body_impulse(world, joint->body_a_index, &joint->world_anchor_a, &joint->normal,
 			   impulse, -PICOSYSTEM_PHYSICS_FIXED_ONE);
 	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
@@ -3944,6 +4049,7 @@ int picosystem_physics_world_add_static_segment(
 		.end = config->end,
 		.restitution = config->restitution,
 		.friction = config->friction,
+		.surface_speed_per_tick = config->surface_speed_per_tick,
 		.id = config->id,
 	};
 	segment_normal_from_endpoints(&segment->start, &segment->end, &segment->normal);
@@ -4022,11 +4128,16 @@ int picosystem_physics_world_add_distance_joint(
 			.local_anchor_a = config->local_anchor_a,
 			.anchor_b = config->anchor_b,
 			.target_distance = config->target_distance,
+			.spring_angular_frequency_per_tick =
+				config->spring_angular_frequency_per_tick,
+			.spring_damping_ratio = config->spring_damping_ratio,
+			.maximum_spring_impulse_per_tick = config->maximum_spring_impulse_per_tick,
 			.id = config->id,
 			.body_a_id = config->body_a_id,
 			.body_b_id = config->body_b_id,
 			.body_a_index = (uint8_t)body_a_index,
 			.body_b_index = (uint8_t)body_b_index,
+			.spring_enabled = config->spring_enabled,
 		};
 	++world->distance_joint_count;
 	uint16_t wake_mask = body_mask_for_index((uint8_t)body_a_index);
@@ -4205,6 +4316,68 @@ int picosystem_physics_world_set_prismatic_motor_speed(
 	return 0;
 }
 
+int picosystem_physics_world_set_spring_target_distance(struct picosystem_physics_world *world,
+							size_t index,
+							picosystem_physics_fixed_t target_distance)
+{
+	if (world == NULL) {
+		return -EINVAL;
+	}
+	if (!world_is_valid(world) || (target_distance < PHYSICS_JOINT_DISTANCE_MINIMUM) ||
+	    (target_distance > PHYSICS_JOINT_DISTANCE_LIMIT)) {
+		return -ERANGE;
+	}
+	if (index >= world->distance_joint_count) {
+		return -ENOENT;
+	}
+	struct picosystem_physics_distance_joint *const joint = &world->distance_joints[index];
+	if (joint->spring_enabled == 0U) {
+		return -ENOTSUP;
+	}
+	if (joint->target_distance == target_distance) {
+		return 0;
+	}
+
+	joint->target_distance = target_distance;
+	uint16_t wake_mask = body_mask_for_index(joint->body_a_index);
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		wake_mask |= body_mask_for_index(joint->body_b_index);
+	}
+	(void)wake_sleeping_body_mask(world, wake_mask, false);
+	return 0;
+}
+
+int picosystem_physics_world_set_segment_surface_speed(
+	struct picosystem_physics_world *world, size_t index,
+	picosystem_physics_fixed_t surface_speed_per_tick)
+{
+	if (world == NULL) {
+		return -EINVAL;
+	}
+	if (!world_is_valid(world) ||
+	    !fixed_is_bounded(surface_speed_per_tick, PHYSICS_VELOCITY_LIMIT)) {
+		return -ERANGE;
+	}
+	if (index >= world->static_segment_count) {
+		return -ENOENT;
+	}
+	struct picosystem_physics_static_segment *const segment = &world->static_segments[index];
+	if (segment->surface_speed_per_tick == surface_speed_per_tick) {
+		return 0;
+	}
+
+	segment->surface_speed_per_tick = surface_speed_per_tick;
+	const uint8_t segment_mask = (uint8_t)(UINT8_C(1) << index);
+	uint16_t wake_mask = 0U;
+	for (uint8_t body_index = 0U; body_index < world->body_count; ++body_index) {
+		if ((world->active_segment_contact_masks[body_index] & segment_mask) != 0U) {
+			wake_mask |= body_mask_for_index(body_index);
+		}
+	}
+	(void)wake_sleeping_body_mask(world, wake_mask, false);
+	return 0;
+}
+
 int picosystem_physics_world_wake_body(struct picosystem_physics_world *world, size_t index)
 {
 	if (world == NULL) {
@@ -4258,6 +4431,10 @@ physics_world_step(struct picosystem_physics_world *world,
 	world->last_work.distance_joint_count = world->distance_joint_count;
 	world->last_work.revolute_joint_count = world->revolute_joint_count;
 	world->last_work.prismatic_joint_count = world->prismatic_joint_count;
+	for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
+		world->last_work.spring_joint_count +=
+			(world->distance_joints[index].spring_enabled != 0U) ? 1U : 0U;
+	}
 	if ((world->last_global_acceleration_per_tick.x != global_acceleration_per_tick->x) ||
 	    (world->last_global_acceleration_per_tick.y != global_acceleration_per_tick->y)) {
 		(void)wake_sleeping_body_mask(world, configured_body_mask(world), true);
@@ -4292,6 +4469,9 @@ physics_world_step(struct picosystem_physics_world *world,
 
 	bool has_awake_constraint = false;
 	for (uint16_t index = 0U; index < world->contact_count; ++index) {
+		if (contact_has_conveyor(world, &world->contacts[index])) {
+			++world->last_work.conveyor_contact_count;
+		}
 		if (contact_is_sleeping(world, &world->contacts[index])) {
 			++world->last_work.sleeping_contact_count;
 		} else {
@@ -4329,11 +4509,12 @@ physics_world_step(struct picosystem_physics_world *world,
 		++world->last_work.position_correction_visit_count;
 	}
 	for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
-		if (distance_joint_is_sleeping(world, &world->distance_joints[index])) {
+		const struct picosystem_physics_distance_joint *const joint =
+			&world->distance_joints[index];
+		if (distance_joint_is_sleeping(world, joint) || (joint->spring_enabled != 0U)) {
 			continue;
 		}
-		(void)apply_distance_joint_position_correction(world,
-							       &world->distance_joints[index]);
+		(void)apply_distance_joint_position_correction(world, joint);
 		++world->last_work.joint_position_correction_visit_count;
 	}
 	for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
@@ -4405,15 +4586,22 @@ physics_world_step(struct picosystem_physics_world *world,
 			}
 		}
 		for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
-			if (distance_joint_is_sleeping(world, &world->distance_joints[index])) {
+			struct picosystem_physics_distance_joint *const joint =
+				&world->distance_joints[index];
+			if (distance_joint_is_sleeping(world, joint)) {
 				continue;
 			}
-			const bool joint_changed = solve_distance_joint_velocity(
-				world, &world->distance_joints[index]);
+			const bool joint_changed = solve_distance_joint_velocity(world, joint);
 			impulse_changed |= joint_changed;
 			++world->last_work.joint_solver_visit_count;
+			if (joint->spring_enabled != 0U) {
+				++world->last_work.spring_solver_visit_count;
+			}
 			if (joint_changed) {
 				++world->last_work.joint_solver_changed_count;
+				if (joint->spring_enabled != 0U) {
+					++world->last_work.spring_solver_changed_count;
+				}
 			}
 		}
 		for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
@@ -4744,6 +4932,7 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 		hash = fnv1a_u32(hash, (uint32_t)segment->normal.y);
 		hash = fnv1a_u32(hash, (uint32_t)segment->restitution);
 		hash = fnv1a_u32(hash, (uint32_t)segment->friction);
+		hash = fnv1a_u32(hash, (uint32_t)segment->surface_speed_per_tick);
 	}
 	for (uint16_t index = 0U; index < world->box_sensor_count; ++index) {
 		const struct picosystem_physics_box_sensor *const sensor =
@@ -4767,6 +4956,10 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 		hash = fnv1a_u32(hash, (uint32_t)joint->anchor_b.x);
 		hash = fnv1a_u32(hash, (uint32_t)joint->anchor_b.y);
 		hash = fnv1a_u32(hash, (uint32_t)joint->target_distance);
+		hash = fnv1a_u32(hash, (uint32_t)joint->spring_angular_frequency_per_tick);
+		hash = fnv1a_u32(hash, (uint32_t)joint->spring_damping_ratio);
+		hash = fnv1a_u32(hash, (uint32_t)joint->maximum_spring_impulse_per_tick);
+		hash = fnv1a_u32(hash, joint->spring_enabled);
 	}
 	for (uint16_t index = 0U; index < world->revolute_joint_count; ++index) {
 		const struct picosystem_physics_revolute_joint *const joint =

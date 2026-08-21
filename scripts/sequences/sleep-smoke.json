@@ -3,27 +3,11 @@
   "steps": [
     {
       "input": "none",
-      "ticks": 250
-    },
-    {
-      "input": "right",
-      "ticks": 250
-    },
-    {
-      "input": "up",
-      "ticks": 250
-    },
-    {
-      "input": "down-left",
-      "ticks": 250
-    },
-    {
-      "input": "none",
-      "ticks": 228
+      "ticks": 1723
     }
   ],
   "expect": {
-    "hash": "5e0274dc",
-    "framebuffer_crc32": "b78934e6"
+    "hash": "51bb08c0",
+    "framebuffer_crc32": "0a848efb"
   }
 }

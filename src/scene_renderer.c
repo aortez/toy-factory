@@ -36,6 +36,9 @@ static const picosystem_color_t body_colors[] = {
 	PICOSYSTEM_COLOR_MAGENTA, PICOSYSTEM_COLOR_RED,  PICOSYSTEM_COLOR_WHITE,
 };
 
+_Static_assert(PICOSYSTEM_SCENE_MAX_SEGMENTS <= 32U,
+	       "conveyor directions must fit the scene segment masks");
+
 static PICOSYSTEM_RENDER_RAMFUNC void
 update_progress(struct picosystem_scene_render_progress *progress,
 		enum picosystem_scene_render_stage stage, uint32_t item_index,
@@ -50,6 +53,11 @@ update_progress(struct picosystem_scene_render_progress *progress,
 	progress->stage = stage;
 }
 
+static PICOSYSTEM_RENDER_RAMFUNC int32_t absolute_i32(int32_t value)
+{
+	return (value < 0) ? -value : value;
+}
+
 static PICOSYSTEM_RENDER_RAMFUNC int
 validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 {
@@ -61,6 +69,17 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 	    (snapshot->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
 	    (snapshot->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
 	    (snapshot->box_sensor_count > PICOSYSTEM_SCENE_MAX_BOX_SENSORS)) {
+		return -ERANGE;
+	}
+	const uint32_t valid_segment_mask =
+		(snapshot->static_segment_count == 0U)
+			? 0U
+			: (UINT32_C(1) << snapshot->static_segment_count) - UINT32_C(1);
+	const uint32_t conveyor_mask =
+		snapshot->conveyor_forward_segment_mask | snapshot->conveyor_reverse_segment_mask;
+	if (((snapshot->conveyor_forward_segment_mask & snapshot->conveyor_reverse_segment_mask) !=
+	     0U) ||
+	    ((conveyor_mask & ~valid_segment_mask) != 0U)) {
 		return -ERANGE;
 	}
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
@@ -169,12 +188,15 @@ picosystem_scene_body_bounds(const struct picosystem_scene_body *body)
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
-line_bounds(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y)
+line_bounds_with_margin(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
+			uint16_t margin)
 {
-	const int32_t left = MAX((int32_t)MIN(start_x, end_x), 0);
-	const int32_t top = MAX((int32_t)MIN(start_y, end_y), 0);
-	const int32_t right = MIN((int32_t)MAX(start_x, end_x), PICOSYSTEM_GRAPHICS_WIDTH - 1);
-	const int32_t bottom = MIN((int32_t)MAX(start_y, end_y), PICOSYSTEM_GRAPHICS_HEIGHT - 1);
+	const int32_t left = MAX((int32_t)MIN(start_x, end_x) - margin, 0);
+	const int32_t top = MAX((int32_t)MIN(start_y, end_y) - margin, 0);
+	const int32_t right =
+		MIN((int32_t)MAX(start_x, end_x) + margin, PICOSYSTEM_GRAPHICS_WIDTH - 1);
+	const int32_t bottom =
+		MIN((int32_t)MAX(start_y, end_y) + margin, PICOSYSTEM_GRAPHICS_HEIGHT - 1);
 	if ((right < left) || (bottom < top)) {
 		return (struct picosystem_rect){0};
 	}
@@ -187,6 +209,18 @@ line_bounds(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y)
 	};
 }
 
+static PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
+line_bounds(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y)
+{
+	return line_bounds_with_margin(start_x, start_y, end_x, end_y, 0U);
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC bool
+scene_joint_is_spring(const struct picosystem_scene_joint *joint)
+{
+	return (joint->target_radius & PICOSYSTEM_SCENE_JOINT_SPRING_FLAG) != 0U;
+}
+
 PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
 picosystem_scene_segment_bounds(const struct picosystem_scene_segment *segment)
 {
@@ -196,11 +230,17 @@ picosystem_scene_segment_bounds(const struct picosystem_scene_segment *segment)
 PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
 picosystem_scene_joint_bounds(const struct picosystem_scene_joint *joint)
 {
-	if (joint->target_radius != 0U) {
+	if (scene_joint_is_spring(joint)) {
+		return line_bounds_with_margin(joint->anchor_a_x, joint->anchor_a_y,
+					       joint->anchor_b_x, joint->anchor_b_y, 3U);
+	}
+	const uint16_t target_radius =
+		joint->target_radius & PICOSYSTEM_SCENE_JOINT_TARGET_RADIUS_MASK;
+	if (target_radius != 0U) {
 		const struct picosystem_scene_body guide = {
 			.center_x = joint->anchor_b_x,
 			.center_y = joint->anchor_b_y,
-			.radius = joint->target_radius,
+			.radius = target_radius,
 			.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
 		};
 		return picosystem_scene_body_bounds(&guide);
@@ -260,7 +300,8 @@ picosystem_scene_joint_segment_bounds(const struct picosystem_scene_joint *joint
 		joint->anchor_a_y +
 		((delta_y * next_index) / (int32_t)PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT);
 
-	return line_bounds((int16_t)start_x, (int16_t)start_y, (int16_t)end_x, (int16_t)end_y);
+	return line_bounds_with_margin((int16_t)start_x, (int16_t)start_y, (int16_t)end_x,
+				       (int16_t)end_y, scene_joint_is_spring(joint) ? 3U : 0U);
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC int render_body(const struct picosystem_scene_body *body,
@@ -320,6 +361,47 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_body(const struct picosystem_scene_b
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC void
+render_conveyor_chevrons(const struct picosystem_scene_segment *segment, int32_t direction,
+			 const struct picosystem_rect *clip)
+{
+	const int32_t delta_x = (int32_t)segment->end_x - segment->start_x;
+	const int32_t delta_y = (int32_t)segment->end_y - segment->start_y;
+	const int32_t maximum_axis = MAX(absolute_i32(delta_x), absolute_i32(delta_y));
+	if (maximum_axis == 0) {
+		return;
+	}
+
+	const int32_t forward_x = (direction * delta_x * 3) / maximum_axis;
+	const int32_t forward_y = (direction * delta_y * 3) / maximum_axis;
+	const int32_t side_x = (-delta_y * 2) / maximum_axis;
+	const int32_t side_y = (delta_x * 2) / maximum_axis;
+	for (int32_t marker = 1; marker <= 3; ++marker) {
+		const int32_t center_x = segment->start_x + ((delta_x * marker) / 4);
+		const int32_t center_y = segment->start_y + ((delta_y * marker) / 4);
+		const int16_t tip_x = (int16_t)(center_x + forward_x);
+		const int16_t tip_y = (int16_t)(center_y + forward_y);
+		const int32_t base_x = center_x - (forward_x / 2);
+		const int32_t base_y = center_y - (forward_y / 2);
+		picosystem_graphics_draw_line_clipped(
+			clip, tip_x, tip_y, (int16_t)(base_x + side_x), (int16_t)(base_y + side_y),
+			PICOSYSTEM_COLOR_YELLOW);
+		picosystem_graphics_draw_line_clipped(
+			clip, tip_x, tip_y, (int16_t)(base_x - side_x), (int16_t)(base_y - side_y),
+			PICOSYSTEM_COLOR_YELLOW);
+	}
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC int32_t
+conveyor_direction(const struct picosystem_scene_snapshot *snapshot, uint16_t segment_index)
+{
+	const uint32_t mask = UINT32_C(1) << segment_index;
+	if ((snapshot->conveyor_forward_segment_mask & mask) != 0U) {
+		return 1;
+	}
+	return ((snapshot->conveyor_reverse_segment_mask & mask) != 0U) ? -1 : 0;
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC void
 render_static_segments(const struct picosystem_scene_snapshot *snapshot,
 		       const struct picosystem_rect *clip,
 		       struct picosystem_scene_render_progress *progress)
@@ -329,18 +411,26 @@ render_static_segments(const struct picosystem_scene_snapshot *snapshot,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_BOUNDS);
 		const struct picosystem_scene_segment *const segment =
 			&snapshot->static_segments[index];
+		const int32_t direction = conveyor_direction(snapshot, index);
 		if (clip != NULL) {
 			const struct picosystem_rect bounds =
-				picosystem_scene_segment_bounds(segment);
+				(direction == 0)
+					? picosystem_scene_segment_bounds(segment)
+					: line_bounds_with_margin(segment->start_x,
+								  segment->start_y, segment->end_x,
+								  segment->end_y, 4U);
 			if (!picosystem_scene_rectangles_intersect(&bounds, clip)) {
 				continue;
 			}
 		}
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS, index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_OUTLINE);
-		picosystem_graphics_draw_line_clipped(clip, segment->start_x, segment->start_y,
-						      segment->end_x, segment->end_y,
-						      PICOSYSTEM_COLOR_CYAN);
+		picosystem_graphics_draw_line_clipped(
+			clip, segment->start_x, segment->start_y, segment->end_x, segment->end_y,
+			(direction == 0) ? PICOSYSTEM_COLOR_CYAN : PICOSYSTEM_COLOR_GREEN);
+		if (direction != 0) {
+			render_conveyor_chevrons(segment, direction, clip);
+		}
 	}
 }
 
@@ -411,7 +501,7 @@ static PICOSYSTEM_RENDER_RAMFUNC void
 render_world_joint_guide(const struct picosystem_scene_joint *joint,
 			 const struct picosystem_rect *clip)
 {
-	int32_t x = joint->target_radius;
+	int32_t x = joint->target_radius & PICOSYSTEM_SCENE_JOINT_TARGET_RADIUS_MASK;
 	int32_t y = 0;
 	int32_t decision = 1 - x;
 
@@ -453,6 +543,35 @@ render_world_joint_guide(const struct picosystem_scene_joint *joint,
 					       PICOSYSTEM_COLOR_WHITE);
 }
 
+static PICOSYSTEM_RENDER_RAMFUNC void render_spring(const struct picosystem_scene_joint *joint,
+						    const struct picosystem_rect *clip)
+{
+	const int32_t delta_x = (int32_t)joint->anchor_b_x - joint->anchor_a_x;
+	const int32_t delta_y = (int32_t)joint->anchor_b_y - joint->anchor_a_y;
+	const int32_t maximum_axis = MAX(absolute_i32(delta_x), absolute_i32(delta_y));
+	if (maximum_axis == 0) {
+		picosystem_graphics_draw_pixel_clipped(clip, joint->anchor_a_x, joint->anchor_a_y,
+						       PICOSYSTEM_COLOR_YELLOW);
+		return;
+	}
+
+	const int32_t perpendicular_x = (-delta_y * 3) / maximum_axis;
+	const int32_t perpendicular_y = (delta_x * 3) / maximum_axis;
+	int16_t previous_x = joint->anchor_a_x;
+	int16_t previous_y = joint->anchor_a_y;
+	for (int32_t coil = 1; coil <= 8; ++coil) {
+		const int32_t offset = (coil == 8) ? 0 : ((coil & 1) != 0 ? 1 : -1);
+		const int16_t current_x = (int16_t)(joint->anchor_a_x + ((delta_x * coil) / 8) +
+						    (perpendicular_x * offset));
+		const int16_t current_y = (int16_t)(joint->anchor_a_y + ((delta_y * coil) / 8) +
+						    (perpendicular_y * offset));
+		picosystem_graphics_draw_line_clipped(clip, previous_x, previous_y, current_x,
+						      current_y, PICOSYSTEM_COLOR_YELLOW);
+		previous_x = current_x;
+		previous_y = current_y;
+	}
+}
+
 static PICOSYSTEM_RENDER_RAMFUNC void
 render_distance_joints(const struct picosystem_scene_snapshot *snapshot,
 		       const struct picosystem_rect *clip,
@@ -471,7 +590,10 @@ render_distance_joints(const struct picosystem_scene_snapshot *snapshot,
 		}
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS, index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_OUTLINE);
-		if (joint->target_radius != 0U) {
+		if (scene_joint_is_spring(joint)) {
+			render_spring(joint, clip);
+		} else if ((joint->target_radius & PICOSYSTEM_SCENE_JOINT_TARGET_RADIUS_MASK) !=
+			   0U) {
 			render_world_joint_guide(joint, clip);
 		} else {
 			picosystem_graphics_draw_line_clipped(

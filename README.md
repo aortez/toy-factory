@@ -18,14 +18,18 @@ path:
   step with Q16.16 linear/angular motion, gravity, friction, and restitution;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
-- supports bounded bilateral distance joints, revolute point constraints, and
-  prismatic rails between two bodies or a body and a fixed world anchor;
+- supports bounded bilateral distance joints, impulse-limited damped springs,
+  revolute point constraints, and prismatic rails between two bodies or a body
+  and a fixed world anchor;
+- drives signed-speed static conveyors through the ordinary friction row,
+  without adding normal velocity or moving collision geometry;
 - drives bounded revolute and prismatic motors against creation-relative limits,
   with a powered three-link chain and reciprocating press in the canonical lab;
 - detects exact circle/box overlap against bounded fixed box sensors and emits
   deterministic pair-level `BEGIN`, `STAY`, and `END` contact events;
 - deterministically sleeps whole contact/joint islands after 0.5 seconds of
-  quiet, wakes them through physical interaction, and leaves sensors observational;
+  quiet, wakes them through physical interaction, leaves sensors observational,
+  and keeps powered conveyor contacts awake;
 - publishes fixed-size state snapshots to an independent renderer;
 - launches a bounded bare-metal worker on RP2040 core 1 for deterministic
   full-scene rasterization while Zephyr, physics, USB, and display drivers stay
@@ -355,8 +359,8 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "2a43f4e8",
-    "framebuffer_crc32": "dd67545b"
+    "hash": "3db7c5b5",
+    "framebuffer_crc32": "c8ba210d"
   }
 }
 ```
@@ -494,32 +498,33 @@ framebuffer is allocated.
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation and also runs native rigid-body collision/capacity, exact sensor
-overlap/contact-lifecycle, 1,000-tick grid/brute-force oracle, 10,000-tick
-game-world replay/boundary, deadline-scheduler,
+generation and also runs native rigid-body collision/capacity, bounded
+spring/conveyor response, exact sensor overlap/contact-lifecycle, 1,000-tick
+grid/brute-force oracle, 10,000-tick game-world replay/boundary, deadline-scheduler,
 serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The default image uses 215,276 bytes of its 255 KiB Zephyr RAM region (82.44%)
-and 196,328 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 216,228 bytes of its 255 KiB Zephyr RAM region (82.81%)
+and 199,968 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer,
-21,864-byte fixed-capacity physics world with a 1,024-byte scratch grid and eight
+22,112-byte fixed-capacity physics world with a 1,024-byte scratch grid and eight
 slots each for distance, motor/limit-capable revolute, and motor/limit-capable
 prismatic joints and box sensors, plus bounded contact-event storage, per-step
-deterministic counters, a 31,304-byte serialized benchmark workspace, two
-744-byte render snapshots, a 5,120-byte shell stack, a
+deterministic counters, a 31,776-byte serialized benchmark workspace, two
+752-byte render snapshots, a 5,120-byte shell stack, a
 4,096-byte renderer stack,
 display-profile result storage, and a 1,024-byte shell TX ring. The fast image
-uses 239,220 bytes of that region (91.61%) and 201,876 bytes of flash. It keeps
-the 16,576-byte inlined physics step and 5,376 bytes of raster code in SRAM so
-the two cores do not contend for XIP flash during a frame. Both images also reserve
+uses 240,988 bytes of that region (92.29%) and 205,308 bytes of flash. It keeps
+the 16,592-byte inlined physics step and renderer hot path in SRAM so the two
+cores do not contend for XIP flash during a frame. Both images also reserve
 8 KiB outside Zephyr's region for the core-1 mailbox and stack. The fast image
-retains 21,900 bytes of Zephyr RAM headroom. Full frames bypass the staging
+retains 20,132 bytes of Zephyr RAM headroom. Full frames bypass the staging
 buffer with one contiguous write.
 
-On the tested PIM559, the schema-version-8 moving profile averaged 2.792 ms on
-the grid and 3.117 ms through the brute-force reference, with zero budget
+On the tested PIM559, the preceding sleeping image's schema-version-8 moving
+profile averaged 2.792 ms on the grid and 3.117 ms through the brute-force
+reference, with zero budget
 violations and exact final state agreement at `46020daa`. Its changing input
 kept all seven bodies awake. The separate 2,000-tick neutral profile recorded
 one sleep and one wake transition, one sleeping body for 664 sampled body-ticks,
@@ -673,7 +678,23 @@ budget. A longer 14,416-tick live window held 120.0 Hz simulation and 29.8 fps
 presentation, with one isolated skipped tick amid USB profiling and status
 activity.
 
-The current sleeping Machine Lab hashes to `765185a2` at reset, `4a1dd4fa` after
+The current spring-and-conveyor Machine Lab hashes to `a91c46a3` at reset,
+`f3643510` after 30 right ticks, and `3db7c5b5` after a further 15 up ticks. Its
+10,000-tick native replay ends at `8e21e7b8`; the neutral sleep sequence reaches
+tick 1,723 at `51bb08c0`. The PIM559 reproduced both device sequences with
+framebuffer CRC-32 values `c8ba210d` and `0a848efb`. The scene renders its
+bounded soft distance joint as a yellow coil and its signed-speed diagonal belt
+as a green line with directional chevrons. Schema 9 exposes spring and conveyor
+solver work separately from the existing hard-joint and contact counters.
+
+The schema-version-9 isolated 1,000-tick PIM559 profile averaged 2.718 ms on the
+grid and 3.060 ms through the brute-force reference, with 4.660/4.872 ms maxima,
+zero 8.333 ms budget violations, and exact final agreement at `728d8683`. The
+grid retained 7.043 of 70 possible pairs per tick. A separate 2,000-tick neutral
+profile averaged 3.630/3.989 ms, recorded one body sleep transition and 710
+conveyor contact-ticks, and agreed exactly at `3d88bb5f`.
+
+The preceding sleeping Machine Lab hashes to `765185a2` at reset, `4a1dd4fa` after
 30 right ticks, and `2a43f4e8` after a further 15 up ticks. The exact tick-45
 frame is CRC-32 `dd67545b`; the 10,000-tick native replay ends at `52844673`.
 Its schema-version-8 PIM559 profile averaged 2.792 ms on the grid and 3.117 ms

@@ -24,7 +24,7 @@ MODULE_SPEC.loader.exec_module(profile_compare)
 
 def profile_output(
     *,
-    schema: int = 8,
+    schema: int = 9,
     fixture: str = "canonical",
     chain_links: int = 0,
     states_match: str = "yes",
@@ -82,7 +82,7 @@ class ProfileCompareTest(unittest.TestCase):
     def test_parses_complete_versioned_profile(self) -> None:
         result = profile_compare.parse_profile(profile_output())
 
-        self.assertEqual(result["schema_version"], 8)
+        self.assertEqual(result["schema_version"], 9)
         self.assertEqual(result["fixture"], "canonical")
         self.assertEqual(result["chain_link_count"], 0)
         self.assertEqual(result["measured_ticks_per_mode"], 2000)
@@ -169,7 +169,7 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertIn("narrow_body_sensor", result["modes"]["grid"]["stages"])
 
     def test_schema_eight_includes_sleep_work(self) -> None:
-        result = profile_compare.parse_profile(profile_output())
+        result = profile_compare.parse_profile(profile_output(schema=8))
 
         work = result["modes"]["grid"]["work"]
         self.assertIn("awake_bodies", work)
@@ -178,6 +178,17 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertIn("body_wake_transitions", work)
         self.assertIn("sleeping_contacts", work)
         self.assertIn("sleeping_joints", work)
+
+    def test_schema_nine_includes_spring_and_conveyor_work(self) -> None:
+        result = profile_compare.parse_profile(profile_output())
+
+        work = result["modes"]["grid"]["work"]
+        self.assertIn("spring_joints", work)
+        self.assertIn("spring_solver_visits", work)
+        self.assertIn("spring_solver_changes", work)
+        self.assertIn("conveyor_contacts", work)
+        self.assertIn("conveyor_solver_visits", work)
+        self.assertIn("conveyor_solver_changes", work)
 
     def test_parses_revolute_chain_fixture(self) -> None:
         result = profile_compare.parse_profile(
