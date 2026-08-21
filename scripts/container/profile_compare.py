@@ -86,6 +86,14 @@ SCHEMA_8_WORK_NAMES = SCHEMA_7_WORK_NAMES | {
     "sleeping_contacts",
     "sleeping_joints",
 }
+SCHEMA_9_WORK_NAMES = SCHEMA_8_WORK_NAMES | {
+    "spring_joints",
+    "spring_solver_visits",
+    "spring_solver_changes",
+    "conveyor_contacts",
+    "conveyor_solver_visits",
+    "conveyor_solver_changes",
+}
 WORK_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_WORK_NAMES,
     3: SCHEMA_3_WORK_NAMES,
@@ -94,6 +102,7 @@ WORK_NAMES_BY_SCHEMA = {
     6: SCHEMA_6_WORK_NAMES,
     7: SCHEMA_7_WORK_NAMES,
     8: SCHEMA_8_WORK_NAMES,
+    9: SCHEMA_9_WORK_NAMES,
 }
 STAGE_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_STAGE_NAMES,
@@ -103,6 +112,7 @@ STAGE_NAMES_BY_SCHEMA = {
     6: SCHEMA_2_STAGE_NAMES,
     7: SCHEMA_7_STAGE_NAMES,
     8: SCHEMA_7_STAGE_NAMES,
+    9: SCHEMA_7_STAGE_NAMES,
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 

@@ -410,6 +410,13 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.body_wake_transition_count, snapshot.game.sleeping_contact_count,
 		    snapshot.game.sleeping_joint_count);
 	shell_print(shell,
+		    "powered: springs=%u, spring solver=%u visits/%u changed, "
+		    "conveyors=%u contacts, %u visits/%u changed",
+		    snapshot.game.spring_joint_count, snapshot.game.spring_solver_visit_count,
+		    snapshot.game.spring_solver_changed_count, snapshot.game.conveyor_contact_count,
+		    snapshot.game.conveyor_solver_visit_count,
+		    snapshot.game.conveyor_solver_changed_count);
+	shell_print(shell,
 		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
 		    "sensor entries=%u",
 		    snapshot.game.active_contact_pair_count, snapshot.game.sensor_overlap_count,
@@ -595,6 +602,12 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->awake_body_count, game->sleeping_body_count,
 		    game->body_sleep_transition_count, game->body_wake_transition_count,
 		    game->sleeping_contact_count, game->sleeping_joint_count);
+	shell_print(shell,
+		    "powered: springs=%u, spring solver=%u visits/%u changed, "
+		    "conveyors=%u contacts, %u visits/%u changed",
+		    game->spring_joint_count, game->spring_solver_visit_count,
+		    game->spring_solver_changed_count, game->conveyor_contact_count,
+		    game->conveyor_solver_visit_count, game->conveyor_solver_changed_count);
 	shell_print(shell,
 		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
 		    "sensor entries=%u",

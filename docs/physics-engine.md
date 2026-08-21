@@ -6,24 +6,24 @@ host and device, remain remotely stepable at exact tick boundaries, and produce
 stable authoritative hashes.
 
 This document describes the intended architecture and the current deterministic
-sleeping/wake milestone. Later milestones may revise measured
+spring-and-conveyor milestone. Later milestones may revise measured
 capacities, but they must retain the ownership, determinism, and overload
 contracts defined here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 239,220 bytes of the linker's 255 KiB Zephyr
-RAM region and 201,876 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 240,988 bytes of the linker's 255 KiB Zephyr
+RAM region and 205,308 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
-physics world is 21,864 bytes, including its 1,024-byte scratch grid, eight
+physics world is 22,112 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, and
 bounded pair-event storage. The serialized A/B
-workspace is 31,304 bytes, is inactive during
+workspace is 31,776 bytes, is inactive during
 normal play, and avoids placing a second world on a thread stack. The profile
 command uses a 5,120-byte shell stack and currently reaches 3,856 bytes. The
 renderer reached 3,204 bytes while bringing up the larger scene snapshot, so
 its bounded stack was raised from 3,584 to 4,096 bytes. The linked image retains
-21,900 bytes of Zephyr RAM headroom. The fast build also places the 16,576-byte
+20,132 bytes of Zephyr RAM headroom. The fast build also places the 16,592-byte
 inlined physics step in SRAM; this avoids core-0/core-1 XIP contention while
 the second core rasterizes a full scene. Physical timing acceptance
 is recorded after each candidate/solver configuration passes the native
@@ -149,10 +149,10 @@ Every physics step publishes deterministic work counters for possible and
 retained pairs, cell insertions and occupancy, split narrow-phase tests,
 manifolds and contact points, active contact pairs, sensor overlaps,
 contact-event phases, awake/sleeping bodies, sleep/wake transitions, sleeping
-contacts/joints, positional-correction visits, solver iterations and
-visits, cached and changed contact rows, changed joint impulses, joint,
-motor, and limit counts,
-separate motor/limit row work, and unexpected broad-phase fallbacks.
+contacts/joints, positional-correction visits, solver iterations and visits,
+cached and changed contact rows, changed joint impulses, joint, motor, and
+limit counts, separate motor/limit row work, spring visits and mutations,
+conveyor contacts and tangent-row work, and unexpected broad-phase fallbacks.
 These counters are fixed-size scratch diagnostics and do not participate in the
 authoritative hash.
 
@@ -189,8 +189,8 @@ without per-tick logging. `make profile-ab` preserves the live run/pause mode
 and writes the canonical result. `make profile-sleep` runs the neutral-settle
 fixture. `make profile-chain` profiles a comma-separated
 set of link counts over one USB session and writes an aggregate result. The
-version-8 protocol adds authoritative sleeping work while retaining the fixture
-and maximum revolute-anchor
+version-9 protocol adds spring and conveyor work while retaining the sleeping
+metrics, fixture, and maximum revolute-anchor
 separation, angular-limit violation, prismatic lateral/angular error, and
 prismatic-limit violation for each mode. Those quality calculations run after
 the measured step, so they do not contaminate the stage timings.
@@ -215,6 +215,32 @@ circle or box. One bounded positional correction runs before the velocity pass;
 the shared seven-pass sequential solver then removes relative anchor velocity,
 including angular effective mass and off-center torque. Joint array order is
 solver order, and coincident endpoints use a stable joint-ID-derived axis.
+
+An optional spring mode turns the same distance row into a bounded implicit
+soft constraint. Angular frequency is expressed in radians per simulation tick,
+damping ratio is dimensionless, and the accumulated spring impulse is clamped
+to a configured positive per-tick maximum. Preparation derives stiffness,
+damping, softness, and bias from the current effective mass. The velocity row
+then solves the biased, softened constraint; spring distance error deliberately
+skips the hard joint's positional correction. This lets a spring stretch and
+settle without changing existing hard distance-joint behavior. Spring
+configuration and target distance are authoritative and hashed, while derived
+softness, bias, axes, and impulses are scratch. Changing an enabled spring's
+target through the public setter wakes both dynamic endpoints.
+Accepted frequency is 1/64 through 1/2 radian per tick, damping ratio is zero
+through two, and maximum impulse is greater than zero through eight.
+
+Each static segment may also carry a signed surface speed. Positive speed is
+defined along its normalized start-to-end tangent, so conveyor direction is
+stable even though collision normals may flip for two-sided contact. The belt
+velocity changes only the contact's friction target: it never injects normal
+velocity or restitution. Friction continues to cap the transferred impulse,
+and a zero-friction body receives no conveyor motion. Mutating belt speed wakes
+touching bodies; a powered contact prevents its island from sleeping while the
+belt remains active. Segment speed is authoritative and hashed, while its
+projected contact velocity is rebuilt scratch state.
+Surface speed is bounded to plus or minus eight pixels per tick, matching the
+engine's global velocity limit.
 
 Revolute joints constrain two anchor points to coincide while allowing relative
 rotation. They use the same body/world endpoint convention as distance joints.
@@ -281,8 +307,10 @@ graph each tick. Eligibility uses the minimum quiet count across each connected
 component, so a complete island sleeps simultaneously; sleeping sets every
 member's linear and angular velocity to exact zero.
 
-Motor-enabled revolute and prismatic islands never sleep. A change in global
-acceleration wakes every sleeping body before integration, while an awake body
+Motor-enabled revolute and prismatic islands and bodies touching powered
+conveyors never sleep. Springs participate in the ordinary joint graph and may
+settle with their whole island. A change in global acceleration wakes every
+sleeping body before integration, while an awake body
 touching a sleeping island wakes that complete island before correction or
 velocity solving. Explicit body wake and motor-target mutation are also
 supported. Box sensors are deliberately absent from the wake graph: a sleeping
@@ -296,7 +324,7 @@ and solver visits are skipped only when every dynamic participant in the row is
 sleeping. The sleep mask, per-body quiet counters, and last global acceleration
 are authoritative and hashed; the island graph is bounded per-step scratch.
 Machine Lab renders sleeping bodies blue with white detail, while `status`,
-`game stats`, schema-8 profiles, and `make profile-sleep` expose state,
+`game stats`, schema-9 profiles, and `make profile-sleep` expose state,
 transitions, and skipped constraints.
 
 ## Sensors and contact events
@@ -326,7 +354,7 @@ and work counters are scratch. This makes reset, native replay, remote exact
 stepping, and device framebuffer assertions agree without retaining redundant
 event payloads in the hash.
 
-## Current milestone: sleeping machine lab
+## Current milestone: spring-and-conveyor machine lab
 
 The flashable rigid-body lab contains:
 
@@ -345,13 +373,15 @@ The flashable rigid-body lab contains:
   one-radian limit on the final hinge;
 - a world-anchored prismatic press with a bounded motor that reverses at its
   creation-relative -48/0-pixel travel limits;
+- one world-anchored, impulse-limited damped spring and one signed-speed
+  diagonal conveyor whose direction is visible in the scene;
 - one fixed box sensor with exact circle/box overlap and a visible entry count;
 - pair-level `BEGIN`, `STAY`, and `END` events for physical contacts and sensor
   overlaps;
 - deterministic contact/joint-island sleeping, physical wake propagation, and
   sensor-only observation without wake;
-- blue/white sleeping-body rendering plus remote sleep-state and skipped-work
-  diagnostics;
+- blue/white sleeping-body rendering, a yellow spring coil, green conveyor with
+  directional chevrons, and remote mechanics/work diagnostics;
 - old/new dirty footprints for every moved body, merged when they overlap; and
 - body, filtered/possible-pair, grid occupancy, fallback, contact, sensor/event,
   solver, timing, and deterministic-hash diagnostics.
@@ -396,6 +426,9 @@ The native suite covers:
   handling for distance joints;
 - world pendulum, body-to-body link, and off-center angular response over long
   replay;
+- spring validation without partial mutation, damped convergence, bounded
+  impulse, off-center torque, target mutation and wake, settled sleep, and
+  body-to-body island wake;
 - validation, capacity, world/body anchors, collision policy, stable hashing,
   and no-mutation failures for revolute joints;
 - bounded world/body motors, torque saturation, lower/upper/equal limits,
@@ -417,6 +450,8 @@ The native suite covers:
   immediate global-acceleration wake before integration;
 - whole distance-joint/contact-island sleeping and wake propagation, with
   motorized-island exclusion;
+- positive and negative conveyor direction, friction-limited transfer,
+  zero-friction isolation, powered-contact wake, and speed mutation;
 - sensor `STAY` events across sleep without sensor-induced wake;
 - exact grid/reference sensor/event equality over 1,000 mixed ticks;
 - arena containment over long replay;
@@ -424,19 +459,32 @@ The native suite covers:
 - authoritative hash changes and reset recovery; and
 - undefined-behavior sanitizer execution.
 
-The native canonical reset is `765185a2`, right-30 is `4a1dd4fa`, the
-right-30/up-15 sequence reaches tick 45 at `2a43f4e8`, and a 10,000-tick replay
-is `52844673`. The bounded replay reduces 70 possible pairs to between three and
-14 grid candidates, reaches nine contacts, exercises every event phase, sleeps
-and later wakes a free body, never
-falls back, keeps every hinge
-and rail within the configured arena tolerances, holds the angular stop within
-0.0175 radian, and holds the press travel stop within 0.2431 pixel. The PIM559
-reproduced all three short hashes and the tick-45 framebuffer CRC-32
-`dd67545b`. Its exact sleep sequence reaches tick 1,228 at `5e0274dc` with one
-blue sleeping body and framebuffer CRC-32 `b78934e6`.
+The native canonical reset is `a91c46a3`, right-30 is `f3643510`, the
+right-30/up-15 sequence reaches tick 45 at `3db7c5b5`, and a 10,000-tick replay
+is `8e21e7b8`. The bounded replay reduces 70 possible pairs to between three and
+14 grid candidates, reaches eight contacts, exercises every event phase, never
+falls back, keeps every hinge and rail within the configured arena tolerances,
+holds the angular stop within 0.0175 radian, and holds the press travel stop
+within 0.101 pixel. A separate neutral replay first sleeps a body at tick 1,723
+and hashes to `51bb08c0`. The PIM559 reproduced the reset, right-30, and tick-45
+hashes; its tick-45 framebuffer is `c8ba210d`. The exact neutral sleep frame is
+`0a848efb`, with one blue/white sleeping body.
 
-Its schema-version-8 isolated 1,000-tick moving profile averaged 2.792 ms for
+Its schema-version-9 isolated 1,000-tick moving profile averaged 2.718 ms for
+the grid and 3.060 ms for the brute-force reference, with 3.584/3.840 ms p95
+and 4.660/4.872 ms maxima. Neither mode exceeded 8.333 ms, and both ended at
+`728d8683` with exact state agreement. The grid retained 7.043 of 70 possible
+pairs per tick. Each tick visited the spring seven times; the replay also
+recorded ten conveyor contact-ticks and 70 conveyor solver visits.
+
+The separate 2,000-tick neutral profile averaged 3.630/3.989 ms, reached
+6.175/6.511 ms maxima, and ended at `3d88bb5f` with exact state agreement. Each
+mode recorded one body sleep transition, 398 sleeping body-ticks, 794 skipped
+sleeping contacts, and 710 conveyor contact-ticks. Powered belt contact remains
+awake while ordinary disconnected islands may sleep.
+
+For comparison, the preceding schema-version-8 sleeping image's isolated
+1,000-tick moving profile averaged 2.792 ms for
 the grid path and 3.117 ms for the brute-force reference, with no budget
 violations and exact final state agreement at `46020daa`. The changing input
 kept all seven bodies awake. The grid retained 8.017 of 70 possible pairs and
@@ -493,10 +541,9 @@ are design references rather than code to port.
 
 ## Planned extensions
 
-1. Add springs and conveyors on top of the slider, event, and sleeping primitives.
-2. Add capsules and a position-based rope/soft-body subsystem with deliberate
+1. Add capsules and a position-based rope/soft-body subsystem with deliberate
    rigid-body coupling.
-3. Evaluate bounded granular materials and approximate gravity or magnetic
+2. Evaluate bounded granular materials and approximate gravity or magnetic
    fields as separate gameplay systems.
 
 Each extension must leave behind a playable device demo, a deterministic host

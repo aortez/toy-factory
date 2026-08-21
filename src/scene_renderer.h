@@ -16,6 +16,8 @@
 #define PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT 3U
 #define PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS      3U
 #define PICOSYSTEM_SCENE_MAX_BOX_SENSORS            1U
+#define PICOSYSTEM_SCENE_JOINT_SPRING_FLAG          UINT16_C(0x8000)
+#define PICOSYSTEM_SCENE_JOINT_TARGET_RADIUS_MASK   UINT16_C(0x7fff)
 #define PICOSYSTEM_SCENE_MAX_SEGMENTS                                                              \
 	(PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS + (2U * PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS))
 
@@ -67,6 +69,8 @@ struct picosystem_scene_snapshot {
 	uint16_t distance_joint_count;
 	uint16_t revolute_joint_count;
 	uint16_t box_sensor_count;
+	uint32_t conveyor_forward_segment_mask;
+	uint32_t conveyor_reverse_segment_mask;
 	struct picosystem_scene_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	struct picosystem_scene_segment static_segments[PICOSYSTEM_SCENE_MAX_SEGMENTS];
 	struct picosystem_scene_joint distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];

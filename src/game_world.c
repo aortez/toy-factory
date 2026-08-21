@@ -18,7 +18,7 @@
 #define GAME_FRICTION               PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
 #define GAME_PRISMATIC_MOTOR_SPEED  PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
 #define GAME_PRISMATIC_REVERSE_SLOP PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 32)
-#define GAME_WORLD_HASH_VERSION     UINT32_C(8)
+#define GAME_WORLD_HASH_VERSION     UINT32_C(9)
 #define FNV1A_OFFSET_BASIS          UINT32_C(2166136261)
 #define FNV1A_PRIME                 UINT32_C(16777619)
 
@@ -168,6 +168,7 @@ static const struct picosystem_physics_segment_config canonical_segments[] = {
 		.end = {.x = FIXED(103), .y = FIXED(188)},
 		.restitution = RATIO(2, 3),
 		.friction = RATIO(1, 4),
+		.surface_speed_per_tick = RATIO(1, 4),
 		.id = 105U,
 	},
 	{
@@ -176,6 +177,20 @@ static const struct picosystem_physics_segment_config canonical_segments[] = {
 		.restitution = RATIO(4, 5),
 		.friction = RATIO(1, 12),
 		.id = 106U,
+	},
+};
+
+static const struct picosystem_physics_distance_joint_config canonical_distance_joints[] = {
+	{
+		.anchor_b = {.x = FIXED(162), .y = FIXED(44)},
+		.target_distance = FIXED(28),
+		.spring_angular_frequency_per_tick = RATIO(1, 12),
+		.spring_damping_ratio = RATIO(1, 2),
+		.maximum_spring_impulse_per_tick = RATIO(1, 2),
+		.id = 201U,
+		.body_a_id = 4U,
+		.body_b_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
+		.spring_enabled = 1U,
 	},
 };
 
@@ -238,8 +253,9 @@ _Static_assert(sizeof(canonical_bodies) / sizeof(canonical_bodies[0]) == PICOSYS
 _Static_assert(sizeof(canonical_segments) / sizeof(canonical_segments[0]) ==
 		       PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT,
 	       "canonical segment count must match the public contract");
-_Static_assert(PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT == 0U,
-	       "the canonical machine lab intentionally has no distance joint");
+_Static_assert(sizeof(canonical_distance_joints) / sizeof(canonical_distance_joints[0]) ==
+		       PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT,
+	       "canonical distance-joint count must match the public contract");
 _Static_assert(sizeof(canonical_revolute_joints) / sizeof(canonical_revolute_joints[0]) ==
 		       PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT,
 	       "canonical revolute-joint count must match the public contract");
@@ -313,6 +329,13 @@ int picosystem_game_world_reset(struct picosystem_game_world *world)
 	for (size_t index = 0U; index < PICOSYSTEM_GAME_BOX_SENSOR_COUNT; ++index) {
 		err = picosystem_physics_world_add_box_sensor(&world->physics,
 							      &canonical_box_sensors[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (size_t index = 0U; index < PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT; ++index) {
+		err = picosystem_physics_world_add_distance_joint(
+			&world->physics, &canonical_distance_joints[index]);
 		if (err != 0) {
 			return err;
 		}

@@ -205,7 +205,9 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 	    (left->static_segment_count != right->static_segment_count) ||
 	    (left->distance_joint_count != right->distance_joint_count) ||
 	    (left->revolute_joint_count != right->revolute_joint_count) ||
-	    (left->box_sensor_count != right->box_sensor_count)) {
+	    (left->box_sensor_count != right->box_sensor_count) ||
+	    (left->conveyor_forward_segment_mask != right->conveyor_forward_segment_mask) ||
+	    (left->conveyor_reverse_segment_mask != right->conveyor_reverse_segment_mask)) {
 		return false;
 	}
 
@@ -247,10 +249,16 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 		const struct picosystem_scene_joint *const right_joint =
 			&right->distance_joints[index];
 		if ((left_joint->id != right_joint->id) ||
-		    (left_joint->target_radius != right_joint->target_radius) ||
-		    ((left_joint->target_radius != 0U) &&
-		     ((left_joint->anchor_b_x != right_joint->anchor_b_x) ||
-		      (left_joint->anchor_b_y != right_joint->anchor_b_y)))) {
+		    (left_joint->target_radius != right_joint->target_radius)) {
+			return false;
+		}
+		const bool spring =
+			(left_joint->target_radius & PICOSYSTEM_SCENE_JOINT_SPRING_FLAG) != 0U;
+		const uint16_t target_radius =
+			left_joint->target_radius & PICOSYSTEM_SCENE_JOINT_TARGET_RADIUS_MASK;
+		if (!spring && (target_radius != 0U) &&
+		    ((left_joint->anchor_b_x != right_joint->anchor_b_x) ||
+		     (left_joint->anchor_b_y != right_joint->anchor_b_y))) {
 			return false;
 		}
 	}
@@ -328,7 +336,13 @@ static bool joint_render_state_matches(const struct picosystem_scene_joint *left
 	if ((left->id != right->id) || (left->target_radius != right->target_radius)) {
 		return false;
 	}
-	if (left->target_radius != 0U) {
+	if ((left->target_radius & PICOSYSTEM_SCENE_JOINT_SPRING_FLAG) != 0U) {
+		return (left->anchor_a_x == right->anchor_a_x) &&
+		       (left->anchor_a_y == right->anchor_a_y) &&
+		       (left->anchor_b_x == right->anchor_b_x) &&
+		       (left->anchor_b_y == right->anchor_b_y);
+	}
+	if ((left->target_radius & PICOSYSTEM_SCENE_JOINT_TARGET_RADIUS_MASK) != 0U) {
 		return (left->anchor_b_x == right->anchor_b_x) &&
 		       (left->anchor_b_y == right->anchor_b_y);
 	}
@@ -539,6 +553,12 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			.end_x = fixed_to_pixel(segment->end.x),
 			.end_y = fixed_to_pixel(segment->end.y),
 		};
+		const uint32_t segment_mask = UINT32_C(1) << index;
+		if (segment->surface_speed_per_tick > 0) {
+			snapshot->conveyor_forward_segment_mask |= segment_mask;
+		} else if (segment->surface_speed_per_tick < 0) {
+			snapshot->conveyor_reverse_segment_mask |= segment_mask;
+		}
 	}
 	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
 		const struct picosystem_physics_box_sensor *const sensor =
@@ -585,8 +605,11 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 		const struct picosystem_physics_distance_joint *const joint =
 			&state->world.physics.distance_joints[index];
 		const bool world_anchored = joint->body_b_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID;
-		const uint16_t target_radius =
+		uint16_t target_radius =
 			world_anchored ? (uint16_t)fixed_to_pixel(joint->target_distance) : 0U;
+		if (joint->spring_enabled != 0U) {
+			target_radius |= PICOSYSTEM_SCENE_JOINT_SPRING_FLAG;
+		}
 		int16_t anchor_a_x = fixed_to_pixel(anchor_a.x);
 		int16_t anchor_a_y = fixed_to_pixel(anchor_a.y);
 		int16_t anchor_b_x = fixed_to_pixel(anchor_b.x);
@@ -1182,6 +1205,16 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 			state->world.physics.last_work.body_wake_transition_count,
 		.sleeping_contact_count = state->world.physics.last_work.sleeping_contact_count,
 		.sleeping_joint_count = state->world.physics.last_work.sleeping_joint_count,
+		.spring_joint_count = state->world.physics.last_work.spring_joint_count,
+		.spring_solver_visit_count =
+			state->world.physics.last_work.spring_solver_visit_count,
+		.spring_solver_changed_count =
+			state->world.physics.last_work.spring_solver_changed_count,
+		.conveyor_contact_count = state->world.physics.last_work.conveyor_contact_count,
+		.conveyor_solver_visit_count =
+			state->world.physics.last_work.conveyor_solver_visit_count,
+		.conveyor_solver_changed_count =
+			state->world.physics.last_work.conveyor_solver_changed_count,
 		.focus_angle_turns = focus->angle_turns,
 		.focus_angular_velocity_milliradians_per_second =
 			angular_velocity_to_milliradians_per_second(

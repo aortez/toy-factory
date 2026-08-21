@@ -128,14 +128,14 @@ bootloader: image ## Reboot the running app into the RP2040 ROM bootloader
 	./scripts/reboot-to-bootloader.sh "$(PORT)" "$(FIRMWARE_IMAGE)"
 
 console: image ## Open the interactive device shell and log stream
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		echo "opening PicoSystem console on $$port (exit with Ctrl+])"; \
 		exec $(DOCKER) run --rm --interactive --tty --user 0:0 \
 			--device "$$port:$$port" "$(FIRMWARE_IMAGE)" \
 			python3 -m serial.tools.miniterm --filter direct "$$port" 115200
 
 status: image ## Print one device status snapshot and exit
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -143,7 +143,7 @@ status: image ## Print one device status snapshot and exit
 			python3 ./scripts/container/serial-command.py "$$port" picosystem status
 
 core1-status: image ## Print auxiliary-core protocol and stack health
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -152,7 +152,7 @@ core1-status: image ## Print auxiliary-core protocol and stack health
 				picosystem core1 status
 
 core1-ping: image ## Round-trip CORE1_CHALLENGE=<number> through shared SRAM
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -161,7 +161,7 @@ core1-ping: image ## Round-trip CORE1_CHALLENGE=<number> through shared SRAM
 				picosystem core1 ping "$(CORE1_CHALLENGE)"
 
 core1-raster: image ## Compare deterministic frame CORE1_FRAME=<index> on both cores (pause first)
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -170,7 +170,7 @@ core1-raster: image ## Compare deterministic frame CORE1_FRAME=<index> on both c
 				"CORE1_RASTER_VERIFY" "$$port" picosystem core1 raster "$(CORE1_FRAME)"
 
 core1-scene: image ## Compare the current live scene on both cores (pause first)
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -179,7 +179,7 @@ core1-scene: image ## Compare the current live scene on both cores (pause first)
 				"CORE1_SCENE_VERIFY" "$$port" picosystem core1 scene
 
 game-stats: image ## Print simulation, snapshot, renderer, and stack metrics
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -187,7 +187,7 @@ game-stats: image ## Print simulation, snapshot, renderer, and stack metrics
 			python3 ./scripts/container/serial-command.py "$$port" picosystem game stats
 
 game-redraw: image ## Queue an asynchronous full-screen redraw
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -195,7 +195,7 @@ game-redraw: image ## Queue an asynchronous full-screen redraw
 			python3 ./scripts/container/serial-command.py "$$port" picosystem game redraw
 
 display-sync: image ## Print LCD tearing-effect timing and synchronization metrics
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -203,7 +203,7 @@ display-sync: image ## Print LCD tearing-effect timing and synchronization metri
 			python3 ./scripts/container/serial-command.py "$$port" picosystem display sync
 
 display-checksum: image ## Print the coherent presented-framebuffer checksum
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -212,7 +212,7 @@ display-checksum: image ## Print the coherent presented-framebuffer checksum
 				picosystem display checksum
 
 screenshot: image ## Capture the coherent presented framebuffer as OUT=<relative PNG path>
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app" \
@@ -222,7 +222,7 @@ screenshot: image ## Capture the coherent presented framebuffer as OUT=<relative
 				"$$port" "/workspace/app/$(OUT)"
 
 sim-pause: image ## Pause simulation at a tick boundary and print exact state
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -231,7 +231,7 @@ sim-pause: image ## Pause simulation at a tick boundary and print exact state
 				picosystem game pause
 
 sim-run: image ## Resume exact real-time 120 Hz simulation scheduling
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -240,7 +240,7 @@ sim-run: image ## Resume exact real-time 120 Hz simulation scheduling
 				picosystem game run
 
 sim-reset: image ## Restore canonical tick-zero state while paused
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -249,7 +249,7 @@ sim-reset: image ## Restore canonical tick-zero state while paused
 				picosystem game reset
 
 sim-step: image ## Advance a paused simulation by STEPS=<1-120> exact ticks
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -258,7 +258,7 @@ sim-step: image ## Advance a paused simulation by STEPS=<1-120> exact ticks
 				picosystem game step "$(STEPS)"
 
 sim-input: image ## Select INPUT=physical|none|up|down|left|right|<diagonal>
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -267,7 +267,7 @@ sim-input: image ## Select INPUT=physical|none|up|down|left|right|<diagonal>
 				picosystem game input "$(INPUT)"
 
 sim-state: image ## Print exact simulation state and deterministic hash
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
@@ -276,7 +276,7 @@ sim-state: image ## Print exact simulation state and deterministic hash
 				picosystem game state
 
 sim-test: image ## Run SEQUENCE=<JSON> with deterministic hash/CRC assertions
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app" \
@@ -287,7 +287,7 @@ sim-test: image ## Run SEQUENCE=<JSON> with deterministic hash/CRC assertions
 				"$$port" "/workspace/app/$(SEQUENCE)"
 
 profile-ab: image ## Compare isolated grid/reference physics and save PROFILE_OUT=<JSON>
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app" \
@@ -300,7 +300,7 @@ profile-ab: image ## Compare isolated grid/reference physics and save PROFILE_OU
 profile: profile-ab ## Alias for profile-ab
 
 profile-sleep: image ## Profile the canonical world settling into sleep
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app" \
@@ -311,7 +311,7 @@ profile-sleep: image ## Profile the canonical world settling into sleep
 				"$$port" "/workspace/app/$(SLEEP_PROFILE_OUT)"
 
 profile-chain: image ## Profile CHAIN_LINKS=4,6,8 and save CHAIN_PROFILE_OUT=<JSON>
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app" \
@@ -322,7 +322,7 @@ profile-chain: image ## Profile CHAIN_LINKS=4,6,8 and save CHAIN_PROFILE_OUT=<JS
 				"$$port" "/workspace/app/$(CHAIN_PROFILE_OUT)"
 
 render-profile: image ## Profile dense display workloads and save RENDER_PROFILE_OUT=<JSON>
-	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")"; \
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app" \

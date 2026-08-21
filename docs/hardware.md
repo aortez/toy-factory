@@ -296,7 +296,7 @@ updates exceeded 8.333 ms and the worst backlog was three ticks. A paused scene
 check produced identical core-0/core-1 pixels in 9.728 ms and restored the
 framebuffer exactly.
 
-The current sleeping image adds an authoritative sleep mask, per-body quiet
+The preceding sleeping image adds an authoritative sleep mask, per-body quiet
 counters, deterministic contact/joint-island wake propagation, and sleep work
 counters. Its physics world is 21,864 bytes, complete game world is 21,872
 bytes, render snapshot remains 744 bytes, and serialized profile workspace is
@@ -316,6 +316,41 @@ for 664 sampled body-ticks, and 663 sleeping contacts skipped by both modes.
 Grid/reference state agreed exactly at `ea65ce22`; means were 3.456 and 3.787
 ms. The deterministic sleep sequence reached tick 1,228 at `5e0274dc` and
 framebuffer CRC-32 `b78934e6`, visibly rendering the sleeping body blue/white.
+
+The current spring-and-conveyor image extends distance joints with an optional
+bounded soft row and static segments with signed start-to-end surface speed. Its
+physics world is 22,112 bytes, complete game world is 22,120 bytes, render
+snapshot is 752 bytes, and serialized profile workspace is 31,776 bytes. The
+conservative image uses 216,228 bytes of Zephyr RAM and 199,968 bytes of flash.
+The recommended 62.5 MHz PL022/DMA image uses 240,988 bytes of the 255 KiB
+Zephyr region and 205,308 bytes of flash, retaining 20,132 bytes of linker RAM
+headroom plus the separately reserved 8 KiB core-1 area.
+
+The PIM559 reproduced reset/right-30/right-30-up-15 hashes `a91c46a3`,
+`f3643510`, and `3db7c5b5`. The coherently presented tick-45 framebuffer is
+CRC-32 `c8ba210d`; its captured PNG is the repository's current Machine Lab
+image. The neutral sleep sequence reached tick 1,723 at `51bb08c0` with one
+sleeping body and framebuffer CRC-32 `0a848efb`.
+
+Its schema-version-9 isolated 1,000-tick moving profile averaged 2.718 ms for
+the grid and 3.060 ms for the brute-force reference, with 4.660/4.872 ms maxima
+and no 8.333 ms budget violations. Both modes ended at `728d8683` with exact
+state agreement. The grid retained 7.043 of 70 possible pairs per tick; each
+mode recorded 1,000 spring joint-ticks, 7,000 spring visits, ten conveyor
+contact-ticks, and 70 conveyor visits. The separate 2,000-tick neutral profile
+averaged 3.630/3.989 ms, recorded one sleep transition, 398 sleeping body-ticks,
+794 skipped sleeping contacts, and 710 conveyor contact-ticks, and agreed at
+`3d88bb5f` with zero budget violations.
+
+An initial 1,497-tick concurrent window held 119.9 Hz simulation with no
+skipped ticks and a three-tick worst backlog while full-frame presentation ran
+at 29.6 fps. Mean/maximum complete update time was 5.484/10.905 ms; physics was
+4.742/10.002 ms. Core-1 rasterization was 10.264 ms and the latest contiguous
+full-frame transfer was 19.084 ms. Main, render, shell-profile, and core-1 stack
+high-water marks were 3,712/4,096, 3,692/4,096, 3,896/5,120, and 344/4,096
+bytes. A paused live-scene check produced identical core-0/core-1 pixels in
+9.809 ms and restored the framebuffer exactly. A CRC-validated 240 x 240 PNG
+capture completed in 8.2 seconds.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.

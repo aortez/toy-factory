@@ -120,6 +120,12 @@ struct picosystem_physics_work_counters {
 	uint32_t body_wake_transition_count;
 	uint32_t sleeping_contact_count;
 	uint32_t sleeping_joint_count;
+	uint32_t spring_joint_count;
+	uint32_t spring_solver_visit_count;
+	uint32_t spring_solver_changed_count;
+	uint32_t conveyor_contact_count;
+	uint32_t conveyor_solver_visit_count;
+	uint32_t conveyor_solver_changed_count;
 };
 
 /* Optional elapsed-cycle sample for one step; the clock may wrap once per section. */
@@ -168,6 +174,8 @@ struct picosystem_physics_segment_config {
 	struct picosystem_physics_vector end;
 	picosystem_physics_fixed_t restitution;
 	picosystem_physics_fixed_t friction;
+	/* Signed speed along the normalized start-to-end tangent. */
+	picosystem_physics_fixed_t surface_speed_per_tick;
 	uint16_t id;
 };
 
@@ -178,14 +186,22 @@ struct picosystem_physics_box_sensor_config {
 	uint16_t id;
 };
 
-/* Anchor B is world-space when body_b_id is zero and body-local otherwise. */
+/*
+ * Anchor B is world-space when body_b_id is zero and body-local otherwise.
+ * A disabled spring is a hard distance constraint and requires zero spring fields.
+ * An enabled spring uses angular frequency in radians/tick and a dimensionless damping ratio.
+ */
 struct picosystem_physics_distance_joint_config {
 	struct picosystem_physics_vector local_anchor_a;
 	struct picosystem_physics_vector anchor_b;
 	picosystem_physics_fixed_t target_distance;
+	picosystem_physics_fixed_t spring_angular_frequency_per_tick;
+	picosystem_physics_fixed_t spring_damping_ratio;
+	picosystem_physics_fixed_t maximum_spring_impulse_per_tick;
 	uint16_t id;
 	uint16_t body_a_id;
 	uint16_t body_b_id;
+	uint8_t spring_enabled;
 };
 
 /*
@@ -251,6 +267,7 @@ struct picosystem_physics_static_segment {
 	struct picosystem_physics_vector normal;
 	picosystem_physics_fixed_t restitution;
 	picosystem_physics_fixed_t friction;
+	picosystem_physics_fixed_t surface_speed_per_tick;
 	uint16_t id;
 };
 
@@ -265,11 +282,15 @@ struct picosystem_physics_distance_joint {
 	struct picosystem_physics_vector local_anchor_a;
 	struct picosystem_physics_vector anchor_b;
 	picosystem_physics_fixed_t target_distance;
+	picosystem_physics_fixed_t spring_angular_frequency_per_tick;
+	picosystem_physics_fixed_t spring_damping_ratio;
+	picosystem_physics_fixed_t maximum_spring_impulse_per_tick;
 	uint16_t id;
 	uint16_t body_a_id;
 	uint16_t body_b_id;
 	uint8_t body_a_index;
 	uint8_t body_b_index;
+	uint8_t spring_enabled;
 
 	/* Scratch solver state rebuilt every step and excluded from the hash. */
 	struct picosystem_physics_vector world_anchor_a;
@@ -277,6 +298,8 @@ struct picosystem_physics_distance_joint {
 	struct picosystem_physics_vector normal;
 	picosystem_physics_fixed_t direction_inverse_mass;
 	picosystem_physics_fixed_t accumulated_impulse;
+	picosystem_physics_fixed_t spring_softness;
+	picosystem_physics_fixed_t spring_bias_velocity;
 };
 
 struct picosystem_physics_revolute_joint {
@@ -471,6 +494,16 @@ int picosystem_physics_world_add_prismatic_joint(
 int picosystem_physics_world_set_prismatic_motor_speed(
 	struct picosystem_physics_world *world, size_t index,
 	picosystem_physics_fixed_t motor_speed_per_tick);
+
+/* Change an enabled spring's rest distance and wake its dynamic participants. */
+int picosystem_physics_world_set_spring_target_distance(struct picosystem_physics_world *world,
+							size_t index,
+							picosystem_physics_fixed_t target_distance);
+
+/* Change one static segment's signed start-to-end surface speed. */
+int picosystem_physics_world_set_segment_surface_speed(
+	struct picosystem_physics_world *world, size_t index,
+	picosystem_physics_fixed_t surface_speed_per_tick);
 
 /* Wake one body explicitly; connected sleeping bodies wake on the next step. */
 int picosystem_physics_world_wake_body(struct picosystem_physics_world *world, size_t index);

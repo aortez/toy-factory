@@ -92,6 +92,6 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add bounded revolute motors and creation-relative angular limits with profiling.
 - [x] Add bounded prismatic sliders, motors, and creation-relative travel limits.
 - [x] Add bounded box sensors and deterministic contact lifecycle events.
-- [ ] Add conveyors, springs, and sleeping.
+- [x] Add conveyors, springs, and sleeping.
 - [ ] Add a bounded rope or soft-body subsystem.
 - [ ] Evaluate granular materials and approximate force fields.

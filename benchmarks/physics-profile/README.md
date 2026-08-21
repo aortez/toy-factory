@@ -6,9 +6,53 @@ followed by the same bounded input replay; the recorded artifact states its
 measured tick count. Timing covers isolated physics steps with rendering and
 snapshot publication disabled.
 
+## Springs and conveyors
+
+The current schema-version-9 reports are
+[pim559-springs-conveyors-2026-08-21.json](pim559-springs-conveyors-2026-08-21.json)
+and
+[pim559-springs-conveyors-neutral-2026-08-21.json](pim559-springs-conveyors-neutral-2026-08-21.json).
+They were captured from the recommended dual-core image with:
+
+```sh
+make profile-ab PROFILE_TICKS=1000 \
+  PROFILE_OUT=benchmarks/physics-profile/pim559-springs-conveyors-2026-08-21.json
+make profile-sleep PROFILE_TICKS=2000 \
+  SLEEP_PROFILE_OUT=benchmarks/physics-profile/pim559-springs-conveyors-neutral-2026-08-21.json
+```
+
+The moving canonical fixture contains one impulse-limited damped spring and one
+signed-speed diagonal conveyor:
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Candidates/tick | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 2,718 us | 2,688 us | 3,584 us | 3,840 us | 4,660 us | 7.043 | 0 |
+| Brute-force reference | 3,060 us | 3,072 us | 3,840 us | 4,096 us | 4,872 us | 70.0 | 0 |
+
+Both modes ended at `728d8683` with exact authoritative-state agreement. The
+grid was 1.13 times faster. Each tick visited the spring seven times and 1.111
+visits changed its impulse on average. The fixture recorded ten conveyor
+contact-ticks, 70 conveyor solver visits, and 34 changed conveyor impulses in
+each mode. Maximum revolute-anchor, angular-limit, prismatic-lateral,
+prismatic-angular, and travel-limit errors were 0.802 pixels, 0.0175 radian,
+0.0547 pixels, 0.0140 radian, and 0.0730 pixels.
+
+The neutral fixture exercises powered conveyor contacts and ordinary island
+sleeping together:
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Sleeping body-ticks | Conveyor contacts | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 3,630 us | 3,584 us | 5,376 us | 5,888 us | 6,175 us | 398 | 710 | 0 |
+| Brute-force reference | 3,989 us | 3,968 us | 5,760 us | 6,400 us | 6,511 us | 398 | 710 | 0 |
+
+Each mode recorded one body sleep transition, skipped 794 sleeping contacts,
+and ended at `3d88bb5f` with exact state agreement. Powered belt contact did not
+put an active body to sleep, while the spring remained part of the ordinary
+sleep graph. Shell stack high-water was 3,896 of 5,120 bytes for both runs.
+
 ## Deterministic sleeping and wake propagation
 
-The current schema-version-8 reports are
+The preceding schema-version-8 reports are
 [pim559-sleeping-2026-08-19.json](pim559-sleeping-2026-08-19.json) and
 [pim559-sleeping-neutral-2026-08-19.json](pim559-sleeping-neutral-2026-08-19.json).
 They were captured from the recommended dual-core image with:
