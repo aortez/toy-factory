@@ -28,13 +28,15 @@ path:
   with a powered three-link chain and reciprocating press in the canonical lab;
 - resolves every circle/box/capsule body pairing, static-segment contact, and
   fixed-box-sensor overlap without polygonizing capsules;
-- simulates a fixed-capacity Verlet rope with world/body pins and six
-  alternating position-constraint passes;
+- simulates a fixed-capacity Verlet rope with world/body pins, opt-in reciprocal
+  body response, and bounded particle collision against rigid bodies and static
+  segments;
 - emits deterministic pair-level `BEGIN`, `STAY`, and `END` contact events;
 - deterministically sleeps whole contact/joint islands after 0.5 seconds of
   quiet, wakes them through physical interaction, leaves sensors observational,
   and keeps powered conveyor contacts awake;
-- publishes fixed-size state snapshots to an independent renderer;
+- publishes fixed-size state snapshots to an independent renderer at a bounded
+  30 Hz real-time cadence while simulation remains at 120 Hz;
 - launches a bounded bare-metal worker on RP2040 core 1 for deterministic
   full-scene rasterization while Zephyr, physics, USB, and display drivers stay
   on core 0;
@@ -306,11 +308,12 @@ sensor tests/overlaps, connected-body
 collision filters, distance/revolute/prismatic joint, motor, and limit counts,
 awake/sleeping bodies, sleep/wake transitions, skipped sleeping constraints,
 separate anchor/limit correction, cached/changed contact work, velocity-row
-visits, rope particles/passes/constraint mutations, and fallbacks. Schema
-version 10 identifies the fixture and reports maximum revolute-anchor
-separation, angular-limit violation, prismatic lateral/angular error,
-prismatic-limit violation, and rope-segment length error; those quality checks
-run outside the timed physics step.
+visits, rope particles/passes/constraint mutations, rope/body position and
+velocity response, particle-collision possible/candidate/contact counts, and
+fallbacks. Schema version 12 identifies the fixture and reports maximum
+revolute-anchor separation, angular-limit violation, prismatic lateral/angular
+error, prismatic-limit violation, and rope-segment length error; those quality
+checks run outside the timed physics step.
 
 `make profile-ab` and `make profile-sleep` handle pause/resume around the two
 canonical commands.
@@ -366,8 +369,8 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "63bfd54f",
-    "framebuffer_crc32": "5111bc8b"
+    "hash": "aad794a0",
+    "framebuffer_crc32": "df718839"
   }
 }
 ```
@@ -465,9 +468,10 @@ two or more simulation deadlines are due, the main loop reserves a
 one-millisecond recovery window so diagnostics and the bootloader command cannot
 remain starved. An isolated late tick may catch up and reach its normal sleep
 without paying that extra delay. The main thread publishes an 856-byte immutable
-render snapshot into one of two slots under a short spin lock. A saturated
-semaphore wakes the renderer, which coalesces obsolete snapshots instead of
-making simulation wait.
+render snapshot at a deterministic 30 Hz cadence into one of two slots under a
+short spin lock. Pause, reset, redraw, and exact remote stepping force a current
+snapshot. A saturated semaphore wakes the renderer, which coalesces obsolete
+snapshots instead of making simulation wait.
 
 Core 1 is deliberately much smaller: it is launched through the RP2040 boot-ROM
 handshake, runs without Zephyr, interrupts, allocation, or drivers, and accepts
@@ -507,26 +511,29 @@ framebuffer is allocated.
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
 generation and also runs native rigid-body collision/capacity, bounded
-spring/conveyor response, exact capsule shape-pair coverage, bounded rope
-dynamics, exact sensor overlap/contact-lifecycle, 1,000-tick grid/brute-force
+spring/conveyor response, exact capsule shape-pair coverage, reciprocal
+rope/body response, bounded rope-particle collision, exact sensor
+overlap/contact-lifecycle, 1,000-tick grid/brute-force
 oracle, 10,000-tick game-world replay/boundary, deadline-scheduler,
 serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The default image uses 220,140 bytes of its 255 KiB Zephyr RAM region (84.31%)
-and 209,628 bytes of flash. This includes the 115,200-byte framebuffer,
-3,840-byte transfer buffer, 22,584-byte fixed-capacity physics world with a
+The default image uses 221,124 bytes of its 255 KiB Zephyr RAM region (84.68%)
+and 216,224 bytes of flash. This includes the 115,200-byte framebuffer,
+3,840-byte transfer buffer, 22,636-byte fixed-capacity physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
-contact/event storage and per-step deterministic counters, a 33,232-byte
-serialized benchmark workspace, two 856-byte render snapshots, 4,608-byte main
+contact/event storage and per-step deterministic counters, a 33,304-byte
+serialized benchmark workspace, two 856-byte render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 246,684 bytes of
-that region (94.47%) and 214,960 bytes of flash. It keeps the inlined physics
-step and renderer hot path in SRAM so the two cores do not contend for XIP flash
-during a frame. Both images also reserve 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 40,980 and 14,436
+storage, and a 1,024-byte shell TX ring. The fast image uses 250,396 bytes of
+that region (95.89%) and 221,976 bytes of flash. It keeps the physics and
+renderer hot paths in SRAM so the two cores do not contend for XIP flash
+during a frame, and both images route compiler integer division through the
+RP2040's interrupt-safe hardware-divider wrappers. Both images also reserve
+8 KiB outside Zephyr's region for the
+core-1 mailbox and stack. The default and fast images retain 39,996 and 10,724
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
 
@@ -686,24 +693,34 @@ budget. A longer 14,416-tick live window held 120.0 Hz simulation and 29.8 fps
 presentation, with one isolated skipped tick amid USB profiling and status
 activity.
 
-The current capsule-and-rope Machine Lab hashes to `63a73949` at reset,
-`a1734ba1` after 30 right ticks, and `63bfd54f` after a further 15 up ticks. Its
-10,000-tick native replay ends at `60bd4318`; the neutral sleep sequence reaches
-tick 1,723 at `cfd92dca`. The PIM559 reproduced both device sequences with
-framebuffer CRC-32 values `5111bc8b` and `5c0542c9`. The scene adds a rotating
-magenta capsule and an eight-particle cyan rope while retaining the yellow
-spring coil and green conveyor chevrons.
+The current reciprocal-rope Machine Lab hashes to `abc2002c` at reset,
+`faaf80f7` after 30 right ticks, and `aad794a0` after a further 15 up ticks. Its
+10,000-tick native replay ends at `cdf463f7`; the neutral sleep sequence reaches
+tick 1,723 at `0a0ff729`. The PIM559 reproduced both exact sequences with
+framebuffer CRC-32 values `df718839` and `88c2e21e`. The capsule endpoint now
+receives equal-and-opposite position and radial-velocity response, and every
+unpinned rope particle has a one-pixel collision radius against external rigid
+bodies and static segments.
 
-The schema-version-10 isolated 2,000-tick PIM559 profile averaged 4.502 ms on
-the grid and 5.100 ms through the brute-force reference, with 6.749/7.458 ms
+The schema-version-12 isolated 2,000-tick PIM559 profile averaged 4.920 ms on
+the grid and 5.313 ms through the brute-force reference, with 6.935/7.470 ms
 maxima, zero 8.333 ms budget violations, and exact final agreement at
-`91744aeb`. The grid retained 6.951 of 70 possible pairs per tick. The rope
-stage averaged 1.157/1.154 ms, visited exactly 42 constraints per tick, and held
-maximum segment error to 0.534 px. A separate 2,000-tick neutral profile
-averaged 5.346/5.949 ms and agreed exactly at `7d4ae8ca`; the production grid
-had no deadline violations while the diagnostic reference path had 18. A clean
-concurrent window advanced 4,233 ticks at 118.9 Hz with 35 skipped ticks while
-full-frame presentation held 29.7 fps; mean physics time was 6.042 ms.
+`1600fb06`. The grid retained 7.133 of 70 possible rigid pairs per tick. Each
+tick also considered 234 bounded rope/collider pairs; only 5.521 passed their
+swept conservative bounds and 3.457 produced contacts on average. The rope
+stage averaged 1.661/1.643 ms, visited exactly 42 length constraints, and held
+maximum segment error to 0.856 px.
+
+A separate neutral profile averaged 5.590/5.887 ms with no deadline violations
+and exact agreement at `34a04b59`; it recorded one body sleep transition and
+1,038 skipped sleeping contacts. With RP2040 hardware-divider wrappers and
+30 Hz snapshot publication enabled, a concurrent window advanced 5,921 ticks at
+120.0 Hz with one skipped tick while full-frame presentation held 29.6 fps.
+Mean physics time was 6.638 ms and the worst backlog was five ticks.
+
+For comparison, the preceding one-way schema-version-10 rope profile averaged
+4.502/5.100 ms and ended at `91744aeb`; it did not yet feed rope corrections
+back into a body or collide rope particles with the scene.
 
 The preceding schema-version-9 spring/conveyor profile averaged 2.718/3.060 ms
 for the moving fixture and 3.630/3.989 ms for the neutral fixture. It ended at

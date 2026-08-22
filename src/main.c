@@ -334,7 +334,10 @@ static int process_game_control_requests(struct game_runtime_control *control,
 		int result = 0;
 		switch (request.operation) {
 		case PICOSYSTEM_GAME_CONTROL_PAUSE:
-			control->paused = true;
+			result = picosystem_game_demo_publish_current(game);
+			if (result == 0) {
+				control->paused = true;
+			}
 			break;
 		case PICOSYSTEM_GAME_CONTROL_RUN:
 			if (control->paused) {
@@ -685,7 +688,7 @@ int main(void)
 		for (uint32_t step = 0U; step < update_steps; ++step) {
 			const struct picosystem_game_input game_input =
 				selected_game_input(&game_control, &physical_game_input);
-			err = picosystem_game_demo_update(&game_state, &game_input);
+			err = picosystem_game_demo_update_realtime(&game_state, &game_input);
 			if (err != 0) {
 				LOG_ERR("Game logic update failed (%d)", err);
 				return err;

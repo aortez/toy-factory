@@ -19,6 +19,7 @@
 #else
 #define PICOSYSTEM_PHYSICS_RAMFUNC
 #endif
+#define PICOSYSTEM_PHYSICS_NOINLINE __attribute__((noinline))
 
 #define PHYSICS_POSITION_LIMIT                    PICOSYSTEM_PHYSICS_FIXED_FROM_INT(1024)
 #define PHYSICS_VELOCITY_LIMIT                    PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
@@ -29,6 +30,8 @@
 #define PHYSICS_HALF_EXTENT_LIMIT                 PICOSYSTEM_PHYSICS_FIXED_FROM_INT(64)
 #define PHYSICS_ROPE_SEGMENT_LENGTH_MINIMUM       PICOSYSTEM_PHYSICS_FIXED_ONE
 #define PHYSICS_ROPE_SEGMENT_LENGTH_LIMIT         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(64)
+#define PHYSICS_ROPE_COLLISION_RADIUS_MINIMUM     PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_ROPE_COLLISION_RADIUS_LIMIT       PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
 #define PHYSICS_ROPE_VELOCITY_DAMPING             PICOSYSTEM_PHYSICS_FIXED_RATIO(255, 256)
 #define PHYSICS_ROPE_MAX_CORRECTION               PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
 #define PHYSICS_ROPE_POSITION_LIMIT               (PHYSICS_POSITION_LIMIT + PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT)
@@ -61,7 +64,7 @@
 #define PHYSICS_BOUNCE_THRESHOLD                  (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
 #define PHYSICS_SLEEP_LINEAR_VELOCITY_THRESHOLD   (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
 #define PHYSICS_SLEEP_ANGULAR_VELOCITY_THRESHOLD  (PICOSYSTEM_PHYSICS_FIXED_ONE / 512)
-#define PHYSICS_HASH_VERSION                      UINT32_C(13)
+#define PHYSICS_HASH_VERSION                      UINT32_C(15)
 #define FNV1A_OFFSET_BASIS                        UINT32_C(2166136261)
 #define FNV1A_PRIME                               UINT32_C(16777619)
 #define STATIC_BODY_INDEX                         UINT8_MAX
@@ -783,7 +786,9 @@ static bool box_sensor_config_is_valid(const struct picosystem_physics_box_senso
 static bool
 rope_endpoint_config_is_valid(const struct picosystem_physics_rope_endpoint_config *endpoint)
 {
-	if ((endpoint->pinned > 1U) ||
+	if ((endpoint->pinned > 1U) || (endpoint->reaction_enabled > 1U) ||
+	    ((endpoint->body_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) &&
+	     (endpoint->reaction_enabled != 0U)) ||
 	    ((endpoint->body_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) && (endpoint->pinned == 0U))) {
 		return false;
 	}
@@ -796,12 +801,22 @@ rope_endpoint_config_is_valid(const struct picosystem_physics_rope_endpoint_conf
 
 static bool rope_config_is_valid(const struct picosystem_physics_rope_config *config)
 {
-	return (config != NULL) && (config->id != 0U) && (config->particle_count >= 2U) &&
-	       (config->particle_count <= PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES) &&
-	       (config->segment_length >= PHYSICS_ROPE_SEGMENT_LENGTH_MINIMUM) &&
-	       (config->segment_length <= PHYSICS_ROPE_SEGMENT_LENGTH_LIMIT) &&
-	       rope_endpoint_config_is_valid(&config->endpoint_a) &&
-	       rope_endpoint_config_is_valid(&config->endpoint_b);
+	if ((config == NULL) || (config->id == 0U) || (config->particle_count < 2U) ||
+	    (config->particle_count > PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES) ||
+	    (config->segment_length < PHYSICS_ROPE_SEGMENT_LENGTH_MINIMUM) ||
+	    (config->segment_length > PHYSICS_ROPE_SEGMENT_LENGTH_LIMIT) ||
+	    (config->collision_radius < 0) ||
+	    ((config->collision_radius != 0) &&
+	     ((config->collision_radius < PHYSICS_ROPE_COLLISION_RADIUS_MINIMUM) ||
+	      (config->collision_radius > PHYSICS_ROPE_COLLISION_RADIUS_LIMIT))) ||
+	    !rope_endpoint_config_is_valid(&config->endpoint_a) ||
+	    !rope_endpoint_config_is_valid(&config->endpoint_b)) {
+		return false;
+	}
+	return (config->endpoint_a.body_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) ||
+	       (config->endpoint_a.body_id != config->endpoint_b.body_id) ||
+	       ((config->endpoint_a.reaction_enabled == 0U) &&
+		(config->endpoint_b.reaction_enabled == 0U));
 }
 
 static bool
@@ -1100,12 +1115,13 @@ static bool body_local_anchor_is_valid(const struct picosystem_physics_body *bod
 
 static bool rope_endpoint_is_valid(const struct picosystem_physics_world *world,
 				   const struct picosystem_physics_vector *anchor, uint16_t body_id,
-				   uint8_t body_index, uint8_t pinned)
+				   uint8_t body_index, uint8_t pinned, uint8_t reaction_enabled)
 {
 	const struct picosystem_physics_rope_endpoint_config endpoint = {
 		.anchor = *anchor,
 		.body_id = body_id,
 		.pinned = pinned,
+		.reaction_enabled = reaction_enabled,
 	};
 	if (!rope_endpoint_config_is_valid(&endpoint)) {
 		return false;
@@ -1126,22 +1142,25 @@ static bool rope_is_valid(const struct picosystem_physics_rope *rope,
 				.anchor = rope->anchor_a,
 				.body_id = rope->body_a_id,
 				.pinned = rope->pin_a,
+				.reaction_enabled = rope->reaction_a,
 			},
 		.endpoint_b =
 			{
 				.anchor = rope->anchor_b,
 				.body_id = rope->body_b_id,
 				.pinned = rope->pin_b,
+				.reaction_enabled = rope->reaction_b,
 			},
 		.segment_length = rope->segment_length,
+		.collision_radius = rope->collision_radius,
 		.id = rope->id,
 		.particle_count = rope->particle_count,
 	};
 	if (!rope_config_is_valid(&config) ||
 	    !rope_endpoint_is_valid(world, &rope->anchor_a, rope->body_a_id, rope->body_a_index,
-				    rope->pin_a) ||
+				    rope->pin_a, rope->reaction_a) ||
 	    !rope_endpoint_is_valid(world, &rope->anchor_b, rope->body_b_id, rope->body_b_index,
-				    rope->pin_b)) {
+				    rope->pin_b, rope->reaction_b)) {
 		return false;
 	}
 	for (uint8_t index = 0U; index < rope->particle_count; ++index) {
@@ -1531,6 +1550,16 @@ static void build_sleep_graph(const struct picosystem_physics_world *world,
 				graph->powered_body_mask |=
 					body_mask_for_index(joint->body_b_index);
 			}
+		}
+	}
+	for (uint16_t index = 0U; index < world->rope_count; ++index) {
+		const struct picosystem_physics_rope *const rope = &world->ropes[index];
+		const bool reacts_at_a = rope->reaction_a != 0U;
+		const bool reacts_at_b = rope->reaction_b != 0U;
+		if ((reacts_at_a || reacts_at_b) &&
+		    (rope->body_a_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) &&
+		    (rope->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID)) {
+			sleep_graph_add_edge(graph, rope->body_a_index, rope->body_b_index);
 		}
 	}
 }
@@ -4780,19 +4809,26 @@ static bool rope_particle_is_pinned(const struct picosystem_physics_rope *rope,
 	       ((particle_index == (rope->particle_count - 1U)) && (rope->pin_b != 0U));
 }
 
-static void pin_rope_endpoints(struct picosystem_physics_rope *rope,
+static void pin_rope_endpoints(const struct picosystem_physics_world *world,
+			       struct picosystem_physics_rope *rope,
 			       const struct picosystem_physics_vector *position_a,
 			       const struct picosystem_physics_vector *position_b)
 {
 	if (rope->pin_a != 0U) {
-		rope->particles[0].position = *position_a;
-		rope->particles[0].previous_position = *position_a;
+		const struct picosystem_physics_vector pinned_position =
+			(rope->reaction_a != 0U) ? rope_endpoint_world_position(world, rope, true)
+						 : *position_a;
+		rope->particles[0].position = pinned_position;
+		rope->particles[0].previous_position = pinned_position;
 	}
 	if (rope->pin_b != 0U) {
 		struct picosystem_physics_rope_particle *const particle =
 			&rope->particles[rope->particle_count - 1U];
-		particle->position = *position_b;
-		particle->previous_position = *position_b;
+		const struct picosystem_physics_vector pinned_position =
+			(rope->reaction_b != 0U) ? rope_endpoint_world_position(world, rope, false)
+						 : *position_b;
+		particle->position = pinned_position;
+		particle->previous_position = pinned_position;
 	}
 }
 
@@ -4803,7 +4839,7 @@ integrate_rope_particles(const struct picosystem_physics_world *world,
 			 const struct picosystem_physics_vector *pin_position_a,
 			 const struct picosystem_physics_vector *pin_position_b)
 {
-	pin_rope_endpoints(rope, pin_position_a, pin_position_b);
+	pin_rope_endpoints(world, rope, pin_position_a, pin_position_b);
 	for (uint8_t index = 0U; index < rope->particle_count; ++index) {
 		if (rope_particle_is_pinned(rope, index)) {
 			continue;
@@ -4824,7 +4860,78 @@ integrate_rope_particles(const struct picosystem_physics_world *world,
 	}
 }
 
-static bool solve_rope_constraint(struct picosystem_physics_rope *rope, uint8_t particle_a_index)
+static bool rope_particle_has_body_reaction(const struct picosystem_physics_rope *rope,
+					    uint8_t particle_index)
+{
+	return ((particle_index == 0U) && (rope->reaction_a != 0U)) ||
+	       ((particle_index == (rope->particle_count - 1U)) && (rope->reaction_b != 0U));
+}
+
+static bool rope_particle_is_endpoint_a(uint8_t particle_index)
+{
+	return particle_index == 0U;
+}
+
+static picosystem_physics_fixed_t rope_particle_direction_inverse_mass(
+	const struct picosystem_physics_world *world, const struct picosystem_physics_rope *rope,
+	uint8_t particle_index, const struct picosystem_physics_vector *direction)
+{
+	if (!rope_particle_is_pinned(rope, particle_index)) {
+		return PICOSYSTEM_PHYSICS_FIXED_ONE;
+	}
+	if (!rope_particle_has_body_reaction(rope, particle_index)) {
+		return 0;
+	}
+	const bool endpoint_a = rope_particle_is_endpoint_a(particle_index);
+	const uint8_t body_index = endpoint_a ? rope->body_a_index : rope->body_b_index;
+	return body_direction_inverse_mass(&world->bodies[body_index],
+					   &rope->particles[particle_index].position, direction);
+}
+
+static bool apply_rope_particle_position_correction(
+	struct picosystem_physics_world *world, struct picosystem_physics_rope *rope,
+	uint8_t particle_index, const struct picosystem_physics_vector *direction,
+	picosystem_physics_fixed_t impulse, bool negate)
+{
+	if (impulse == 0) {
+		return false;
+	}
+	if (!rope_particle_is_pinned(rope, particle_index)) {
+		const struct picosystem_physics_vector correction =
+			vector_scale(direction, impulse);
+		if (negate) {
+			rope->particles[particle_index].position = vector_subtract(
+				&rope->particles[particle_index].position, &correction);
+		} else {
+			rope->particles[particle_index].position =
+				vector_add(&rope->particles[particle_index].position, &correction);
+		}
+		return (correction.x != 0) || (correction.y != 0);
+	}
+	if (!rope_particle_has_body_reaction(rope, particle_index)) {
+		return false;
+	}
+
+	const bool endpoint_a = rope_particle_is_endpoint_a(particle_index);
+	const uint8_t body_index = endpoint_a ? rope->body_a_index : rope->body_b_index;
+	struct picosystem_physics_body *const body = &world->bodies[body_index];
+	const struct picosystem_physics_vector point = rope->particles[particle_index].position;
+	const struct picosystem_physics_vector center_before = body->center;
+	const uint32_t angle_before = body->angle_turns;
+	apply_body_position_impulse(body, &point, direction, impulse,
+				    negate ? -PICOSYSTEM_PHYSICS_FIXED_ONE
+					   : PICOSYSTEM_PHYSICS_FIXED_ONE);
+	const bool changed = (body->center.x != center_before.x) ||
+			     (body->center.y != center_before.y) ||
+			     (body->angle_turns != angle_before);
+	if (changed) {
+		(void)wake_sleeping_body_mask(world, body_mask_for_index(body_index), true);
+	}
+	return changed;
+}
+
+static bool solve_rope_constraint(struct picosystem_physics_world *world,
+				  struct picosystem_physics_rope *rope, uint8_t particle_a_index)
 {
 	struct picosystem_physics_rope_particle *const particle_a =
 		&rope->particles[particle_a_index];
@@ -4840,9 +4947,40 @@ static bool solve_rope_constraint(struct picosystem_physics_rope *rope, uint8_t 
 	const picosystem_physics_fixed_t distance = normalize_vector(&delta, &normal, &fallback);
 	picosystem_physics_fixed_t error = distance - rope->segment_length;
 	if (error == 0) {
+		world->last_work.rope_body_correction_visit_count +=
+			rope_particle_has_body_reaction(rope, particle_a_index) ? 1U : 0U;
+		world->last_work.rope_body_correction_visit_count +=
+			rope_particle_has_body_reaction(rope, particle_a_index + 1U) ? 1U : 0U;
 		return false;
 	}
 	error = fixed_clamp(error, -PHYSICS_ROPE_MAX_CORRECTION, PHYSICS_ROPE_MAX_CORRECTION);
+	const bool reacts_a = rope_particle_has_body_reaction(rope, particle_a_index);
+	const bool reacts_b = rope_particle_has_body_reaction(rope, particle_a_index + 1U);
+	world->last_work.rope_body_correction_visit_count += reacts_a ? 1U : 0U;
+	world->last_work.rope_body_correction_visit_count += reacts_b ? 1U : 0U;
+	if (reacts_a || reacts_b) {
+		const picosystem_physics_fixed_t inverse_mass_a =
+			rope_particle_direction_inverse_mass(world, rope, particle_a_index,
+							     &normal);
+		const picosystem_physics_fixed_t inverse_mass_b =
+			rope_particle_direction_inverse_mass(world, rope, particle_a_index + 1U,
+							     &normal);
+		const picosystem_physics_fixed_t inverse_mass_sum = inverse_mass_a + inverse_mass_b;
+		if (inverse_mass_sum <= 0) {
+			return false;
+		}
+		const picosystem_physics_fixed_t impulse = fixed_divide(error, inverse_mass_sum);
+		const bool changed_a = apply_rope_particle_position_correction(
+			world, rope, particle_a_index, &normal, impulse, false);
+		const bool changed_b = apply_rope_particle_position_correction(
+			world, rope, particle_a_index + 1U, &normal, impulse, true);
+		world->last_work.rope_body_correction_changed_count +=
+			(reacts_a && changed_a) ? 1U : 0U;
+		world->last_work.rope_body_correction_changed_count +=
+			(reacts_b && changed_b) ? 1U : 0U;
+		return changed_a || changed_b;
+	}
+
 	const bool pinned_a = rope_particle_is_pinned(rope, particle_a_index);
 	const bool pinned_b = rope_particle_is_pinned(rope, particle_a_index + 1U);
 	if (pinned_a && pinned_b) {
@@ -4868,6 +5006,577 @@ static bool solve_rope_constraint(struct picosystem_physics_rope *rope, uint8_t 
 	return true;
 }
 
+static struct picosystem_physics_vector
+rope_particle_velocity(const struct picosystem_physics_world *world,
+		       const struct picosystem_physics_rope *rope, uint8_t particle_index)
+{
+	if (!rope_particle_is_pinned(rope, particle_index)) {
+		return vector_subtract(&rope->particles[particle_index].position,
+				       &rope->particles[particle_index].previous_position);
+	}
+	const bool endpoint_a = rope_particle_is_endpoint_a(particle_index);
+	const uint16_t body_id = endpoint_a ? rope->body_a_id : rope->body_b_id;
+	if (body_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		return (struct picosystem_physics_vector){0};
+	}
+	const uint8_t body_index = endpoint_a ? rope->body_a_index : rope->body_b_index;
+	return body_velocity_at_point(&world->bodies[body_index],
+				      &rope->particles[particle_index].position);
+}
+
+static bool apply_rope_particle_velocity_impulse(struct picosystem_physics_world *world,
+						 struct picosystem_physics_rope *rope,
+						 uint8_t particle_index,
+						 const struct picosystem_physics_vector *direction,
+						 picosystem_physics_fixed_t impulse, bool negate)
+{
+	if (impulse == 0) {
+		return false;
+	}
+	if (!rope_particle_is_pinned(rope, particle_index)) {
+		const struct picosystem_physics_vector velocity_delta =
+			vector_scale(direction, impulse);
+		if (negate) {
+			rope->particles[particle_index].previous_position =
+				vector_add(&rope->particles[particle_index].previous_position,
+					   &velocity_delta);
+		} else {
+			rope->particles[particle_index].previous_position =
+				vector_subtract(&rope->particles[particle_index].previous_position,
+						&velocity_delta);
+		}
+		return (velocity_delta.x != 0) || (velocity_delta.y != 0);
+	}
+	if (!rope_particle_has_body_reaction(rope, particle_index)) {
+		return false;
+	}
+	const bool endpoint_a = rope_particle_is_endpoint_a(particle_index);
+	const uint8_t body_index = endpoint_a ? rope->body_a_index : rope->body_b_index;
+	const uint32_t revision_before = world->solver_velocity_revisions[body_index];
+	apply_body_impulse(world, body_index, &rope->particles[particle_index].position, direction,
+			   impulse,
+			   negate ? -PICOSYSTEM_PHYSICS_FIXED_ONE : PICOSYSTEM_PHYSICS_FIXED_ONE);
+	const bool changed = world->solver_velocity_revisions[body_index] != revision_before;
+	if (changed) {
+		(void)wake_sleeping_body_mask(world, body_mask_for_index(body_index), true);
+	}
+	return changed;
+}
+
+static bool solve_rope_body_velocity(struct picosystem_physics_world *world,
+				     struct picosystem_physics_rope *rope, uint8_t particle_a_index)
+{
+	const uint8_t particle_b_index = particle_a_index + 1U;
+	const bool reacts_a = rope_particle_has_body_reaction(rope, particle_a_index);
+	const bool reacts_b = rope_particle_has_body_reaction(rope, particle_b_index);
+	if (!reacts_a && !reacts_b) {
+		return false;
+	}
+	world->last_work.rope_body_velocity_visit_count += reacts_a ? 1U : 0U;
+	world->last_work.rope_body_velocity_visit_count += reacts_b ? 1U : 0U;
+	const struct picosystem_physics_vector delta =
+		vector_subtract(&rope->particles[particle_b_index].position,
+				&rope->particles[particle_a_index].position);
+	const struct picosystem_physics_vector fallback = {
+		.x = (((rope->id + particle_a_index) & 1U) == 0U) ? PICOSYSTEM_PHYSICS_FIXED_ONE
+								  : -PICOSYSTEM_PHYSICS_FIXED_ONE,
+	};
+	struct picosystem_physics_vector normal;
+	(void)normalize_vector(&delta, &normal, &fallback);
+	const struct picosystem_physics_vector velocity_a =
+		rope_particle_velocity(world, rope, particle_a_index);
+	const struct picosystem_physics_vector velocity_b =
+		rope_particle_velocity(world, rope, particle_b_index);
+	const struct picosystem_physics_vector relative = vector_subtract(&velocity_b, &velocity_a);
+	const picosystem_physics_fixed_t constraint_velocity = vector_dot(&relative, &normal);
+	if (constraint_velocity == 0) {
+		return false;
+	}
+	const picosystem_physics_fixed_t inverse_mass_a =
+		rope_particle_direction_inverse_mass(world, rope, particle_a_index, &normal);
+	const picosystem_physics_fixed_t inverse_mass_b =
+		rope_particle_direction_inverse_mass(world, rope, particle_b_index, &normal);
+	const picosystem_physics_fixed_t inverse_mass_sum = inverse_mass_a + inverse_mass_b;
+	if (inverse_mass_sum <= 0) {
+		return false;
+	}
+	const picosystem_physics_fixed_t impulse =
+		fixed_divide(constraint_velocity, inverse_mass_sum);
+	const bool changed_a = apply_rope_particle_velocity_impulse(world, rope, particle_a_index,
+								    &normal, impulse, false);
+	const bool changed_b = apply_rope_particle_velocity_impulse(world, rope, particle_b_index,
+								    &normal, impulse, true);
+	world->last_work.rope_body_velocity_changed_count += (reacts_a && changed_a) ? 1U : 0U;
+	world->last_work.rope_body_velocity_changed_count += (reacts_b && changed_b) ? 1U : 0U;
+	return changed_a || changed_b;
+}
+
+struct rope_particle_collision {
+	struct picosystem_physics_vector point;
+	struct picosystem_physics_vector normal;
+	picosystem_physics_fixed_t penetration;
+	uint8_t body_index;
+};
+
+static picosystem_physics_fixed_t
+rope_body_bounding_radius(const struct picosystem_physics_body *body)
+{
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
+		return body->half_extent.x + body->half_extent.y;
+	}
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		return body->half_extent.x + body->radius;
+	}
+	return body->radius;
+}
+
+static bool
+rope_particle_might_collide_with_body(const struct picosystem_physics_rope_particle *particle,
+				      picosystem_physics_fixed_t collision_radius,
+				      const struct picosystem_physics_body *body)
+{
+	const picosystem_physics_fixed_t maximum_distance =
+		collision_radius + rope_body_bounding_radius(body);
+	return (fixed_absolute(particle->position.x - body->center.x) < maximum_distance) &&
+	       (fixed_absolute(particle->position.y - body->center.y) < maximum_distance);
+}
+
+static bool
+rope_particle_might_collide_with_segment(const struct picosystem_physics_rope_particle *particle,
+					 picosystem_physics_fixed_t collision_radius,
+					 const struct picosystem_physics_static_segment *segment)
+{
+	const picosystem_physics_fixed_t minimum_x =
+		fixed_minimum(particle->position.x, particle->previous_position.x) -
+		collision_radius;
+	const picosystem_physics_fixed_t maximum_x =
+		fixed_maximum(particle->position.x, particle->previous_position.x) +
+		collision_radius;
+	const picosystem_physics_fixed_t minimum_y =
+		fixed_minimum(particle->position.y, particle->previous_position.y) -
+		collision_radius;
+	const picosystem_physics_fixed_t maximum_y =
+		fixed_maximum(particle->position.y, particle->previous_position.y) +
+		collision_radius;
+	return (maximum_x > fixed_minimum(segment->start.x, segment->end.x)) &&
+	       (minimum_x < fixed_maximum(segment->start.x, segment->end.x)) &&
+	       (maximum_y > fixed_minimum(segment->start.y, segment->end.y)) &&
+	       (minimum_y < fixed_maximum(segment->start.y, segment->end.y));
+}
+
+static bool find_rope_particle_circle_collision(const struct picosystem_physics_rope *rope,
+						uint8_t particle_index,
+						const struct picosystem_physics_body *body,
+						uint8_t body_index,
+						struct rope_particle_collision *collision)
+{
+	const struct picosystem_physics_vector delta =
+		vector_subtract(&body->center, &rope->particles[particle_index].position);
+	const picosystem_physics_fixed_t combined_radius = rope->collision_radius + body->radius;
+	const uint64_t combined_radius_squared =
+		(uint64_t)((int64_t)combined_radius * combined_radius);
+	if (vector_length_squared_raw(&delta) >= combined_radius_squared) {
+		return false;
+	}
+
+	const struct picosystem_physics_vector fallback = {
+		.x = (((uint32_t)rope->id + particle_index + body->id) & 1U) != 0U
+			     ? PICOSYSTEM_PHYSICS_FIXED_ONE
+			     : -PICOSYSTEM_PHYSICS_FIXED_ONE,
+	};
+	struct picosystem_physics_vector normal;
+	const picosystem_physics_fixed_t distance = normalize_vector(&delta, &normal, &fallback);
+	const struct picosystem_physics_vector surface_offset = vector_scale(&normal, body->radius);
+	*collision = (struct rope_particle_collision){
+		.point = vector_subtract(&body->center, &surface_offset),
+		.normal = normal,
+		.penetration = combined_radius - distance,
+		.body_index = body_index,
+	};
+	return true;
+}
+
+static bool find_rope_particle_box_collision(const struct picosystem_physics_rope *rope,
+					     uint8_t particle_index,
+					     const struct picosystem_physics_body *body,
+					     uint8_t body_index,
+					     struct rope_particle_collision *collision)
+{
+	struct box_geometry geometry;
+	box_geometry_from_body(body, &geometry);
+	const struct picosystem_physics_vector relative =
+		vector_subtract(&rope->particles[particle_index].position, &body->center);
+	const picosystem_physics_fixed_t local_x = vector_dot(&relative, &geometry.axis_x);
+	const picosystem_physics_fixed_t local_y = vector_dot(&relative, &geometry.axis_y);
+	const picosystem_physics_fixed_t closest_x =
+		fixed_clamp(local_x, -body->half_extent.x, body->half_extent.x);
+	const picosystem_physics_fixed_t closest_y =
+		fixed_clamp(local_y, -body->half_extent.y, body->half_extent.y);
+	const struct picosystem_physics_vector offset_x = vector_scale(&geometry.axis_x, closest_x);
+	const struct picosystem_physics_vector offset_y = vector_scale(&geometry.axis_y, closest_y);
+	const struct picosystem_physics_vector center_with_x = vector_add(&body->center, &offset_x);
+	struct picosystem_physics_vector closest = vector_add(&center_with_x, &offset_y);
+	const struct picosystem_physics_vector local_particle_to_closest = {
+		.x = closest_x - local_x,
+		.y = closest_y - local_y,
+	};
+	const uint64_t distance_squared = vector_length_squared_raw(&local_particle_to_closest);
+	const uint64_t radius_squared =
+		(uint64_t)((int64_t)rope->collision_radius * rope->collision_radius);
+
+	picosystem_physics_fixed_t penetration;
+	struct picosystem_physics_vector normal;
+	if (distance_squared != 0U) {
+		if (distance_squared >= radius_squared) {
+			return false;
+		}
+		const struct picosystem_physics_vector fallback = {
+			.x = PICOSYSTEM_PHYSICS_FIXED_ONE,
+		};
+		struct picosystem_physics_vector local_normal;
+		const picosystem_physics_fixed_t distance =
+			normalize_vector(&local_particle_to_closest, &local_normal, &fallback);
+		const struct picosystem_physics_vector normal_x =
+			vector_scale(&geometry.axis_x, local_normal.x);
+		const struct picosystem_physics_vector normal_y =
+			vector_scale(&geometry.axis_y, local_normal.y);
+		normal = vector_add(&normal_x, &normal_y);
+		penetration = rope->collision_radius - distance;
+	} else {
+		const picosystem_physics_fixed_t distance_x =
+			body->half_extent.x - fixed_absolute(local_x);
+		const picosystem_physics_fixed_t distance_y =
+			body->half_extent.y - fixed_absolute(local_y);
+		if (distance_x <= distance_y) {
+			const bool positive = local_x >= 0;
+			const picosystem_physics_fixed_t face_x =
+				positive ? body->half_extent.x : -body->half_extent.x;
+			const struct picosystem_physics_vector outward =
+				positive ? geometry.axis_x : vector_negate(&geometry.axis_x);
+			normal = vector_negate(&outward);
+			const struct picosystem_physics_vector face_offset_x =
+				vector_scale(&geometry.axis_x, face_x);
+			const struct picosystem_physics_vector face_offset_y =
+				vector_scale(&geometry.axis_y, local_y);
+			const struct picosystem_physics_vector face_with_x =
+				vector_add(&body->center, &face_offset_x);
+			closest = vector_add(&face_with_x, &face_offset_y);
+			penetration = rope->collision_radius + distance_x;
+		} else {
+			const bool positive = local_y >= 0;
+			const picosystem_physics_fixed_t face_y =
+				positive ? body->half_extent.y : -body->half_extent.y;
+			const struct picosystem_physics_vector outward =
+				positive ? geometry.axis_y : vector_negate(&geometry.axis_y);
+			normal = vector_negate(&outward);
+			const struct picosystem_physics_vector face_offset_x =
+				vector_scale(&geometry.axis_x, local_x);
+			const struct picosystem_physics_vector face_offset_y =
+				vector_scale(&geometry.axis_y, face_y);
+			const struct picosystem_physics_vector face_with_x =
+				vector_add(&body->center, &face_offset_x);
+			closest = vector_add(&face_with_x, &face_offset_y);
+			penetration = rope->collision_radius + distance_y;
+		}
+	}
+
+	*collision = (struct rope_particle_collision){
+		.point = closest,
+		.normal = normal,
+		.penetration = penetration,
+		.body_index = body_index,
+	};
+	return true;
+}
+
+static bool find_rope_particle_capsule_collision(const struct picosystem_physics_rope *rope,
+						 uint8_t particle_index,
+						 const struct picosystem_physics_body *body,
+						 uint8_t body_index,
+						 struct rope_particle_collision *collision)
+{
+	struct box_geometry geometry;
+	box_geometry_from_body(body, &geometry);
+	struct picosystem_physics_vector start;
+	struct picosystem_physics_vector end;
+	capsule_centerline_from_geometry(body, &geometry, &start, &end);
+	const struct picosystem_physics_vector *const position =
+		&rope->particles[particle_index].position;
+	const struct picosystem_physics_vector extent = vector_subtract(&end, &start);
+	const struct picosystem_physics_vector from_start = vector_subtract(position, &start);
+	const int64_t projection_raw =
+		((int64_t)from_start.x * extent.x) + ((int64_t)from_start.y * extent.y);
+	const int64_t length_squared_raw = (int64_t)vector_length_squared_raw(&extent);
+	struct picosystem_physics_vector fallback = geometry.axis_y;
+	if ((((uint32_t)rope->id + particle_index + body->id) & 1U) == 0U) {
+		fallback = vector_negate(&fallback);
+	}
+	struct picosystem_physics_vector closest;
+	struct picosystem_physics_vector normal;
+	picosystem_physics_fixed_t distance;
+	if ((projection_raw > 0) && (projection_raw < length_squared_raw)) {
+		const picosystem_physics_fixed_t signed_distance =
+			vector_dot(&from_start, &geometry.axis_y);
+		distance = fixed_absolute(signed_distance);
+		normal = (signed_distance > 0)   ? vector_negate(&geometry.axis_y)
+			 : (signed_distance < 0) ? geometry.axis_y
+						 : fallback;
+		const struct picosystem_physics_vector offset = vector_scale(&normal, distance);
+		closest = vector_add(position, &offset);
+	} else {
+		closest = (projection_raw <= 0) ? start : end;
+		const struct picosystem_physics_vector delta = vector_subtract(&closest, position);
+		distance = normalize_vector(&delta, &normal, &fallback);
+	}
+	const picosystem_physics_fixed_t combined_radius = rope->collision_radius + body->radius;
+	const uint64_t combined_radius_squared =
+		(uint64_t)((int64_t)combined_radius * combined_radius);
+	if ((uint64_t)((int64_t)distance * distance) >= combined_radius_squared) {
+		return false;
+	}
+
+	const struct picosystem_physics_vector surface_offset = vector_scale(&normal, body->radius);
+	*collision = (struct rope_particle_collision){
+		.point = vector_subtract(&closest, &surface_offset),
+		.normal = normal,
+		.penetration = combined_radius - distance,
+		.body_index = body_index,
+	};
+	return true;
+}
+
+static bool find_rope_particle_body_collision(const struct picosystem_physics_rope *rope,
+					      uint8_t particle_index,
+					      const struct picosystem_physics_body *body,
+					      uint8_t body_index,
+					      struct rope_particle_collision *collision)
+{
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
+		return find_rope_particle_circle_collision(rope, particle_index, body, body_index,
+							   collision);
+	}
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		return find_rope_particle_capsule_collision(rope, particle_index, body, body_index,
+							    collision);
+	}
+	return find_rope_particle_box_collision(rope, particle_index, body, body_index, collision);
+}
+
+static bool
+find_rope_particle_segment_collision(const struct picosystem_physics_rope *rope,
+				     uint8_t particle_index,
+				     const struct picosystem_physics_static_segment *segment,
+				     struct rope_particle_collision *collision)
+{
+	const struct picosystem_physics_rope_particle *const particle =
+		&rope->particles[particle_index];
+	const struct picosystem_physics_vector *const position = &particle->position;
+	/* A length correction may cross a zero-width segment completely; restore the prior side. */
+	struct picosystem_physics_vector intersection;
+	if (proper_segment_intersection(&particle->previous_position, position, &segment->start,
+					&segment->end, &intersection)) {
+		const struct picosystem_physics_vector previous_from_start =
+			vector_subtract(&particle->previous_position, &segment->start);
+		const struct picosystem_physics_vector current_from_start =
+			vector_subtract(position, &segment->start);
+		const picosystem_physics_fixed_t previous_side =
+			vector_dot(&previous_from_start, &segment->normal);
+		const picosystem_physics_fixed_t current_side =
+			vector_dot(&current_from_start, &segment->normal);
+		struct picosystem_physics_vector allowed_normal;
+		if (previous_side > 0) {
+			allowed_normal = segment->normal;
+		} else if (previous_side < 0) {
+			allowed_normal = vector_negate(&segment->normal);
+		} else {
+			allowed_normal = (current_side <= 0) ? segment->normal
+							     : vector_negate(&segment->normal);
+		}
+		const struct picosystem_physics_vector from_intersection =
+			vector_subtract(position, &intersection);
+		const picosystem_physics_fixed_t allowed_distance =
+			vector_dot(&from_intersection, &allowed_normal);
+		const picosystem_physics_fixed_t penetration =
+			rope->collision_radius - allowed_distance;
+		if (penetration > 0) {
+			*collision = (struct rope_particle_collision){
+				.point = intersection,
+				.normal = vector_negate(&allowed_normal),
+				.penetration = penetration,
+				.body_index = STATIC_BODY_INDEX,
+			};
+			return true;
+		}
+	}
+
+	const struct picosystem_physics_vector extent =
+		vector_subtract(&segment->end, &segment->start);
+	const struct picosystem_physics_vector from_start =
+		vector_subtract(position, &segment->start);
+	const int64_t projection_raw =
+		((int64_t)from_start.x * extent.x) + ((int64_t)from_start.y * extent.y);
+	const int64_t length_squared_raw = (int64_t)vector_length_squared_raw(&extent);
+	struct picosystem_physics_vector closest;
+	struct picosystem_physics_vector normal;
+	picosystem_physics_fixed_t distance;
+	if ((projection_raw > 0) && (projection_raw < length_squared_raw)) {
+		const picosystem_physics_fixed_t signed_distance =
+			vector_dot(&from_start, &segment->normal);
+		distance = fixed_absolute(signed_distance);
+		normal = (signed_distance > 0) ? vector_negate(&segment->normal) : segment->normal;
+		const struct picosystem_physics_vector offset = vector_scale(&normal, distance);
+		closest = vector_add(position, &offset);
+	} else {
+		closest = (projection_raw <= 0) ? segment->start : segment->end;
+		const struct picosystem_physics_vector delta = vector_subtract(&closest, position);
+		distance = normalize_vector(&delta, &normal, &segment->normal);
+	}
+	const uint64_t radius_squared =
+		(uint64_t)((int64_t)rope->collision_radius * rope->collision_radius);
+	if ((uint64_t)((int64_t)distance * distance) >= radius_squared) {
+		return false;
+	}
+
+	*collision = (struct rope_particle_collision){
+		.point = closest,
+		.normal = normal,
+		.penetration = rope->collision_radius - distance,
+		.body_index = STATIC_BODY_INDEX,
+	};
+	return true;
+}
+
+static bool apply_rope_particle_collision(struct picosystem_physics_world *world,
+					  struct picosystem_physics_rope *rope,
+					  uint8_t particle_index,
+					  const struct rope_particle_collision *collision)
+{
+	struct picosystem_physics_rope_particle *const particle = &rope->particles[particle_index];
+	picosystem_physics_fixed_t inverse_mass_sum = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	if (collision->body_index != STATIC_BODY_INDEX) {
+		inverse_mass_sum +=
+			body_direction_inverse_mass(&world->bodies[collision->body_index],
+						    &collision->point, &collision->normal);
+	}
+	if (inverse_mass_sum <= 0) {
+		return false;
+	}
+
+	const picosystem_physics_fixed_t bounded_penetration =
+		fixed_minimum(collision->penetration, PHYSICS_ROPE_MAX_CORRECTION);
+	const picosystem_physics_fixed_t position_impulse =
+		fixed_divide(bounded_penetration, inverse_mass_sum);
+	const struct picosystem_physics_vector particle_correction =
+		vector_scale(&collision->normal, position_impulse);
+	particle->position = vector_subtract(&particle->position, &particle_correction);
+	particle->previous_position =
+		vector_subtract(&particle->previous_position, &particle_correction);
+	bool position_changed = (particle_correction.x != 0) || (particle_correction.y != 0);
+	if (collision->body_index != STATIC_BODY_INDEX) {
+		struct picosystem_physics_body *const body = &world->bodies[collision->body_index];
+		const struct picosystem_physics_vector center_before = body->center;
+		const uint32_t angle_before = body->angle_turns;
+		apply_body_position_impulse(body, &collision->point, &collision->normal,
+					    position_impulse, PICOSYSTEM_PHYSICS_FIXED_ONE);
+		const bool body_changed = (body->center.x != center_before.x) ||
+					  (body->center.y != center_before.y) ||
+					  (body->angle_turns != angle_before);
+		position_changed |= body_changed;
+		if (body_changed) {
+			(void)wake_sleeping_body_mask(
+				world, body_mask_for_index(collision->body_index), true);
+		}
+	}
+	world->last_work.rope_collision_position_changed_count += position_changed ? 1U : 0U;
+
+	const struct picosystem_physics_vector particle_velocity =
+		vector_subtract(&particle->position, &particle->previous_position);
+	struct picosystem_physics_vector collider_velocity = {0};
+	if (collision->body_index != STATIC_BODY_INDEX) {
+		collider_velocity = body_velocity_at_point(&world->bodies[collision->body_index],
+							   &collision->point);
+	}
+	const struct picosystem_physics_vector relative_velocity =
+		vector_subtract(&collider_velocity, &particle_velocity);
+	const picosystem_physics_fixed_t closing_velocity =
+		vector_dot(&relative_velocity, &collision->normal);
+	if (closing_velocity >= 0) {
+		return position_changed;
+	}
+
+	inverse_mass_sum = PICOSYSTEM_PHYSICS_FIXED_ONE;
+	if (collision->body_index != STATIC_BODY_INDEX) {
+		inverse_mass_sum +=
+			body_direction_inverse_mass(&world->bodies[collision->body_index],
+						    &collision->point, &collision->normal);
+	}
+	const picosystem_physics_fixed_t velocity_impulse =
+		fixed_divide(-closing_velocity, inverse_mass_sum);
+	const struct picosystem_physics_vector particle_velocity_change =
+		vector_scale(&collision->normal, velocity_impulse);
+	particle->previous_position =
+		vector_add(&particle->previous_position, &particle_velocity_change);
+	bool velocity_changed =
+		(particle_velocity_change.x != 0) || (particle_velocity_change.y != 0);
+	if (collision->body_index != STATIC_BODY_INDEX) {
+		const uint32_t revision_before =
+			world->solver_velocity_revisions[collision->body_index];
+		apply_body_impulse(world, collision->body_index, &collision->point,
+				   &collision->normal, velocity_impulse,
+				   PICOSYSTEM_PHYSICS_FIXED_ONE);
+		const bool body_changed =
+			world->solver_velocity_revisions[collision->body_index] != revision_before;
+		velocity_changed |= body_changed;
+		if (body_changed) {
+			(void)wake_sleeping_body_mask(
+				world, body_mask_for_index(collision->body_index), true);
+		}
+	}
+	world->last_work.rope_collision_velocity_changed_count += velocity_changed ? 1U : 0U;
+	return position_changed || velocity_changed;
+}
+
+static PICOSYSTEM_PHYSICS_RAMFUNC PICOSYSTEM_PHYSICS_NOINLINE void
+solve_rope_particle_collisions(struct picosystem_physics_world *world,
+			       struct picosystem_physics_rope *rope, uint8_t particle_index)
+{
+	for (uint8_t body_index = 0U; body_index < world->body_count; ++body_index) {
+		++world->last_work.rope_collision_possible_pair_count;
+		if (!rope_particle_might_collide_with_body(&rope->particles[particle_index],
+							   rope->collision_radius,
+							   &world->bodies[body_index])) {
+			continue;
+		}
+		++world->last_work.rope_collision_candidate_pair_count;
+		struct rope_particle_collision collision;
+		if (find_rope_particle_body_collision(rope, particle_index,
+						      &world->bodies[body_index], body_index,
+						      &collision)) {
+			++world->last_work.rope_collision_contact_count;
+			(void)apply_rope_particle_collision(world, rope, particle_index,
+							    &collision);
+		}
+	}
+	for (uint8_t segment_index = 0U; segment_index < world->static_segment_count;
+	     ++segment_index) {
+		++world->last_work.rope_collision_possible_pair_count;
+		if (!rope_particle_might_collide_with_segment(
+			    &rope->particles[particle_index], rope->collision_radius,
+			    &world->static_segments[segment_index])) {
+			continue;
+		}
+		++world->last_work.rope_collision_candidate_pair_count;
+		struct rope_particle_collision collision;
+		if (find_rope_particle_segment_collision(rope, particle_index,
+							 &world->static_segments[segment_index],
+							 &collision)) {
+			++world->last_work.rope_collision_contact_count;
+			(void)apply_rope_particle_collision(world, rope, particle_index,
+							    &collision);
+		}
+	}
+}
+
 static void step_ropes(struct picosystem_physics_world *world,
 		       const struct picosystem_physics_vector *global_acceleration_per_tick)
 {
@@ -4890,15 +5599,32 @@ static void step_ropes(struct picosystem_physics_world *world,
 				const uint8_t particle_a_index =
 					reverse ? (uint8_t)(rope->particle_count - visit - 2U)
 						: visit;
-				const bool changed = solve_rope_constraint(rope, particle_a_index);
+				const bool changed =
+					solve_rope_constraint(world, rope, particle_a_index);
 				++world->last_work.rope_constraint_visit_count;
 				world->last_work.rope_constraint_changed_count += changed ? 1U : 0U;
 			}
-			pin_rope_endpoints(rope, &pin_position_a, &pin_position_b);
+			if ((rope->collision_radius != 0) && ((iteration & 1U) != 0U)) {
+				const bool collision_reverse = ((iteration / 2U) & 1U) != 0U;
+				for (uint8_t visit = 0U; visit < rope->particle_count; ++visit) {
+					const uint8_t particle_index =
+						collision_reverse ? (uint8_t)(rope->particle_count -
+									      visit - 1U)
+								  : visit;
+					if (!rope_particle_is_pinned(rope, particle_index)) {
+						solve_rope_particle_collisions(world, rope,
+									       particle_index);
+					}
+				}
+			}
+			pin_rope_endpoints(world, rope, &pin_position_a, &pin_position_b);
 			++world->last_work.rope_solver_iteration_count;
 		}
 		for (uint8_t index = 0U; index < rope->particle_count; ++index) {
 			clamp_rope_particle_position(&rope->particles[index]);
+		}
+		for (uint8_t index = 0U; index < (rope->particle_count - 1U); ++index) {
+			(void)solve_rope_body_velocity(world, rope, index);
 		}
 	}
 }
@@ -5157,6 +5883,7 @@ int picosystem_physics_world_add_rope(struct picosystem_physics_world *world,
 		.anchor_a = config->endpoint_a.anchor,
 		.anchor_b = config->endpoint_b.anchor,
 		.segment_length = config->segment_length,
+		.collision_radius = config->collision_radius,
 		.id = config->id,
 		.body_a_id = config->endpoint_a.body_id,
 		.body_b_id = config->endpoint_b.body_id,
@@ -5165,6 +5892,8 @@ int picosystem_physics_world_add_rope(struct picosystem_physics_world *world,
 		.particle_count = config->particle_count,
 		.pin_a = config->endpoint_a.pinned,
 		.pin_b = config->endpoint_b.pinned,
+		.reaction_a = config->endpoint_a.reaction_enabled,
+		.reaction_b = config->endpoint_b.reaction_enabled,
 	};
 	const struct picosystem_physics_vector extent = vector_subtract(&end, &start);
 	const uint32_t segment_count = (uint32_t)config->particle_count - 1U;
@@ -6131,11 +6860,14 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 		hash = fnv1a_u32(hash, rope->particle_count);
 		hash = fnv1a_u32(hash, rope->pin_a);
 		hash = fnv1a_u32(hash, rope->pin_b);
+		hash = fnv1a_u32(hash, rope->reaction_a);
+		hash = fnv1a_u32(hash, rope->reaction_b);
 		hash = fnv1a_u32(hash, (uint32_t)rope->anchor_a.x);
 		hash = fnv1a_u32(hash, (uint32_t)rope->anchor_a.y);
 		hash = fnv1a_u32(hash, (uint32_t)rope->anchor_b.x);
 		hash = fnv1a_u32(hash, (uint32_t)rope->anchor_b.y);
 		hash = fnv1a_u32(hash, (uint32_t)rope->segment_length);
+		hash = fnv1a_u32(hash, (uint32_t)rope->collision_radius);
 		for (uint8_t particle_index = 0U; particle_index < rope->particle_count;
 		     ++particle_index) {
 			const struct picosystem_physics_rope_particle *const particle =

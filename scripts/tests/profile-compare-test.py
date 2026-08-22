@@ -24,7 +24,7 @@ MODULE_SPEC.loader.exec_module(profile_compare)
 
 def profile_output(
     *,
-    schema: int = 10,
+    schema: int = 12,
     fixture: str = "canonical",
     chain_links: int = 0,
     states_match: str = "yes",
@@ -84,7 +84,7 @@ class ProfileCompareTest(unittest.TestCase):
     def test_parses_complete_versioned_profile(self) -> None:
         result = profile_compare.parse_profile(profile_output())
 
-        self.assertEqual(result["schema_version"], 10)
+        self.assertEqual(result["schema_version"], 12)
         self.assertEqual(result["fixture"], "canonical")
         self.assertEqual(result["chain_link_count"], 0)
         self.assertEqual(result["measured_ticks_per_mode"], 2000)
@@ -197,7 +197,7 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertIn("conveyor_solver_changes", work)
 
     def test_schema_ten_includes_rope_stage_and_work(self) -> None:
-        result = profile_compare.parse_profile(profile_output())
+        result = profile_compare.parse_profile(profile_output(schema=10))
 
         work = result["modes"]["grid"]["work"]
         self.assertIn("rope", result["modes"]["grid"]["stages"])
@@ -206,6 +206,25 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertIn("rope_solver_iterations", work)
         self.assertIn("rope_constraint_visits", work)
         self.assertIn("rope_constraint_changes", work)
+
+    def test_schema_eleven_includes_reciprocal_rope_work(self) -> None:
+        result = profile_compare.parse_profile(profile_output(schema=11))
+
+        work = result["modes"]["grid"]["work"]
+        self.assertIn("rope_body_correction_visits", work)
+        self.assertIn("rope_body_correction_changes", work)
+        self.assertIn("rope_body_velocity_visits", work)
+        self.assertIn("rope_body_velocity_changes", work)
+
+    def test_schema_twelve_includes_rope_collision_work(self) -> None:
+        result = profile_compare.parse_profile(profile_output())
+
+        work = result["modes"]["grid"]["work"]
+        self.assertIn("rope_collision_possible_pairs", work)
+        self.assertIn("rope_collision_candidate_pairs", work)
+        self.assertIn("rope_collision_contacts", work)
+        self.assertIn("rope_collision_position_changes", work)
+        self.assertIn("rope_collision_velocity_changes", work)
 
     def test_parses_revolute_chain_fixture(self) -> None:
         result = profile_compare.parse_profile(

@@ -102,6 +102,19 @@ SCHEMA_10_WORK_NAMES = SCHEMA_9_WORK_NAMES | {
     "rope_constraint_visits",
     "rope_constraint_changes",
 }
+SCHEMA_11_WORK_NAMES = SCHEMA_10_WORK_NAMES | {
+    "rope_body_correction_visits",
+    "rope_body_correction_changes",
+    "rope_body_velocity_visits",
+    "rope_body_velocity_changes",
+}
+SCHEMA_12_WORK_NAMES = SCHEMA_11_WORK_NAMES | {
+    "rope_collision_possible_pairs",
+    "rope_collision_candidate_pairs",
+    "rope_collision_contacts",
+    "rope_collision_position_changes",
+    "rope_collision_velocity_changes",
+}
 WORK_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_WORK_NAMES,
     3: SCHEMA_3_WORK_NAMES,
@@ -112,6 +125,8 @@ WORK_NAMES_BY_SCHEMA = {
     8: SCHEMA_8_WORK_NAMES,
     9: SCHEMA_9_WORK_NAMES,
     10: SCHEMA_10_WORK_NAMES,
+    11: SCHEMA_11_WORK_NAMES,
+    12: SCHEMA_12_WORK_NAMES,
 }
 STAGE_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_STAGE_NAMES,
@@ -123,6 +138,8 @@ STAGE_NAMES_BY_SCHEMA = {
     8: SCHEMA_7_STAGE_NAMES,
     9: SCHEMA_7_STAGE_NAMES,
     10: SCHEMA_10_STAGE_NAMES,
+    11: SCHEMA_10_STAGE_NAMES,
+    12: SCHEMA_10_STAGE_NAMES,
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 

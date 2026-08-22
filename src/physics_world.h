@@ -17,21 +17,22 @@
 #define PICOSYSTEM_PHYSICS_FIXED_RATIO(numerator, denominator)                                     \
 	((int32_t)(((int64_t)(numerator) * PICOSYSTEM_PHYSICS_FIXED_ONE) / (denominator)))
 
-#define PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT       4U
-#define PICOSYSTEM_PHYSICS_MAX_BODIES             12U
-#define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS    8U
-#define PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS    8U
-#define PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS    8U
-#define PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS   8U
-#define PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS        8U
-#define PICOSYSTEM_PHYSICS_MAX_ROPES              2U
-#define PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES     12U
-#define PICOSYSTEM_PHYSICS_ROPE_SOLVER_ITERATIONS 6U
-#define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS    2U
-#define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN     UINT32_C(0x40000000)
-#define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS  16U
-#define PICOSYSTEM_PHYSICS_GRID_COLUMNS           16U
-#define PICOSYSTEM_PHYSICS_GRID_ROWS              16U
+#define PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT          4U
+#define PICOSYSTEM_PHYSICS_MAX_BODIES                12U
+#define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS       8U
+#define PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS       8U
+#define PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS       8U
+#define PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS      8U
+#define PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS           8U
+#define PICOSYSTEM_PHYSICS_MAX_ROPES                 2U
+#define PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES        12U
+#define PICOSYSTEM_PHYSICS_ROPE_SOLVER_ITERATIONS    6U
+#define PICOSYSTEM_PHYSICS_ROPE_COLLISION_ITERATIONS 3U
+#define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS       2U
+#define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN        UINT32_C(0x40000000)
+#define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS     16U
+#define PICOSYSTEM_PHYSICS_GRID_COLUMNS              16U
+#define PICOSYSTEM_PHYSICS_GRID_ROWS                 16U
 #define PICOSYSTEM_PHYSICS_GRID_CELL_COUNT                                                         \
 	(PICOSYSTEM_PHYSICS_GRID_COLUMNS * PICOSYSTEM_PHYSICS_GRID_ROWS)
 #define PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS                                                     \
@@ -135,6 +136,15 @@ struct picosystem_physics_work_counters {
 	uint32_t rope_solver_iteration_count;
 	uint32_t rope_constraint_visit_count;
 	uint32_t rope_constraint_changed_count;
+	uint32_t rope_body_correction_visit_count;
+	uint32_t rope_body_correction_changed_count;
+	uint32_t rope_body_velocity_visit_count;
+	uint32_t rope_body_velocity_changed_count;
+	uint32_t rope_collision_possible_pair_count;
+	uint32_t rope_collision_candidate_pair_count;
+	uint32_t rope_collision_contact_count;
+	uint32_t rope_collision_position_changed_count;
+	uint32_t rope_collision_velocity_changed_count;
 };
 
 /* Optional elapsed-cycle sample for one step; the clock may wrap once per section. */
@@ -210,11 +220,15 @@ struct picosystem_physics_box_sensor_config {
 	uint16_t id;
 };
 
-/* A body endpoint uses a body-local anchor and must be pinned; world endpoints are world-space. */
+/*
+ * A body endpoint uses a body-local anchor and must be pinned; world endpoints are world-space.
+ * Body reaction makes the pin reciprocal instead of a kinematic attachment.
+ */
 struct picosystem_physics_rope_endpoint_config {
 	struct picosystem_physics_vector anchor;
 	uint16_t body_id;
 	uint8_t pinned;
+	uint8_t reaction_enabled;
 };
 
 /* Particles initialize evenly between the endpoints; segment_length may add deterministic slack. */
@@ -222,6 +236,8 @@ struct picosystem_physics_rope_config {
 	struct picosystem_physics_rope_endpoint_config endpoint_a;
 	struct picosystem_physics_rope_endpoint_config endpoint_b;
 	picosystem_physics_fixed_t segment_length;
+	/* Zero disables particle collision; a positive value is the particle radius. */
+	picosystem_physics_fixed_t collision_radius;
 	uint16_t id;
 	uint8_t particle_count;
 };
@@ -327,6 +343,7 @@ struct picosystem_physics_rope {
 	struct picosystem_physics_vector anchor_a;
 	struct picosystem_physics_vector anchor_b;
 	picosystem_physics_fixed_t segment_length;
+	picosystem_physics_fixed_t collision_radius;
 	uint16_t id;
 	uint16_t body_a_id;
 	uint16_t body_b_id;
@@ -335,6 +352,8 @@ struct picosystem_physics_rope {
 	uint8_t particle_count;
 	uint8_t pin_a;
 	uint8_t pin_b;
+	uint8_t reaction_a;
+	uint8_t reaction_b;
 };
 
 struct picosystem_physics_distance_joint {

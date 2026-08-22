@@ -11,12 +11,13 @@
 #include "game_world.h"
 #include "physics_chain_fixture.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0x63a73949)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xa1734ba1)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0x63bfd54f)
-#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0x60bd4318)
-#define EXPECTED_SLEEP_SMOKE_HASH    UINT32_C(0xcfd92dca)
+#define EXPECTED_RESET_HASH          UINT32_C(0xabc2002c)
+#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xfaaf80f7)
+#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0xaad794a0)
+#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0xcdf463f7)
+#define EXPECTED_SLEEP_SMOKE_HASH    UINT32_C(0x0a0ff729)
 #define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
+#define ROPE_BOUNDARY_TOLERANCE      PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 64)
 #define CHAIN_CONVERGENCE_TOLERANCE  PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
 #define ANGULAR_BOUNDARY_TOLERANCE   PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 12)
 #define CANONICAL_POSSIBLE_PAIR_COUNT                                                              \
@@ -691,6 +692,46 @@ static void assert_bodies_inside_arena(const struct picosystem_game_world *world
 	}
 }
 
+static void assert_ropes_inside_arena(const struct picosystem_game_world *world)
+{
+	const int32_t left =
+		PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS);
+	const int32_t right =
+		PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS);
+	const int32_t top = PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS);
+	const int32_t bottom =
+		PICOSYSTEM_PHYSICS_FIXED_FROM_INT(PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS);
+
+	for (uint16_t rope_index = 0U; rope_index < world->physics.rope_count; ++rope_index) {
+		const struct picosystem_physics_rope *const rope =
+			&world->physics.ropes[rope_index];
+		for (uint8_t particle_index = 0U; particle_index < rope->particle_count;
+		     ++particle_index) {
+			const struct picosystem_physics_vector *const position =
+				&rope->particles[particle_index].position;
+			const int32_t minimum_x =
+				left + rope->collision_radius - ROPE_BOUNDARY_TOLERANCE;
+			const int32_t maximum_x =
+				right - rope->collision_radius + ROPE_BOUNDARY_TOLERANCE;
+			const int32_t minimum_y =
+				top + rope->collision_radius - ROPE_BOUNDARY_TOLERANCE;
+			const int32_t maximum_y =
+				bottom - rope->collision_radius + ROPE_BOUNDARY_TOLERANCE;
+			if ((position->x < minimum_x) || (position->x > maximum_x) ||
+			    (position->y < minimum_y) || (position->y > maximum_y)) {
+				fprintf(stderr,
+					"rope %u particle %u escaped at tick %u: point=(%d,%d)\n",
+					rope_index, particle_index, world->logic_tick_count,
+					position->x, position->y);
+			}
+			assert(position->x >= minimum_x);
+			assert(position->x <= maximum_x);
+			assert(position->y >= minimum_y);
+			assert(position->y <= maximum_y);
+		}
+	}
+}
+
 static void test_bounded_motion_contacts_and_saturated_tick(void)
 {
 	struct picosystem_game_world world;
@@ -709,6 +750,8 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	picosystem_physics_fixed_t maximum_limit_violation = 0;
 	picosystem_physics_fixed_t maximum_prismatic_violation = 0;
 	uint16_t maximum_contact_count = 0U;
+	uint32_t maximum_rope_collision_candidate_count = 0U;
+	uint32_t maximum_rope_collision_contact_count = 0U;
 	uint8_t maximum_solver_iteration_count = 0U;
 	bool saw_positive_prismatic_motor = false;
 	bool saw_negative_prismatic_motor = false;
@@ -716,6 +759,7 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	bool saw_sensor_end = false;
 	bool saw_sleep = false;
 	bool saw_wake = false;
+	bool saw_rope_collision = false;
 	uint32_t observed_sensor_begin_count = 0U;
 	uint32_t maximum_sleeping_body_count = 0U;
 	uint16_t maximum_quiet_tick_count = 0U;
@@ -737,6 +781,7 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 		}
 		assert(err == 0);
 		assert_bodies_inside_arena(&world);
+		assert_ropes_inside_arena(&world);
 		assert_joint_lengths_bounded(&world);
 		assert(world.physics.last_possible_pair_count == CANONICAL_POSSIBLE_PAIR_COUNT);
 		assert(world.physics.last_candidate_pair_count <=
@@ -753,6 +798,30 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 		assert(world.physics.last_work.rope_particle_count == 8U);
 		assert(world.physics.last_work.rope_solver_iteration_count ==
 		       PICOSYSTEM_PHYSICS_ROPE_SOLVER_ITERATIONS);
+		assert(world.physics.last_work.rope_collision_possible_pair_count ==
+		       6U * (PICOSYSTEM_GAME_BODY_COUNT + PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT) *
+			       PICOSYSTEM_PHYSICS_ROPE_COLLISION_ITERATIONS);
+		assert(world.physics.last_work.rope_collision_candidate_pair_count <=
+		       world.physics.last_work.rope_collision_possible_pair_count);
+		assert(world.physics.last_work.rope_collision_contact_count <=
+		       world.physics.last_work.rope_collision_candidate_pair_count);
+		assert(world.physics.last_work.rope_collision_position_changed_count <=
+		       world.physics.last_work.rope_collision_contact_count);
+		assert(world.physics.last_work.rope_collision_velocity_changed_count <=
+		       world.physics.last_work.rope_collision_contact_count);
+		if (world.physics.last_work.rope_collision_contact_count > 0U) {
+			saw_rope_collision = true;
+		}
+		if (world.physics.last_work.rope_collision_candidate_pair_count >
+		    maximum_rope_collision_candidate_count) {
+			maximum_rope_collision_candidate_count =
+				world.physics.last_work.rope_collision_candidate_pair_count;
+		}
+		if (world.physics.last_work.rope_collision_contact_count >
+		    maximum_rope_collision_contact_count) {
+			maximum_rope_collision_contact_count =
+				world.physics.last_work.rope_collision_contact_count;
+		}
 		assert(world.physics.last_work.joint_motor_solver_visit_count >= 1U);
 		if (world.physics.last_work.sleeping_body_count > 0U) {
 			saw_sleep = true;
@@ -840,13 +909,16 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	assert(world.sensor_entry_count == observed_sensor_begin_count);
 	assert(saw_sensor_stay);
 	assert(saw_sensor_end);
+	assert(saw_rope_collision);
 	fprintf(stderr,
 		"candidate range: %u-%u/%u, max contacts: %u, max solver: %u, max angular "
 		"limit violation: %d q16 rad, max prismatic violation: %d q16 px, max "
-		"sleeping: %u, max quiet: %u, first sleep/wake: %u/%u, observed=%s/%s\n",
+		"sleeping: %u, max quiet: %u, rope collision max=%u/%u, first sleep/wake: "
+		"%u/%u, observed=%s/%s\n",
 		minimum_candidate_count, maximum_candidate_count, CANONICAL_POSSIBLE_PAIR_COUNT,
 		maximum_contact_count, maximum_solver_iteration_count, maximum_limit_violation,
 		maximum_prismatic_violation, maximum_sleeping_body_count, maximum_quiet_tick_count,
+		maximum_rope_collision_candidate_count, maximum_rope_collision_contact_count,
 		first_sleep_tick, first_wake_tick, saw_sleep ? "yes" : "no",
 		saw_wake ? "yes" : "no");
 	world.logic_tick_count = UINT32_MAX;

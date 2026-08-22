@@ -18,7 +18,7 @@
 #define GAME_FRICTION               PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
 #define GAME_PRISMATIC_MOTOR_SPEED  PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
 #define GAME_PRISMATIC_REVERSE_SLOP PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 32)
-#define GAME_WORLD_HASH_VERSION     UINT32_C(11)
+#define GAME_WORLD_HASH_VERSION     UINT32_C(13)
 #define FNV1A_OFFSET_BASIS          UINT32_C(2166136261)
 #define FNV1A_PRIME                 UINT32_C(16777619)
 
@@ -259,6 +259,7 @@ static const struct picosystem_physics_rope_config canonical_ropes[] = {
 				.anchor = {.x = FIXED(7)},
 				.body_id = 4U,
 				.pinned = 1U,
+				.reaction_enabled = 1U,
 			},
 		.endpoint_b =
 			{
@@ -267,6 +268,7 @@ static const struct picosystem_physics_rope_config canonical_ropes[] = {
 				.pinned = 1U,
 			},
 		.segment_length = FIXED(18),
+		.collision_radius = FIXED(1),
 		.id = 501U,
 		.particle_count = 8U,
 	},

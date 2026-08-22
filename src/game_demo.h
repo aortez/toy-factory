@@ -17,8 +17,9 @@
 #include "game_world.h"
 #include "graphics.h"
 
-#define PICOSYSTEM_GAME_MAX_CATCH_UP            4U
-#define PICOSYSTEM_GAME_FRAMEBUFFER_CHUNK_BYTES 384U
+#define PICOSYSTEM_GAME_MAX_CATCH_UP              4U
+#define PICOSYSTEM_GAME_FRAMEBUFFER_CHUNK_BYTES   384U
+#define PICOSYSTEM_GAME_REALTIME_SNAPSHOT_RATE_HZ 30U
 
 /* Main-thread-owned world plus scheduling and publication metrics. */
 struct picosystem_game_demo_state {
@@ -101,6 +102,18 @@ struct picosystem_game_demo_stats {
 	uint32_t conveyor_contact_count;
 	uint32_t conveyor_solver_visit_count;
 	uint32_t conveyor_solver_changed_count;
+	uint32_t rope_particle_count;
+	uint32_t rope_constraint_visit_count;
+	uint32_t rope_constraint_changed_count;
+	uint32_t rope_body_correction_visit_count;
+	uint32_t rope_body_correction_changed_count;
+	uint32_t rope_body_velocity_visit_count;
+	uint32_t rope_body_velocity_changed_count;
+	uint32_t rope_collision_possible_pair_count;
+	uint32_t rope_collision_candidate_pair_count;
+	uint32_t rope_collision_contact_count;
+	uint32_t rope_collision_position_changed_count;
+	uint32_t rope_collision_velocity_changed_count;
 	uint32_t focus_angle_turns;
 	int32_t focus_angular_velocity_milliradians_per_second;
 	uint16_t body_count;
@@ -109,6 +122,7 @@ struct picosystem_game_demo_stats {
 	uint16_t revolute_joint_count;
 	uint16_t prismatic_joint_count;
 	uint16_t box_sensor_count;
+	uint16_t rope_count;
 	uint16_t contact_count;
 	uint16_t contact_event_count;
 	uint16_t occupied_grid_cell_count;
@@ -176,6 +190,13 @@ int picosystem_game_demo_reset(struct picosystem_game_demo_state *state);
 /* Advance one authoritative 120 Hz simulation step and publish its newest state. */
 int picosystem_game_demo_update(struct picosystem_game_demo_state *state,
 				const struct picosystem_game_input *input);
+
+/* Advance authoritative state while publishing at the bounded real-time snapshot cadence. */
+int picosystem_game_demo_update_realtime(struct picosystem_game_demo_state *state,
+					 const struct picosystem_game_input *input);
+
+/* Publish the current authoritative state without advancing it. */
+int picosystem_game_demo_publish_current(struct picosystem_game_demo_state *state);
 
 /* Request a renderer-owned full redraw without blocking the simulation. */
 int picosystem_game_demo_request_redraw(struct picosystem_game_demo_state *state);
