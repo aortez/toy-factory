@@ -6,26 +6,28 @@ host and device, remain remotely stepable at exact tick boundaries, and produce
 stable authoritative hashes.
 
 This document describes the intended architecture and the current deterministic
-capsule-and-rope milestone. Later milestones may revise measured capacities,
+reciprocal-rope milestone. Later milestones may revise measured capacities,
 but they must retain the ownership, determinism, and overload contracts defined
 here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 246,684 bytes of the linker's 255 KiB Zephyr
-RAM region and 214,960 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 250,396 bytes of the linker's 255 KiB Zephyr
+RAM region and 221,976 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
-physics world is 22,584 bytes, including its 1,024-byte scratch grid, eight
+physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, two
 12-particle ropes, and bounded pair-event storage. The serialized A/B
-workspace is 33,232 bytes, is inactive during
+workspace is 33,304 bytes, is inactive during
 normal play, and avoids placing a second world on a thread stack. The profile
-command uses a 5,120-byte shell stack and currently reaches 4,160 bytes. The
-856-byte render snapshot raised measured main/render stack use to 3,928 and
-4,036 bytes, so their bounds are 4,608 and 5,120 bytes. The linked image retains
-14,436 bytes of Zephyr RAM headroom. The fast build also places the physics step
-in SRAM; this avoids core-0/core-1 XIP contention while
-the second core rasterizes a full scene. Physical timing acceptance
+command uses a 5,120-byte shell stack and most recently reached 4,200 bytes. The
+856-byte render snapshot and collision traversal raised measured main/render
+stack use to 4,016 and 4,044 bytes; both stacks are bounded at 5,120 bytes. The linked
+image retains 10,724 bytes of Zephyr RAM headroom. The fast build also places
+the physics hot path in SRAM and keeps the collision traversal in a separate,
+bounded stack frame; this avoids core-0/core-1 XIP contention while the second
+core rasterizes a full scene. Both builds route compiler integer division
+through the RP2040's interrupt-safe hardware divider. Physical timing acceptance
 is recorded after each candidate/solver configuration passes the native
 containment and oracle gates.
 
@@ -108,6 +110,10 @@ Bodies and shapes receive stable numeric identifiers. Array order is never
 derived from addresses, hash tables, allocation order, or unstable sorting.
 Remote pause, reset, input injection, exact stepping, framebuffer capture, and
 state hashing continue to cross the acknowledged main-thread request queue.
+Real-time play publishes immutable snapshots at a deterministic 30 Hz cadence
+while authoritative simulation remains at 120 Hz. Pause, reset, redraw, and
+exact stepping force a current snapshot, so remote state and framebuffer checks
+remain coherent even when presentation is deliberately slower than physics.
 
 ## Collision pipeline
 
@@ -129,8 +135,8 @@ Each update performs these bounded phases in order:
 9. apply bounded contact, distance-joint, revolute-joint, and prismatic-joint
    positional correction;
 10. run at most seven sequential-impulse contact and joint velocity iterations;
-11. integrate fixed-capacity Verlet rope particles and run six alternating
-    position-constraint passes;
+11. integrate fixed-capacity Verlet rope particles, then run six alternating
+    length-constraint passes with three interleaved external-collision passes;
 12. update whole-island sleep state; and
 13. classify pair-level `BEGIN`, `STAY`, and `END` events, then publish counters
     and the newest immutable state.
@@ -156,7 +162,9 @@ contacts/joints, positional-correction visits, solver iterations and visits,
 cached and changed contact rows, changed joint impulses, joint, motor, and
 limit counts, separate motor/limit row work, spring visits and mutations,
 conveyor contacts and tangent-row work, rope population/iterations/constraint
-visits/mutations, and unexpected broad-phase fallbacks.
+visits/mutations, reciprocal body position/velocity response, particle-collision
+possible/candidate/contact/response counts, and unexpected broad-phase
+fallbacks.
 These counters are fixed-size scratch diagnostics and do not participate in the
 authoritative hash.
 
@@ -193,8 +201,9 @@ without per-tick logging. `make profile-ab` preserves the live run/pause mode
 and writes the canonical result. `make profile-sleep` runs the neutral-settle
 fixture. `make profile-chain` profiles a comma-separated
 set of link counts over one USB session and writes an aggregate result. The
-version-10 protocol adds a rope timing stage, rope work, and maximum segment
-length error while retaining spring/conveyor/sleeping metrics, maximum
+version-12 protocol adds reciprocal rope/body and particle-collision work while
+retaining the rope timing stage, maximum segment-length error,
+spring/conveyor/sleeping metrics, maximum
 revolute-anchor separation, angular-limit violation, prismatic lateral/angular
 error, and prismatic-limit violation for each mode. Those quality calculations
 run after the measured step, so they do not contaminate the stage timings.
@@ -326,11 +335,34 @@ axis. This keeps runtime and overload behavior independent of wall time.
 Either endpoint may be free or pinned to a world-space point or a validated
 body-local anchor. A body pin is resolved after rigid-body solving on every
 rope pass, so a rotating capsule or box carries the attached particle exactly.
-This first coupling is deliberately one-way: the rope follows its body anchors
-but does not yet apply reaction impulses to those bodies, collide its particles,
-or join the rigid-body sleep graph. Rope configuration and every current and
-previous particle position are authoritative and hashed. Per-step particle,
-pass, constraint-visit, and mutation counts are diagnostic scratch state.
+Body pins are kinematic by default. Setting `reaction_enabled` makes a pin
+reciprocal: its point effective mass includes body translation and rotation,
+and segment correction plus radial velocity response is divided between the
+particle and body. World endpoints cannot request reaction, and a rope cannot
+use two reciprocal endpoints on the same body. Reciprocal body-to-body pins
+join the rigid-body sleep graph; settled tethers may sleep, while an actual
+rope correction or impulse wakes the affected body.
+
+Collision is separately opt-in. A zero `collision_radius` disables it; a
+positive radius from one through eight pixels treats each unpinned particle as
+a circle. Three deterministically alternating collision passes are interleaved
+with the six length passes. Conservative body bounds and segment AABBs reject
+distant pairs before exact circle, box, capsule, and finite-segment tests. A
+segment bound includes the particle's previous-to-current sweep; a center path
+that crosses the finite segment is restored to its approach side, preventing a
+length correction from tunneling through the arena perimeter. Particles collide
+only with external rigid bodies and static segments: there is intentionally no
+rope self-collision or rope-to-rope collision in this milestone. Static segments
+remain immovable. Dynamic bodies
+receive the equal-and-opposite normal position and velocity response, including
+off-center angular response; rope contacts currently add neither restitution
+nor friction. Rope response runs after the rigid contact/joint solver, so a
+body moved by a rope is seen by ordinary rigid constraints on the following
+tick.
+
+Endpoint reaction flags, collision radius, and every current and previous
+particle position are authoritative and hashed. Per-step particle, pass,
+constraint, reciprocal-body, and collision counts are diagnostic scratch state.
 
 ## Sleeping and wake propagation
 
@@ -358,7 +390,7 @@ and solver visits are skipped only when every dynamic participant in the row is
 sleeping. The sleep mask, per-body quiet counters, and last global acceleration
 are authoritative and hashed; the island graph is bounded per-step scratch.
 Machine Lab renders sleeping bodies blue with white detail, while `status`,
-`game stats`, schema-10 profiles, and `make profile-sleep` expose state,
+`game stats`, schema-12 profiles, and `make profile-sleep` expose state,
 transitions, and skipped constraints.
 
 ## Sensors and contact events
@@ -389,7 +421,7 @@ and work counters are scratch. This makes reset, native replay, remote exact
 stepping, and device framebuffer assertions agree without retaining redundant
 event payloads in the hash.
 
-## Current milestone: capsule-and-rope machine lab
+## Current milestone: reciprocal-rope machine lab
 
 The flashable rigid-body lab contains:
 
@@ -413,8 +445,9 @@ The flashable rigid-body lab contains:
 - one world-anchored, impulse-limited damped spring and one signed-speed
   diagonal conveyor whose direction is visible in the scene;
 - one eight-particle cyan rope with seven 18-pixel segments pinned between the
-  rotating capsule and a fixed world anchor, solved with six alternating
-  position passes;
+  rotating capsule and a fixed world anchor, with reciprocal capsule response,
+  one-pixel particle collision, six alternating length passes, and three
+  collision passes;
 - one fixed box sensor with exact circle/box/capsule overlap and a visible entry
   count;
 - pair-level `BEGIN`, `STAY`, and `END` events for physical contacts and sensor
@@ -484,9 +517,14 @@ The native suite covers:
 - free slider motion, lateral and angular locking, body-to-body rails, bounded
   motors, impulse saturation, lower/upper/equal travel limits, and motor reversal;
 - rope validation and capacity preservation, free Verlet motion, pinned
-  world/body endpoints, rotating capsule attachment, fixed six-pass work,
-  bounded corrections, segment convergence, stable hashing, and exact
-  grid/reference persistent-state equality;
+  world/body endpoints, kinematic and reciprocal body pins, center-of-mass and
+  off-center reaction, reciprocal sleep/wake behavior, invalid same-body
+  reciprocal rejection, fixed six-pass work, bounded corrections, segment
+  convergence, stable hashing, and exact grid/reference persistent-state
+  equality;
+- opt-in rope-particle collision against circles, boxes, capsules, and static
+  segments; conservative pair rejection, equal-and-opposite dynamic-body
+  response, bounded work counters, and explicit absence of self-collision;
 - a four-link chain with multiple constraints on the middle bodies and bounded
   anchor separation over long replay;
 - cell-boundary collisions and distant-pair rejection;
@@ -509,37 +547,44 @@ The native suite covers:
 - authoritative hash changes and reset recovery; and
 - undefined-behavior sanitizer execution.
 
-The native canonical reset is `63a73949`, right-30 is `a1734ba1`, the
-right-30/up-15 sequence reaches tick 45 at `63bfd54f`, and a 10,000-tick replay
-is `60bd4318`. The bounded replay reduces 70 possible pairs to a maximum of 13
-grid candidates, exercises every shape family and event phase, never falls
-back, keeps every hinge and rail within the configured arena tolerances, and
-runs exactly 42 rope-constraint visits per tick. A separate neutral replay
-first sleeps a body at tick 1,723 and hashes to `cfd92dca`. The PIM559
-reproduced both exact sequences; its tick-45 framebuffer is `5111bc8b`, and the
-neutral sleep frame is `5c0542c9` with one blue/white sleeping body.
+The native canonical reset is `abc2002c`, right-30 is `faaf80f7`, the
+right-30/up-15 sequence reaches tick 45 at `aad794a0`, and a 10,000-tick replay
+is `cdf463f7`. The bounded replay exercises every shape family and event phase,
+never falls back, keeps every hinge and rail within the configured arena
+tolerances, and runs exactly 42 rope-length visits per tick. A separate neutral
+replay reaches tick 1,723 at `0a0ff729`. The PIM559 reproduced both exact
+sequences; its tick-45 framebuffer is `df718839`, and the neutral sleep frame is
+`88c2e21e` with one blue/white sleeping body.
 
-Its schema-version-10 isolated 2,000-tick moving profile averaged 4.502 ms for
-the grid and 5.100 ms for the brute-force reference, with 5.376/5.888 ms p95
-and 6.749/7.458 ms maxima. Neither mode exceeded 8.333 ms, and both ended at
-`91744aeb` with exact persistent-state agreement. The grid retained 6.951 of
-70 possible pairs per tick. The eight-particle, six-pass rope stage averaged
-1.157/1.154 ms, changed 40.236 of its 42 visited constraints per tick, and held
-maximum segment-length error to 0.534 pixel.
+Its schema-version-12 isolated 2,000-tick moving profile averaged 4.920 ms for
+the grid and 5.313 ms for the brute-force reference, with 5.760/6.144 ms p95
+and 6.935/7.470 ms maxima. Neither mode exceeded 8.333 ms, and both ended at
+`1600fb06` with exact persistent-state agreement. The grid retained 7.133 of
+70 possible rigid pairs per tick. Each tick considered 234 bounded
+rope/collider pairs; 5.521 passed swept conservative bounds and 3.457 produced
+contacts on average. The eight-particle rope stage averaged 1.661/1.643 ms,
+changed 40.034 of its 42 length visits, and held maximum segment-length error to
+0.856 pixel. Reciprocal endpoint position correction changed the capsule on
+5.078 of six visits per tick; its radial velocity row changed on every tick.
 
-The separate 2,000-tick neutral profile averaged 5.346/5.949 ms, reached
-7.936/8.628 ms maxima, and ended at `7d4ae8ca` with exact state agreement. The
-production grid path had no 8.333 ms deadline violations; the diagnostic
-brute-force path had 18. Each mode recorded one body sleep
-transition, 398 sleeping body-ticks, 710 conveyor contact-ticks, and 42
-rope-constraint visits per tick; maximum rope error was 0.038 pixel. Powered
-belt contact remains awake while ordinary disconnected islands may sleep.
+The separate 2,000-tick neutral profile averaged 5.590/5.887 ms, reached
+7.056/7.511 ms maxima, and ended at `34a04b59` with exact state agreement and no
+deadline violations. Each mode recorded one body sleep transition, 1,039
+sleeping body-ticks, and 1,038 skipped sleeping contacts; maximum rope error was
+0.034 pixel. Powered belt contact remains awake while ordinary disconnected
+islands may sleep.
 
-A clean concurrent full-frame window advanced 4,233 authoritative ticks at
-118.9 Hz while presenting at 29.7 fps. It skipped 35 of 4,268 scheduled ticks;
-mean/maximum physics time was 6.042/16.118 ms, and the worst backlog was five
-ticks. This is the current live optimization boundary rather than an isolated
-physics-only result.
+With 30 Hz real-time snapshot publication and the RP2040 hardware-divider
+wrappers, a concurrent full-frame window advanced 5,921 authoritative ticks at
+120.0 Hz while presenting at 29.6 fps. It skipped one scheduled tick;
+mean/maximum physics time was 6.638/17.326 ms, and the worst backlog was five
+ticks. Main, render, and core-1 stack high-water marks were 4,016/5,120,
+4,044/5,120, and 360/4,096 bytes.
+
+For comparison, the preceding one-way schema-version-10 rope profile averaged
+4.502/5.100 ms, reached 6.749/7.458 ms maxima, and ended at `91744aeb`. It did
+not yet feed rope correction back into a body or collide rope particles with
+the scene.
 
 For comparison, the preceding schema-version-9 spring/conveyor image's moving
 profile averaged 2.718/3.060 ms, reached 4.660/4.872 ms maxima, and ended at
@@ -605,8 +650,8 @@ are design references rather than code to port.
 
 ## Planned extensions
 
-1. Add deliberate two-way rope/body coupling and bounded particle collision,
-   then use those primitives to explore soft-body gameplay.
+1. Use reciprocal rope/body coupling and bounded particle collision to explore
+   soft-body gameplay.
 2. Evaluate bounded granular materials and approximate gravity or magnetic
    fields as separate gameplay systems.
 

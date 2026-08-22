@@ -151,6 +151,15 @@ static const char *const work_names[] = {
 	"rope_solver_iterations",
 	"rope_constraint_visits",
 	"rope_constraint_changes",
+	"rope_body_correction_visits",
+	"rope_body_correction_changes",
+	"rope_body_velocity_visits",
+	"rope_body_velocity_changes",
+	"rope_collision_possible_pairs",
+	"rope_collision_candidate_pairs",
+	"rope_collision_contacts",
+	"rope_collision_position_changes",
+	"rope_collision_velocity_changes",
 };
 
 _Static_assert(sizeof(fixture_names) / sizeof(fixture_names[0]) ==
@@ -338,6 +347,24 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 		return work->rope_constraint_visit_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_CONSTRAINT_CHANGES:
 		return work->rope_constraint_changed_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_BODY_CORRECTION_VISITS:
+		return work->rope_body_correction_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_BODY_CORRECTION_CHANGES:
+		return work->rope_body_correction_changed_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_BODY_VELOCITY_VISITS:
+		return work->rope_body_velocity_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_BODY_VELOCITY_CHANGES:
+		return work->rope_body_velocity_changed_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_COLLISION_POSSIBLE_PAIRS:
+		return work->rope_collision_possible_pair_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_COLLISION_CANDIDATE_PAIRS:
+		return work->rope_collision_candidate_pair_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_COLLISION_CONTACTS:
+		return work->rope_collision_contact_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_COLLISION_POSITION_CHANGES:
+		return work->rope_collision_position_changed_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_COLLISION_VELOCITY_CHANGES:
+		return work->rope_collision_velocity_changed_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT:
 	default:
 		return 0U;

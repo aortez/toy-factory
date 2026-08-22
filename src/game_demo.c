@@ -100,6 +100,7 @@ BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_SHELL_THREAD_PRIORITY);
 #endif
 /* Allow both fixed-capacity rope render records while keeping snapshot growth bounded. */
 BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 864U);
+BUILD_ASSERT((PICOSYSTEM_GAME_TICK_RATE_HZ % PICOSYSTEM_GAME_REALTIME_SNAPSHOT_RATE_HZ) == 0U);
 BUILD_ASSERT(PICOSYSTEM_GAME_BOX_SENSOR_COUNT <= PICOSYSTEM_SCENE_MAX_BOX_SENSORS);
 
 static bool core1_full_frame_renderer_enabled(void)
@@ -1113,8 +1114,8 @@ int picosystem_game_demo_reset(struct picosystem_game_demo_state *state)
 	return publish_snapshot(state, true);
 }
 
-int picosystem_game_demo_update(struct picosystem_game_demo_state *state,
-				const struct picosystem_game_input *input)
+static int update_game(struct picosystem_game_demo_state *state,
+		       const struct picosystem_game_input *input, bool publish_every_tick)
 {
 	if ((state == NULL) || (input == NULL) || !state->ready) {
 		return -EINVAL;
@@ -1127,9 +1128,13 @@ int picosystem_game_demo_update(struct picosystem_game_demo_state *state,
 	}
 	const uint32_t physics_end_cycles = k_cycle_get_32();
 
-	err = publish_snapshot(state, true);
-	if (err != 0) {
-		return err;
+	const uint32_t snapshot_interval =
+		PICOSYSTEM_GAME_TICK_RATE_HZ / PICOSYSTEM_GAME_REALTIME_SNAPSHOT_RATE_HZ;
+	if (publish_every_tick || ((state->world.logic_tick_count % snapshot_interval) == 0U)) {
+		err = publish_snapshot(state, true);
+		if (err != 0) {
+			return err;
+		}
 	}
 
 	const uint32_t end_cycles = k_cycle_get_32();
@@ -1150,6 +1155,26 @@ int picosystem_game_demo_update(struct picosystem_game_demo_state *state,
 	}
 
 	return 0;
+}
+
+int picosystem_game_demo_update(struct picosystem_game_demo_state *state,
+				const struct picosystem_game_input *input)
+{
+	return update_game(state, input, true);
+}
+
+int picosystem_game_demo_update_realtime(struct picosystem_game_demo_state *state,
+					 const struct picosystem_game_input *input)
+{
+	return update_game(state, input, false);
+}
+
+int picosystem_game_demo_publish_current(struct picosystem_game_demo_state *state)
+{
+	if ((state == NULL) || !state->ready) {
+		return -EINVAL;
+	}
+	return publish_snapshot(state, true);
 }
 
 int picosystem_game_demo_request_redraw(struct picosystem_game_demo_state *state)
@@ -1279,6 +1304,29 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 			state->world.physics.last_work.conveyor_solver_visit_count,
 		.conveyor_solver_changed_count =
 			state->world.physics.last_work.conveyor_solver_changed_count,
+		.rope_particle_count = state->world.physics.last_work.rope_particle_count,
+		.rope_constraint_visit_count =
+			state->world.physics.last_work.rope_constraint_visit_count,
+		.rope_constraint_changed_count =
+			state->world.physics.last_work.rope_constraint_changed_count,
+		.rope_body_correction_visit_count =
+			state->world.physics.last_work.rope_body_correction_visit_count,
+		.rope_body_correction_changed_count =
+			state->world.physics.last_work.rope_body_correction_changed_count,
+		.rope_body_velocity_visit_count =
+			state->world.physics.last_work.rope_body_velocity_visit_count,
+		.rope_body_velocity_changed_count =
+			state->world.physics.last_work.rope_body_velocity_changed_count,
+		.rope_collision_possible_pair_count =
+			state->world.physics.last_work.rope_collision_possible_pair_count,
+		.rope_collision_candidate_pair_count =
+			state->world.physics.last_work.rope_collision_candidate_pair_count,
+		.rope_collision_contact_count =
+			state->world.physics.last_work.rope_collision_contact_count,
+		.rope_collision_position_changed_count =
+			state->world.physics.last_work.rope_collision_position_changed_count,
+		.rope_collision_velocity_changed_count =
+			state->world.physics.last_work.rope_collision_velocity_changed_count,
 		.focus_angle_turns = focus->angle_turns,
 		.focus_angular_velocity_milliradians_per_second =
 			angular_velocity_to_milliradians_per_second(
@@ -1289,6 +1337,7 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.revolute_joint_count = state->world.physics.revolute_joint_count,
 		.prismatic_joint_count = state->world.physics.prismatic_joint_count,
 		.box_sensor_count = state->world.physics.box_sensor_count,
+		.rope_count = state->world.physics.rope_count,
 		.contact_count = state->world.physics.contact_count,
 		.contact_event_count = state->world.physics.contact_event_count,
 		.occupied_grid_cell_count = state->world.physics.last_occupied_grid_cell_count,

@@ -6,9 +6,63 @@ followed by the same bounded input replay; the recorded artifact states its
 measured tick count. Timing covers isolated physics steps with rendering and
 snapshot publication disabled.
 
-## Capsules and position-based rope
+## Reciprocal rope and particle collision
 
-The current schema-version-10 reports are
+The current schema-version-12 reports are
+[pim559-rope-interaction-2026-08-22.json](pim559-rope-interaction-2026-08-22.json)
+and
+[pim559-rope-interaction-neutral-2026-08-22.json](pim559-rope-interaction-neutral-2026-08-22.json).
+They were captured from the recommended dual-core image with:
+
+```sh
+make profile-ab PROFILE_TICKS=2000 \
+  PROFILE_OUT=benchmarks/physics-profile/pim559-rope-interaction-2026-08-22.json
+make profile-sleep PROFILE_TICKS=2000 \
+  SLEEP_PROFILE_OUT=benchmarks/physics-profile/pim559-rope-interaction-neutral-2026-08-22.json
+```
+
+The canonical rope now reacts against its capsule endpoint and gives every
+unpinned particle a one-pixel collision radius. Six alternating length passes
+contain three interleaved external-collision passes:
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Candidates/tick | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 4,920 us | 4,864 us | 5,760 us | 6,144 us | 6,935 us | 7.133 | 0 |
+| Brute-force reference | 5,313 us | 5,248 us | 6,144 us | 6,528 us | 7,470 us | 70.0 | 0 |
+
+Both modes ended at `1600fb06` with exact authoritative-state agreement. The
+grid rejected 89.8% of rigid candidate pairs and was 1.08 times faster overall.
+The rope stage averaged 1,661/1,643 us, visited exactly 42 length constraints,
+and held maximum segment error to 0.856 pixel. Each tick considered 234 bounded
+rope/collider pairs; 5.521 passed the swept conservative bounds and 3.457
+produced contacts on average. Reciprocal correction visited the capsule
+endpoint six times and changed it 5.078 times per tick; the radial velocity row
+visited and changed once per tick.
+
+The neutral fixture preserves the reciprocal endpoint and collision workload
+while letting ordinary rigid islands settle:
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Sleeping body-ticks | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 5,590 us | 5,632 us | 6,528 us | 6,912 us | 7,056 us | 1,039 | 0 |
+| Brute-force reference | 5,887 us | 5,888 us | 6,784 us | 7,168 us | 7,511 us | 1,039 | 0 |
+
+Both neutral modes ended at `34a04b59` with exact state agreement, recorded one
+body sleep transition, and skipped 1,038 sleeping contacts. Maximum rope error
+was 0.034 pixel. Shell stack high-water was 4,200 of 5,120 bytes in both
+reports.
+
+The image also routes compiler integer division through the RP2040's
+interrupt-safe hardware divider and publishes real-time snapshots at the
+panel's 30 Hz full-frame rate. A 5,921-tick concurrent window held 120.0 Hz with
+one skipped tick while presentation averaged 29.6 fps. Mean complete update,
+physics, and snapshot times were 6.880, 6.638, and 0.242 ms; the worst backlog
+was five ticks. Main, render, and core-1 stack high-water marks were
+4,016/5,120, 4,044/5,120, and 360/4,096 bytes.
+
+## Capsules and one-way position-based rope
+
+The preceding schema-version-10 reports are
 [pim559-capsules-rope-2026-08-21.json](pim559-capsules-rope-2026-08-21.json)
 and
 [pim559-capsules-rope-neutral-2026-08-21.json](pim559-capsules-rope-neutral-2026-08-21.json).

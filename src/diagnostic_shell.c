@@ -335,6 +335,23 @@ static const char *physics_shape_name(uint8_t shape)
 	}
 }
 
+static void print_rope_stats(const struct shell *shell,
+			     const struct picosystem_game_demo_stats *game)
+{
+	shell_print(shell,
+		    "rope: %u ropes/%u particles, constraints=%u visits/%u changed, body=%u/%u "
+		    "position, %u/%u velocity, collision=%u possible/%u candidates/%u contacts, "
+		    "response=%u position/%u velocity",
+		    game->rope_count, game->rope_particle_count, game->rope_constraint_visit_count,
+		    game->rope_constraint_changed_count, game->rope_body_correction_visit_count,
+		    game->rope_body_correction_changed_count, game->rope_body_velocity_visit_count,
+		    game->rope_body_velocity_changed_count,
+		    game->rope_collision_possible_pair_count,
+		    game->rope_collision_candidate_pair_count, game->rope_collision_contact_count,
+		    game->rope_collision_position_changed_count,
+		    game->rope_collision_velocity_changed_count);
+}
+
 static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -425,6 +442,7 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.spring_solver_changed_count, snapshot.game.conveyor_contact_count,
 		    snapshot.game.conveyor_solver_visit_count,
 		    snapshot.game.conveyor_solver_changed_count);
+	print_rope_stats(shell, &snapshot.game);
 	shell_print(shell,
 		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
 		    "sensor entries=%u",
@@ -617,6 +635,7 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->spring_joint_count, game->spring_solver_visit_count,
 		    game->spring_solver_changed_count, game->conveyor_contact_count,
 		    game->conveyor_solver_visit_count, game->conveyor_solver_changed_count);
+	print_rope_stats(shell, game);
 	shell_print(shell,
 		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
 		    "sensor entries=%u",

@@ -94,5 +94,5 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add bounded box sensors and deterministic contact lifecycle events.
 - [x] Add conveyors, springs, and sleeping.
 - [x] Add exact capsule collisions and a bounded position-based rope subsystem.
-- [ ] Add deliberate two-way rope/body coupling and bounded particle collision.
+- [x] Add deliberate two-way rope/body coupling and bounded particle collision.
 - [ ] Evaluate granular materials and approximate force fields.

@@ -157,7 +157,8 @@ Simulation uses Q16.16 positions and publishes an 856-byte immutable snapshot
 of up to 12 circle, oriented-box, or capsule bodies, eight physical static
 segments, 16 render-only guide segments, two ropes with up to 12 particles
 each, eight render records each for distance and revolute joints, and one
-canonical box sensor on every update.
+canonical box sensor at a deterministic 30 Hz real-time cadence. Physics remains
+at 120 Hz; pause, reset, redraw, and exact-step controls force a current snapshot.
 Two slots and a short spin-lock-protected copy prevent the renderer from
 observing partially updated state. A saturated semaphore is only a wake-up
 hint: if two or more simulation states arrive during a panel period, the
@@ -352,13 +353,46 @@ bytes. A paused live-scene check produced identical core-0/core-1 pixels in
 9.809 ms and restored the framebuffer exactly. A CRC-validated 240 x 240 PNG
 capture completed in 8.2 seconds.
 
-The current capsule-and-rope image adds exact capsule interactions against all
-body shapes, static segments, and box sensors, plus two fixed rope slots with up
-to 12 Verlet particles each. The canonical scene uses one rotating capsule and
-one eight-particle rope pinned between its local endpoint and a fixed world
-anchor. The rope follows body motion kinematically, runs six alternating
-position passes, and does not yet feed impulses back into rigid bodies or
-collide its particles.
+The current reciprocal-rope image makes body endpoint pins two-way and gives
+unpinned particles a one-pixel collision radius against external circles,
+boxes, capsules, and static segments. It uses six alternating length passes and
+three interleaved collision passes. Equal-and-opposite position and
+radial-velocity response includes the endpoint body's translation and rotation;
+reciprocal body/body pins also join the deterministic sleep graph. There is no
+self-collision or rope/rope collision in this bounded milestone.
+
+Its physics world is 22,636 bytes, each render snapshot is 856 bytes, and the
+serialized profile workspace is 33,304 bytes. The conservative image uses
+221,124 bytes of Zephyr RAM and 216,224 bytes of flash. The recommended 62.5
+MHz PL022/DMA image uses 250,396 bytes of the 255 KiB Zephyr region and 221,976
+bytes of flash, retaining 10,724 bytes of linker RAM headroom plus the
+separately reserved 8 KiB core-1 area. Both images route compiler integer
+division through the RP2040 hardware divider using interrupt-safe Pico SDK
+wrappers.
+
+The PIM559 reproduced reset/right-30/right-30-up-15 hashes `abc2002c`,
+`faaf80f7`, and `aad794a0`. The coherently presented tick-45 framebuffer is
+CRC-32 `df718839`; the neutral sequence reached tick 1,723 at `0a0ff729` with
+framebuffer CRC-32 `88c2e21e`.
+
+Its schema-version-12 isolated 2,000-tick moving profile averaged 4.920 ms for
+the grid and 5.313 ms for the brute-force reference, with 6.935/7.470 ms maxima,
+no 8.333 ms budget violations, and exact final agreement at `1600fb06`. The
+rope stage averaged 1.661/1.643 ms while bounded collision considered 234
+rope/collider pairs per tick. The separate neutral profile averaged
+5.590/5.887 ms and agreed exactly at `34a04b59`, again without violations. A
+concurrent window advanced 5,921 ticks at 120.0 Hz with one skipped tick while
+full-frame presentation held 29.6 fps. Main, render, shell-profile, and
+core-1 stack high-water marks were 4,016/5,120, 4,044/5,120, 4,200/5,120, and
+360/4,096 bytes.
+
+The preceding one-way capsule-and-rope image added exact capsule interactions
+against all body shapes, static segments, and box sensors, plus two fixed rope
+slots with up to 12 Verlet particles each. The canonical scene uses one rotating
+capsule and one eight-particle rope pinned between its local endpoint and a
+fixed world anchor. The rope follows body motion kinematically, runs six
+alternating position passes, and does not yet feed impulses back into rigid
+bodies or collide its particles.
 
 Its physics world is 22,584 bytes, each render snapshot is 856 bytes, and the
 serialized profile workspace is 33,232 bytes. The conservative image uses
