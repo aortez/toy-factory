@@ -1323,7 +1323,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 				 "up-left|up-right|down-left|down-right>"),
 		      cmd_game_input, 2, 0),
 	SHELL_CMD_ARG(pause, NULL, "Pause at the next tick boundary.", cmd_game_pause, 1, 0),
-	SHELL_CMD_ARG(reset, NULL, "Restore canonical tick-zero state while paused.",
+	SHELL_CMD_ARG(reset, NULL, "Restore the playable scene to tick zero while paused.",
 		      cmd_game_reset, 1, 0),
 	SHELL_CMD_ARG(stats, NULL, "Show simulation, snapshot, and renderer metrics.",
 		      cmd_display_stats, 1, 0),

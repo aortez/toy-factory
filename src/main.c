@@ -569,7 +569,7 @@ int main(void)
 		return err;
 	}
 
-	LOG_INF("PicoSystem %u Hz physics lab and asynchronous renderer ready",
+	LOG_INF("PicoSystem %u Hz Clockwork scene and asynchronous renderer ready",
 		PICOSYSTEM_GAME_TICK_RATE_HZ);
 	LOG_INF("D-pad tilts gravity for all bodies; A queues a full redraw for comparison");
 	LOG_INF("B plays a short 440 Hz piezo tone; Y resets the physics world");

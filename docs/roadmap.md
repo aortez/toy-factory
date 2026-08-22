@@ -97,3 +97,10 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add exact capsule collisions and a bounded position-based rope subsystem.
 - [x] Add deliberate two-way rope/body coupling and bounded particle collision.
 - [ ] Evaluate granular materials and approximate force fields.
+
+## 7. Playable toys
+
+- [x] Separate reusable game-world control from flash-resident scene builders.
+- [x] Build and physically verify the Clockwork kinetic sculpture.
+- [x] Preserve Machine Lab as a deterministic profiling fixture.
+- [ ] Build the Hourglass as the first bounded granular-material scene.

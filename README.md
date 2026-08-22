@@ -2,7 +2,7 @@
 
 Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
-![Toy Factory powered machine lab](docs/images/machine-lab.png)
+![Toy Factory clockwork kinetic sculpture](docs/images/clockwork.png)
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:
@@ -14,9 +14,11 @@ path:
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and supports both damage-region and
   continuous full-frame presentation;
-- runs a deterministic seven-body circle/box/capsule lab at an exact 60 Hz
-  fixed step with Q16.16 linear/angular motion, gravity, friction, and
-  restitution;
+- runs a deterministic nine-body clockwork sculpture at an exact 60 Hz fixed
+  step with Q16.16 linear/angular motion, gravity, friction, and restitution;
+- meshes a motorized drive wheel with a passive follower, turns the same wheel
+  into a true crank-slider, and animates a pendulum, spring bob, two-link mobile,
+  sensor gate, and reciprocal rope;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -45,7 +47,7 @@ path:
 - exposes acknowledged reset, pause, exact-step, injected-input, state-hash, and
   framebuffer-capture controls over USB;
 - runs declarative deterministic device sequences with state/framebuffer assertions;
-- resets the physics world to its canonical starting state when Y is pressed;
+- resets the clockwork sculpture to its exact starting state when Y is pressed;
 - plays a short, bounded piezo tone when B is pressed;
 - averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
 - classifies the GP2 VBUS and active-low GP24 charger-status inputs;
@@ -87,7 +89,7 @@ make format   # format the application C source in the container
 make check    # formatting, whitespace, and a clean build
 make container-shell  # enter the build container (`make shell` also works)
 make sim-pause  # pause at a tick boundary and print exact simulation state
-make sim-reset  # restore canonical tick-zero state while paused
+make sim-reset  # restore the playable scene to tick zero while paused
 make sim-step STEPS=1  # advance a paused simulation by exact 1/60-second ticks
 make sim-test  # run the default deterministic hardware sequence
 make screenshot  # save the renderer-owned software framebuffer as a PNG
@@ -151,14 +153,13 @@ The physical gesture remains the recovery path for a blank or broken image:
 4. Run `make update` again.
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
-show a dark checkerboard arena, two circles, four moving boxes, a rotating
-magenta capsule with a cyan rope, two diagonal ramps, cyan boundaries and press
-rails, yellow hinge pins, a magenta sensor, and a white `MACHINE LAB 60HZ`
-heading. The chain's world hinge is motorized, its far-end hinge stops at plus
-or minus one radian relative to the reset pose, and the press reverses at the
-ends of its 48-pixel vertical stroke. The sensor turns green while any body
-overlaps it; the `Sxx` header counter records entries. The world
-advances on exact rational 60 Hz deadlines. Normal presentation restores each
+show a dark checkerboard arena under a white `CLOCKWORK 60HZ` heading. At upper
+left, the yellow motor wheel drives a magenta follower and a red connecting rod
+moves the white horizontal slider. A pendulum and spring bob move at upper
+right; a hinged mobile pulls a cyan rope across the lower half. The narrow
+sensor gate turns green while occupied, and the `Sxx` header counter records
+entries. The world advances on exact rational 60 Hz deadlines. Normal
+presentation restores each
 moved body's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
 empty swept area between distant footprints.
@@ -277,7 +278,7 @@ write, full-redraw count, and both stack high-water marks. `game redraw` only
 posts a coalesced request; the shell never touches the framebuffer or display.
 `game pause` is acknowledged only after the priority-0 simulation owner reaches
 a tick boundary. `game reset` is accepted only while paused; it restores the
-canonical tick-zero scene, selects neutral remote input, and
+playable Clockwork scene at tick zero, selects neutral remote input, and
 publishes a full-redraw snapshot without rewinding renderer sequence numbers.
 While paused, `game step` executes 1-120 exact fixed-duration updates without
 advancing wall-clock scheduling. `game run` starts a fresh rational deadline
@@ -365,12 +366,12 @@ and optional final assertions:
 {
   "name": "deterministic-smoke",
   "steps": [
-    {"input": "right", "ticks": 30},
-    {"input": "up", "ticks": 15}
+    {"input": "right", "ticks": 15},
+    {"input": "up", "ticks": 8}
   ],
   "expect": {
-    "hash": "aad794a0",
-    "framebuffer_crc32": "df718839"
+    "hash": "e7a7ba97",
+    "framebuffer_crc32": "4efbf582"
   }
 }
 ```
@@ -381,15 +382,16 @@ Run another file with:
 make sim-test SEQUENCE=path/to/sequence.json
 ```
 
-The committed `scripts/sequences/sleep-smoke.json` drives the canonical world to
-its first sleeping body and asserts both the authoritative hash and blue/white
-framebuffer:
+The committed
+[`scripts/sequences/clockwork-neutral-smoke.json`](scripts/sequences/clockwork-neutral-smoke.json)
+advances 259 autonomous ticks with neutral input and asserts both the
+authoritative state and framebuffer:
 
 ```sh
-make sim-test SEQUENCE=scripts/sequences/sleep-smoke.json
+make sim-test SEQUENCE=scripts/sequences/clockwork-neutral-smoke.json
 ```
 
-The runner holds one exclusive USB connection, pauses and canonically resets
+The runner holds one exclusive USB connection, pauses and resets
 the simulation, applies each input, and checks the exact returned tick after
 every request. Segments longer than 120 ticks are automatically divided into
 bounded firmware requests. The complete file is limited to 256 segments and
@@ -454,12 +456,15 @@ The authoritative fixed-point circle/box/capsule bodies, static segments, box
 sensors, distance/revolute/prismatic joints, position-based ropes, uniform-grid
 candidate filter, contact/event generation, sequential-impulse response, and
 stable field-by-field hash live in
-[`src/physics_world.c`](src/physics_world.c). Canonical scene construction,
-input-to-acceleration mapping, game ticks, and the outer hash live in
-[`src/game_world.c`](src/game_world.c). Neither module has a Zephyr, scheduler,
-renderer, USB, or wall-clock dependency. The firmware and native test suites
-compile these same C sources, so host replay tests exercise the implementation
-that runs on the RP2040 rather than a second simulation model.
+[`src/physics_world.c`](src/physics_world.c). Scene-independent reset, input,
+ticks, and the outer hash live in [`src/game_world.c`](src/game_world.c);
+flash-resident scene descriptions live in
+[`src/game_scene_clockwork.c`](src/game_scene_clockwork.c) and
+[`src/game_scene_machine_lab.c`](src/game_scene_machine_lab.c). The latter is
+retained as the stable profiling fixture. None of these modules has a Zephyr,
+scheduler, renderer, USB, or wall-clock dependency. The firmware and native
+test suites compile these same C sources, so host replay tests exercise the
+implementation that runs on the RP2040 rather than a second simulation model.
 
 Core 0 runs Zephyr and owns every driver. Its priority-0 main thread owns all
 authoritative game state, samples input, and advances one fixed 60 Hz tick.
@@ -693,14 +698,26 @@ budget. A longer 14,416-tick live window held 120.0 Hz simulation and 29.8 fps
 presentation, with one isolated skipped tick amid USB profiling and status
 activity.
 
-The current 60 Hz reciprocal-rope Machine Lab hashes to `9ff98b13` at reset,
-`92a41d99` after 15 right ticks, and `98edb8a7` after a further eight up ticks.
-Its 10,000-tick native replay ends at `175b56c2`; the neutral sleep sequence
-reaches tick 259 at `aa27c7ef`. The PIM559 reproduced both exact sequences with
-framebuffer CRC-32 values `2ee34019` and `257e01aa`. The capsule endpoint
-receives equal-and-opposite position and radial-velocity response, and every
-unpinned rope particle has a one-pixel collision radius against external rigid
-bodies and static segments.
+The playable Clockwork scene hashes to `13d7f3d0` at reset and `e7a7ba97` after
+15 right ticks followed by eight up ticks; the PIM559 renders that exact state
+at framebuffer CRC-32 `4efbf582`. A 259-tick neutral sequence reaches
+`3f94eab2` and CRC-32 `73e6b4d7`. Its native 3,000-tick neutral replay ends at
+`0152ec75`, records 20 sensor entries, and traverses the full 24-pixel slider
+stroke identically on two independent runs.
+
+A clean 3,744-tick Clockwork device window sustained 60.0 Hz simulation and
+29.8 fps presentation with zero skipped or over-budget updates. Physics
+averaged 9.719 ms and peaked at 13.000 ms; complete updates averaged 10.243 ms
+and peaked at 13.644 ms. Core-1 full-scene rasterization was 10.913 ms with an
+11.437 ms observed maximum, followed by a 19.284 ms full-frame DMA transfer.
+
+The retained 60 Hz reciprocal-rope Machine Lab fixture hashes to `3fc3de22` at
+reset, `fff75d40` after 15 right ticks, and `1bc0f502` after a further eight up
+ticks. Its 10,000-tick native replay ends at `c6e1c977`; the neutral sleep
+sequence reaches tick 259 at `7d016466`. The capsule endpoint receives
+equal-and-opposite position and radial-velocity response, and every unpinned
+rope particle has a one-pixel collision radius against external rigid bodies
+and static segments.
 
 The schema-version-13 isolated 1,000-tick PIM559 profile averaged 5.566 ms on
 the grid and 6.044 ms through the brute-force reference, with 8.488/9.002 ms

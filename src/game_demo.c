@@ -204,7 +204,7 @@ static struct picosystem_rect union_rectangles(const struct picosystem_rect *lef
 static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 				   const struct picosystem_scene_snapshot *right)
 {
-	if ((left->body_count != right->body_count) ||
+	if ((left->body_count != right->body_count) || (left->scene_id != right->scene_id) ||
 	    (left->static_segment_count != right->static_segment_count) ||
 	    (left->distance_joint_count != right->distance_joint_count) ||
 	    (left->revolute_joint_count != right->revolute_joint_count) ||
@@ -218,7 +218,10 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 	for (uint16_t index = 0U; index < left->body_count; ++index) {
 		if ((left->bodies[index].id != right->bodies[index].id) ||
 		    (left->bodies[index].shape != right->bodies[index].shape) ||
-		    (left->bodies[index].radius != right->bodies[index].radius)) {
+		    (left->bodies[index].radius != right->bodies[index].radius) ||
+		    ((left->bodies[index].shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) &&
+		     (left->bodies[index].geometry.circle.render_style !=
+		      right->bodies[index].geometry.circle.render_style))) {
 			return false;
 		}
 	}
@@ -328,12 +331,17 @@ static bool body_render_state_matches(const struct picosystem_scene_body *left,
 		return false;
 	}
 	if (left->shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
-		return true;
+		if (left->geometry.circle.render_style != right->geometry.circle.render_style) {
+			return false;
+		}
+		return (left->geometry.circle.render_style !=
+			PICOSYSTEM_GAME_BODY_RENDER_STYLE_GEAR) ||
+		       (left->geometry.circle.orientation == right->geometry.circle.orientation);
 	}
 
 	for (size_t index = 0U; index < PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT; ++index) {
-		if ((left->vertices[index].x != right->vertices[index].x) ||
-		    (left->vertices[index].y != right->vertices[index].y)) {
+		if ((left->geometry.vertices[index].x != right->geometry.vertices[index].x) ||
+		    (left->geometry.vertices[index].y != right->geometry.vertices[index].y)) {
 			return false;
 		}
 	}
@@ -532,24 +540,28 @@ static int render_dirty_scene(const struct picosystem_scene_snapshot *snapshot,
 static int snapshot_from_state(const struct picosystem_game_demo_state *state, uint32_t sequence,
 			       struct picosystem_scene_snapshot *snapshot)
 {
+	if ((state->world.physics.body_count > ARRAY_SIZE(snapshot->bodies)) ||
+	    (state->world.physics.static_segment_count > ARRAY_SIZE(snapshot->static_segments)) ||
+	    (state->world.physics.distance_joint_count > ARRAY_SIZE(snapshot->distance_joints)) ||
+	    (state->world.physics.revolute_joint_count > ARRAY_SIZE(snapshot->revolute_joints)) ||
+	    (state->world.physics.box_sensor_count > ARRAY_SIZE(snapshot->box_sensors)) ||
+	    (state->world.physics.rope_count > ARRAY_SIZE(snapshot->ropes))) {
+		return -ENOSPC;
+	}
 	*snapshot = (struct picosystem_scene_snapshot){
 		.published_uptime_ticks = k_uptime_ticks(),
 		.sequence = sequence,
 		.logic_tick_count = state->world.logic_tick_count,
 		.redraw_request_sequence = state->redraw_request_sequence,
 		.sensor_entry_count = state->world.sensor_entry_count,
-		.body_count = state->world.physics.body_count,
-		.static_segment_count = state->world.physics.static_segment_count,
-		.distance_joint_count = state->world.physics.distance_joint_count,
-		.revolute_joint_count = state->world.physics.revolute_joint_count,
-		.box_sensor_count = state->world.physics.box_sensor_count,
-		.rope_count = state->world.physics.rope_count,
+		.scene_id = state->world.scene_id,
+		.body_count = (uint8_t)state->world.physics.body_count,
+		.static_segment_count = (uint8_t)state->world.physics.static_segment_count,
+		.distance_joint_count = (uint8_t)state->world.physics.distance_joint_count,
+		.revolute_joint_count = (uint8_t)state->world.physics.revolute_joint_count,
+		.box_sensor_count = (uint8_t)state->world.physics.box_sensor_count,
+		.rope_count = (uint8_t)state->world.physics.rope_count,
 	};
-	if ((snapshot->box_sensor_count > ARRAY_SIZE(snapshot->box_sensors)) ||
-	    (snapshot->rope_count > ARRAY_SIZE(snapshot->ropes))) {
-		return -ENOSPC;
-	}
-
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
 		const struct picosystem_physics_body *const body =
 			&state->world.physics.bodies[index];
@@ -562,6 +574,10 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			.sleeping = picosystem_physics_world_body_is_sleeping(&state->world.physics,
 									      index),
 		};
+		snapshot->bodies[index].geometry.circle.orientation =
+			(uint8_t)(body->angle_turns >> 26U);
+		snapshot->bodies[index].geometry.circle.render_style =
+			(uint8_t)picosystem_game_world_body_render_style(&state->world, index);
 		if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
 			struct picosystem_physics_vector
 				vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT];
@@ -571,9 +587,9 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			}
 			for (size_t vertex = 0U; vertex < PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT;
 			     ++vertex) {
-				snapshot->bodies[index].vertices[vertex].x =
+				snapshot->bodies[index].geometry.vertices[vertex].x =
 					fixed_to_pixel(vertices[vertex].x);
-				snapshot->bodies[index].vertices[vertex].y =
+				snapshot->bodies[index].geometry.vertices[vertex].y =
 					fixed_to_pixel(vertices[vertex].y);
 			}
 		} else if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
@@ -585,9 +601,9 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			}
 			for (size_t vertex = 0U; vertex < PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT;
 			     ++vertex) {
-				snapshot->bodies[index].vertices[vertex].x =
+				snapshot->bodies[index].geometry.vertices[vertex].x =
 					fixed_to_pixel(vertices[vertex].x);
-				snapshot->bodies[index].vertices[vertex].y =
+				snapshot->bodies[index].geometry.vertices[vertex].y =
 					fixed_to_pixel(vertices[vertex].y);
 			}
 		} else if (body->shape != PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
@@ -978,7 +994,7 @@ int picosystem_game_demo_init(struct picosystem_game_demo_state *state)
 	}
 
 	memset(state, 0, sizeof(*state));
-	int err = picosystem_game_world_reset(&state->world);
+	int err = picosystem_game_world_reset_scene(&state->world, PICOSYSTEM_GAME_SCENE_CLOCKWORK);
 	if (err != 0) {
 		return err;
 	}
@@ -1084,7 +1100,8 @@ int picosystem_game_demo_reset(struct picosystem_game_demo_state *state)
 
 	const uint32_t snapshot_sequence = state->snapshot_sequence;
 	const uint32_t redraw_request_sequence = state->redraw_request_sequence + 1U;
-	const int err = picosystem_game_world_reset(&state->world);
+	const int err =
+		picosystem_game_world_reset_scene(&state->world, PICOSYSTEM_GAME_SCENE_CLOCKWORK);
 	if (err != 0) {
 		return err;
 	}

@@ -353,7 +353,7 @@ bytes. A paused live-scene check produced identical core-0/core-1 pixels in
 9.809 ms and restored the framebuffer exactly. A CRC-validated 240 x 240 PNG
 capture completed in 8.2 seconds.
 
-The current reciprocal-rope image makes body endpoint pins two-way and gives
+The reciprocal-rope implementation makes body endpoint pins two-way and gives
 unpinned particles a one-pixel collision radius against external circles,
 boxes, capsules, and static segments. It uses six alternating length passes and
 three interleaved collision passes. Equal-and-opposite position and
@@ -362,18 +362,24 @@ reciprocal body/body pins also join the deterministic sleep graph. There is no
 self-collision or rope/rope collision in this bounded milestone.
 
 Its physics world is 22,636 bytes, each render snapshot is 856 bytes, and the
-serialized profile workspace is 33,304 bytes. The conservative image uses
-221,124 bytes of Zephyr RAM and 216,492 bytes of flash. The recommended 62.5
-MHz PL022/DMA image uses 250,428 bytes of the 255 KiB Zephyr region and 222,020
-bytes of flash, retaining 10,692 bytes of linker RAM headroom plus the
-separately reserved 8 KiB core-1 area. Both images route compiler integer
+serialized profile workspace is 33,304 bytes. The current conservative
+Clockwork image uses 221,124 bytes of Zephyr RAM and 218,252 bytes of flash. The
+recommended 62.5 MHz PL022/DMA image uses 250,620 bytes of the 255 KiB Zephyr
+region and 223,976 bytes of flash, retaining 10,500 bytes of linker RAM headroom
+plus the separately reserved 8 KiB core-1 area. Both images route compiler integer
 division through the RP2040 hardware divider using interrupt-safe Pico SDK
 wrappers.
 
-The 60 Hz PIM559 build reproduced reset/right-15/right-15-up-8 hashes
-`9ff98b13`, `92a41d99`, and `98edb8a7`. The coherently presented tick-23
-framebuffer is CRC-32 `2ee34019`; the neutral sequence reached tick 259 at
-`aa27c7ef` with framebuffer CRC-32 `257e01aa`.
+The 60 Hz PIM559 Clockwork build reproduced reset and right-15/up-8 hashes
+`13d7f3d0` and `e7a7ba97`. The coherently presented tick-23 framebuffer is
+CRC-32 `4efbf582`; the neutral sequence reached tick 259 at `3f94eab2` with
+framebuffer CRC-32 `73e6b4d7`.
+
+A clean 3,744-tick device window sustained 60.0 Hz simulation and 29.8 fps
+presentation with zero skipped or over-budget updates. Physics averaged 9.719
+ms and peaked at 13.000 ms; complete updates averaged 10.243 ms and peaked at
+13.644 ms. Core-1 rasterization was 10.913 ms with an 11.437 ms observed
+maximum, and the 62.5 MHz PL022/DMA full-frame transfer took 19.284 ms.
 
 Its schema-version-13 isolated 1,000-tick moving profile averaged 5.566 ms for
 the grid and 6.044 ms for the brute-force reference, with 8.488/9.002 ms

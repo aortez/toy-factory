@@ -1,0 +1,13 @@
+{
+  "name": "clockwork-neutral-smoke",
+  "steps": [
+    {
+      "input": "none",
+      "ticks": 259
+    }
+  ],
+  "expect": {
+    "hash": "3f94eab2",
+    "framebuffer_crc32": "73e6b4d7"
+  }
+}

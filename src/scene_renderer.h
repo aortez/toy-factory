@@ -24,10 +24,16 @@
 struct picosystem_scene_body {
 	int16_t center_x;
 	int16_t center_y;
-	struct {
-		int16_t x;
-		int16_t y;
-	} vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT];
+	union {
+		struct {
+			int16_t x;
+			int16_t y;
+		} vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT];
+		struct {
+			uint8_t orientation;
+			uint8_t render_style;
+		} circle;
+	} geometry;
 	uint16_t radius;
 	uint16_t id;
 	uint8_t shape;
@@ -73,12 +79,13 @@ struct picosystem_scene_snapshot {
 	uint32_t logic_tick_count;
 	uint32_t redraw_request_sequence;
 	uint32_t sensor_entry_count;
-	uint16_t body_count;
-	uint16_t static_segment_count;
-	uint16_t distance_joint_count;
-	uint16_t revolute_joint_count;
-	uint16_t box_sensor_count;
-	uint16_t rope_count;
+	uint8_t scene_id;
+	uint8_t body_count;
+	uint8_t static_segment_count;
+	uint8_t distance_joint_count;
+	uint8_t revolute_joint_count;
+	uint8_t box_sensor_count;
+	uint8_t rope_count;
 	uint32_t conveyor_forward_segment_mask;
 	uint32_t conveyor_reverse_segment_mask;
 	struct picosystem_scene_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];

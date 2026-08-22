@@ -558,14 +558,15 @@ The native suite covers:
 - authoritative hash changes and reset recovery; and
 - undefined-behavior sanitizer execution.
 
-The native canonical reset is `9ff98b13`, right-15 is `92a41d99`, the
-right-15/up-8 sequence reaches tick 23 at `98edb8a7`, and a 10,000-tick replay
-is `175b56c2`. The bounded replay exercises every shape family and event phase,
+The native Machine Lab reset is `3fc3de22`, right-15 is `fff75d40`, the
+right-15/up-8 sequence reaches tick 23 at `1bc0f502`, and a 10,000-tick replay
+is `c6e1c977`. The bounded replay exercises every shape family and event phase,
 never falls back from the uniform grid, keeps every body, hinge, rail, and rope
 inside the configured tolerances, and runs exactly 42 rope-length visits per
 tick. A separate neutral replay first sleeps at tick 259
-and hashes to `aa27c7ef`. The PIM559 reproduced both exact sequences; its
-tick-23 framebuffer is `2ee34019`, and the neutral sleep frame is `257e01aa`.
+and hashes to `7d016466`. These values include the scene identity added in game
+hash version 15; the underlying Machine Lab configuration remains the isolated
+profiling fixture.
 
 Its schema-version-13 isolated 1,000-tick moving profile averaged 5.566 ms for
 the grid and 6.044 ms for the brute-force reference, with 6.912/7.296 ms p95
@@ -668,10 +669,13 @@ are design references rather than code to port.
 
 ## Planned extensions
 
-1. Use reciprocal rope/body coupling and bounded particle collision to explore
+1. Use the Clockwork scene's reusable builder/snapshot boundary for independent
+   playable toys while retaining Machine Lab as the profiling fixture.
+2. Build the Hourglass as the first bounded granular-material workload.
+3. Use reciprocal rope/body coupling and bounded particle collision to explore
    soft-body gameplay.
-2. Evaluate bounded granular materials and approximate gravity or magnetic
-   fields as separate gameplay systems.
+4. Evaluate approximate gravity or magnetic fields as separate gameplay
+   systems.
 
 Each extension must leave behind a playable device demo, a deterministic host
 replay, an exact device sequence, and updated RAM/tick-time evidence.

@@ -184,7 +184,7 @@ int picosystem_game_demo_start_simulation(struct picosystem_game_demo_state *sta
 /* Begin a new performance-rate window without changing authoritative state. */
 int picosystem_game_demo_restart_measurement(struct picosystem_game_demo_state *state);
 
-/* Restore canonical tick-zero state while preserving renderer sequence monotonicity. */
+/* Restore the playable scene while preserving renderer sequence monotonicity. */
 int picosystem_game_demo_reset(struct picosystem_game_demo_state *state);
 
 /* Advance one authoritative 60 Hz simulation step and publish its newest state. */

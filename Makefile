@@ -239,7 +239,7 @@ sim-run: image ## Resume exact real-time 60 Hz simulation scheduling
 			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
 				picosystem game run
 
-sim-reset: image ## Restore canonical tick-zero state while paused
+sim-reset: image ## Restore the playable scene to tick zero while paused
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
