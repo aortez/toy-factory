@@ -27,6 +27,11 @@
 #define PHYSICS_RADIUS_LIMIT                      PICOSYSTEM_PHYSICS_FIXED_FROM_INT(128)
 #define PHYSICS_HALF_EXTENT_MINIMUM               PICOSYSTEM_PHYSICS_FIXED_ONE
 #define PHYSICS_HALF_EXTENT_LIMIT                 PICOSYSTEM_PHYSICS_FIXED_FROM_INT(64)
+#define PHYSICS_ROPE_SEGMENT_LENGTH_MINIMUM       PICOSYSTEM_PHYSICS_FIXED_ONE
+#define PHYSICS_ROPE_SEGMENT_LENGTH_LIMIT         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(64)
+#define PHYSICS_ROPE_VELOCITY_DAMPING             PICOSYSTEM_PHYSICS_FIXED_RATIO(255, 256)
+#define PHYSICS_ROPE_MAX_CORRECTION               PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
+#define PHYSICS_ROPE_POSITION_LIMIT               (PHYSICS_POSITION_LIMIT + PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT)
 #define PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT          PICOSYSTEM_PHYSICS_FIXED_FROM_INT(128)
 #define PHYSICS_JOINT_DISTANCE_MINIMUM            PICOSYSTEM_PHYSICS_FIXED_ONE
 #define PHYSICS_JOINT_DISTANCE_LIMIT              PICOSYSTEM_PHYSICS_FIXED_FROM_INT(256)
@@ -56,7 +61,7 @@
 #define PHYSICS_BOUNCE_THRESHOLD                  (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
 #define PHYSICS_SLEEP_LINEAR_VELOCITY_THRESHOLD   (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
 #define PHYSICS_SLEEP_ANGULAR_VELOCITY_THRESHOLD  (PICOSYSTEM_PHYSICS_FIXED_ONE / 512)
-#define PHYSICS_HASH_VERSION                      UINT32_C(11)
+#define PHYSICS_HASH_VERSION                      UINT32_C(13)
 #define FNV1A_OFFSET_BASIS                        UINT32_C(2166136261)
 #define FNV1A_PRIME                               UINT32_C(16777619)
 #define STATIC_BODY_INDEX                         UINT8_MAX
@@ -93,6 +98,11 @@ _Static_assert(PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS <= UINT8_MAX,
 _Static_assert(PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS <= UINT8_MAX,
 	       "box-sensor indices must fit in one byte");
 _Static_assert(PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS <= 8U, "sensor occupancy must fit in uint8_t");
+_Static_assert(PICOSYSTEM_PHYSICS_MAX_ROPES <= UINT8_MAX, "rope indices must fit in one byte");
+_Static_assert(PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES <= UINT8_MAX,
+	       "rope particle counts must fit in one byte");
+_Static_assert(PICOSYSTEM_PHYSICS_ROPE_SOLVER_ITERATIONS <= UINT8_MAX,
+	       "rope solver iterations must fit in one byte");
 _Static_assert(PICOSYSTEM_PHYSICS_GRID_COLUMNS <= UINT8_MAX,
 	       "grid columns must fit in a cell range");
 _Static_assert(PICOSYSTEM_PHYSICS_GRID_ROWS <= UINT8_MAX, "grid rows must fit in a cell range");
@@ -155,6 +165,12 @@ struct physics_sleep_graph {
 struct contact_point_candidate {
 	struct picosystem_physics_vector point;
 	picosystem_physics_fixed_t penetration;
+};
+
+struct segment_closest_result {
+	struct picosystem_physics_vector point_a;
+	struct picosystem_physics_vector point_b;
+	uint64_t distance_squared_raw;
 };
 
 struct physics_step_profiler {
@@ -510,6 +526,151 @@ static void box_vertices_from_geometry(
 	vertices[3] = vector_add(&center_minus_x, &y);
 }
 
+static void capsule_centerline_from_geometry(const struct picosystem_physics_body *body,
+					     const struct box_geometry *geometry,
+					     struct picosystem_physics_vector *start,
+					     struct picosystem_physics_vector *end)
+{
+	const struct picosystem_physics_vector offset =
+		vector_scale(&geometry->axis_x, body->half_extent.x);
+	*start = vector_subtract(&body->center, &offset);
+	*end = vector_add(&body->center, &offset);
+}
+
+static struct picosystem_physics_vector
+closest_point_on_segment_endpoints(const struct picosystem_physics_vector *point,
+				   const struct picosystem_physics_vector *start,
+				   const struct picosystem_physics_vector *end)
+{
+	const struct picosystem_physics_vector extent = vector_subtract(end, start);
+	const struct picosystem_physics_vector from_start = vector_subtract(point, start);
+	const int64_t projection_raw =
+		((int64_t)from_start.x * extent.x) + ((int64_t)from_start.y * extent.y);
+	const int64_t length_squared_raw = (int64_t)vector_length_squared_raw(&extent);
+	if (projection_raw <= 0) {
+		return *start;
+	}
+	if (projection_raw >= length_squared_raw) {
+		return *end;
+	}
+
+	const int64_t reduced_projection = projection_raw / PICOSYSTEM_PHYSICS_FIXED_ONE;
+	const int64_t reduced_length = length_squared_raw / PICOSYSTEM_PHYSICS_FIXED_ONE;
+	const picosystem_physics_fixed_t fraction =
+		(picosystem_physics_fixed_t)((reduced_projection * PICOSYSTEM_PHYSICS_FIXED_ONE) /
+					     reduced_length);
+	const struct picosystem_physics_vector offset = vector_scale(&extent, fraction);
+	return vector_add(start, &offset);
+}
+
+static int64_t vector_cross_raw(const struct picosystem_physics_vector *left,
+				const struct picosystem_physics_vector *right)
+{
+	return ((int64_t)left->x * right->y) - ((int64_t)left->y * right->x);
+}
+
+static bool ratio_is_in_closed_unit_interval(int64_t numerator, int64_t denominator)
+{
+	return (denominator > 0) ? ((numerator >= 0) && (numerator <= denominator))
+				 : ((numerator <= 0) && (numerator >= denominator));
+}
+
+static picosystem_physics_fixed_t fixed_fraction_from_ratio(int64_t numerator, int64_t denominator)
+{
+	if (denominator < 0) {
+		numerator = -numerator;
+		denominator = -denominator;
+	}
+	if (numerator <= 0) {
+		return 0;
+	}
+	if (numerator >= denominator) {
+		return PICOSYSTEM_PHYSICS_FIXED_ONE;
+	}
+
+	uint64_t remainder = (uint64_t)numerator;
+	const uint64_t divisor = (uint64_t)denominator;
+	uint32_t fraction = 0U;
+	for (uint32_t bit = 0U; bit < PICOSYSTEM_PHYSICS_FIXED_FRACTION_BITS; ++bit) {
+		remainder <<= 1U;
+		fraction <<= 1U;
+		if (remainder >= divisor) {
+			remainder -= divisor;
+			fraction |= 1U;
+		}
+	}
+	return (picosystem_physics_fixed_t)fraction;
+}
+
+static bool proper_segment_intersection(const struct picosystem_physics_vector *start_a,
+					const struct picosystem_physics_vector *end_a,
+					const struct picosystem_physics_vector *start_b,
+					const struct picosystem_physics_vector *end_b,
+					struct picosystem_physics_vector *intersection)
+{
+	const struct picosystem_physics_vector extent_a = vector_subtract(end_a, start_a);
+	const struct picosystem_physics_vector extent_b = vector_subtract(end_b, start_b);
+	const struct picosystem_physics_vector a_to_b = vector_subtract(start_b, start_a);
+	const int64_t denominator = vector_cross_raw(&extent_a, &extent_b);
+	if (denominator == 0) {
+		return false;
+	}
+
+	const int64_t numerator_a = vector_cross_raw(&a_to_b, &extent_b);
+	const int64_t numerator_b = vector_cross_raw(&a_to_b, &extent_a);
+	if (!ratio_is_in_closed_unit_interval(numerator_a, denominator) ||
+	    !ratio_is_in_closed_unit_interval(numerator_b, denominator)) {
+		return false;
+	}
+
+	const picosystem_physics_fixed_t fraction =
+		fixed_fraction_from_ratio(numerator_a, denominator);
+	const struct picosystem_physics_vector offset = vector_scale(&extent_a, fraction);
+	*intersection = vector_add(start_a, &offset);
+	return true;
+}
+
+static void update_segment_closest(struct segment_closest_result *result,
+				   const struct picosystem_physics_vector *point_a,
+				   const struct picosystem_physics_vector *point_b)
+{
+	const struct picosystem_physics_vector delta = vector_subtract(point_b, point_a);
+	const uint64_t distance_squared = vector_length_squared_raw(&delta);
+	if (distance_squared < result->distance_squared_raw) {
+		result->point_a = *point_a;
+		result->point_b = *point_b;
+		result->distance_squared_raw = distance_squared;
+	}
+}
+
+static struct segment_closest_result
+closest_points_between_segments(const struct picosystem_physics_vector *start_a,
+				const struct picosystem_physics_vector *end_a,
+				const struct picosystem_physics_vector *start_b,
+				const struct picosystem_physics_vector *end_b)
+{
+	struct segment_closest_result result = {
+		.distance_squared_raw = UINT64_MAX,
+	};
+	struct picosystem_physics_vector closest =
+		closest_point_on_segment_endpoints(start_a, start_b, end_b);
+	update_segment_closest(&result, start_a, &closest);
+	closest = closest_point_on_segment_endpoints(end_a, start_b, end_b);
+	update_segment_closest(&result, end_a, &closest);
+	closest = closest_point_on_segment_endpoints(start_b, start_a, end_a);
+	update_segment_closest(&result, &closest, start_b);
+	closest = closest_point_on_segment_endpoints(end_b, start_a, end_a);
+	update_segment_closest(&result, &closest, end_b);
+
+	struct picosystem_physics_vector intersection;
+	if (proper_segment_intersection(start_a, end_a, start_b, end_b, &intersection)) {
+		result.point_a = intersection;
+		result.point_b = intersection;
+		result.distance_squared_raw = 0U;
+	}
+	return result;
+}
+
 static bool fixed_is_bounded(picosystem_physics_fixed_t value, picosystem_physics_fixed_t limit)
 {
 	return (value >= -limit) && (value <= limit);
@@ -577,6 +738,21 @@ static bool box_config_is_valid(const struct picosystem_physics_box_config *conf
 	       (config->half_extent.y <= PHYSICS_HALF_EXTENT_LIMIT);
 }
 
+static bool capsule_config_is_valid(const struct picosystem_physics_capsule_config *config,
+				    const struct picosystem_physics_world *world)
+{
+	return (config != NULL) &&
+	       common_body_config_is_valid(&config->center, &config->velocity_per_tick,
+					   config->inverse_mass, config->restitution,
+					   config->friction, config->angular_velocity_per_tick,
+					   config->id, world) &&
+	       (config->half_length >= PHYSICS_HALF_EXTENT_MINIMUM) &&
+	       (config->half_length <= PHYSICS_HALF_EXTENT_LIMIT) &&
+	       (config->radius >= PHYSICS_RADIUS_MINIMUM) &&
+	       (config->radius <= PHYSICS_HALF_EXTENT_LIMIT) &&
+	       (config->half_length <= (PHYSICS_RADIUS_LIMIT - config->radius));
+}
+
 static bool segment_config_is_valid(const struct picosystem_physics_segment_config *config)
 {
 	if ((config == NULL) || (config->id == 0U) ||
@@ -602,6 +778,30 @@ static bool box_sensor_config_is_valid(const struct picosystem_physics_box_senso
 	       (config->half_extent.x <= PHYSICS_HALF_EXTENT_LIMIT) &&
 	       (config->half_extent.y >= PHYSICS_HALF_EXTENT_MINIMUM) &&
 	       (config->half_extent.y <= PHYSICS_HALF_EXTENT_LIMIT);
+}
+
+static bool
+rope_endpoint_config_is_valid(const struct picosystem_physics_rope_endpoint_config *endpoint)
+{
+	if ((endpoint->pinned > 1U) ||
+	    ((endpoint->body_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) && (endpoint->pinned == 0U))) {
+		return false;
+	}
+	const picosystem_physics_fixed_t anchor_limit =
+		(endpoint->body_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID)
+			? PHYSICS_POSITION_LIMIT
+			: PHYSICS_JOINT_LOCAL_ANCHOR_LIMIT;
+	return vector_is_bounded(&endpoint->anchor, anchor_limit);
+}
+
+static bool rope_config_is_valid(const struct picosystem_physics_rope_config *config)
+{
+	return (config != NULL) && (config->id != 0U) && (config->particle_count >= 2U) &&
+	       (config->particle_count <= PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES) &&
+	       (config->segment_length >= PHYSICS_ROPE_SEGMENT_LENGTH_MINIMUM) &&
+	       (config->segment_length <= PHYSICS_ROPE_SEGMENT_LENGTH_LIMIT) &&
+	       rope_endpoint_config_is_valid(&config->endpoint_a) &&
+	       rope_endpoint_config_is_valid(&config->endpoint_b);
 }
 
 static bool
@@ -763,6 +963,18 @@ box_inverse_inertia(const struct picosystem_physics_vector *half_extent,
 	return fixed_maximum(inverse_inertia, 1);
 }
 
+static picosystem_physics_fixed_t capsule_inverse_inertia(picosystem_physics_fixed_t half_length,
+							  picosystem_physics_fixed_t radius,
+							  picosystem_physics_fixed_t inverse_mass)
+{
+	/* A rectangular envelope is a stable, conservative gameplay approximation. */
+	const struct picosystem_physics_vector envelope = {
+		.x = half_length + radius,
+		.y = radius,
+	};
+	return box_inverse_inertia(&envelope, inverse_mass);
+}
+
 static bool body_is_valid(const struct picosystem_physics_body *body,
 			  const struct picosystem_physics_world *world)
 {
@@ -797,6 +1009,23 @@ static bool body_is_valid(const struct picosystem_physics_body *body,
 			.id = body->id,
 		};
 		return box_config_is_valid(&config, world) && (body->radius == 0) &&
+		       inertia_is_valid;
+	}
+
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		const struct picosystem_physics_capsule_config config = {
+			.center = body->center,
+			.velocity_per_tick = body->velocity_per_tick,
+			.half_length = body->half_extent.x,
+			.radius = body->radius,
+			.inverse_mass = body->inverse_mass,
+			.restitution = body->restitution,
+			.friction = body->friction,
+			.angular_velocity_per_tick = body->angular_velocity_per_tick,
+			.angle_turns = body->angle_turns,
+			.id = body->id,
+		};
+		return capsule_config_is_valid(&config, world) && (body->half_extent.y == 0) &&
 		       inertia_is_valid;
 	}
 
@@ -856,7 +1085,74 @@ static bool body_local_anchor_is_valid(const struct picosystem_physics_body *bod
 		return (fixed_absolute(anchor->x) <= body->half_extent.x) &&
 		       (fixed_absolute(anchor->y) <= body->half_extent.y);
 	}
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		const picosystem_physics_fixed_t outside_x =
+			fixed_maximum(fixed_absolute(anchor->x) - body->half_extent.x, 0);
+		const struct picosystem_physics_vector from_centerline = {
+			.x = outside_x,
+			.y = anchor->y,
+		};
+		return vector_length_squared_raw(&from_centerline) <=
+		       (uint64_t)((int64_t)body->radius * body->radius);
+	}
 	return false;
+}
+
+static bool rope_endpoint_is_valid(const struct picosystem_physics_world *world,
+				   const struct picosystem_physics_vector *anchor, uint16_t body_id,
+				   uint8_t body_index, uint8_t pinned)
+{
+	const struct picosystem_physics_rope_endpoint_config endpoint = {
+		.anchor = *anchor,
+		.body_id = body_id,
+		.pinned = pinned,
+	};
+	if (!rope_endpoint_config_is_valid(&endpoint)) {
+		return false;
+	}
+	if (body_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		return body_index == STATIC_BODY_INDEX;
+	}
+	return (body_index < world->body_count) && (world->bodies[body_index].id == body_id) &&
+	       body_local_anchor_is_valid(&world->bodies[body_index], anchor);
+}
+
+static bool rope_is_valid(const struct picosystem_physics_rope *rope,
+			  const struct picosystem_physics_world *world)
+{
+	const struct picosystem_physics_rope_config config = {
+		.endpoint_a =
+			{
+				.anchor = rope->anchor_a,
+				.body_id = rope->body_a_id,
+				.pinned = rope->pin_a,
+			},
+		.endpoint_b =
+			{
+				.anchor = rope->anchor_b,
+				.body_id = rope->body_b_id,
+				.pinned = rope->pin_b,
+			},
+		.segment_length = rope->segment_length,
+		.id = rope->id,
+		.particle_count = rope->particle_count,
+	};
+	if (!rope_config_is_valid(&config) ||
+	    !rope_endpoint_is_valid(world, &rope->anchor_a, rope->body_a_id, rope->body_a_index,
+				    rope->pin_a) ||
+	    !rope_endpoint_is_valid(world, &rope->anchor_b, rope->body_b_id, rope->body_b_index,
+				    rope->pin_b)) {
+		return false;
+	}
+	for (uint8_t index = 0U; index < rope->particle_count; ++index) {
+		if (!vector_is_bounded(&rope->particles[index].position,
+				       PHYSICS_ROPE_POSITION_LIMIT) ||
+		    !vector_is_bounded(&rope->particles[index].previous_position,
+				       PHYSICS_ROPE_POSITION_LIMIT)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 static bool distance_joint_is_valid(const struct picosystem_physics_distance_joint *joint,
@@ -978,6 +1274,7 @@ static bool world_is_valid(const struct picosystem_physics_world *world)
 	    (world->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
 	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS) ||
 	    (world->box_sensor_count > PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS) ||
+	    (world->rope_count > PICOSYSTEM_PHYSICS_MAX_ROPES) ||
 	    (world->contact_count > PICOSYSTEM_PHYSICS_MAX_CONTACTS) ||
 	    (world->contact_event_count > PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS) ||
 	    !vector_is_bounded(&world->last_global_acceleration_per_tick,
@@ -1002,6 +1299,17 @@ static bool world_is_valid(const struct picosystem_physics_world *world)
 		}
 		for (uint16_t prior = 0U; prior < body_index; ++prior) {
 			if (world->bodies[prior].id == world->bodies[body_index].id) {
+				return false;
+			}
+		}
+	}
+
+	for (uint16_t rope_index = 0U; rope_index < world->rope_count; ++rope_index) {
+		if (!rope_is_valid(&world->ropes[rope_index], world)) {
+			return false;
+		}
+		for (uint16_t prior = 0U; prior < rope_index; ++prior) {
+			if (world->ropes[prior].id == world->ropes[rope_index].id) {
 				return false;
 			}
 		}
@@ -1391,6 +1699,30 @@ static void clamp_body_position(struct picosystem_physics_body *body)
 		fixed_clamp(body->center.x, -PHYSICS_POSITION_LIMIT, PHYSICS_POSITION_LIMIT);
 	body->center.y =
 		fixed_clamp(body->center.y, -PHYSICS_POSITION_LIMIT, PHYSICS_POSITION_LIMIT);
+}
+
+static struct picosystem_physics_vector
+clamp_vector_length(const struct picosystem_physics_vector *vector,
+		    picosystem_physics_fixed_t maximum)
+{
+	const uint64_t length_squared = vector_length_squared_raw(vector);
+	const uint64_t maximum_squared = (uint64_t)((int64_t)maximum * maximum);
+	if (length_squared <= maximum_squared) {
+		return *vector;
+	}
+	const uint32_t length = integer_square_root_ceiling(length_squared);
+	return (struct picosystem_physics_vector){
+		.x = (picosystem_physics_fixed_t)(((int64_t)vector->x * maximum) / length),
+		.y = (picosystem_physics_fixed_t)(((int64_t)vector->y * maximum) / length),
+	};
+}
+
+static void clamp_rope_particle_position(struct picosystem_physics_rope_particle *particle)
+{
+	particle->position.x = fixed_clamp(particle->position.x, -PHYSICS_ROPE_POSITION_LIMIT,
+					   PHYSICS_ROPE_POSITION_LIMIT);
+	particle->position.y = fixed_clamp(particle->position.y, -PHYSICS_ROPE_POSITION_LIMIT,
+					   PHYSICS_ROPE_POSITION_LIMIT);
 }
 
 static void apply_body_angle_delta(struct picosystem_physics_body *body,
@@ -2203,6 +2535,311 @@ static int generate_box_box_contact(struct picosystem_physics_world *world, uint
 			       candidate_count);
 }
 
+static picosystem_physics_fixed_t
+capsule_projection_radius(const struct picosystem_physics_body *body,
+			  const struct box_geometry *geometry,
+			  const struct picosystem_physics_vector *axis)
+{
+	return fixed_multiply(body->half_extent.x,
+			      fixed_absolute(vector_dot(&geometry->axis_x, axis))) +
+	       body->radius;
+}
+
+static bool update_symmetric_sat_axis(const struct picosystem_physics_vector *center_delta,
+				      picosystem_physics_fixed_t radius_a,
+				      picosystem_physics_fixed_t radius_b,
+				      const struct picosystem_physics_vector *axis,
+				      picosystem_physics_fixed_t *minimum_overlap,
+				      struct picosystem_physics_vector *minimum_axis)
+{
+	const picosystem_physics_fixed_t distance = fixed_absolute(vector_dot(center_delta, axis));
+	const picosystem_physics_fixed_t overlap = radius_a + radius_b - distance;
+	if (overlap <= 0) {
+		return false;
+	}
+	if (overlap < *minimum_overlap) {
+		*minimum_overlap = overlap;
+		*minimum_axis = *axis;
+	}
+	return true;
+}
+
+static struct picosystem_physics_vector
+capsule_support_feature(const struct picosystem_physics_body *body,
+			const struct box_geometry *geometry,
+			const struct picosystem_physics_vector *direction)
+{
+	struct picosystem_physics_vector centerline_point = body->center;
+	const picosystem_physics_fixed_t axial_projection =
+		vector_dot(direction, &geometry->axis_x);
+	if (axial_projection != 0) {
+		const picosystem_physics_fixed_t axial_distance =
+			(axial_projection > 0) ? body->half_extent.x : -body->half_extent.x;
+		const struct picosystem_physics_vector axial_offset =
+			vector_scale(&geometry->axis_x, axial_distance);
+		centerline_point = vector_add(&centerline_point, &axial_offset);
+	}
+	const struct picosystem_physics_vector radius_offset =
+		vector_scale(direction, body->radius);
+	return vector_add(&centerline_point, &radius_offset);
+}
+
+static struct picosystem_physics_vector
+box_support_feature(const struct picosystem_physics_body *body, const struct box_geometry *geometry,
+		    const struct picosystem_physics_vector *direction)
+{
+	struct picosystem_physics_vector point = body->center;
+	const picosystem_physics_fixed_t projection_x = vector_dot(direction, &geometry->axis_x);
+	if (projection_x != 0) {
+		const picosystem_physics_fixed_t distance_x =
+			(projection_x > 0) ? body->half_extent.x : -body->half_extent.x;
+		const struct picosystem_physics_vector offset_x =
+			vector_scale(&geometry->axis_x, distance_x);
+		point = vector_add(&point, &offset_x);
+	}
+	const picosystem_physics_fixed_t projection_y = vector_dot(direction, &geometry->axis_y);
+	if (projection_y != 0) {
+		const picosystem_physics_fixed_t distance_y =
+			(projection_y > 0) ? body->half_extent.y : -body->half_extent.y;
+		const struct picosystem_physics_vector offset_y =
+			vector_scale(&geometry->axis_y, distance_y);
+		point = vector_add(&point, &offset_y);
+	}
+	return point;
+}
+
+static void orient_axis_from_a_to_b(struct picosystem_physics_vector *axis,
+				    const struct picosystem_physics_vector *center_delta,
+				    uint16_t id_a, uint16_t id_b)
+{
+	const picosystem_physics_fixed_t projection = vector_dot(center_delta, axis);
+	if ((projection < 0) || ((projection == 0) && (id_a > id_b))) {
+		*axis = vector_negate(axis);
+	}
+}
+
+static int generate_capsule_circle_contact(struct picosystem_physics_world *world,
+					   uint8_t capsule_index, uint8_t circle_index,
+					   const struct box_geometry *capsule_geometry,
+					   bool capsule_is_body_a)
+{
+	const struct picosystem_physics_body *const capsule = &world->bodies[capsule_index];
+	const struct picosystem_physics_body *const circle = &world->bodies[circle_index];
+	struct picosystem_physics_vector start;
+	struct picosystem_physics_vector end;
+	capsule_centerline_from_geometry(capsule, capsule_geometry, &start, &end);
+	const struct picosystem_physics_vector closest =
+		closest_point_on_segment_endpoints(&circle->center, &start, &end);
+	const struct picosystem_physics_vector capsule_to_circle =
+		vector_subtract(&circle->center, &closest);
+	const picosystem_physics_fixed_t combined_radius = capsule->radius + circle->radius;
+	const uint64_t radius_squared = (uint64_t)((int64_t)combined_radius * combined_radius);
+	if (vector_length_squared_raw(&capsule_to_circle) >= radius_squared) {
+		return 0;
+	}
+
+	struct picosystem_physics_vector fallback = capsule_geometry->axis_y;
+	if (capsule->id > circle->id) {
+		fallback = vector_negate(&fallback);
+	}
+	struct picosystem_physics_vector capsule_to_circle_normal;
+	const picosystem_physics_fixed_t distance =
+		normalize_vector(&capsule_to_circle, &capsule_to_circle_normal, &fallback);
+	const struct picosystem_physics_vector capsule_radius =
+		vector_scale(&capsule_to_circle_normal, capsule->radius);
+	const struct picosystem_physics_vector circle_radius =
+		vector_scale(&capsule_to_circle_normal, circle->radius);
+	const struct picosystem_physics_vector point_capsule =
+		vector_add(&closest, &capsule_radius);
+	const struct picosystem_physics_vector point_circle =
+		vector_subtract(&circle->center, &circle_radius);
+	const struct contact_point_candidate candidate = {
+		.point =
+			{
+				.x = (point_capsule.x + point_circle.x) / 2,
+				.y = (point_capsule.y + point_circle.y) / 2,
+			},
+		.penetration = combined_radius - distance,
+	};
+	struct picosystem_physics_vector normal = capsule_to_circle_normal;
+	if (!capsule_is_body_a) {
+		normal = vector_negate(&normal);
+	}
+	const uint8_t body_a_index = capsule_is_body_a ? capsule_index : circle_index;
+	const uint8_t body_b_index = capsule_is_body_a ? circle_index : capsule_index;
+	return append_manifold(world, body_a_index, body_b_index, STATIC_SEGMENT_INDEX,
+			       PICOSYSTEM_PHYSICS_CONTACT_BODY, &normal, &candidate, 1U);
+}
+
+static bool update_capsule_capsule_endpoint_axis(
+	const struct picosystem_physics_body *body_a, const struct box_geometry *geometry_a,
+	const struct picosystem_physics_body *body_b, const struct box_geometry *geometry_b,
+	const struct picosystem_physics_vector *center_delta,
+	const struct picosystem_physics_vector *point_a,
+	const struct picosystem_physics_vector *point_b,
+	picosystem_physics_fixed_t *minimum_overlap, struct picosystem_physics_vector *minimum_axis)
+{
+	const struct picosystem_physics_vector delta = vector_subtract(point_b, point_a);
+	if (vector_length_squared_raw(&delta) == 0U) {
+		return true;
+	}
+	const struct picosystem_physics_vector fallback = {
+		.x = PICOSYSTEM_PHYSICS_FIXED_ONE,
+	};
+	struct picosystem_physics_vector axis;
+	(void)normalize_vector(&delta, &axis, &fallback);
+	return update_symmetric_sat_axis(center_delta,
+					 capsule_projection_radius(body_a, geometry_a, &axis),
+					 capsule_projection_radius(body_b, geometry_b, &axis),
+					 &axis, minimum_overlap, minimum_axis);
+}
+
+static int generate_capsule_capsule_contact(struct picosystem_physics_world *world,
+					    uint8_t body_a_index, uint8_t body_b_index,
+					    const struct box_geometry *geometry_a,
+					    const struct box_geometry *geometry_b)
+{
+	const struct picosystem_physics_body *const body_a = &world->bodies[body_a_index];
+	const struct picosystem_physics_body *const body_b = &world->bodies[body_b_index];
+	const struct picosystem_physics_vector center_delta =
+		vector_subtract(&body_b->center, &body_a->center);
+	picosystem_physics_fixed_t minimum_overlap = INT32_MAX;
+	struct picosystem_physics_vector minimum_axis;
+	const struct picosystem_physics_vector side_axes[] = {
+		geometry_a->axis_y,
+		geometry_b->axis_y,
+	};
+	for (size_t index = 0U; index < (sizeof(side_axes) / sizeof(side_axes[0])); ++index) {
+		if (!update_symmetric_sat_axis(
+			    &center_delta,
+			    capsule_projection_radius(body_a, geometry_a, &side_axes[index]),
+			    capsule_projection_radius(body_b, geometry_b, &side_axes[index]),
+			    &side_axes[index], &minimum_overlap, &minimum_axis)) {
+			return 0;
+		}
+	}
+
+	struct picosystem_physics_vector start_a;
+	struct picosystem_physics_vector end_a;
+	struct picosystem_physics_vector start_b;
+	struct picosystem_physics_vector end_b;
+	capsule_centerline_from_geometry(body_a, geometry_a, &start_a, &end_a);
+	capsule_centerline_from_geometry(body_b, geometry_b, &start_b, &end_b);
+	const struct picosystem_physics_vector endpoints_a[] = {start_a, end_a};
+	const struct picosystem_physics_vector endpoints_b[] = {start_b, end_b};
+	for (size_t index = 0U; index < 2U; ++index) {
+		const struct picosystem_physics_vector closest_b =
+			closest_point_on_segment_endpoints(&endpoints_a[index], &start_b, &end_b);
+		if (!update_capsule_capsule_endpoint_axis(
+			    body_a, geometry_a, body_b, geometry_b, &center_delta,
+			    &endpoints_a[index], &closest_b, &minimum_overlap, &minimum_axis)) {
+			return 0;
+		}
+		const struct picosystem_physics_vector closest_a =
+			closest_point_on_segment_endpoints(&endpoints_b[index], &start_a, &end_a);
+		if (!update_capsule_capsule_endpoint_axis(
+			    body_a, geometry_a, body_b, geometry_b, &center_delta, &closest_a,
+			    &endpoints_b[index], &minimum_overlap, &minimum_axis)) {
+			return 0;
+		}
+	}
+
+	orient_axis_from_a_to_b(&minimum_axis, &center_delta, body_a->id, body_b->id);
+	const struct picosystem_physics_vector negative_normal = vector_negate(&minimum_axis);
+	const struct picosystem_physics_vector point_a =
+		capsule_support_feature(body_a, geometry_a, &minimum_axis);
+	const struct picosystem_physics_vector point_b =
+		capsule_support_feature(body_b, geometry_b, &negative_normal);
+	const struct contact_point_candidate candidate = {
+		.point =
+			{
+				.x = (point_a.x + point_b.x) / 2,
+				.y = (point_a.y + point_b.y) / 2,
+			},
+		.penetration = minimum_overlap,
+	};
+	return append_manifold(world, body_a_index, body_b_index, STATIC_SEGMENT_INDEX,
+			       PICOSYSTEM_PHYSICS_CONTACT_BODY, &minimum_axis, &candidate, 1U);
+}
+
+static int generate_capsule_box_contact(struct picosystem_physics_world *world,
+					uint8_t capsule_index, uint8_t box_index,
+					const struct box_geometry *capsule_geometry,
+					const struct box_geometry *box_geometry,
+					bool capsule_is_body_a)
+{
+	const struct picosystem_physics_body *const capsule = &world->bodies[capsule_index];
+	const struct picosystem_physics_body *const box = &world->bodies[box_index];
+	const struct picosystem_physics_vector capsule_to_box =
+		vector_subtract(&box->center, &capsule->center);
+	picosystem_physics_fixed_t minimum_overlap = INT32_MAX;
+	struct picosystem_physics_vector minimum_axis;
+	const struct picosystem_physics_vector face_axes[] = {
+		box_geometry->axis_x,
+		box_geometry->axis_y,
+		capsule_geometry->axis_y,
+	};
+	for (size_t index = 0U; index < (sizeof(face_axes) / sizeof(face_axes[0])); ++index) {
+		if (!update_symmetric_sat_axis(
+			    &capsule_to_box,
+			    capsule_projection_radius(capsule, capsule_geometry, &face_axes[index]),
+			    box_projection_radius(box, box_geometry, &face_axes[index]),
+			    &face_axes[index], &minimum_overlap, &minimum_axis)) {
+			return 0;
+		}
+	}
+
+	struct picosystem_physics_vector start;
+	struct picosystem_physics_vector end;
+	capsule_centerline_from_geometry(capsule, capsule_geometry, &start, &end);
+	struct picosystem_physics_vector vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT];
+	box_vertices_from_geometry(box, box_geometry, vertices);
+	for (size_t index = 0U; index < PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT; ++index) {
+		const struct picosystem_physics_vector closest =
+			closest_point_on_segment_endpoints(&vertices[index], &start, &end);
+		const struct picosystem_physics_vector delta =
+			vector_subtract(&vertices[index], &closest);
+		if (vector_length_squared_raw(&delta) == 0U) {
+			continue;
+		}
+		const struct picosystem_physics_vector fallback = {
+			.x = PICOSYSTEM_PHYSICS_FIXED_ONE,
+		};
+		struct picosystem_physics_vector axis;
+		(void)normalize_vector(&delta, &axis, &fallback);
+		if (!update_symmetric_sat_axis(
+			    &capsule_to_box,
+			    capsule_projection_radius(capsule, capsule_geometry, &axis),
+			    box_projection_radius(box, box_geometry, &axis), &axis,
+			    &minimum_overlap, &minimum_axis)) {
+			return 0;
+		}
+	}
+
+	orient_axis_from_a_to_b(&minimum_axis, &capsule_to_box, capsule->id, box->id);
+	const struct picosystem_physics_vector negative_normal = vector_negate(&minimum_axis);
+	const struct picosystem_physics_vector point_capsule =
+		capsule_support_feature(capsule, capsule_geometry, &minimum_axis);
+	const struct picosystem_physics_vector point_box =
+		box_support_feature(box, box_geometry, &negative_normal);
+	const struct contact_point_candidate candidate = {
+		.point =
+			{
+				.x = (point_capsule.x + point_box.x) / 2,
+				.y = (point_capsule.y + point_box.y) / 2,
+			},
+		.penetration = minimum_overlap,
+	};
+	struct picosystem_physics_vector normal = minimum_axis;
+	if (!capsule_is_body_a) {
+		normal = vector_negate(&normal);
+	}
+	const uint8_t body_a_index = capsule_is_body_a ? capsule_index : box_index;
+	const uint8_t body_b_index = capsule_is_body_a ? box_index : capsule_index;
+	return append_manifold(world, body_a_index, body_b_index, STATIC_SEGMENT_INDEX,
+			       PICOSYSTEM_PHYSICS_CONTACT_BODY, &normal, &candidate, 1U);
+}
+
 static int
 generate_body_contact(struct picosystem_physics_world *world, uint8_t body_a_index,
 		      uint8_t body_b_index,
@@ -2224,6 +2861,34 @@ generate_body_contact(struct picosystem_physics_world *world, uint8_t body_a_ind
 		return generate_circle_box_contact(world, body_b_index, body_a_index,
 						   &geometries[body_a_index], false);
 	}
+	if ((shape_a == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) &&
+	    (shape_b == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE)) {
+		return generate_capsule_circle_contact(world, body_a_index, body_b_index,
+						       &geometries[body_a_index], true);
+	}
+	if ((shape_a == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) &&
+	    (shape_b == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE)) {
+		return generate_capsule_circle_contact(world, body_b_index, body_a_index,
+						       &geometries[body_b_index], false);
+	}
+	if ((shape_a == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) &&
+	    (shape_b == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE)) {
+		return generate_capsule_capsule_contact(world, body_a_index, body_b_index,
+							&geometries[body_a_index],
+							&geometries[body_b_index]);
+	}
+	if ((shape_a == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) &&
+	    (shape_b == PICOSYSTEM_PHYSICS_SHAPE_BOX)) {
+		return generate_capsule_box_contact(world, body_a_index, body_b_index,
+						    &geometries[body_a_index],
+						    &geometries[body_b_index], true);
+	}
+	if ((shape_a == PICOSYSTEM_PHYSICS_SHAPE_BOX) &&
+	    (shape_b == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE)) {
+		return generate_capsule_box_contact(world, body_b_index, body_a_index,
+						    &geometries[body_b_index],
+						    &geometries[body_a_index], false);
+	}
 	return generate_box_box_contact(world, body_a_index, body_b_index,
 					&geometries[body_a_index], &geometries[body_b_index]);
 }
@@ -2232,26 +2897,7 @@ static struct picosystem_physics_vector
 closest_point_on_segment(const struct picosystem_physics_vector *point,
 			 const struct picosystem_physics_static_segment *segment)
 {
-	const struct picosystem_physics_vector extent =
-		vector_subtract(&segment->end, &segment->start);
-	const struct picosystem_physics_vector from_start = vector_subtract(point, &segment->start);
-	const int64_t projection_raw =
-		((int64_t)from_start.x * extent.x) + ((int64_t)from_start.y * extent.y);
-	const int64_t length_squared_raw = (int64_t)vector_length_squared_raw(&extent);
-	if (projection_raw <= 0) {
-		return segment->start;
-	}
-	if (projection_raw >= length_squared_raw) {
-		return segment->end;
-	}
-
-	const int64_t reduced_projection = projection_raw / PICOSYSTEM_PHYSICS_FIXED_ONE;
-	const int64_t reduced_length = length_squared_raw / PICOSYSTEM_PHYSICS_FIXED_ONE;
-	const picosystem_physics_fixed_t fraction =
-		(picosystem_physics_fixed_t)((reduced_projection * PICOSYSTEM_PHYSICS_FIXED_ONE) /
-					     reduced_length);
-	const struct picosystem_physics_vector offset = vector_scale(&extent, fraction);
-	return vector_add(&segment->start, &offset);
+	return closest_point_on_segment_endpoints(point, &segment->start, &segment->end);
 }
 
 static int generate_circle_segment_contact(struct picosystem_physics_world *world,
@@ -2288,6 +2934,144 @@ static picosystem_physics_fixed_t interval_separation_depth(
 		return 0;
 	}
 	return fixed_minimum(body_maximum - segment_minimum, segment_maximum - body_minimum);
+}
+
+static bool update_capsule_segment_sat_axis(const struct picosystem_physics_body *body,
+					    const struct box_geometry *geometry,
+					    const struct picosystem_physics_static_segment *segment,
+					    const struct picosystem_physics_vector *axis,
+					    picosystem_physics_fixed_t *minimum_depth,
+					    struct picosystem_physics_vector *minimum_axis)
+{
+	const picosystem_physics_fixed_t center = vector_dot(&body->center, axis);
+	const picosystem_physics_fixed_t radius = capsule_projection_radius(body, geometry, axis);
+	const picosystem_physics_fixed_t start = vector_dot(&segment->start, axis);
+	const picosystem_physics_fixed_t end = vector_dot(&segment->end, axis);
+	const picosystem_physics_fixed_t depth =
+		interval_separation_depth(center - radius, center + radius,
+					  fixed_minimum(start, end), fixed_maximum(start, end));
+	if (depth <= 0) {
+		return false;
+	}
+	if (depth < *minimum_depth) {
+		*minimum_depth = depth;
+		*minimum_axis = *axis;
+	}
+	return true;
+}
+
+static bool capsule_endpoint_contact_candidate(
+	const struct picosystem_physics_vector *endpoint,
+	const struct picosystem_physics_static_segment *segment,
+	const struct picosystem_physics_vector *normal, picosystem_physics_fixed_t radius,
+	picosystem_physics_fixed_t penetration, struct contact_point_candidate *candidate)
+{
+	const struct picosystem_physics_vector closest =
+		closest_point_on_segment(endpoint, segment);
+	const struct picosystem_physics_vector delta = vector_subtract(&closest, endpoint);
+	const uint64_t radius_squared = (uint64_t)((int64_t)radius * radius);
+	if ((vector_length_squared_raw(&delta) >= radius_squared) ||
+	    (vector_dot(&delta, normal) <= 0)) {
+		return false;
+	}
+
+	const struct picosystem_physics_vector radius_offset = vector_scale(normal, radius);
+	const struct picosystem_physics_vector body_surface = vector_add(endpoint, &radius_offset);
+	*candidate = (struct contact_point_candidate){
+		.point =
+			{
+				.x = (body_surface.x + closest.x) / 2,
+				.y = (body_surface.y + closest.y) / 2,
+			},
+		.penetration = penetration,
+	};
+	return true;
+}
+
+static int generate_capsule_segment_contact(struct picosystem_physics_world *world,
+					    uint8_t body_index, uint8_t segment_index,
+					    const struct box_geometry *geometry)
+{
+	const struct picosystem_physics_body *const body = &world->bodies[body_index];
+	const struct picosystem_physics_static_segment *const segment =
+		&world->static_segments[segment_index];
+	picosystem_physics_fixed_t minimum_depth = INT32_MAX;
+	struct picosystem_physics_vector minimum_axis;
+	const struct picosystem_physics_vector axes[] = {
+		geometry->axis_y,
+		segment->normal,
+	};
+	for (size_t index = 0U; index < (sizeof(axes) / sizeof(axes[0])); ++index) {
+		if (!update_capsule_segment_sat_axis(body, geometry, segment, &axes[index],
+						     &minimum_depth, &minimum_axis)) {
+			return 0;
+		}
+	}
+
+	struct picosystem_physics_vector start;
+	struct picosystem_physics_vector end;
+	capsule_centerline_from_geometry(body, geometry, &start, &end);
+	const struct segment_closest_result closest =
+		closest_points_between_segments(&start, &end, &segment->start, &segment->end);
+	if (closest.distance_squared_raw != 0U) {
+		const struct picosystem_physics_vector closest_delta =
+			vector_subtract(&closest.point_b, &closest.point_a);
+		const struct picosystem_physics_vector fallback = {
+			.x = PICOSYSTEM_PHYSICS_FIXED_ONE,
+		};
+		struct picosystem_physics_vector closest_axis;
+		(void)normalize_vector(&closest_delta, &closest_axis, &fallback);
+		if (!update_capsule_segment_sat_axis(body, geometry, segment, &closest_axis,
+						     &minimum_depth, &minimum_axis)) {
+			return 0;
+		}
+	}
+
+	const struct picosystem_physics_vector segment_midpoint = {
+		.x = (segment->start.x + segment->end.x) / 2,
+		.y = (segment->start.y + segment->end.y) / 2,
+	};
+	const struct picosystem_physics_vector body_to_segment =
+		vector_subtract(&segment_midpoint, &body->center);
+	orient_axis_from_a_to_b(&minimum_axis, &body_to_segment, body->id, segment->id);
+
+	struct contact_point_candidate candidates[PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS];
+	size_t candidate_count = 0U;
+	if (capsule_endpoint_contact_candidate(&start, segment, &minimum_axis, body->radius,
+					       minimum_depth, &candidates[candidate_count])) {
+		++candidate_count;
+	}
+	if (capsule_endpoint_contact_candidate(&end, segment, &minimum_axis, body->radius,
+					       minimum_depth, &candidates[candidate_count])) {
+		if ((candidate_count == 0U) ||
+		    (candidates[0].point.x != candidates[candidate_count].point.x) ||
+		    (candidates[0].point.y != candidates[candidate_count].point.y)) {
+			++candidate_count;
+		}
+	}
+
+	if (candidate_count == 0U) {
+		struct picosystem_physics_vector contact_point = closest.point_a;
+		if (closest.distance_squared_raw != 0U) {
+			const struct picosystem_physics_vector radius_offset =
+				vector_scale(&minimum_axis, body->radius);
+			const struct picosystem_physics_vector body_surface =
+				vector_add(&closest.point_a, &radius_offset);
+			contact_point = (struct picosystem_physics_vector){
+				.x = (body_surface.x + closest.point_b.x) / 2,
+				.y = (body_surface.y + closest.point_b.y) / 2,
+			};
+		}
+		candidates[0] = (struct contact_point_candidate){
+			.point = contact_point,
+			.penetration = minimum_depth,
+		};
+		candidate_count = 1U;
+	}
+
+	return append_manifold(world, body_index, STATIC_BODY_INDEX, segment_index,
+			       PICOSYSTEM_PHYSICS_CONTACT_STATIC_SEGMENT, &minimum_axis, candidates,
+			       candidate_count);
 }
 
 static int generate_box_segment_contact(struct picosystem_physics_world *world, uint8_t body_index,
@@ -2369,6 +3153,9 @@ static int generate_segment_contact(struct picosystem_physics_world *world, uint
 	if (world->bodies[body_index].shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
 		return generate_circle_segment_contact(world, body_index, segment_index);
 	}
+	if (world->bodies[body_index].shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		return generate_capsule_segment_contact(world, body_index, segment_index, geometry);
+	}
 	return generate_box_segment_contact(world, body_index, segment_index, geometry);
 }
 
@@ -2382,6 +3169,11 @@ static void body_aabb(const struct picosystem_physics_body *body,
 			   fixed_multiply(fixed_absolute(geometry->axis_y.x), body->half_extent.y);
 		extent_y = fixed_multiply(fixed_absolute(geometry->axis_x.y), body->half_extent.x) +
 			   fixed_multiply(fixed_absolute(geometry->axis_y.y), body->half_extent.y);
+	} else if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		extent_x = fixed_multiply(fixed_absolute(geometry->axis_x.x), body->half_extent.x) +
+			   body->radius;
+		extent_y = fixed_multiply(fixed_absolute(geometry->axis_x.y), body->half_extent.x) +
+			   body->radius;
 	}
 
 	*aabb = (struct physics_aabb){
@@ -2470,12 +3262,55 @@ static bool box_overlaps_sensor(const struct picosystem_physics_body *body,
 	return true;
 }
 
+static bool point_is_inside_sensor(const struct picosystem_physics_vector *point,
+				   const struct picosystem_physics_box_sensor *sensor)
+{
+	return (fixed_absolute(point->x - sensor->center.x) <= sensor->half_extent.x) &&
+	       (fixed_absolute(point->y - sensor->center.y) <= sensor->half_extent.y);
+}
+
+static bool capsule_overlaps_sensor(const struct picosystem_physics_body *body,
+				    const struct box_geometry *geometry,
+				    const struct picosystem_physics_box_sensor *sensor)
+{
+	struct picosystem_physics_vector start;
+	struct picosystem_physics_vector end;
+	capsule_centerline_from_geometry(body, geometry, &start, &end);
+	if (point_is_inside_sensor(&start, sensor) || point_is_inside_sensor(&end, sensor)) {
+		return true;
+	}
+
+	const picosystem_physics_fixed_t left = sensor->center.x - sensor->half_extent.x;
+	const picosystem_physics_fixed_t right = sensor->center.x + sensor->half_extent.x;
+	const picosystem_physics_fixed_t top = sensor->center.y - sensor->half_extent.y;
+	const picosystem_physics_fixed_t bottom = sensor->center.y + sensor->half_extent.y;
+	const struct picosystem_physics_vector corners[] = {
+		{.x = left, .y = top},
+		{.x = right, .y = top},
+		{.x = right, .y = bottom},
+		{.x = left, .y = bottom},
+	};
+	const uint64_t radius_squared = (uint64_t)((int64_t)body->radius * body->radius);
+	for (size_t index = 0U; index < 4U; ++index) {
+		const size_t next = (index + 1U) % 4U;
+		const struct segment_closest_result closest = closest_points_between_segments(
+			&start, &end, &corners[index], &corners[next]);
+		if (closest.distance_squared_raw < radius_squared) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static bool body_overlaps_sensor(const struct picosystem_physics_body *body,
 				 const struct box_geometry *geometry,
 				 const struct picosystem_physics_box_sensor *sensor)
 {
 	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
 		return circle_overlaps_sensor(body, sensor);
+	}
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		return capsule_overlaps_sensor(body, geometry, sensor);
 	}
 	return box_overlaps_sensor(body, geometry, sensor);
 }
@@ -2755,7 +3590,7 @@ static int build_contacts(struct picosystem_physics_world *world, bool force_bru
 	uint32_t section_start = profiler_section_begin(profiler);
 	struct box_geometry geometries[PICOSYSTEM_PHYSICS_MAX_BODIES] = {0};
 	for (uint8_t body_index = 0U; body_index < world->body_count; ++body_index) {
-		if (world->bodies[body_index].shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
+		if (world->bodies[body_index].shape != PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
 			box_geometry_from_body(&world->bodies[body_index], &geometries[body_index]);
 		}
 	}
@@ -3924,6 +4759,150 @@ static bool solve_prismatic_joint_velocity(struct picosystem_physics_world *worl
 	return changed;
 }
 
+static struct picosystem_physics_vector
+rope_endpoint_world_position(const struct picosystem_physics_world *world,
+			     const struct picosystem_physics_rope *rope, bool endpoint_a)
+{
+	const uint16_t body_id = endpoint_a ? rope->body_a_id : rope->body_b_id;
+	const struct picosystem_physics_vector *const anchor =
+		endpoint_a ? &rope->anchor_a : &rope->anchor_b;
+	if (body_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		return *anchor;
+	}
+	const uint8_t body_index = endpoint_a ? rope->body_a_index : rope->body_b_index;
+	return body_local_point_to_world(&world->bodies[body_index], anchor);
+}
+
+static bool rope_particle_is_pinned(const struct picosystem_physics_rope *rope,
+				    uint8_t particle_index)
+{
+	return ((particle_index == 0U) && (rope->pin_a != 0U)) ||
+	       ((particle_index == (rope->particle_count - 1U)) && (rope->pin_b != 0U));
+}
+
+static void pin_rope_endpoints(struct picosystem_physics_rope *rope,
+			       const struct picosystem_physics_vector *position_a,
+			       const struct picosystem_physics_vector *position_b)
+{
+	if (rope->pin_a != 0U) {
+		rope->particles[0].position = *position_a;
+		rope->particles[0].previous_position = *position_a;
+	}
+	if (rope->pin_b != 0U) {
+		struct picosystem_physics_rope_particle *const particle =
+			&rope->particles[rope->particle_count - 1U];
+		particle->position = *position_b;
+		particle->previous_position = *position_b;
+	}
+}
+
+static void
+integrate_rope_particles(const struct picosystem_physics_world *world,
+			 struct picosystem_physics_rope *rope,
+			 const struct picosystem_physics_vector *global_acceleration_per_tick,
+			 const struct picosystem_physics_vector *pin_position_a,
+			 const struct picosystem_physics_vector *pin_position_b)
+{
+	pin_rope_endpoints(rope, pin_position_a, pin_position_b);
+	for (uint8_t index = 0U; index < rope->particle_count; ++index) {
+		if (rope_particle_is_pinned(rope, index)) {
+			continue;
+		}
+		struct picosystem_physics_rope_particle *const particle = &rope->particles[index];
+		const struct picosystem_physics_vector raw_velocity =
+			vector_subtract(&particle->position, &particle->previous_position);
+		const struct picosystem_physics_vector bounded_velocity =
+			clamp_vector_length(&raw_velocity, world->max_speed_per_tick);
+		const struct picosystem_physics_vector damped_velocity =
+			vector_scale(&bounded_velocity, PHYSICS_ROPE_VELOCITY_DAMPING);
+		const struct picosystem_physics_vector previous = particle->position;
+		const struct picosystem_physics_vector accelerated =
+			vector_add(&damped_velocity, global_acceleration_per_tick);
+		particle->position = vector_add(&particle->position, &accelerated);
+		particle->previous_position = previous;
+		clamp_rope_particle_position(particle);
+	}
+}
+
+static bool solve_rope_constraint(struct picosystem_physics_rope *rope, uint8_t particle_a_index)
+{
+	struct picosystem_physics_rope_particle *const particle_a =
+		&rope->particles[particle_a_index];
+	struct picosystem_physics_rope_particle *const particle_b =
+		&rope->particles[particle_a_index + 1U];
+	const struct picosystem_physics_vector delta =
+		vector_subtract(&particle_b->position, &particle_a->position);
+	const struct picosystem_physics_vector fallback = {
+		.x = (((rope->id + particle_a_index) & 1U) == 0U) ? PICOSYSTEM_PHYSICS_FIXED_ONE
+								  : -PICOSYSTEM_PHYSICS_FIXED_ONE,
+	};
+	struct picosystem_physics_vector normal;
+	const picosystem_physics_fixed_t distance = normalize_vector(&delta, &normal, &fallback);
+	picosystem_physics_fixed_t error = distance - rope->segment_length;
+	if (error == 0) {
+		return false;
+	}
+	error = fixed_clamp(error, -PHYSICS_ROPE_MAX_CORRECTION, PHYSICS_ROPE_MAX_CORRECTION);
+	const bool pinned_a = rope_particle_is_pinned(rope, particle_a_index);
+	const bool pinned_b = rope_particle_is_pinned(rope, particle_a_index + 1U);
+	if (pinned_a && pinned_b) {
+		return false;
+	}
+
+	picosystem_physics_fixed_t correction_a = error;
+	picosystem_physics_fixed_t correction_b = error;
+	if (!pinned_a && !pinned_b) {
+		correction_a /= 2;
+		correction_b -= correction_a;
+	}
+	if (!pinned_a) {
+		const struct picosystem_physics_vector correction =
+			vector_scale(&normal, correction_a);
+		particle_a->position = vector_add(&particle_a->position, &correction);
+	}
+	if (!pinned_b) {
+		const struct picosystem_physics_vector correction =
+			vector_scale(&normal, correction_b);
+		particle_b->position = vector_subtract(&particle_b->position, &correction);
+	}
+	return true;
+}
+
+static void step_ropes(struct picosystem_physics_world *world,
+		       const struct picosystem_physics_vector *global_acceleration_per_tick)
+{
+	for (uint16_t rope_index = 0U; rope_index < world->rope_count; ++rope_index) {
+		struct picosystem_physics_rope *const rope = &world->ropes[rope_index];
+		struct picosystem_physics_vector pin_position_a = {0};
+		struct picosystem_physics_vector pin_position_b = {0};
+		if (rope->pin_a != 0U) {
+			pin_position_a = rope_endpoint_world_position(world, rope, true);
+		}
+		if (rope->pin_b != 0U) {
+			pin_position_b = rope_endpoint_world_position(world, rope, false);
+		}
+		integrate_rope_particles(world, rope, global_acceleration_per_tick, &pin_position_a,
+					 &pin_position_b);
+		for (uint8_t iteration = 0U; iteration < PICOSYSTEM_PHYSICS_ROPE_SOLVER_ITERATIONS;
+		     ++iteration) {
+			const bool reverse = (iteration & 1U) != 0U;
+			for (uint8_t visit = 0U; visit < (rope->particle_count - 1U); ++visit) {
+				const uint8_t particle_a_index =
+					reverse ? (uint8_t)(rope->particle_count - visit - 2U)
+						: visit;
+				const bool changed = solve_rope_constraint(rope, particle_a_index);
+				++world->last_work.rope_constraint_visit_count;
+				world->last_work.rope_constraint_changed_count += changed ? 1U : 0U;
+			}
+			pin_rope_endpoints(rope, &pin_position_a, &pin_position_b);
+			++world->last_work.rope_solver_iteration_count;
+		}
+		for (uint8_t index = 0U; index < rope->particle_count; ++index) {
+			clamp_rope_particle_position(&rope->particles[index]);
+		}
+	}
+}
+
 static uint32_t fnv1a_u32(uint32_t hash, uint32_t value)
 {
 	for (uint32_t shift = 0U; shift < 32U; shift += 8U) {
@@ -4023,6 +5002,39 @@ int picosystem_physics_world_add_box(struct picosystem_physics_world *world,
 	return 0;
 }
 
+int picosystem_physics_world_add_capsule(struct picosystem_physics_world *world,
+					 const struct picosystem_physics_capsule_config *config)
+{
+	if ((world == NULL) || (config == NULL)) {
+		return -EINVAL;
+	}
+	if (!world_is_valid(world) || !capsule_config_is_valid(config, world)) {
+		return -ERANGE;
+	}
+	const int slot = body_slot_for_config(world, config->id);
+	if (slot < 0) {
+		return slot;
+	}
+
+	world->bodies[slot] = (struct picosystem_physics_body){
+		.center = config->center,
+		.velocity_per_tick = config->velocity_per_tick,
+		.half_extent = {.x = config->half_length},
+		.radius = config->radius,
+		.inverse_mass = config->inverse_mass,
+		.inverse_inertia = capsule_inverse_inertia(config->half_length, config->radius,
+							   config->inverse_mass),
+		.restitution = config->restitution,
+		.friction = config->friction,
+		.angular_velocity_per_tick = config->angular_velocity_per_tick,
+		.angle_turns = config->angle_turns,
+		.id = config->id,
+		.shape = PICOSYSTEM_PHYSICS_SHAPE_CAPSULE,
+	};
+	++world->body_count;
+	return 0;
+}
+
 int picosystem_physics_world_add_static_segment(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_segment_config *config)
@@ -4083,6 +5095,93 @@ int picosystem_physics_world_add_box_sensor(
 		.id = config->id,
 	};
 	++world->box_sensor_count;
+	return 0;
+}
+
+static int
+resolve_rope_endpoint_config(const struct picosystem_physics_world *world,
+			     const struct picosystem_physics_rope_endpoint_config *endpoint,
+			     uint8_t *body_index, struct picosystem_physics_vector *world_position)
+{
+	if (endpoint->body_id == PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		*body_index = STATIC_BODY_INDEX;
+		*world_position = endpoint->anchor;
+		return 0;
+	}
+
+	const int resolved_index = body_index_for_id(world, endpoint->body_id);
+	if (resolved_index < 0) {
+		return resolved_index;
+	}
+	if (!body_local_anchor_is_valid(&world->bodies[resolved_index], &endpoint->anchor)) {
+		return -ERANGE;
+	}
+	*body_index = (uint8_t)resolved_index;
+	*world_position =
+		body_local_point_to_world(&world->bodies[resolved_index], &endpoint->anchor);
+	return 0;
+}
+
+int picosystem_physics_world_add_rope(struct picosystem_physics_world *world,
+				      const struct picosystem_physics_rope_config *config)
+{
+	if ((world == NULL) || (config == NULL)) {
+		return -EINVAL;
+	}
+	if (!world_is_valid(world) || !rope_config_is_valid(config)) {
+		return -ERANGE;
+	}
+	if (world->rope_count >= PICOSYSTEM_PHYSICS_MAX_ROPES) {
+		return -ENOSPC;
+	}
+	for (uint16_t index = 0U; index < world->rope_count; ++index) {
+		if (world->ropes[index].id == config->id) {
+			return -EEXIST;
+		}
+	}
+
+	uint8_t body_a_index;
+	uint8_t body_b_index;
+	struct picosystem_physics_vector start;
+	struct picosystem_physics_vector end;
+	int err = resolve_rope_endpoint_config(world, &config->endpoint_a, &body_a_index, &start);
+	if (err != 0) {
+		return err;
+	}
+	err = resolve_rope_endpoint_config(world, &config->endpoint_b, &body_b_index, &end);
+	if (err != 0) {
+		return err;
+	}
+
+	struct picosystem_physics_rope rope = {
+		.anchor_a = config->endpoint_a.anchor,
+		.anchor_b = config->endpoint_b.anchor,
+		.segment_length = config->segment_length,
+		.id = config->id,
+		.body_a_id = config->endpoint_a.body_id,
+		.body_b_id = config->endpoint_b.body_id,
+		.body_a_index = body_a_index,
+		.body_b_index = body_b_index,
+		.particle_count = config->particle_count,
+		.pin_a = config->endpoint_a.pinned,
+		.pin_b = config->endpoint_b.pinned,
+	};
+	const struct picosystem_physics_vector extent = vector_subtract(&end, &start);
+	const uint32_t segment_count = (uint32_t)config->particle_count - 1U;
+	for (uint8_t index = 0U; index < config->particle_count; ++index) {
+		const picosystem_physics_fixed_t fraction =
+			(picosystem_physics_fixed_t)(((uint32_t)index *
+						      (uint32_t)PICOSYSTEM_PHYSICS_FIXED_ONE) /
+						     segment_count);
+		const struct picosystem_physics_vector offset = vector_scale(&extent, fraction);
+		const struct picosystem_physics_vector position = vector_add(&start, &offset);
+		rope.particles[index] = (struct picosystem_physics_rope_particle){
+			.position = position,
+			.previous_position = position,
+		};
+	}
+	world->ropes[world->rope_count] = rope;
+	++world->rope_count;
 	return 0;
 }
 
@@ -4431,6 +5530,10 @@ physics_world_step(struct picosystem_physics_world *world,
 	world->last_work.distance_joint_count = world->distance_joint_count;
 	world->last_work.revolute_joint_count = world->revolute_joint_count;
 	world->last_work.prismatic_joint_count = world->prismatic_joint_count;
+	world->last_work.rope_count = world->rope_count;
+	for (uint16_t index = 0U; index < world->rope_count; ++index) {
+		world->last_work.rope_particle_count += world->ropes[index].particle_count;
+	}
 	for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
 		world->last_work.spring_joint_count +=
 			(world->distance_joints[index].spring_enabled != 0U) ? 1U : 0U;
@@ -4637,6 +5740,10 @@ physics_world_step(struct picosystem_physics_world *world,
 	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_VELOCITY_SOLVER, section_start);
 
 	section_start = profiler_section_begin(&profiler);
+	step_ropes(world, global_acceleration_per_tick);
+	profiler_section_end(&profiler, PICOSYSTEM_PHYSICS_PROFILE_ROPE, section_start);
+
+	section_start = profiler_section_begin(&profiler);
 	for (uint16_t index = 0U; index < world->body_count; ++index) {
 		if (body_index_is_sleeping(world, (uint8_t)index)) {
 			continue;
@@ -4708,6 +5815,22 @@ picosystem_physics_world_contact_event_at(const struct picosystem_physics_world 
 		return NULL;
 	}
 	return &world->contact_events[index];
+}
+
+const struct picosystem_physics_rope_particle *
+picosystem_physics_world_rope_particle_at(const struct picosystem_physics_world *world,
+					  size_t rope_index, size_t particle_index)
+{
+	if ((world == NULL) || (world->rope_count > PICOSYSTEM_PHYSICS_MAX_ROPES) ||
+	    (rope_index >= world->rope_count)) {
+		return NULL;
+	}
+	const struct picosystem_physics_rope *const rope = &world->ropes[rope_index];
+	if ((rope->particle_count > PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES) ||
+	    (particle_index >= rope->particle_count)) {
+		return NULL;
+	}
+	return &rope->particles[particle_index];
 }
 
 int picosystem_physics_world_distance_joint_endpoints(
@@ -4879,6 +6002,53 @@ int picosystem_physics_body_box_vertices(
 	return 0;
 }
 
+int picosystem_physics_body_capsule_endpoints(const struct picosystem_physics_body *body,
+					      struct picosystem_physics_vector *start,
+					      struct picosystem_physics_vector *end)
+{
+	if ((body == NULL) || (start == NULL) || (end == NULL)) {
+		return -EINVAL;
+	}
+	if (body->shape != PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		return -ENOTSUP;
+	}
+	if ((body->half_extent.x <= 0) || (body->half_extent.y != 0) || (body->radius <= 0)) {
+		return -ERANGE;
+	}
+
+	struct box_geometry geometry;
+	box_geometry_from_body(body, &geometry);
+	const struct picosystem_physics_vector offset =
+		vector_scale(&geometry.axis_x, body->half_extent.x);
+	*start = vector_subtract(&body->center, &offset);
+	*end = vector_add(&body->center, &offset);
+	return 0;
+}
+
+int picosystem_physics_body_capsule_vertices(
+	const struct picosystem_physics_body *body,
+	struct picosystem_physics_vector vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT])
+{
+	if ((body == NULL) || (vertices == NULL)) {
+		return -EINVAL;
+	}
+	if (body->shape != PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		return -ENOTSUP;
+	}
+	if ((body->half_extent.x <= 0) || (body->half_extent.y != 0) || (body->radius <= 0)) {
+		return -ERANGE;
+	}
+
+	struct box_geometry geometry;
+	box_geometry_from_body(body, &geometry);
+	const struct picosystem_physics_body shaft = {
+		.center = body->center,
+		.half_extent = {.x = body->half_extent.x, .y = body->radius},
+	};
+	box_vertices_from_geometry(&shaft, &geometry, vertices);
+	return 0;
+}
+
 uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *world)
 {
 	if ((world == NULL) || (world->body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
@@ -4886,8 +6056,15 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 	    (world->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
 	    (world->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
 	    (world->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS) ||
-	    (world->box_sensor_count > PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS)) {
+	    (world->box_sensor_count > PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS) ||
+	    (world->rope_count > PICOSYSTEM_PHYSICS_MAX_ROPES)) {
 		return 0U;
+	}
+	for (uint16_t index = 0U; index < world->rope_count; ++index) {
+		if ((world->ropes[index].particle_count < 2U) ||
+		    (world->ropes[index].particle_count > PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES)) {
+			return 0U;
+		}
 	}
 
 	uint32_t hash = fnv1a_u32(FNV1A_OFFSET_BASIS, PHYSICS_HASH_VERSION);
@@ -4898,6 +6075,7 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 	hash = fnv1a_u32(hash, world->revolute_joint_count);
 	hash = fnv1a_u32(hash, world->prismatic_joint_count);
 	hash = fnv1a_u32(hash, world->box_sensor_count);
+	hash = fnv1a_u32(hash, world->rope_count);
 	hash = fnv1a_u32(hash, world->sleeping_body_mask);
 	hash = fnv1a_u32(hash, (uint32_t)world->last_global_acceleration_per_tick.x);
 	hash = fnv1a_u32(hash, (uint32_t)world->last_global_acceleration_per_tick.y);
@@ -4942,6 +6120,31 @@ uint32_t picosystem_physics_world_hash(const struct picosystem_physics_world *wo
 		hash = fnv1a_u32(hash, (uint32_t)sensor->center.y);
 		hash = fnv1a_u32(hash, (uint32_t)sensor->half_extent.x);
 		hash = fnv1a_u32(hash, (uint32_t)sensor->half_extent.y);
+	}
+	for (uint16_t index = 0U; index < world->rope_count; ++index) {
+		const struct picosystem_physics_rope *const rope = &world->ropes[index];
+		hash = fnv1a_u32(hash, rope->id);
+		hash = fnv1a_u32(hash, rope->body_a_id);
+		hash = fnv1a_u32(hash, rope->body_b_id);
+		hash = fnv1a_u32(hash, rope->body_a_index);
+		hash = fnv1a_u32(hash, rope->body_b_index);
+		hash = fnv1a_u32(hash, rope->particle_count);
+		hash = fnv1a_u32(hash, rope->pin_a);
+		hash = fnv1a_u32(hash, rope->pin_b);
+		hash = fnv1a_u32(hash, (uint32_t)rope->anchor_a.x);
+		hash = fnv1a_u32(hash, (uint32_t)rope->anchor_a.y);
+		hash = fnv1a_u32(hash, (uint32_t)rope->anchor_b.x);
+		hash = fnv1a_u32(hash, (uint32_t)rope->anchor_b.y);
+		hash = fnv1a_u32(hash, (uint32_t)rope->segment_length);
+		for (uint8_t particle_index = 0U; particle_index < rope->particle_count;
+		     ++particle_index) {
+			const struct picosystem_physics_rope_particle *const particle =
+				&rope->particles[particle_index];
+			hash = fnv1a_u32(hash, (uint32_t)particle->position.x);
+			hash = fnv1a_u32(hash, (uint32_t)particle->position.y);
+			hash = fnv1a_u32(hash, (uint32_t)particle->previous_position.x);
+			hash = fnv1a_u32(hash, (uint32_t)particle->previous_position.y);
+		}
 	}
 	for (uint16_t index = 0U; index < world->distance_joint_count; ++index) {
 		const struct picosystem_physics_distance_joint *const joint =

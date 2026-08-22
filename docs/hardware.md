@@ -153,10 +153,11 @@ three updates and 10,000 ticks for 120 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes a 744-byte immutable snapshot of
-up to 12 circle or oriented-box bodies, eight physical static segments, and 16
-render-only guide segments, plus eight render records each for distance and
-revolute joints and one canonical box sensor, on every update.
+Simulation uses Q16.16 positions and publishes an 856-byte immutable snapshot
+of up to 12 circle, oriented-box, or capsule bodies, eight physical static
+segments, 16 render-only guide segments, two ropes with up to 12 particles
+each, eight render records each for distance and revolute joints, and one
+canonical box sensor on every update.
 Two slots and a short spin-lock-protected copy prevent the renderer from
 observing partially updated state. A saturated semaphore is only a wake-up
 hint: if two or more simulation states arrive during a panel period, the
@@ -317,7 +318,7 @@ Grid/reference state agreed exactly at `ea65ce22`; means were 3.456 and 3.787
 ms. The deterministic sleep sequence reached tick 1,228 at `5e0274dc` and
 framebuffer CRC-32 `b78934e6`, visibly rendering the sleeping body blue/white.
 
-The current spring-and-conveyor image extends distance joints with an optional
+The preceding spring-and-conveyor image extends distance joints with an optional
 bounded soft row and static segments with signed start-to-end surface speed. Its
 physics world is 22,112 bytes, complete game world is 22,120 bytes, render
 snapshot is 752 bytes, and serialized profile workspace is 31,776 bytes. The
@@ -328,8 +329,7 @@ headroom plus the separately reserved 8 KiB core-1 area.
 
 The PIM559 reproduced reset/right-30/right-30-up-15 hashes `a91c46a3`,
 `f3643510`, and `3db7c5b5`. The coherently presented tick-45 framebuffer is
-CRC-32 `c8ba210d`; its captured PNG is the repository's current Machine Lab
-image. The neutral sleep sequence reached tick 1,723 at `51bb08c0` with one
+CRC-32 `c8ba210d`. The neutral sleep sequence reached tick 1,723 at `51bb08c0` with one
 sleeping body and framebuffer CRC-32 `0a848efb`.
 
 Its schema-version-9 isolated 1,000-tick moving profile averaged 2.718 ms for
@@ -351,6 +351,38 @@ high-water marks were 3,712/4,096, 3,692/4,096, 3,896/5,120, and 344/4,096
 bytes. A paused live-scene check produced identical core-0/core-1 pixels in
 9.809 ms and restored the framebuffer exactly. A CRC-validated 240 x 240 PNG
 capture completed in 8.2 seconds.
+
+The current capsule-and-rope image adds exact capsule interactions against all
+body shapes, static segments, and box sensors, plus two fixed rope slots with up
+to 12 Verlet particles each. The canonical scene uses one rotating capsule and
+one eight-particle rope pinned between its local endpoint and a fixed world
+anchor. The rope follows body motion kinematically, runs six alternating
+position passes, and does not yet feed impulses back into rigid bodies or
+collide its particles.
+
+Its physics world is 22,584 bytes, each render snapshot is 856 bytes, and the
+serialized profile workspace is 33,232 bytes. The conservative image uses
+220,140 bytes of Zephyr RAM and 209,628 bytes of flash. The recommended 62.5
+MHz PL022/DMA image uses 246,684 bytes of the 255 KiB Zephyr region and 214,960
+bytes of flash, retaining 14,436 bytes of linker RAM headroom plus the
+separately reserved 8 KiB core-1 area. Measured main, render, shell-profile, and
+core-1 stack high-water marks are 3,928/4,608, 4,036/5,120, 4,160/5,120, and
+360/4,096 bytes.
+
+The PIM559 reproduced reset/right-30/right-30-up-15 hashes `63a73949`,
+`a1734ba1`, and `63bfd54f`. The coherently presented tick-45 framebuffer is
+CRC-32 `5111bc8b`; the neutral sleep sequence reached tick 1,723 at `cfd92dca`
+with framebuffer CRC-32 `5c0542c9`.
+
+Its schema-version-10 isolated 2,000-tick moving profile averaged 4.502 ms for
+the grid and 5.100 ms for the brute-force reference, with 6.749/7.458 ms
+maxima, no 8.333 ms budget violations, and exact final agreement at
+`91744aeb`. The rope stage averaged 1.157/1.154 ms, visited 42 constraints per
+tick, and held maximum segment error to 0.534 pixel. The separate 2,000-tick
+neutral profile averaged 5.346/5.949 ms and agreed exactly at `7d4ae8ca`; the
+production grid had no deadline violations, while the diagnostic reference
+path had 18. A clean concurrent window advanced 4,233 ticks at 118.9 Hz with
+35 skipped ticks while full-frame presentation held 29.7 fps.
 
 The following physical measurements describe the preceding single-sprite
 snapshot and remain the scheduling/display baseline for the new collision lab.

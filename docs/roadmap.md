@@ -93,5 +93,6 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add bounded prismatic sliders, motors, and creation-relative travel limits.
 - [x] Add bounded box sensors and deterministic contact lifecycle events.
 - [x] Add conveyors, springs, and sleeping.
-- [ ] Add a bounded rope or soft-body subsystem.
+- [x] Add exact capsule collisions and a bounded position-based rope subsystem.
+- [ ] Add deliberate two-way rope/body coupling and bounded particle collision.
 - [ ] Evaluate granular materials and approximate force fields.

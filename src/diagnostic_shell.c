@@ -323,7 +323,16 @@ static uint32_t measured_rate_tenths(uint32_t count, int64_t start_uptime_ms, in
 
 static const char *physics_shape_name(uint8_t shape)
 {
-	return (shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) ? "box" : "circle";
+	switch (shape) {
+	case PICOSYSTEM_PHYSICS_SHAPE_CIRCLE:
+		return "circle";
+	case PICOSYSTEM_PHYSICS_SHAPE_BOX:
+		return "box";
+	case PICOSYSTEM_PHYSICS_SHAPE_CAPSULE:
+		return "capsule";
+	default:
+		return "unknown";
+	}
 }
 
 static int cmd_status(const struct shell *shell, size_t argc, char **argv)
@@ -1070,7 +1079,8 @@ static void print_profile_result(const struct shell *shell,
 			    "max_revolute_limit_violation_q16=%u "
 			    "max_prismatic_lateral_error_q16=%u "
 			    "max_prismatic_angular_error_q16=%u "
-			    "max_prismatic_limit_violation_q16=%u",
+			    "max_prismatic_limit_violation_q16=%u "
+			    "max_rope_segment_error_q16=%u",
 			    mode_name, mode_result->final_hash,
 			    mode_result->minimum_clock_reads_per_step,
 			    mode_result->maximum_clock_reads_per_step,
@@ -1078,7 +1088,8 @@ static void print_profile_result(const struct shell *shell,
 			    mode_result->maximum_revolute_limit_violation_q16,
 			    mode_result->maximum_prismatic_lateral_error_q16,
 			    mode_result->maximum_prismatic_angular_error_q16,
-			    mode_result->maximum_prismatic_limit_violation_q16);
+			    mode_result->maximum_prismatic_limit_violation_q16,
+			    mode_result->maximum_rope_segment_error_q16);
 
 		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
 			const struct picosystem_physics_profile_stage_summary *const summary =

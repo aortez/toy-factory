@@ -17,18 +17,21 @@
 #define PICOSYSTEM_PHYSICS_FIXED_RATIO(numerator, denominator)                                     \
 	((int32_t)(((int64_t)(numerator) * PICOSYSTEM_PHYSICS_FIXED_ONE) / (denominator)))
 
-#define PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT      4U
-#define PICOSYSTEM_PHYSICS_MAX_BODIES            12U
-#define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS   8U
-#define PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS   8U
-#define PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS   8U
-#define PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS  8U
-#define PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS       8U
-#define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS   2U
-#define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN    UINT32_C(0x40000000)
-#define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS 16U
-#define PICOSYSTEM_PHYSICS_GRID_COLUMNS          16U
-#define PICOSYSTEM_PHYSICS_GRID_ROWS             16U
+#define PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT       4U
+#define PICOSYSTEM_PHYSICS_MAX_BODIES             12U
+#define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS    8U
+#define PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS    8U
+#define PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS    8U
+#define PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS   8U
+#define PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS        8U
+#define PICOSYSTEM_PHYSICS_MAX_ROPES              2U
+#define PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES     12U
+#define PICOSYSTEM_PHYSICS_ROPE_SOLVER_ITERATIONS 6U
+#define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS    2U
+#define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN     UINT32_C(0x40000000)
+#define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS  16U
+#define PICOSYSTEM_PHYSICS_GRID_COLUMNS           16U
+#define PICOSYSTEM_PHYSICS_GRID_ROWS              16U
 #define PICOSYSTEM_PHYSICS_GRID_CELL_COUNT                                                         \
 	(PICOSYSTEM_PHYSICS_GRID_COLUMNS * PICOSYSTEM_PHYSICS_GRID_ROWS)
 #define PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS                                                     \
@@ -61,6 +64,7 @@ enum picosystem_physics_profile_stage {
 	PICOSYSTEM_PHYSICS_PROFILE_NARROW_BODY_SENSOR,
 	PICOSYSTEM_PHYSICS_PROFILE_POSITION_CORRECTION,
 	PICOSYSTEM_PHYSICS_PROFILE_VELOCITY_SOLVER,
+	PICOSYSTEM_PHYSICS_PROFILE_ROPE,
 	PICOSYSTEM_PHYSICS_PROFILE_FINAL_CLAMP,
 	PICOSYSTEM_PHYSICS_PROFILE_OTHER,
 	PICOSYSTEM_PHYSICS_PROFILE_TOTAL,
@@ -126,6 +130,11 @@ struct picosystem_physics_work_counters {
 	uint32_t conveyor_contact_count;
 	uint32_t conveyor_solver_visit_count;
 	uint32_t conveyor_solver_changed_count;
+	uint32_t rope_count;
+	uint32_t rope_particle_count;
+	uint32_t rope_solver_iteration_count;
+	uint32_t rope_constraint_visit_count;
+	uint32_t rope_constraint_changed_count;
 };
 
 /* Optional elapsed-cycle sample for one step; the clock may wrap once per section. */
@@ -143,6 +152,7 @@ struct picosystem_physics_vector {
 enum picosystem_physics_shape {
 	PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
 	PICOSYSTEM_PHYSICS_SHAPE_BOX,
+	PICOSYSTEM_PHYSICS_SHAPE_CAPSULE,
 };
 
 struct picosystem_physics_circle_config {
@@ -169,6 +179,20 @@ struct picosystem_physics_box_config {
 	uint16_t id;
 };
 
+/* The local centerline runs from -half_length to +half_length on the body's X axis. */
+struct picosystem_physics_capsule_config {
+	struct picosystem_physics_vector center;
+	struct picosystem_physics_vector velocity_per_tick;
+	picosystem_physics_fixed_t half_length;
+	picosystem_physics_fixed_t radius;
+	picosystem_physics_fixed_t inverse_mass;
+	picosystem_physics_fixed_t restitution;
+	picosystem_physics_fixed_t friction;
+	picosystem_physics_fixed_t angular_velocity_per_tick;
+	uint32_t angle_turns;
+	uint16_t id;
+};
+
 struct picosystem_physics_segment_config {
 	struct picosystem_physics_vector start;
 	struct picosystem_physics_vector end;
@@ -184,6 +208,22 @@ struct picosystem_physics_box_sensor_config {
 	struct picosystem_physics_vector center;
 	struct picosystem_physics_vector half_extent;
 	uint16_t id;
+};
+
+/* A body endpoint uses a body-local anchor and must be pinned; world endpoints are world-space. */
+struct picosystem_physics_rope_endpoint_config {
+	struct picosystem_physics_vector anchor;
+	uint16_t body_id;
+	uint8_t pinned;
+};
+
+/* Particles initialize evenly between the endpoints; segment_length may add deterministic slack. */
+struct picosystem_physics_rope_config {
+	struct picosystem_physics_rope_endpoint_config endpoint_a;
+	struct picosystem_physics_rope_endpoint_config endpoint_b;
+	picosystem_physics_fixed_t segment_length;
+	uint16_t id;
+	uint8_t particle_count;
 };
 
 /*
@@ -275,6 +315,26 @@ struct picosystem_physics_box_sensor {
 	struct picosystem_physics_vector center;
 	struct picosystem_physics_vector half_extent;
 	uint16_t id;
+};
+
+struct picosystem_physics_rope_particle {
+	struct picosystem_physics_vector position;
+	struct picosystem_physics_vector previous_position;
+};
+
+struct picosystem_physics_rope {
+	struct picosystem_physics_rope_particle particles[PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES];
+	struct picosystem_physics_vector anchor_a;
+	struct picosystem_physics_vector anchor_b;
+	picosystem_physics_fixed_t segment_length;
+	uint16_t id;
+	uint16_t body_a_id;
+	uint16_t body_b_id;
+	uint8_t body_a_index;
+	uint8_t body_b_index;
+	uint8_t particle_count;
+	uint8_t pin_a;
+	uint8_t pin_b;
 };
 
 struct picosystem_physics_distance_joint {
@@ -434,6 +494,7 @@ struct picosystem_physics_world {
 	struct picosystem_physics_prismatic_joint
 		prismatic_joints[PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS];
 	struct picosystem_physics_box_sensor box_sensors[PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS];
+	struct picosystem_physics_rope ropes[PICOSYSTEM_PHYSICS_MAX_ROPES];
 	struct picosystem_physics_contact contacts[PICOSYSTEM_PHYSICS_MAX_CONTACTS];
 	struct picosystem_physics_contact_event
 		contact_events[PICOSYSTEM_PHYSICS_MAX_CONTACT_EVENTS];
@@ -458,6 +519,7 @@ struct picosystem_physics_world {
 	uint16_t revolute_joint_count;
 	uint16_t prismatic_joint_count;
 	uint16_t box_sensor_count;
+	uint16_t rope_count;
 	uint16_t contact_count;
 	uint16_t contact_event_count;
 	uint16_t last_occupied_grid_cell_count;
@@ -474,12 +536,16 @@ int picosystem_physics_world_add_circle(struct picosystem_physics_world *world,
 					const struct picosystem_physics_circle_config *config);
 int picosystem_physics_world_add_box(struct picosystem_physics_world *world,
 				     const struct picosystem_physics_box_config *config);
+int picosystem_physics_world_add_capsule(struct picosystem_physics_world *world,
+					 const struct picosystem_physics_capsule_config *config);
 int picosystem_physics_world_add_static_segment(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_segment_config *config);
 int picosystem_physics_world_add_box_sensor(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_box_sensor_config *config);
+int picosystem_physics_world_add_rope(struct picosystem_physics_world *world,
+				      const struct picosystem_physics_rope_config *config);
 int picosystem_physics_world_add_distance_joint(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_distance_joint_config *config);
@@ -537,6 +603,11 @@ const struct picosystem_physics_contact_event *
 picosystem_physics_world_contact_event_at(const struct picosystem_physics_world *world,
 					  size_t index);
 
+/* Return one authoritative rope particle, or NULL for an invalid world/rope/particle index. */
+const struct picosystem_physics_rope_particle *
+picosystem_physics_world_rope_particle_at(const struct picosystem_physics_world *world,
+					  size_t rope_index, size_t particle_index);
+
 /* Resolve the current world-space endpoints of one distance joint. */
 int picosystem_physics_world_distance_joint_endpoints(
 	const struct picosystem_physics_world *world, size_t index,
@@ -573,6 +644,16 @@ int picosystem_physics_world_prismatic_joint_angle(
 
 /* Resolve a box's four world-space corners in stable winding order. */
 int picosystem_physics_body_box_vertices(
+	const struct picosystem_physics_body *body,
+	struct picosystem_physics_vector vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT]);
+
+/* Resolve the centerline endpoints of a capsule in stable local-X order. */
+int picosystem_physics_body_capsule_endpoints(const struct picosystem_physics_body *body,
+					      struct picosystem_physics_vector *start,
+					      struct picosystem_physics_vector *end);
+
+/* Resolve the four corners of the capsule's rectangular shaft in stable winding order. */
+int picosystem_physics_body_capsule_vertices(
 	const struct picosystem_physics_body *body,
 	struct picosystem_physics_vector vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT]);
 

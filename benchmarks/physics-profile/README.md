@@ -6,9 +6,55 @@ followed by the same bounded input replay; the recorded artifact states its
 measured tick count. Timing covers isolated physics steps with rendering and
 snapshot publication disabled.
 
+## Capsules and position-based rope
+
+The current schema-version-10 reports are
+[pim559-capsules-rope-2026-08-21.json](pim559-capsules-rope-2026-08-21.json)
+and
+[pim559-capsules-rope-neutral-2026-08-21.json](pim559-capsules-rope-neutral-2026-08-21.json).
+They were captured from the recommended dual-core image with:
+
+```sh
+make profile-ab PROFILE_TICKS=2000 \
+  PROFILE_OUT=benchmarks/physics-profile/pim559-capsules-rope-2026-08-21.json
+make profile-sleep PROFILE_TICKS=2000 \
+  SLEEP_PROFILE_OUT=benchmarks/physics-profile/pim559-capsules-rope-neutral-2026-08-21.json
+```
+
+The canonical fixture replaces one circle with an exact rotating capsule and
+adds one eight-particle rope pinned between that body and the world:
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Candidates/tick | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 4,502 us | 4,480 us | 5,376 us | 5,504 us | 6,749 us | 6.951 | 0 |
+| Brute-force reference | 5,100 us | 4,992 us | 5,888 us | 6,144 us | 7,458 us | 70.0 | 0 |
+
+Both modes ended at `91744aeb` with exact authoritative-state agreement. The
+rope always used six alternating passes and visited all 42 adjacent-particle
+constraints per tick; 40.236 visits changed particle state on average. Its
+isolated stage averaged 1,157 us on the grid run and 1,154 us on the reference
+run. Six passes held maximum segment-length error to 0.534 pixel. The complete
+production step retained 3.83 ms of mean and 1.58 ms of worst-case headroom
+against the 8.333 ms simulation deadline.
+
+The neutral fixture combines rope motion, settling rigid bodies, and the
+powered conveyor:
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Sleeping body-ticks | Budget violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 5,346 us | 5,376 us | 6,912 us | 7,680 us | 7,936 us | 398 | 0 |
+| Brute-force reference | 5,949 us | 5,888 us | 7,808 us | 8,320 us | 8,628 us | 398 | 18 |
+
+Each mode recorded one body sleep transition, 710 conveyor contact-ticks, six
+rope passes and 42 rope-constraint visits per tick, and exact final agreement
+at `7d4ae8ca`. Maximum segment-length error was 0.038 pixel. The production grid
+path stayed inside its deadline; the brute-force diagnostic oracle exceeded it
+on 18 of 2,000 samples. Shell stack high-water was 4,160 of 5,120
+bytes for both reports.
+
 ## Springs and conveyors
 
-The current schema-version-9 reports are
+The preceding schema-version-9 reports are
 [pim559-springs-conveyors-2026-08-21.json](pim559-springs-conveyors-2026-08-21.json)
 and
 [pim559-springs-conveyors-neutral-2026-08-21.json](pim559-springs-conveyors-neutral-2026-08-21.json).

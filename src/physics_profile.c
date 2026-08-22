@@ -41,6 +41,7 @@ struct authoritative_snapshot {
 	struct picosystem_physics_prismatic_joint
 		prismatic_joints[PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS];
 	struct picosystem_physics_box_sensor box_sensors[PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS];
+	struct picosystem_physics_rope ropes[PICOSYSTEM_PHYSICS_MAX_ROPES];
 	uint16_t active_body_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	uint8_t active_segment_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
 	uint8_t active_sensor_contact_masks[PICOSYSTEM_PHYSICS_MAX_BODIES];
@@ -56,6 +57,7 @@ struct authoritative_snapshot {
 	uint16_t revolute_joint_count;
 	uint16_t prismatic_joint_count;
 	uint16_t box_sensor_count;
+	uint16_t rope_count;
 };
 
 struct profile_workspace {
@@ -87,6 +89,7 @@ static const char *const stage_names[] = {
 	"narrow_body_sensor",
 	"position_correction",
 	"velocity_solver",
+	"rope",
 	"final_clamp",
 	"other",
 	"total",
@@ -143,6 +146,11 @@ static const char *const work_names[] = {
 	"conveyor_contacts",
 	"conveyor_solver_visits",
 	"conveyor_solver_changes",
+	"ropes",
+	"rope_particles",
+	"rope_solver_iterations",
+	"rope_constraint_visits",
+	"rope_constraint_changes",
 };
 
 _Static_assert(sizeof(fixture_names) / sizeof(fixture_names[0]) ==
@@ -320,6 +328,16 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 		return work->conveyor_solver_visit_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_CONVEYOR_SOLVER_CHANGES:
 		return work->conveyor_solver_changed_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPES:
+		return work->rope_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_PARTICLES:
+		return work->rope_particle_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_SOLVER_ITERATIONS:
+		return work->rope_solver_iteration_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_CONSTRAINT_VISITS:
+		return work->rope_constraint_visit_count;
+	case PICOSYSTEM_PHYSICS_PROFILE_WORK_ROPE_CONSTRAINT_CHANGES:
+		return work->rope_constraint_changed_count;
 	case PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT:
 	default:
 		return 0U;
@@ -429,6 +447,7 @@ static void capture_authoritative_state(const struct picosystem_game_world *worl
 		.revolute_joint_count = world->physics.revolute_joint_count,
 		.prismatic_joint_count = world->physics.prismatic_joint_count,
 		.box_sensor_count = world->physics.box_sensor_count,
+		.rope_count = world->physics.rope_count,
 		.sleeping_body_mask = world->physics.sleeping_body_mask,
 		.last_global_acceleration_per_tick =
 			world->physics.last_global_acceleration_per_tick,
@@ -447,6 +466,8 @@ static void capture_authoritative_state(const struct picosystem_game_world *worl
 	       world->physics.prismatic_joint_count * sizeof(snapshot->prismatic_joints[0]));
 	memcpy(snapshot->box_sensors, world->physics.box_sensors,
 	       world->physics.box_sensor_count * sizeof(snapshot->box_sensors[0]));
+	memcpy(snapshot->ropes, world->physics.ropes,
+	       world->physics.rope_count * sizeof(snapshot->ropes[0]));
 	memcpy(snapshot->active_body_contact_masks, world->physics.active_body_contact_masks,
 	       sizeof(snapshot->active_body_contact_masks));
 	memcpy(snapshot->active_segment_contact_masks, world->physics.active_segment_contact_masks,
@@ -488,6 +509,32 @@ static bool sensor_equal(const struct picosystem_physics_box_sensor *left,
 	return (left->center.x == right->center.x) && (left->center.y == right->center.y) &&
 	       (left->half_extent.x == right->half_extent.x) &&
 	       (left->half_extent.y == right->half_extent.y) && (left->id == right->id);
+}
+
+static bool rope_equal(const struct picosystem_physics_rope *left,
+		       const struct picosystem_physics_rope *right)
+{
+	if ((left->anchor_a.x != right->anchor_a.x) || (left->anchor_a.y != right->anchor_a.y) ||
+	    (left->anchor_b.x != right->anchor_b.x) || (left->anchor_b.y != right->anchor_b.y) ||
+	    (left->segment_length != right->segment_length) || (left->id != right->id) ||
+	    (left->body_a_id != right->body_a_id) || (left->body_b_id != right->body_b_id) ||
+	    (left->body_a_index != right->body_a_index) ||
+	    (left->body_b_index != right->body_b_index) ||
+	    (left->particle_count != right->particle_count) || (left->pin_a != right->pin_a) ||
+	    (left->pin_b != right->pin_b)) {
+		return false;
+	}
+	for (uint8_t index = 0U; index < left->particle_count; ++index) {
+		if ((left->particles[index].position.x != right->particles[index].position.x) ||
+		    (left->particles[index].position.y != right->particles[index].position.y) ||
+		    (left->particles[index].previous_position.x !=
+		     right->particles[index].previous_position.x) ||
+		    (left->particles[index].previous_position.y !=
+		     right->particles[index].previous_position.y)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 static bool distance_joint_equal(const struct picosystem_physics_distance_joint *left,
@@ -562,6 +609,7 @@ static bool authoritative_state_matches(const struct picosystem_game_world *worl
 	    (world->physics.revolute_joint_count != snapshot->revolute_joint_count) ||
 	    (world->physics.prismatic_joint_count != snapshot->prismatic_joint_count) ||
 	    (world->physics.box_sensor_count != snapshot->box_sensor_count) ||
+	    (world->physics.rope_count != snapshot->rope_count) ||
 	    (world->physics.sleeping_body_mask != snapshot->sleeping_body_mask) ||
 	    (world->physics.last_global_acceleration_per_tick.x !=
 	     snapshot->last_global_acceleration_per_tick.x) ||
@@ -595,6 +643,11 @@ static bool authoritative_state_matches(const struct picosystem_game_world *worl
 	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
 		if (!sensor_equal(&world->physics.box_sensors[index],
 				  &snapshot->box_sensors[index])) {
+			return false;
+		}
+	}
+	for (uint16_t index = 0U; index < snapshot->rope_count; ++index) {
+		if (!rope_equal(&world->physics.ropes[index], &snapshot->ropes[index])) {
 			return false;
 		}
 	}
@@ -769,6 +822,32 @@ static int maximum_prismatic_quality(const struct picosystem_game_world *world,
 	return 0;
 }
 
+static uint32_t maximum_rope_segment_error(const struct picosystem_game_world *world)
+{
+	uint32_t maximum = 0U;
+	for (uint16_t rope_index = 0U; rope_index < world->physics.rope_count; ++rope_index) {
+		const struct picosystem_physics_rope *const rope =
+			&world->physics.ropes[rope_index];
+		for (uint8_t particle = 0U; particle < (rope->particle_count - 1U); ++particle) {
+			const struct picosystem_physics_vector *const left =
+				&rope->particles[particle].position;
+			const struct picosystem_physics_vector *const right =
+				&rope->particles[particle + 1U].position;
+			const int64_t delta_x = (int64_t)right->x - left->x;
+			const int64_t delta_y = (int64_t)right->y - left->y;
+			const uint32_t distance = integer_square_root(
+				(uint64_t)((delta_x * delta_x) + (delta_y * delta_y)));
+			const uint32_t target = (uint32_t)rope->segment_length;
+			const uint32_t error =
+				(distance >= target) ? distance - target : target - distance;
+			if (error > maximum) {
+				maximum = error;
+			}
+		}
+	}
+	return maximum;
+}
+
 static int reset_profile_world(enum picosystem_physics_profile_fixture fixture,
 			       uint16_t chain_link_count)
 {
@@ -819,6 +898,7 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 	uint32_t maximum_prismatic_lateral_error = 0U;
 	uint32_t maximum_prismatic_angular_error = 0U;
 	uint32_t maximum_prismatic_limit_violation = 0U;
+	uint32_t maximum_rope_error = 0U;
 	for (uint32_t measured_tick = 0U; measured_tick < measured_tick_count; ++measured_tick) {
 		const uint32_t replay_tick =
 			PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS + measured_tick;
@@ -866,6 +946,10 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 		if (prismatic_limit_violation > maximum_prismatic_limit_violation) {
 			maximum_prismatic_limit_violation = prismatic_limit_violation;
 		}
+		const uint32_t rope_error = maximum_rope_segment_error(&workspace.world);
+		if (rope_error > maximum_rope_error) {
+			maximum_rope_error = rope_error;
+		}
 
 		for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
 			const uint32_t stage_budget =
@@ -902,6 +986,7 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 	mode_result->maximum_prismatic_lateral_error_q16 = maximum_prismatic_lateral_error;
 	mode_result->maximum_prismatic_angular_error_q16 = maximum_prismatic_angular_error;
 	mode_result->maximum_prismatic_limit_violation_q16 = maximum_prismatic_limit_violation;
+	mode_result->maximum_rope_segment_error_q16 = maximum_rope_error;
 	return 0;
 }
 

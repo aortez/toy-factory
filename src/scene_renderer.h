@@ -57,6 +57,15 @@ struct picosystem_scene_box_sensor {
 	uint8_t active;
 };
 
+struct picosystem_scene_rope {
+	struct {
+		int16_t x;
+		int16_t y;
+	} particles[PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES];
+	uint16_t id;
+	uint8_t particle_count;
+};
+
 /* Immutable, self-contained input copied to the auxiliary core before rasterization. */
 struct picosystem_scene_snapshot {
 	int64_t published_uptime_ticks;
@@ -69,6 +78,7 @@ struct picosystem_scene_snapshot {
 	uint16_t distance_joint_count;
 	uint16_t revolute_joint_count;
 	uint16_t box_sensor_count;
+	uint16_t rope_count;
 	uint32_t conveyor_forward_segment_mask;
 	uint32_t conveyor_reverse_segment_mask;
 	struct picosystem_scene_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
@@ -76,6 +86,7 @@ struct picosystem_scene_snapshot {
 	struct picosystem_scene_joint distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
 	struct picosystem_scene_joint revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
 	struct picosystem_scene_box_sensor box_sensors[PICOSYSTEM_SCENE_MAX_BOX_SENSORS];
+	struct picosystem_scene_rope ropes[PICOSYSTEM_PHYSICS_MAX_ROPES];
 };
 
 enum picosystem_scene_render_stage {
@@ -86,6 +97,7 @@ enum picosystem_scene_render_stage {
 	PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS,
+	PICOSYSTEM_SCENE_RENDER_STAGE_ROPES,
 	PICOSYSTEM_SCENE_RENDER_STAGE_BODIES,
 	PICOSYSTEM_SCENE_RENDER_STAGE_REVOLUTE_JOINTS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_HEADER,
@@ -116,6 +128,7 @@ picosystem_scene_segment_bounds(const struct picosystem_scene_segment *segment);
 struct picosystem_rect picosystem_scene_joint_bounds(const struct picosystem_scene_joint *joint);
 struct picosystem_rect
 picosystem_scene_revolute_joint_bounds(const struct picosystem_scene_joint *joint);
+struct picosystem_rect picosystem_scene_rope_bounds(const struct picosystem_scene_rope *rope);
 struct picosystem_rect
 picosystem_scene_joint_segment_bounds(const struct picosystem_scene_joint *joint,
 				      uint8_t segment_index);

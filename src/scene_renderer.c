@@ -68,7 +68,8 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 	    (snapshot->static_segment_count > PICOSYSTEM_SCENE_MAX_SEGMENTS) ||
 	    (snapshot->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
 	    (snapshot->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
-	    (snapshot->box_sensor_count > PICOSYSTEM_SCENE_MAX_BOX_SENSORS)) {
+	    (snapshot->box_sensor_count > PICOSYSTEM_SCENE_MAX_BOX_SENSORS) ||
+	    (snapshot->rope_count > PICOSYSTEM_PHYSICS_MAX_ROPES)) {
 		return -ERANGE;
 	}
 	const uint32_t valid_segment_mask =
@@ -83,7 +84,7 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 		return -ERANGE;
 	}
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
-		if ((snapshot->bodies[index].shape > PICOSYSTEM_PHYSICS_SHAPE_BOX) ||
+		if ((snapshot->bodies[index].shape > PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) ||
 		    (snapshot->bodies[index].sleeping > 1U)) {
 			return -ERANGE;
 		}
@@ -96,6 +97,13 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 		    (bounds->width > (PICOSYSTEM_GRAPHICS_WIDTH - bounds->x)) ||
 		    (bounds->height > (PICOSYSTEM_GRAPHICS_HEIGHT - bounds->y)) ||
 		    (snapshot->box_sensors[index].active > 1U)) {
+			return -ERANGE;
+		}
+	}
+	for (uint16_t index = 0U; index < snapshot->rope_count; ++index) {
+		if ((snapshot->ropes[index].particle_count < 2U) ||
+		    (snapshot->ropes[index].particle_count >
+		     PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES)) {
 			return -ERANGE;
 		}
 	}
@@ -148,6 +156,24 @@ picosystem_scene_rectangles_intersect(const struct picosystem_rect *left,
 PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
 picosystem_scene_body_bounds(const struct picosystem_scene_body *body)
 {
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		const int32_t start_x = ((int32_t)body->vertices[0].x + body->vertices[3].x) / 2;
+		const int32_t start_y = ((int32_t)body->vertices[0].y + body->vertices[3].y) / 2;
+		const int32_t end_x = ((int32_t)body->vertices[1].x + body->vertices[2].x) / 2;
+		const int32_t end_y = ((int32_t)body->vertices[1].y + body->vertices[2].y) / 2;
+		const int32_t left = MAX(MIN(start_x, end_x) - body->radius, 0);
+		const int32_t top = MAX(MIN(start_y, end_y) - body->radius, 0);
+		const int32_t right =
+			MIN(MAX(start_x, end_x) + body->radius + 1, PICOSYSTEM_GRAPHICS_WIDTH);
+		const int32_t bottom =
+			MIN(MAX(start_y, end_y) + body->radius + 1, PICOSYSTEM_GRAPHICS_HEIGHT);
+		return (struct picosystem_rect){
+			.x = (uint16_t)left,
+			.y = (uint16_t)top,
+			.width = (uint16_t)(right - left),
+			.height = (uint16_t)(bottom - top),
+		};
+	}
 	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
 		int16_t left = body->vertices[0].x;
 		int16_t top = body->vertices[0].y;
@@ -213,6 +239,26 @@ static PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
 line_bounds(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y)
 {
 	return line_bounds_with_margin(start_x, start_y, end_x, end_y, 0U);
+}
+
+PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
+picosystem_scene_rope_bounds(const struct picosystem_scene_rope *rope)
+{
+	if ((rope == NULL) || (rope->particle_count == 0U) ||
+	    (rope->particle_count > PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES)) {
+		return (struct picosystem_rect){0};
+	}
+	int16_t left = rope->particles[0].x;
+	int16_t top = rope->particles[0].y;
+	int16_t right = left;
+	int16_t bottom = top;
+	for (uint8_t index = 1U; index < rope->particle_count; ++index) {
+		left = MIN(left, rope->particles[index].x);
+		top = MIN(top, rope->particles[index].y);
+		right = MAX(right, rope->particles[index].x);
+		bottom = MAX(bottom, rope->particles[index].y);
+	}
+	return line_bounds_with_margin(left, top, right, bottom, 1U);
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC bool
@@ -339,6 +385,44 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_body(const struct picosystem_scene_b
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_FACE);
 		picosystem_graphics_draw_line_clipped(clip, body->center_x, body->center_y, face_x,
 						      face_y, detail_color);
+		return 0;
+	}
+	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, body_index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_FILL_0);
+		picosystem_graphics_fill_triangle_clipped(
+			clip, body->vertices[0].x, body->vertices[0].y, body->vertices[1].x,
+			body->vertices[1].y, body->vertices[2].x, body->vertices[2].y, color);
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, body_index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_FILL_1);
+		picosystem_graphics_fill_triangle_clipped(
+			clip, body->vertices[0].x, body->vertices[0].y, body->vertices[2].x,
+			body->vertices[2].y, body->vertices[3].x, body->vertices[3].y, color);
+		const int16_t start_x = (body->vertices[0].x + body->vertices[3].x) / 2;
+		const int16_t start_y = (body->vertices[0].y + body->vertices[3].y) / 2;
+		const int16_t end_x = (body->vertices[1].x + body->vertices[2].x) / 2;
+		const int16_t end_y = (body->vertices[1].y + body->vertices[2].y) / 2;
+		int err = picosystem_graphics_fill_circle_clipped(clip, start_x, start_y,
+								  body->radius, color);
+		if (err == 0) {
+			err = picosystem_graphics_fill_circle_clipped(clip, end_x, end_y,
+								      body->radius, color);
+		}
+		if (err != 0) {
+			return err;
+		}
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, body_index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_OUTLINE);
+		picosystem_graphics_draw_line_clipped(clip, body->vertices[0].x,
+						      body->vertices[0].y, body->vertices[1].x,
+						      body->vertices[1].y, detail_color);
+		picosystem_graphics_draw_line_clipped(clip, body->vertices[3].x,
+						      body->vertices[3].y, body->vertices[2].x,
+						      body->vertices[2].y, detail_color);
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, body_index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_FACE);
+		picosystem_graphics_draw_line_clipped(clip, body->center_x, body->center_y, end_x,
+						      end_y, detail_color);
 		return 0;
 	}
 
@@ -603,6 +687,38 @@ render_distance_joints(const struct picosystem_scene_snapshot *snapshot,
 	}
 }
 
+static PICOSYSTEM_RENDER_RAMFUNC void
+render_ropes(const struct picosystem_scene_snapshot *snapshot, const struct picosystem_rect *clip,
+	     struct picosystem_scene_render_progress *progress)
+{
+	for (uint16_t rope_index = 0U; rope_index < snapshot->rope_count; ++rope_index) {
+		const struct picosystem_scene_rope *const rope = &snapshot->ropes[rope_index];
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_ROPES, rope_index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_BOUNDS);
+		if (clip != NULL) {
+			const struct picosystem_rect bounds = picosystem_scene_rope_bounds(rope);
+			if (!picosystem_scene_rectangles_intersect(&bounds, clip)) {
+				continue;
+			}
+		}
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_ROPES, rope_index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_OUTLINE);
+		for (uint8_t index = 0U; index < (rope->particle_count - 1U); ++index) {
+			picosystem_graphics_draw_line_clipped(
+				clip, rope->particles[index].x, rope->particles[index].y,
+				rope->particles[index + 1U].x, rope->particles[index + 1U].y,
+				PICOSYSTEM_COLOR_CYAN);
+		}
+		for (uint8_t index = 0U; index < rope->particle_count; ++index) {
+			picosystem_graphics_draw_pixel_clipped(
+				clip, rope->particles[index].x, rope->particles[index].y,
+				(index == 0U) || (index == (rope->particle_count - 1U))
+					? PICOSYSTEM_COLOR_WHITE
+					: PICOSYSTEM_COLOR_CYAN);
+		}
+	}
+}
+
 static PICOSYSTEM_RENDER_RAMFUNC int
 render_revolute_joints(const struct picosystem_scene_snapshot *snapshot,
 		       const struct picosystem_rect *clip,
@@ -699,6 +815,9 @@ picosystem_scene_render_full_observed(const struct picosystem_scene_snapshot *sn
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	render_distance_joints(snapshot, NULL, progress);
+	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_ROPES, 0U,
+			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
+	render_ropes(snapshot, NULL, progress);
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	int err = render_bodies(snapshot, NULL, progress);
@@ -757,6 +876,9 @@ picosystem_scene_render_region_observed(const struct picosystem_scene_snapshot *
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	render_distance_joints(snapshot, region, progress);
+	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_ROPES, 0U,
+			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
+	render_ropes(snapshot, region, progress);
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	int err = render_bodies(snapshot, region, progress);
@@ -801,6 +923,8 @@ const char *picosystem_scene_render_stage_name(enum picosystem_scene_render_stag
 		return "segments";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS:
 		return "joints";
+	case PICOSYSTEM_SCENE_RENDER_STAGE_ROPES:
+		return "ropes";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_BODIES:
 		return "bodies";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_REVOLUTE_JOINTS:
