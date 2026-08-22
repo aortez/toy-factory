@@ -13,10 +13,10 @@
 
 #include "physics_world.h"
 
-#define PICOSYSTEM_PHYSICS_PROFILE_SCHEMA_VERSION             12U
-#define PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS              2000U
+#define PICOSYSTEM_PHYSICS_PROFILE_SCHEMA_VERSION             13U
+#define PICOSYSTEM_PHYSICS_PROFILE_DEFAULT_TICKS              1000U
 #define PICOSYSTEM_PHYSICS_PROFILE_MAX_TICKS                  10000U
-#define PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS               120U
+#define PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS               60U
 #define PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_US      32U
 #define PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT   64U
 #define PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_US    128U
@@ -138,6 +138,7 @@ struct picosystem_physics_profile_result {
 	uint32_t schema_version;
 	uint32_t measured_tick_count;
 	uint32_t warmup_tick_count;
+	uint32_t tick_rate_hz;
 	uint32_t clock_frequency_hz;
 	uint32_t histogram_fine_bin_cycles;
 	uint32_t histogram_coarse_bin_cycles;

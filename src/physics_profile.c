@@ -69,6 +69,9 @@ struct profile_workspace {
 static struct profile_workspace workspace;
 K_MUTEX_DEFINE(profile_mutex);
 
+_Static_assert(PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS == PICOSYSTEM_GAME_TICK_RATE_HZ,
+	       "physics profile warm-up must remain one simulation second");
+
 static const char *const fixture_names[] = {
 	"canonical",
 	"revolute_chain",
@@ -219,7 +222,7 @@ static struct picosystem_game_input replay_input(uint32_t tick)
 		{0},
 		{.horizontal = 1, .vertical = -1},
 	};
-	const size_t input_index = (tick / 120U) % ARRAY_SIZE(inputs);
+	const size_t input_index = (tick / PICOSYSTEM_GAME_TICK_RATE_HZ) % ARRAY_SIZE(inputs);
 	return inputs[input_index];
 }
 
@@ -890,6 +893,16 @@ static int reset_profile_world(enum picosystem_physics_profile_fixture fixture,
 	}
 }
 
+static int prepare_profile_tick(enum picosystem_physics_profile_fixture fixture)
+{
+	if (fixture != PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_REVOLUTE_CHAIN) {
+		return 0;
+	}
+
+	/* Keep the chain benchmark measuring active constraint work after it settles. */
+	return picosystem_physics_world_wake_body(&workspace.world.physics, 0U);
+}
+
 static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture fixture,
 		    uint16_t chain_link_count, uint32_t measured_tick_count,
 		    uint32_t fine_bin_cycles, uint32_t coarse_bin_cycles, uint32_t budget_cycles,
@@ -906,6 +919,10 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 	mode_result->minimum_clock_reads_per_step = UINT32_MAX;
 
 	for (uint32_t tick = 0U; tick < PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS; ++tick) {
+		err = prepare_profile_tick(fixture);
+		if (err != 0) {
+			return err;
+		}
 		const struct picosystem_game_input input = profile_input(fixture, tick);
 		k_sched_lock();
 		err = picosystem_game_world_step_profiled(&workspace.world, &input, mode, NULL,
@@ -927,6 +944,10 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 	uint32_t maximum_prismatic_limit_violation = 0U;
 	uint32_t maximum_rope_error = 0U;
 	for (uint32_t measured_tick = 0U; measured_tick < measured_tick_count; ++measured_tick) {
+		err = prepare_profile_tick(fixture);
+		if (err != 0) {
+			return err;
+		}
 		const uint32_t replay_tick =
 			PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS + measured_tick;
 		const struct picosystem_game_input input = profile_input(fixture, replay_tick);
@@ -1050,6 +1071,7 @@ static int compare_fixture(enum picosystem_physics_profile_fixture fixture,
 	result->chain_link_count = chain_link_count;
 	result->measured_tick_count = measured_tick_count;
 	result->warmup_tick_count = PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS;
+	result->tick_rate_hz = PICOSYSTEM_GAME_TICK_RATE_HZ;
 	result->clock_frequency_hz = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC;
 	result->histogram_fine_bin_cycles =
 		(uint32_t)(((uint64_t)result->clock_frequency_hz *

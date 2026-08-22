@@ -13,10 +13,10 @@ INPUT ?= none
 OUT ?= artifacts/screenshot.png
 SEQUENCE ?= scripts/sequences/deterministic-smoke.json
 FAIL_SCREENSHOT ?= artifacts/sequence-failure.png
-PROFILE_TICKS ?= 2000
+PROFILE_TICKS ?= 1000
 PROFILE_OUT ?= artifacts/physics-profile.json
 SLEEP_PROFILE_OUT ?= artifacts/physics-sleep-profile.json
-CHAIN_PROFILE_TICKS ?= 1000
+CHAIN_PROFILE_TICKS ?= 500
 CHAIN_LINKS ?= 4,6,8
 CHAIN_PROFILE_OUT ?= artifacts/physics-chain-profile.json
 RENDER_PROFILE_SAMPLES ?= 16
@@ -45,9 +45,9 @@ help: ## Show this list of targets
 	@printf 'Usage:\n  make <target> [PORT=/dev/ttyACM0] [UF2_MOUNT=/path/to/RPI-RP2]\n'
 	@printf '                    [STEPS=1] [INPUT=none] [OUT=artifacts/screenshot.png]\n'
 	@printf '                    [SEQUENCE=path.json] [FAIL_SCREENSHOT=artifacts/failure.png]\n'
-	@printf '                    [PROFILE_TICKS=2000] [PROFILE_OUT=artifacts/physics-profile.json]\n'
+	@printf '                    [PROFILE_TICKS=1000] [PROFILE_OUT=artifacts/physics-profile.json]\n'
 	@printf '                    [SLEEP_PROFILE_OUT=artifacts/physics-sleep-profile.json]\n'
-	@printf '                    [CHAIN_PROFILE_TICKS=1000] [CHAIN_LINKS=4,6,8]\n'
+	@printf '                    [CHAIN_PROFILE_TICKS=500] [CHAIN_LINKS=4,6,8]\n'
 	@printf '                    [CHAIN_PROFILE_OUT=artifacts/physics-chain-profile.json]\n'
 	@printf '                    [RENDER_PROFILE_SAMPLES=16] [RENDER_PROFILE_OUT=artifacts/render-profile.json]\n'
 	@printf '                    [DISPLAY_TRANSPORT=pio-dma] [DISPLAY_HZ=20000000]\n'
@@ -230,7 +230,7 @@ sim-pause: image ## Pause simulation at a tick boundary and print exact state
 			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
 				picosystem game pause
 
-sim-run: image ## Resume exact real-time 120 Hz simulation scheduling
+sim-run: image ## Resume exact real-time 60 Hz simulation scheduling
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \

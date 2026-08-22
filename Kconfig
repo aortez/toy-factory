@@ -34,7 +34,7 @@ config TOY_FACTORY_DISPLAY_DMA_HIGH_PRIORITY
 	help
 	  Give the RP2040 DMA read and write masters high bus-arbitration priority.
 	  This can reduce display-transfer jitter, but it can also delay both CPU
-	  cores' SRAM access enough to hurt the 120 Hz physics deadline. It is kept
+	  cores' SRAM access enough to hurt the 60 Hz physics deadline. It is kept
 	  off by default and exists for controlled A/B measurements.
 
 endmenu

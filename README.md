@@ -14,7 +14,7 @@ path:
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and supports both damage-region and
   continuous full-frame presentation;
-- runs a deterministic seven-body circle/box/capsule lab at an exact 120 Hz
+- runs a deterministic seven-body circle/box/capsule lab at an exact 60 Hz
   fixed step with Q16.16 linear/angular motion, gravity, friction, and
   restitution;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
@@ -36,7 +36,7 @@ path:
   quiet, wakes them through physical interaction, leaves sensors observational,
   and keeps powered conveyor contacts awake;
 - publishes fixed-size state snapshots to an independent renderer at a bounded
-  30 Hz real-time cadence while simulation remains at 120 Hz;
+  30 Hz real-time cadence while simulation remains at 60 Hz;
 - launches a bounded bare-metal worker on RP2040 core 1 for deterministic
   full-scene rasterization while Zephyr, physics, USB, and display drivers stay
   on core 0;
@@ -88,7 +88,7 @@ make check    # formatting, whitespace, and a clean build
 make container-shell  # enter the build container (`make shell` also works)
 make sim-pause  # pause at a tick boundary and print exact simulation state
 make sim-reset  # restore canonical tick-zero state while paused
-make sim-step STEPS=1  # advance a paused simulation by exact 1/120-second ticks
+make sim-step STEPS=1  # advance a paused simulation by exact 1/60-second ticks
 make sim-test  # run the default deterministic hardware sequence
 make screenshot  # save the renderer-owned software framebuffer as a PNG
 make profile-ab  # compare the moving canonical world through grid/reference paths
@@ -153,12 +153,12 @@ The physical gesture remains the recovery path for a blank or broken image:
 The PicoSystem reboots automatically when the copy completes. Its LCD should
 show a dark checkerboard arena, two circles, four moving boxes, a rotating
 magenta capsule with a cyan rope, two diagonal ramps, cyan boundaries and press
-rails, yellow hinge pins, a magenta sensor, and a white `MACHINE LAB 120HZ`
+rails, yellow hinge pins, a magenta sensor, and a white `MACHINE LAB 60HZ`
 heading. The chain's world hinge is motorized, its far-end hinge stops at plus
 or minus one radian relative to the reset pose, and the press reverses at the
 ends of its 48-pixel vertical stroke. The sensor turns green while any body
 overlaps it; the `Sxx` header counter records entries. The world
-advances on exact rational 120 Hz deadlines. Normal presentation restores each
+advances on exact rational 60 Hz deadlines. Normal presentation restores each
 moved body's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
 empty swept area between distant footprints.
@@ -166,7 +166,7 @@ The D-pad tilts the global acceleration field while neutral input retains
 downward gravity. Press A to queue a full-screen redraw for comparison, B to
 play a 440 Hz tone for 180 ms, and Y to reset the world. In the conservative
 20 MHz build, a full transfer occupies the panel for roughly 80 ms, but it runs
-on the renderer thread: physics and input sampling continue at 120 Hz and newer
+on the renderer thread: physics and input sampling continue at 60 Hz and newer
 snapshots coalesce while the renderer is busy. The fast build instead
 rasterizes every frame on core 1 and presents it with one DMA write as described
 below.
@@ -215,8 +215,8 @@ make sim-state
 make screenshot OUT=artifacts/screenshot.png
 make sim-run
 make sim-test
-make profile-ab PROFILE_TICKS=2000 PROFILE_OUT=artifacts/physics-profile.json
-make profile-chain CHAIN_LINKS=4,6,8 CHAIN_PROFILE_TICKS=1000
+make profile-ab PROFILE_TICKS=1000 PROFILE_OUT=artifacts/physics-profile.json
+make profile-chain CHAIN_LINKS=4,6,8 CHAIN_PROFILE_TICKS=500
 make render-profile RENDER_PROFILE_OUT=artifacts/render-profile.json
 ```
 
@@ -295,7 +295,7 @@ clocks and performance counters.
 world, leaving the live world untouched. `profile sleep` uses that world with
 neutral input so stable bodies can settle. `profile chain` instead builds a
 bounded deterministic fixture containing 1-8 short links joined to a world pin.
-All three commands warm up each implementation for 120 ticks, measure the
+All three commands warm up each implementation for 60 ticks, measure the
 requested replay through the uniform grid and the brute-force reference, and
 reject any final hash or field-by-field state mismatch. Timings are accumulated in
 fixed-size histograms instead of being logged per tick. The report separates
@@ -310,7 +310,7 @@ awake/sleeping bodies, sleep/wake transitions, skipped sleeping constraints,
 separate anchor/limit correction, cached/changed contact work, velocity-row
 visits, rope particles/passes/constraint mutations, rope/body position and
 velocity response, particle-collision possible/candidate/contact counts, and
-fallbacks. Schema version 12 identifies the fixture and reports maximum
+fallbacks. Schema version 13 identifies the fixture and authoritative tick rate, and reports maximum
 revolute-anchor separation, angular-limit violation, prismatic lateral/angular
 error, prismatic-limit violation, and rope-segment length error; those quality
 checks run outside the timed physics step.
@@ -462,7 +462,7 @@ compile these same C sources, so host replay tests exercise the implementation
 that runs on the RP2040 rather than a second simulation model.
 
 Core 0 runs Zephyr and owns every driver. Its priority-0 main thread owns all
-authoritative game state, samples input, and advances one fixed 120 Hz tick.
+authoritative game state, samples input, and advances one fixed 60 Hz tick.
 The priority-1 USB shell runs only while higher-priority work is blocked; once
 two or more simulation deadlines are due, the main loop reserves a
 one-millisecond recovery window so diagnostics and the bootloader command cannot
@@ -527,13 +527,13 @@ revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
 contact/event storage and per-step deterministic counters, a 33,304-byte
 serialized benchmark workspace, two 856-byte render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 250,396 bytes of
-that region (95.89%) and 221,976 bytes of flash. It keeps the physics and
+storage, and a 1,024-byte shell TX ring. The fast image uses 250,428 bytes of
+that region (95.91%) and 222,020 bytes of flash. It keeps the physics and
 renderer hot paths in SRAM so the two cores do not contend for XIP flash
 during a frame, and both images route compiler integer division through the
 RP2040's interrupt-safe hardware-divider wrappers. Both images also reserve
 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 39,996 and 10,724
+core-1 mailbox and stack. The default and fast images retain 39,996 and 10,692
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
 
@@ -693,30 +693,39 @@ budget. A longer 14,416-tick live window held 120.0 Hz simulation and 29.8 fps
 presentation, with one isolated skipped tick amid USB profiling and status
 activity.
 
-The current reciprocal-rope Machine Lab hashes to `abc2002c` at reset,
-`faaf80f7` after 30 right ticks, and `aad794a0` after a further 15 up ticks. Its
-10,000-tick native replay ends at `cdf463f7`; the neutral sleep sequence reaches
-tick 1,723 at `0a0ff729`. The PIM559 reproduced both exact sequences with
-framebuffer CRC-32 values `df718839` and `88c2e21e`. The capsule endpoint now
+The current 60 Hz reciprocal-rope Machine Lab hashes to `9ff98b13` at reset,
+`92a41d99` after 15 right ticks, and `98edb8a7` after a further eight up ticks.
+Its 10,000-tick native replay ends at `175b56c2`; the neutral sleep sequence
+reaches tick 259 at `aa27c7ef`. The PIM559 reproduced both exact sequences with
+framebuffer CRC-32 values `2ee34019` and `257e01aa`. The capsule endpoint
 receives equal-and-opposite position and radial-velocity response, and every
 unpinned rope particle has a one-pixel collision radius against external rigid
 bodies and static segments.
 
-The schema-version-12 isolated 2,000-tick PIM559 profile averaged 4.920 ms on
-the grid and 5.313 ms through the brute-force reference, with 6.935/7.470 ms
-maxima, zero 8.333 ms budget violations, and exact final agreement at
-`1600fb06`. The grid retained 7.133 of 70 possible rigid pairs per tick. Each
-tick also considered 234 bounded rope/collider pairs; only 5.521 passed their
-swept conservative bounds and 3.457 produced contacts on average. The rope
-stage averaged 1.661/1.643 ms, visited exactly 42 length constraints, and held
-maximum segment error to 0.856 px.
+The schema-version-13 isolated 1,000-tick PIM559 profile averaged 5.566 ms on
+the grid and 6.044 ms through the brute-force reference, with 8.488/9.002 ms
+maxima, zero 16.667 ms budget violations, and exact final agreement at
+`2ff3a57b`. The grid retained 7.266 of 70 possible rigid pairs per tick. The
+rope stage averaged 1.619/1.613 ms and held maximum segment error to 2.261 px.
+A separate neutral profile averaged 6.000/6.447 ms with no deadline violations
+and exact agreement at `9d3ad372`.
 
-A separate neutral profile averaged 5.590/5.887 ms with no deadline violations
-and exact agreement at `34a04b59`; it recorded one body sleep transition and
-1,038 skipped sleeping contacts. With RP2040 hardware-divider wrappers and
-30 Hz snapshot publication enabled, a concurrent window advanced 5,921 ticks at
-120.0 Hz with one skipped tick while full-frame presentation held 29.6 fps.
-Mean physics time was 6.638 ms and the worst backlog was five ticks.
+The preceding 120 Hz rope maximum was 0.856 px. An eight-pass 60 Hz variant was
+also measured, but reciprocal coupling increased both stretch and cost, so the
+stable six-pass setting remains the better baseline.
+
+Relative to the preceding 120 Hz schema-version-12 profile, per-tick grid work
+rose 13.1% after retuning the contact and joint solvers, but physics CPU time
+per real second fell from 590 to 334 ms, a 43.4% reduction. A live 5,723-tick
+measurement held exactly 60.0 Hz and 29.8 fps with backlog one, zero skipped
+ticks, and zero over-budget updates. Mean/maximum physics time was
+7.463/13.399 ms; complete updates averaged 7.944 ms and peaked at 14.918 ms.
+
+The preceding schema-version-12 120 Hz profile averaged 4.920/5.313 ms with
+6.935/7.470 ms maxima and exact agreement at `1600fb06`. Its separate neutral
+profile averaged 5.590/5.887 ms and agreed at `34a04b59`. A concurrent window
+advanced 5,921 ticks at 120.0 Hz with one skipped tick while presentation held
+29.6 fps; mean physics time was 6.638 ms and the worst backlog was five ticks.
 
 For comparison, the preceding one-way schema-version-10 rope profile averaged
 4.502/5.100 ms and ended at `91744aeb`; it did not yet feed rope corrections

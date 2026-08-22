@@ -24,7 +24,7 @@ MODULE_SPEC.loader.exec_module(profile_compare)
 
 def profile_output(
     *,
-    schema: int = 12,
+    schema: int = 13,
     fixture: str = "canonical",
     chain_links: int = 0,
     states_match: str = "yes",
@@ -32,9 +32,12 @@ def profile_output(
     fixture_fields = (
         f" fixture={fixture} chain_links={chain_links}" if schema >= 4 else ""
     )
+    tick_rate_field = " tick_rate_hz=60" if schema >= 13 else ""
+    measured_ticks = 1000 if schema >= 13 else 2000
+    warmup_ticks = 60 if schema >= 13 else 120
     lines = [
-        f"PROFILE_BEGIN schema={schema}{fixture_fields} "
-        "ticks=2000 warmup=120 clock_hz=125000000 "
+        f"PROFILE_BEGIN schema={schema}{fixture_fields}{tick_rate_field} "
+        f"ticks={measured_ticks} warmup={warmup_ticks} clock_hz=125000000 "
         "histogram_fine_bin_us=32 histogram_fine_bins=64 "
         "histogram_coarse_bin_us=128 histogram_coarse_bins=64 clock_delta_cycles=4"
     ]
@@ -66,12 +69,12 @@ def profile_output(
         for stage in sorted(profile_compare.STAGE_NAMES_BY_SCHEMA[schema]):
             mean = total_mean if stage == "total" else 20
             lines.append(
-                f"PROFILE_STAGE mode={mode} stage={stage} samples=2000 "
+                f"PROFILE_STAGE mode={mode} stage={stage} samples={measured_ticks} "
                 f"mean_us={mean} min_us=10 p50_us=32 p95_us=64 p99_us=96 "
                 "max_us=120 budget_violations=0"
             )
         for metric in sorted(profile_compare.WORK_NAMES_BY_SCHEMA[schema]):
-            total = 152000 if metric == "possible_pairs" else 30000
+            total = (76 if metric == "possible_pairs" else 15) * measured_ticks
             lines.append(
                 f"PROFILE_WORK mode={mode} metric={metric} total={total} max=76"
             )
@@ -84,10 +87,12 @@ class ProfileCompareTest(unittest.TestCase):
     def test_parses_complete_versioned_profile(self) -> None:
         result = profile_compare.parse_profile(profile_output())
 
-        self.assertEqual(result["schema_version"], 12)
+        self.assertEqual(result["schema_version"], 13)
         self.assertEqual(result["fixture"], "canonical")
         self.assertEqual(result["chain_link_count"], 0)
-        self.assertEqual(result["measured_ticks_per_mode"], 2000)
+        self.assertEqual(result["measured_ticks_per_mode"], 1000)
+        self.assertEqual(result["warmup_ticks_per_mode"], 60)
+        self.assertEqual(result["tick_rate_hz"], 60)
         self.assertEqual(result["modes"]["grid"]["stages"]["total"]["mean_us"], 400)
         self.assertEqual(
             result["modes"]["grid"]["work"]["possible_pairs"]["mean_per_tick"],
@@ -217,7 +222,7 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertIn("rope_body_velocity_changes", work)
 
     def test_schema_twelve_includes_rope_collision_work(self) -> None:
-        result = profile_compare.parse_profile(profile_output())
+        result = profile_compare.parse_profile(profile_output(schema=12))
 
         work = result["modes"]["grid"]["work"]
         self.assertIn("rope_collision_possible_pairs", work)
@@ -225,6 +230,12 @@ class ProfileCompareTest(unittest.TestCase):
         self.assertIn("rope_collision_contacts", work)
         self.assertIn("rope_collision_position_changes", work)
         self.assertIn("rope_collision_velocity_changes", work)
+
+    def test_schema_thirteen_reports_simulation_rate(self) -> None:
+        result = profile_compare.parse_profile(profile_output())
+
+        self.assertEqual(result["schema_version"], 13)
+        self.assertEqual(result["tick_rate_hz"], 60)
 
     def test_parses_revolute_chain_fixture(self) -> None:
         result = profile_compare.parse_profile(
@@ -252,7 +263,7 @@ class ProfileCompareTest(unittest.TestCase):
             )
             for link_count in link_counts
         }
-        result = profile_compare.chain_scaling_result(link_counts, 2000, cases)
+        result = profile_compare.chain_scaling_result(link_counts, 1000, cases)
 
         self.assertEqual(result["link_counts"], [4, 6, 8])
         self.assertEqual(result["cases"]["8"]["chain_link_count"], 8)
@@ -261,7 +272,7 @@ class ProfileCompareTest(unittest.TestCase):
         case = profile_compare.parse_profile(
             profile_output(fixture="revolute_chain", chain_links=4)
         )
-        result = profile_compare.chain_scaling_result([4], 2000, {"4": case})
+        result = profile_compare.chain_scaling_result([4], 1000, {"4": case})
         output = io.StringIO()
 
         with contextlib.redirect_stdout(output):

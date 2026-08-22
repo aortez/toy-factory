@@ -127,6 +127,7 @@ WORK_NAMES_BY_SCHEMA = {
     10: SCHEMA_10_WORK_NAMES,
     11: SCHEMA_11_WORK_NAMES,
     12: SCHEMA_12_WORK_NAMES,
+    13: SCHEMA_12_WORK_NAMES,
 }
 STAGE_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_STAGE_NAMES,
@@ -140,6 +141,7 @@ STAGE_NAMES_BY_SCHEMA = {
     10: SCHEMA_10_STAGE_NAMES,
     11: SCHEMA_10_STAGE_NAMES,
     12: SCHEMA_10_STAGE_NAMES,
+    13: SCHEMA_10_STAGE_NAMES,
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 
@@ -218,6 +220,8 @@ def parse_profile(output: str) -> dict[str, object]:
     }
     if schema_version >= 4:
         begin_keys |= {"fixture", "chain_links"}
+    if schema_version >= 13:
+        begin_keys.add("tick_rate_hz")
     require_keys(begin, begin_keys, "PROFILE_BEGIN")
     work_names = WORK_NAMES_BY_SCHEMA[schema_version]
     stage_names = STAGE_NAMES_BY_SCHEMA[schema_version]
@@ -441,6 +445,10 @@ def parse_profile(output: str) -> dict[str, object]:
         3,
     )
 
+    tick_rate_hz = parse_unsigned(begin.get("tick_rate_hz", "120"), "tick_rate_hz")
+    if tick_rate_hz == 0:
+        raise ProfileError("tick_rate_hz must be positive")
+
     return {
         "schema_version": schema_version,
         "benchmark": "isolated-physics-grid-reference",
@@ -448,6 +456,7 @@ def parse_profile(output: str) -> dict[str, object]:
         "chain_link_count": chain_link_count,
         "measured_ticks_per_mode": ticks,
         "warmup_ticks_per_mode": parse_unsigned(begin["warmup"], "warmup"),
+        "tick_rate_hz": tick_rate_hz,
         "clock": {
             "frequency_hz": clock_frequency_hz,
             "histogram": {
@@ -547,10 +556,16 @@ def chain_scaling_result(
 ) -> dict[str, object]:
     if set(cases) != {str(link_count) for link_count in link_counts}:
         raise ProfileError("chain profile cases do not match the requested link counts")
+    if any(case["measured_ticks_per_mode"] != ticks for case in cases.values()):
+        raise ProfileError("chain profile cases do not match the requested tick count")
+    tick_rates = {case["tick_rate_hz"] for case in cases.values()}
+    if len(tick_rates) != 1:
+        raise ProfileError("chain profile cases do not share one simulation rate")
     return {
         "schema_version": 1,
         "benchmark": "revolute-chain-scaling",
         "measured_ticks_per_mode": ticks,
+        "tick_rate_hz": tick_rates.pop(),
         "link_counts": link_counts,
         "cases": cases,
     }
@@ -585,7 +600,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("port", help="USB CDC ACM device")
     parser.add_argument("output", type=Path, help="versioned JSON artifact path")
-    parser.add_argument("--ticks", type=int, default=2000, help="measured ticks per mode")
+    parser.add_argument("--ticks", type=int, default=1000, help="measured ticks per mode")
     fixture_group = parser.add_mutually_exclusive_group()
     fixture_group.add_argument(
         "--chain-links",

@@ -187,7 +187,7 @@ int picosystem_game_demo_restart_measurement(struct picosystem_game_demo_state *
 /* Restore canonical tick-zero state while preserving renderer sequence monotonicity. */
 int picosystem_game_demo_reset(struct picosystem_game_demo_state *state);
 
-/* Advance one authoritative 120 Hz simulation step and publish its newest state. */
+/* Advance one authoritative 60 Hz simulation step and publish its newest state. */
 int picosystem_game_demo_update(struct picosystem_game_demo_state *state,
 				const struct picosystem_game_input *input);
 

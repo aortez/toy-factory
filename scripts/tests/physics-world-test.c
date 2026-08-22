@@ -958,9 +958,9 @@ static void test_rope_particle_collision(void)
 	assert(picosystem_physics_world_step_reference(&swept_reference, &no_acceleration) == 0);
 	assert_step_matches_reference(&swept_world, &swept_reference);
 	for (uint8_t index = 0U; index < 2U; ++index) {
-		assert_fixed_close(swept_world.ropes[0].particles[index].position.y, -FIXED(1), 2);
+		assert_fixed_close(swept_world.ropes[0].particles[index].position.y, -FIXED(1), 4);
 		assert_fixed_close(swept_world.ropes[0].particles[index].previous_position.y,
-				   -FIXED(1), 2);
+				   -FIXED(1), 4);
 	}
 	assert(swept_world.last_work.rope_collision_candidate_pair_count == 2U);
 	assert(swept_world.last_work.rope_collision_contact_count == 2U);
@@ -1582,6 +1582,7 @@ static void test_revolute_joint_dynamics_and_multilink_chain(void)
 	}
 	const struct picosystem_physics_vector gravity = {.y = RATIO(1, 512)};
 	for (uint32_t step = 0U; step < 2000U; ++step) {
+		assert(picosystem_physics_world_wake_body(&chain, 0U) == 0);
 		assert(picosystem_physics_world_step(&chain, &gravity) == 0);
 		for (uint16_t index = 0U; index < chain.revolute_joint_count; ++index) {
 			struct picosystem_physics_vector anchor_a;

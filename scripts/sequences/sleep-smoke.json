@@ -3,11 +3,11 @@
   "steps": [
     {
       "input": "none",
-      "ticks": 1723
+      "ticks": 259
     }
   ],
   "expect": {
-    "hash": "0a0ff729",
-    "framebuffer_crc32": "88c2e21e"
+    "hash": "aa27c7ef",
+    "framebuffer_crc32": "257e01aa"
   }
 }
