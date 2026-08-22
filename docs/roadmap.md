@@ -62,7 +62,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Sustain TE-paced full-screen presentation with one 62.5 MHz PL022/DMA write.
 - [ ] Evaluate a size-aware polling/DMA transport policy.
 - [x] Use the LCD tearing-effect signal for synchronized presentation.
-- [x] Run authoritative simulation on exact rational 120 Hz deadlines.
+- [x] Run authoritative simulation on exact rational 60 Hz deadlines.
 - [x] Hand immutable snapshots to a decoupled, TE-driven renderer.
 - [x] Confirm that full redraws and repeated USB queries do not skip simulation ticks.
 - [x] Visually confirm the asynchronous A-button full-redraw path on hardware.
@@ -88,7 +88,8 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add bounded bilateral distance joints with body/world anchors and profiling.
 - [x] Add deterministic revolute hinges, multi-link chains, collision policy, and profiling.
 - [x] Measure deterministic 4/6/8-link timing and revolute-anchor quality on the PIM559.
-- [x] Improve long-chain constraint convergence within the existing 120 Hz budget.
+- [x] Improve long-chain constraint convergence within the fixed-step budget.
+- [x] Retune the authoritative simulation from 120 Hz to 60 Hz and profile it on hardware.
 - [x] Add bounded revolute motors and creation-relative angular limits with profiling.
 - [x] Add bounded prismatic sliders, motors, and creation-relative travel limits.
 - [x] Add bounded box sensors and deterministic contact lifecycle events.

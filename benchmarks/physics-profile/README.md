@@ -1,14 +1,69 @@
 # PIM559 physics profiling baselines
 
 These profiles were captured on a production Pimoroni PicoSystem PIM559 with
-its RP2040 running at 125 MHz. Each mode receives 120 unmeasured warm-up ticks
-followed by the same bounded input replay; the recorded artifact states its
-measured tick count. Timing covers isolated physics steps with rendering and
-snapshot publication disabled.
+its RP2040 running at 125 MHz. Each mode receives one second of unmeasured
+warm-up followed by the same bounded input replay. Schema-version-13 artifacts
+state their tick rate, warm-up, and measured tick count; older artifacts are
+the historical 120 Hz baselines. Timing covers isolated physics steps with
+rendering and snapshot publication disabled.
 
-## Reciprocal rope and particle collision
+## Fixed 60 Hz reciprocal rope and particle collision
 
-The current schema-version-12 reports are
+The current schema-version-13 reports are
+[pim559-60hz-rope-interaction-2026-08-22.json](pim559-60hz-rope-interaction-2026-08-22.json)
+and
+[pim559-60hz-rope-interaction-neutral-2026-08-22.json](pim559-60hz-rope-interaction-neutral-2026-08-22.json).
+They were captured from the recommended dual-core image with:
+
+```sh
+make profile-ab PROFILE_TICKS=1000 \
+  PROFILE_OUT=benchmarks/physics-profile/pim559-60hz-rope-interaction-2026-08-22.json
+make profile-sleep PROFILE_TICKS=1000 \
+  SLEEP_PROFILE_OUT=benchmarks/physics-profile/pim559-60hz-rope-interaction-neutral-2026-08-22.json
+```
+
+The 60 Hz migration doubles the wall time represented by one tick. Linear and
+angular velocities were doubled, accelerations and per-tick impulse limits were
+quadrupled, damping was compounded over the larger step, and the contact/joint
+solver ceilings were retuned. The authoritative rate is fixed; there is no
+build-time or runtime selector.
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Candidates/tick | 16.667 ms violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 5,566 us | 5,376 us | 6,912 us | 7,680 us | 8,488 us | 7.266 | 0 |
+| Brute-force reference | 6,044 us | 5,888 us | 7,296 us | 8,064 us | 9,002 us | 70.0 | 0 |
+
+Both modes ended at `2ff3a57b` with exact authoritative-state agreement. The
+rope stage averaged 1,619/1,613 us and maximum segment error was 2.261 pixels.
+The uniform grid retained 10.5% of rigid candidate pairs. The neutral fixture
+produced these results over the same 16.67 seconds of measured simulation:
+
+| Mode | Mean | p50 | p95 | p99 | Maximum | Sleeping body-ticks | 16.667 ms violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Uniform grid | 6,000 us | 5,632 us | 8,064 us | 8,320 us | 8,582 us | 1,113 | 0 |
+| Brute-force reference | 6,447 us | 6,016 us | 8,576 us | 8,704 us | 8,934 us | 1,113 | 0 |
+
+The neutral modes ended at `9d3ad372`, matched exactly, recorded three sleep
+and one wake transitions, and skipped 2,220 sleeping contacts. Shell stack
+high-water was 4,184 of 5,120 bytes in both reports.
+
+Compared with the immediately preceding 120 Hz profile, grid latency per tick
+rose from 4,920 to 5,566 us, but scheduled physics CPU fell from 590 to 334 ms
+per real second (43.4%). The neutral grid fell from 671 to 360 ms per second
+(46.3%). A concurrent 5,723-tick hardware window held 60.0 Hz simulation and
+29.8 fps presentation with backlog one, zero skipped ticks, and zero deadline
+violations. Mean/maximum physics time was 7.463/13.399 ms.
+
+The larger step changes constraint quality as well as cost. Maximum moving
+rope-segment error rose from 0.856 to 2.261 pixels, revolute-anchor error stayed
+within one pixel, and prismatic lateral/travel errors remained below 0.37/0.29
+pixel. Raising rope passes from six to eight was tested separately; reciprocal
+coupling made both stretch and cost worse, so the measured six-pass setting was
+retained.
+
+## Preceding 120 Hz reciprocal rope and particle collision
+
+The preceding schema-version-12 reports are
 [pim559-rope-interaction-2026-08-22.json](pim559-rope-interaction-2026-08-22.json)
 and
 [pim559-rope-interaction-neutral-2026-08-22.json](pim559-rope-interaction-neutral-2026-08-22.json).

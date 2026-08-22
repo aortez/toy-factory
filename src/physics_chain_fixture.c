@@ -34,7 +34,7 @@ int picosystem_physics_chain_fixture_reset(struct picosystem_game_world *world, 
 		return -ERANGE;
 	}
 
-	int err = picosystem_physics_world_init(&world->physics, RATIO(5, 2));
+	int err = picosystem_physics_world_init(&world->physics, FIXED(5));
 	if (err != 0) {
 		return err;
 	}

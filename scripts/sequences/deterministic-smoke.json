@@ -3,15 +3,15 @@
   "steps": [
     {
       "input": "right",
-      "ticks": 30
+      "ticks": 15
     },
     {
       "input": "up",
-      "ticks": 15
+      "ticks": 8
     }
   ],
   "expect": {
-    "hash": "aad794a0",
-    "framebuffer_crc32": "df718839"
+    "hash": "98edb8a7",
+    "framebuffer_crc32": "2ee34019"
   }
 }

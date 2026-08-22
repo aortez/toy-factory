@@ -11,14 +11,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define GAME_MAX_SPEED_PER_TICK     PICOSYSTEM_PHYSICS_FIXED_RATIO(5, 2)
-#define GAME_GRAVITY_PER_TICK       PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 32)
-#define GAME_CONTROL_PER_TICK       PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 64)
+#define GAME_MAX_SPEED_PER_TICK     PICOSYSTEM_PHYSICS_FIXED_FROM_INT(5)
+#define GAME_GRAVITY_PER_TICK       PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
+#define GAME_CONTROL_PER_TICK       PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 16)
 #define GAME_RESTITUTION            PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 4)
 #define GAME_FRICTION               PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
-#define GAME_PRISMATIC_MOTOR_SPEED  PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
+#define GAME_PRISMATIC_MOTOR_SPEED  PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 4)
 #define GAME_PRISMATIC_REVERSE_SLOP PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 32)
-#define GAME_WORLD_HASH_VERSION     UINT32_C(13)
+#define GAME_WORLD_HASH_VERSION     UINT32_C(14)
 #define FNV1A_OFFSET_BASIS          UINT32_C(2166136261)
 #define FNV1A_PRIME                 UINT32_C(16777619)
 
@@ -40,12 +40,12 @@ static const struct canonical_body_config canonical_bodies[] =
 			.box =
 				{
 					.center = {.x = FIXED(55), .y = FIXED(55)},
-					.velocity_per_tick = {.x = RATIO(3, 4)},
+					.velocity_per_tick = {.x = RATIO(3, 2)},
 					.half_extent = {.x = FIXED(10), .y = FIXED(7)},
 					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
 					.restitution = GAME_RESTITUTION,
 					.friction = GAME_FRICTION,
-					.angular_velocity_per_tick = RATIO(1, 80),
+					.angular_velocity_per_tick = RATIO(1, 40),
 					.angle_turns = UINT32_C(0x08000000),
 					.id = 1U,
 				},
@@ -55,7 +55,7 @@ static const struct canonical_body_config canonical_bodies[] =
 			.circle =
 				{
 					.center = {.x = FIXED(88), .y = FIXED(68)},
-					.velocity_per_tick = {.x = -RATIO(1, 4), .y = RATIO(1, 8)},
+					.velocity_per_tick = {.x = -RATIO(1, 2), .y = RATIO(1, 4)},
 					.radius = FIXED(7),
 					.inverse_mass = RATIO(5, 4),
 					.restitution = RATIO(2, 3),
@@ -68,13 +68,13 @@ static const struct canonical_body_config canonical_bodies[] =
 			.capsule =
 				{
 					.center = {.x = FIXED(162), .y = FIXED(72)},
-					.velocity_per_tick = {.x = -RATIO(1, 2), .y = -RATIO(1, 8)},
+					.velocity_per_tick = {.x = -FIXED(1), .y = -RATIO(1, 4)},
 					.half_length = FIXED(7),
 					.radius = FIXED(4),
 					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
 					.restitution = RATIO(7, 10),
 					.friction = RATIO(1, 5),
-					.angular_velocity_per_tick = -RATIO(1, 96),
+					.angular_velocity_per_tick = -RATIO(1, 48),
 					.angle_turns = UINT32_C(0x18000000),
 					.id = 4U,
 				},
@@ -172,7 +172,7 @@ static const struct picosystem_physics_segment_config canonical_segments[] = {
 		.end = {.x = FIXED(103), .y = FIXED(188)},
 		.restitution = RATIO(2, 3),
 		.friction = RATIO(1, 4),
-		.surface_speed_per_tick = RATIO(1, 4),
+		.surface_speed_per_tick = RATIO(1, 2),
 		.id = 105U,
 	},
 	{
@@ -188,9 +188,9 @@ static const struct picosystem_physics_distance_joint_config canonical_distance_
 	{
 		.anchor_b = {.x = FIXED(162), .y = FIXED(44)},
 		.target_distance = FIXED(28),
-		.spring_angular_frequency_per_tick = RATIO(1, 12),
+		.spring_angular_frequency_per_tick = RATIO(1, 6),
 		.spring_damping_ratio = RATIO(1, 2),
-		.maximum_spring_impulse_per_tick = RATIO(1, 2),
+		.maximum_spring_impulse_per_tick = FIXED(2),
 		.id = 201U,
 		.body_a_id = 4U,
 		.body_b_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
@@ -210,8 +210,8 @@ static const struct picosystem_physics_revolute_joint_config canonical_revolute_
 	{
 		.local_anchor_a = {.x = -FIXED(10)},
 		.anchor_b = {.x = FIXED(134), .y = FIXED(88)},
-		.motor_speed_per_tick = RATIO(1, 96),
-		.maximum_motor_impulse_per_tick = RATIO(1, 8),
+		.motor_speed_per_tick = RATIO(1, 48),
+		.maximum_motor_impulse_per_tick = RATIO(1, 2),
 		.id = 301U,
 		.body_a_id = 5U,
 		.body_b_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
@@ -241,7 +241,7 @@ static const struct picosystem_physics_prismatic_joint_config canonical_prismati
 		.anchor_b = {.x = FIXED(118), .y = FIXED(190)},
 		.axis_b = {.y = PICOSYSTEM_PHYSICS_FIXED_ONE},
 		.motor_speed_per_tick = -GAME_PRISMATIC_MOTOR_SPEED,
-		.maximum_motor_impulse_per_tick = RATIO(1, 2),
+		.maximum_motor_impulse_per_tick = FIXED(2),
 		.lower_translation = -FIXED(48),
 		.upper_translation = 0,
 		.id = 401U,

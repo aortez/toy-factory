@@ -8,20 +8,20 @@
 #include "fixed_rate_scheduler.h"
 
 #define TEST_TICKS_PER_SECOND 10000U
-#define TEST_RATE_HZ          120U
+#define TEST_RATE_HZ          60U
 
 static void test_exact_deadline_pattern(void)
 {
 	struct picosystem_fixed_rate_scheduler scheduler;
 	assert(picosystem_fixed_rate_scheduler_init(&scheduler, 0, TEST_TICKS_PER_SECOND,
 						    TEST_RATE_HZ) == 0);
-	assert(scheduler.next_deadline_ticks == 83);
+	assert(scheduler.next_deadline_ticks == 166);
 
 	picosystem_fixed_rate_scheduler_advance(&scheduler, 1U);
-	assert(scheduler.next_deadline_ticks == 166);
+	assert(scheduler.next_deadline_ticks == 333);
 	picosystem_fixed_rate_scheduler_advance(&scheduler, 1U);
-	assert(scheduler.next_deadline_ticks == 250);
-	picosystem_fixed_rate_scheduler_advance(&scheduler, 117U);
+	assert(scheduler.next_deadline_ticks == 500);
+	picosystem_fixed_rate_scheduler_advance(&scheduler, 57U);
 	assert(scheduler.next_deadline_ticks == TEST_TICKS_PER_SECOND);
 	assert(scheduler.phase == 0U);
 }
@@ -31,18 +31,18 @@ static void test_due_boundaries_and_catch_up(void)
 	struct picosystem_fixed_rate_scheduler scheduler;
 	assert(picosystem_fixed_rate_scheduler_init(&scheduler, 0, TEST_TICKS_PER_SECOND,
 						    TEST_RATE_HZ) == 0);
-	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 82) == 0U);
-	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 83) == 1U);
-	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 165) == 1U);
-	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 166) == 2U);
-	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 1000) == 12U);
+	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 165) == 0U);
+	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 166) == 1U);
+	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 332) == 1U);
+	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 333) == 2U);
+	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 1000) == 6U);
 
 	picosystem_fixed_rate_scheduler_advance(&scheduler, 4U);
-	assert(scheduler.next_deadline_ticks == 416);
-	picosystem_fixed_rate_scheduler_advance(&scheduler, 8U);
-	assert(scheduler.next_deadline_ticks == 1083);
-	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 1082) == 0U);
-	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 1083) == 1U);
+	assert(scheduler.next_deadline_ticks == 833);
+	picosystem_fixed_rate_scheduler_advance(&scheduler, 2U);
+	assert(scheduler.next_deadline_ticks == 1166);
+	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 1165) == 0U);
+	assert(picosystem_fixed_rate_scheduler_due(&scheduler, 1166) == 1U);
 }
 
 static uint32_t reference_due(const struct picosystem_fixed_rate_scheduler *scheduler,

@@ -11,7 +11,7 @@
 
 #include "physics_world.h"
 
-#define PICOSYSTEM_GAME_TICK_RATE_HZ        120U
+#define PICOSYSTEM_GAME_TICK_RATE_HZ        60U
 #define PICOSYSTEM_GAME_FIXED_FRACTION_BITS PICOSYSTEM_PHYSICS_FIXED_FRACTION_BITS
 #define PICOSYSTEM_GAME_FIXED_ONE           PICOSYSTEM_PHYSICS_FIXED_ONE
 
@@ -43,7 +43,7 @@ struct picosystem_game_world {
 /* Restore the canonical deterministic powered-mechanism lab at tick zero. */
 int picosystem_game_world_reset(struct picosystem_game_world *world);
 
-/* Advance exactly one fixed 1/120-second tick. */
+/* Advance exactly one fixed 1/60-second tick. */
 int picosystem_game_world_step(struct picosystem_game_world *world,
 			       const struct picosystem_game_input *input);
 

@@ -1074,19 +1074,20 @@ static int cmd_display_profile(const struct shell *shell, size_t argc, char **ar
 static void print_profile_result(const struct shell *shell,
 				 const struct picosystem_physics_profile_result *result)
 {
-	shell_print(
-		shell,
-		"PROFILE_BEGIN schema=%u fixture=%s chain_links=%u ticks=%u warmup=%u "
-		"clock_hz=%u "
-		"histogram_fine_bin_us=%u histogram_fine_bins=%u "
-		"histogram_coarse_bin_us=%u histogram_coarse_bins=%u clock_delta_cycles=%u",
-		result->schema_version, picosystem_physics_profile_fixture_name(result->fixture),
-		result->chain_link_count, result->measured_tick_count, result->warmup_tick_count,
-		result->clock_frequency_hz, PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_US,
-		PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT,
-		PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_US,
-		PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_COUNT,
-		result->back_to_back_clock_delta_cycles);
+	shell_print(shell,
+		    "PROFILE_BEGIN schema=%u fixture=%s chain_links=%u ticks=%u warmup=%u "
+		    "tick_rate_hz=%u clock_hz=%u "
+		    "histogram_fine_bin_us=%u histogram_fine_bins=%u "
+		    "histogram_coarse_bin_us=%u histogram_coarse_bins=%u clock_delta_cycles=%u",
+		    result->schema_version,
+		    picosystem_physics_profile_fixture_name(result->fixture),
+		    result->chain_link_count, result->measured_tick_count,
+		    result->warmup_tick_count, result->tick_rate_hz, result->clock_frequency_hz,
+		    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_US,
+		    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT,
+		    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_US,
+		    PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_COUNT,
+		    result->back_to_back_clock_delta_cycles);
 
 	for (size_t mode = 0U; mode < PICOSYSTEM_PHYSICS_PROFILE_MODE_COUNT; ++mode) {
 		const struct picosystem_physics_profile_mode_result *const mode_result =
@@ -1331,7 +1332,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      SHELL_HELP("Advance a paused simulation exactly.",
 				 "[count] (default 1, maximum 120)"),
 		      cmd_game_step, 1, 1),
-	SHELL_CMD_ARG(run, NULL, "Resume real-time 120 Hz scheduling.", cmd_game_run, 1, 0),
+	SHELL_CMD_ARG(run, NULL, "Resume real-time 60 Hz scheduling.", cmd_game_run, 1, 0),
 	SHELL_CMD_ARG(redraw, NULL, "Queue a renderer-owned full redraw.", cmd_game_redraw, 1, 0),
 	SHELL_SUBCMD_SET_END);
 
@@ -1345,18 +1346,18 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	profile_commands,
 	SHELL_CMD_ARG(chain, NULL,
 		      SHELL_HELP("Compare a deterministic revolute-chain fixture.",
-				 "<links> [ticks] (links 1-8, default 2000 ticks; simulation must "
+				 "<links> [ticks] (links 1-8, default 1000 ticks; simulation must "
 				 "be paused)"),
 		      cmd_profile_chain, 2, 1),
 	SHELL_CMD_ARG(
 		compare, NULL,
 		SHELL_HELP("Compare isolated grid and brute-force physics replays.",
-			   "[ticks] (default 2000, maximum 10000; simulation must be paused)"),
+			   "[ticks] (default 1000, maximum 10000; simulation must be paused)"),
 		cmd_profile_compare, 1, 1),
 	SHELL_CMD_ARG(
 		sleep, NULL,
 		SHELL_HELP("Compare the canonical world settling under neutral input.",
-			   "[ticks] (default 2000, maximum 10000; simulation must be paused)"),
+			   "[ticks] (default 1000, maximum 10000; simulation must be paused)"),
 		cmd_profile_sleep, 1, 1),
 	SHELL_SUBCMD_SET_END);
 

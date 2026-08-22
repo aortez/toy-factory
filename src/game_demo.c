@@ -1038,7 +1038,8 @@ int picosystem_game_demo_init(struct picosystem_game_demo_state *state)
 			      K_THREAD_STACK_SIZEOF(render_thread_stack), render_thread_entry, NULL,
 			      NULL, NULL, K_PRIO_PREEMPT(RENDER_THREAD_PRIORITY), 0U, K_NO_WAIT);
 
-	LOG_INF("120 Hz physics ready; renderer=%s, core1=%s, priority=%d",
+	LOG_INF("%u Hz physics ready; renderer=%s, core1=%s, priority=%d",
+		PICOSYSTEM_GAME_TICK_RATE_HZ,
 		core1_full_frame_renderer_enabled() ? "full-frame" : "damage-region",
 		renderer.core1_available ? "available" : "unavailable", RENDER_THREAD_PRIORITY);
 	return 0;

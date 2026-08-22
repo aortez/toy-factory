@@ -12,18 +12,18 @@ here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 250,396 bytes of the linker's 255 KiB Zephyr
-RAM region and 221,976 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 250,428 bytes of the linker's 255 KiB Zephyr
+RAM region and 222,020 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
 physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, two
 12-particle ropes, and bounded pair-event storage. The serialized A/B
 workspace is 33,304 bytes, is inactive during
 normal play, and avoids placing a second world on a thread stack. The profile
-command uses a 5,120-byte shell stack and most recently reached 4,200 bytes. The
+command uses a 5,120-byte shell stack and most recently reached 4,184 bytes. The
 856-byte render snapshot and collision traversal raised measured main/render
 stack use to 4,016 and 4,044 bytes; both stacks are bounded at 5,120 bytes. The linked
-image retains 10,724 bytes of Zephyr RAM headroom. The fast build also places
+image retains 10,692 bytes of Zephyr RAM headroom. The fast build also places
 the physics hot path in SRAM and keeps the collision traversal in a separate,
 bounded stack frame; this avoids core-0/core-1 XIP contention while the second
 core rasterizes a full scene. Both builds route compiler integer division
@@ -33,9 +33,9 @@ containment and oracle gates.
 
 The initial engine targets are:
 
-- exact 120 Hz authoritative updates;
+- exact 60 Hz authoritative updates;
 - no heap allocation or capacity growth after initialization;
-- about 5 ms or less for a representative physics update on the PIM559;
+- about 6 ms or less for an isolated representative physics update on the PIM559;
 - at most 32 KiB of physics state and scratch storage before larger features;
 - stable replay for at least 10,000 ticks on the host and RP2040;
 - immutable renderer snapshots that do not expose live world state; and
@@ -57,9 +57,9 @@ The engine uses signed Q16.16 fixed-point values:
 - linear acceleration: pixels per simulation tick squared;
 - angular velocity: radians per simulation tick;
 - unit vectors, material coefficients, and inverse mass: dimensionless; and
-- time: exactly one 1/120-second tick per call.
+- time: exactly one 1/60-second tick per call.
 
-Per-tick velocity avoids dividing every integration by 120 and makes each
+Per-tick velocity avoids dividing every integration by 60 and makes each
 authoritative update self-contained. Products and divisions use checked ranges
 and 64-bit intermediates. Signed overflow, invalid shifts, and implementation-
 defined structure hashing are forbidden. Integer square root and normalization
@@ -68,6 +68,15 @@ have explicit coincident-point behavior. Orientation is a wrapping unsigned
 quarter-wave sine table with deterministic integer interpolation supplies the
 box bases; no floating-point library or platform trigonometry participates in
 authoritative state.
+
+The rate is one fixed engine contract rather than a configurable mode. The
+120-to-60 Hz migration doubled per-tick linear/angular speeds, quadrupled
+accelerations and force/impulse caps, compounded rope damping across the larger
+step, halved time-based tick counts, and retuned the deterministic solver
+ceilings. State-hash versions and device goldens changed with that contract.
+The linear and angular sleep thresholds preserve their former wall-time speeds;
+the near-rest restitution cutoff is 3/16 pixel per tick because 1/8 still
+sustained deterministic contact jitter under the larger gravity step.
 
 The first milestone caps speed below the smallest canonical body diameter. This
 bounds discrete-collision tunneling while continuous collision detection is
@@ -111,7 +120,7 @@ derived from addresses, hash tables, allocation order, or unstable sorting.
 Remote pause, reset, input injection, exact stepping, framebuffer capture, and
 state hashing continue to cross the acknowledged main-thread request queue.
 Real-time play publishes immutable snapshots at a deterministic 30 Hz cadence
-while authoritative simulation remains at 120 Hz. Pause, reset, redraw, and
+while authoritative simulation remains at 60 Hz. Pause, reset, redraw, and
 exact stepping force a current snapshot, so remote state and framebuffer checks
 remain coherent even when presentation is deliberately slower than physics.
 
@@ -134,7 +143,7 @@ Each update performs these bounded phases in order:
    constraints whose dynamic participants are all sleeping;
 9. apply bounded contact, distance-joint, revolute-joint, and prismatic-joint
    positional correction;
-10. run at most seven sequential-impulse contact and joint velocity iterations;
+10. run at most 14 sequential-impulse contact and joint velocity iterations;
 11. integrate fixed-capacity Verlet rope particles, then run six alternating
     length-constraint passes with three interleaved external-collision passes;
 12. update whole-island sleep state; and
@@ -181,7 +190,7 @@ reads per measured step; the report includes a back-to-back clock-read delta so
 instrumentation cost remains visible rather than silently folded into a result.
 
 `picosystem profile compare [ticks]` operates only while the live simulation is
-paused. It resets a separate canonical world, runs 120 unmeasured warm-up ticks,
+paused. It resets a separate canonical world, runs 60 unmeasured warm-up ticks,
 then replays the same bounded input pattern for the grid and brute-force paths.
 `picosystem profile sleep [ticks]` keeps the canonical world under neutral
 input so it can settle and measure skipped sleep work. `picosystem profile
@@ -196,12 +205,13 @@ and field-by-field persistent state comparison.
 Stage samples accumulate into 64 fine 32-microsecond bins followed by 64 coarse
 128-microsecond bins, covering tails through 10.24 milliseconds without
 increasing the fixed RAM footprint. The device reports count, mean, minimum,
-histogram-derived p50/p95/p99, exact maximum, and 1/120-second budget violations
+histogram-derived p50/p95/p99, exact maximum, and 1/60-second budget violations
 without per-tick logging. `make profile-ab` preserves the live run/pause mode
 and writes the canonical result. `make profile-sleep` runs the neutral-settle
 fixture. `make profile-chain` profiles a comma-separated
 set of link counts over one USB session and writes an aggregate result. The
-version-12 protocol adds reciprocal rope/body and particle-collision work while
+version-13 protocol adds the authoritative tick rate to the version-12 reciprocal
+rope/body and particle-collision work while
 retaining the rope timing stage, maximum segment-length error,
 spring/conveyor/sleeping metrics, maximum
 revolute-anchor separation, angular-limit violation, prismatic lateral/angular
@@ -237,7 +247,7 @@ Distance joints are bilateral constraints with a positive target length. Anchor
 A is body-local; anchor B is either local to a second body or fixed in world
 space when body ID zero is selected. Anchors on bodies must lie inside their
 circle, box, or capsule. One bounded positional correction runs before the
-velocity pass; the shared seven-pass sequential solver then removes relative
+velocity pass; the shared 14-pass sequential solver then removes relative
 anchor velocity, including angular effective mass and off-center torque. Joint array order is
 solver order, and coincident endpoints use a stable joint-ID-derived axis.
 
@@ -294,7 +304,8 @@ limit impulses are per-step scratch rather than persistent warm-start state,
 so the existing hash and reset contracts remain straightforward.
 Angular correction runs during each scheduled revolute position pass, but a
 limit alone does not request another whole-chain sweep; extra passes remain
-driven by measured hinge-anchor separation.
+driven by measured hinge-anchor separation. The current 60 Hz build permits up
+to ten alternating revolute position passes.
 
 Prismatic joints constrain anchor A to a rail attached to body B or fixed in
 world space. The configured B-space axis is normalized once when the joint is
@@ -307,8 +318,8 @@ along body B's positive rail axis. Its accumulated per-step axial impulse is
 clamped to the configured maximum. Lower and upper travel limits are signed
 Q16.16 pixels relative to the creation pose. Lower and upper stops use
 unilateral velocity rows, while equal limits form a bilateral axial lock. Up to
-four alternating position sweeps correct lateral, angular, and active-limit
-error before the shared seven-pass velocity solver handles the lateral,
+six alternating position sweeps correct lateral, angular, and active-limit
+error before the shared 14-pass velocity solver handles the lateral,
 angular, motor, and limit rows.
 
 The solver caches each rail's lateral, axial, and angular effective masses for
@@ -366,8 +377,8 @@ constraint, reciprocal-body, and collision counts are diagnostic scratch state.
 
 ## Sleeping and wake propagation
 
-A body becomes eligible to sleep after 60 consecutive ticks (0.5 seconds) at
-or below 1/64 pixel per tick of linear speed and 1/512 radian per tick of
+A body becomes eligible to sleep after 30 consecutive ticks (0.5 seconds) at
+or below 1/32 pixel per tick of linear speed and 1/256 radian per tick of
 angular speed. Contacting bodies and body-to-body joints form an undirected
 graph each tick. Eligibility uses the minimum quiet count across each connected
 component, so a complete island sleeps simultaneously; sleeping sets every
@@ -390,7 +401,7 @@ and solver visits are skipped only when every dynamic participant in the row is
 sleeping. The sleep mask, per-body quiet counters, and last global acceleration
 are authoritative and hashed; the island graph is bounded per-step scratch.
 Machine Lab renders sleeping bodies blue with white detail, while `status`,
-`game stats`, schema-12 profiles, and `make profile-sleep` expose state,
+`game stats`, schema-13 profiles, and `make profile-sleep` expose state,
 transitions, and skipped constraints.
 
 ## Sensors and contact events
@@ -433,9 +444,9 @@ The flashable rigid-body lab contains:
   body shape and static segments;
 - shape-derived inverse inertia, contact-point angular response, and two-point
   box manifolds;
-- restitution, friction, one-to-four adaptive revolute/prismatic position
-  sweeps, and a seven-pass-ceiling impulse solver with exact no-change
-  termination;
+- restitution, friction, adaptive position correction bounded at ten revolute
+  and six prismatic sweeps, and a 14-pass-ceiling impulse solver with exact
+  no-change termination;
 - deterministic 16 x 16 grid filtering with brute-force fallback and oracle;
 - a three-box chain joined by one world pin and two body-to-body revolute joints;
 - a bounded motor on the world pin, one free middle hinge, and a plus/minus
@@ -469,7 +480,7 @@ enough for every possible body-body and body-segment combination at those
 limits plus every body/sensor combination. The native capacity test activates
 the complete pair universe in one step. The grid/reference oracle fills all 12
 body slots while the flashable lab uses
-seven to preserve its 120 Hz device budget. The capacities are deliberately
+seven to preserve its device budget. The capacities are deliberately
 higher than the canonical demo population, so contact exhaustion cannot
 partially update a valid world. These are milestone
 limits, not the eventual product scale.
@@ -534,7 +545,7 @@ The native suite covers:
   SAT rejection;
 - physical and sensor `BEGIN`/`STAY`/`END` lifecycle ordering, quiet termination,
   and full 258-event capacity;
-- exact 59/60-tick sleep eligibility, frozen zero-velocity persistence, and
+- exact 29/30-tick sleep eligibility, frozen zero-velocity persistence, and
   immediate global-acceleration wake before integration;
 - whole distance-joint/contact-island sleeping and wake propagation, with
   motorized-island exclusion;
@@ -547,39 +558,45 @@ The native suite covers:
 - authoritative hash changes and reset recovery; and
 - undefined-behavior sanitizer execution.
 
-The native canonical reset is `abc2002c`, right-30 is `faaf80f7`, the
-right-30/up-15 sequence reaches tick 45 at `aad794a0`, and a 10,000-tick replay
-is `cdf463f7`. The bounded replay exercises every shape family and event phase,
-never falls back, keeps every hinge and rail within the configured arena
-tolerances, and runs exactly 42 rope-length visits per tick. A separate neutral
-replay reaches tick 1,723 at `0a0ff729`. The PIM559 reproduced both exact
-sequences; its tick-45 framebuffer is `df718839`, and the neutral sleep frame is
-`88c2e21e` with one blue/white sleeping body.
+The native canonical reset is `9ff98b13`, right-15 is `92a41d99`, the
+right-15/up-8 sequence reaches tick 23 at `98edb8a7`, and a 10,000-tick replay
+is `175b56c2`. The bounded replay exercises every shape family and event phase,
+never falls back from the uniform grid, keeps every body, hinge, rail, and rope
+inside the configured tolerances, and runs exactly 42 rope-length visits per
+tick. A separate neutral replay first sleeps at tick 259
+and hashes to `aa27c7ef`. The PIM559 reproduced both exact sequences; its
+tick-23 framebuffer is `2ee34019`, and the neutral sleep frame is `257e01aa`.
 
-Its schema-version-12 isolated 2,000-tick moving profile averaged 4.920 ms for
-the grid and 5.313 ms for the brute-force reference, with 5.760/6.144 ms p95
-and 6.935/7.470 ms maxima. Neither mode exceeded 8.333 ms, and both ended at
-`1600fb06` with exact persistent-state agreement. The grid retained 7.133 of
+Its schema-version-13 isolated 1,000-tick moving profile averaged 5.566 ms for
+the grid and 6.044 ms for the brute-force reference, with 6.912/7.296 ms p95
+and 8.488/9.002 ms maxima. Neither mode exceeded 16.667 ms, and both ended at
+`2ff3a57b` with exact persistent-state agreement. The grid retained 7.266 of
 70 possible rigid pairs per tick. Each tick considered 234 bounded
-rope/collider pairs; 5.521 passed swept conservative bounds and 3.457 produced
-contacts on average. The eight-particle rope stage averaged 1.661/1.643 ms,
-changed 40.034 of its 42 length visits, and held maximum segment-length error to
-0.856 pixel. Reciprocal endpoint position correction changed the capsule on
-5.078 of six visits per tick; its radial velocity row changed on every tick.
+rope/collider pairs; 6.172 passed swept conservative bounds and 4.162 produced
+contacts on average. The eight-particle rope stage averaged 1.619/1.613 ms and
+held maximum segment-length error to 2.261 pixels.
 
-The separate 2,000-tick neutral profile averaged 5.590/5.887 ms, reached
-7.056/7.511 ms maxima, and ended at `34a04b59` with exact state agreement and no
-deadline violations. Each mode recorded one body sleep transition, 1,039
-sleeping body-ticks, and 1,038 skipped sleeping contacts; maximum rope error was
-0.034 pixel. Powered belt contact remains awake while ordinary disconnected
-islands may sleep.
+The separate 1,000-tick neutral profile averaged 6.000/6.447 ms, reached
+8.582/8.934 ms maxima, and ended at `9d3ad372` with exact state agreement and no
+deadline violations. Each mode recorded three body sleep transitions, one wake
+transition, 1,113 sleeping body-ticks, and 2,220 skipped sleeping contacts;
+maximum rope error was 0.200 pixel. Powered belt contact remains awake while
+ordinary disconnected islands may sleep.
 
-With 30 Hz real-time snapshot publication and the RP2040 hardware-divider
-wrappers, a concurrent full-frame window advanced 5,921 authoritative ticks at
-120.0 Hz while presenting at 29.6 fps. It skipped one scheduled tick;
-mean/maximum physics time was 6.638/17.326 ms, and the worst backlog was five
-ticks. Main, render, and core-1 stack high-water marks were 4,016/5,120,
-4,044/5,120, and 360/4,096 bytes.
+Compared with the preceding 120 Hz schema-version-12 result, moving-grid cost
+rose 13.1% per tick after solver retuning, while scheduled physics CPU fell
+from 590 to 334 ms per real second (43.4%). The neutral grid fell from 671 to
+360 ms per second (46.3%). A concurrent full-frame window advanced 5,723
+authoritative ticks at exactly 60.0 Hz while presenting at 29.8 fps. It had
+backlog one, zero skipped ticks, and zero over-budget updates; mean/maximum
+physics time was 7.463/13.399 ms and complete updates averaged 7.944 ms with a
+14.918 ms maximum. Main and render stack high-water marks were 4,016/5,120 and
+4,044/5,120 bytes.
+
+For direct historical comparison, the preceding schema-version-12 120 Hz
+moving profile averaged 4.920/5.313 ms, reached 6.935/7.470 ms maxima, and
+agreed at `1600fb06`. Its neutral profile averaged 5.590/5.887 ms and agreed at
+`34a04b59`; the earlier concurrent window held 120.0 Hz with one skipped tick.
 
 For comparison, the preceding one-way schema-version-10 rope profile averaged
 4.502/5.100 ms, reached 6.749/7.458 ms maxima, and ended at `91744aeb`. It did
@@ -627,9 +644,10 @@ maximum; faster intervening updates recovered most deadlines.
 The first chain-scaling baseline isolated deterministic 4-, 6-, and 8-link
 chains at 1.559, 2.202, and 2.819 ms mean. A single position pass held four and
 six links to 0.495 and 1.314 pixels but let eight links separate by 51.867
-pixels. The current solver now performs one forward position pass, checks every
-anchor against a one-pixel target, and adds alternating reverse/forward passes
-only as needed, with four as the hard ceiling. This keeps cached impulses as
+pixels. The solver in that profile performs one forward position pass, checks
+every anchor against a one-pixel target, and adds alternating reverse/forward
+passes only as needed, with four as that image's hard ceiling. The 60 Hz build
+retains the same adaptive rule with a ten-pass ceiling. Cached impulses remain
 per-step scratch rather than introducing persistent warm-start state.
 
 The adaptive device profile averaged 1.569, 2.315, and 3.897 ms for 4/6/8

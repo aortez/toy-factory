@@ -11,15 +11,16 @@
 #include "game_world.h"
 #include "physics_chain_fixture.h"
 
-#define EXPECTED_RESET_HASH          UINT32_C(0xabc2002c)
-#define EXPECTED_RIGHT_30_HASH       UINT32_C(0xfaaf80f7)
-#define EXPECTED_RIGHT_30_UP_15_HASH UINT32_C(0xaad794a0)
-#define EXPECTED_REPLAY_10000_HASH   UINT32_C(0xcdf463f7)
-#define EXPECTED_SLEEP_SMOKE_HASH    UINT32_C(0x0a0ff729)
-#define BOUNDARY_TOLERANCE           PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
-#define ROPE_BOUNDARY_TOLERANCE      PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 64)
-#define CHAIN_CONVERGENCE_TOLERANCE  PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
-#define ANGULAR_BOUNDARY_TOLERANCE   PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 12)
+#define EXPECTED_RESET_HASH         UINT32_C(0x9ff98b13)
+#define EXPECTED_RIGHT_15_HASH      UINT32_C(0x92a41d99)
+#define EXPECTED_RIGHT_15_UP_8_HASH UINT32_C(0x98edb8a7)
+#define EXPECTED_REPLAY_10000_HASH  UINT32_C(0x175b56c2)
+#define EXPECTED_SLEEP_SMOKE_HASH   UINT32_C(0xaa27c7ef)
+#define EXPECTED_SLEEP_SMOKE_TICK   259U
+#define BOUNDARY_TOLERANCE          PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
+#define ROPE_BOUNDARY_TOLERANCE     PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 64)
+#define CHAIN_CONVERGENCE_TOLERANCE PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
+#define ANGULAR_BOUNDARY_TOLERANCE  PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 12)
 #define CANONICAL_POSSIBLE_PAIR_COUNT                                                              \
 	(((PICOSYSTEM_GAME_BODY_COUNT * (PICOSYSTEM_GAME_BODY_COUNT - 1U)) / 2U) +                 \
 	 (PICOSYSTEM_GAME_BODY_COUNT * PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT) +                     \
@@ -332,15 +333,15 @@ static void test_canonical_reset_and_golden_replay(void)
 	assert_hash("reset", picosystem_game_world_hash(&world), EXPECTED_RESET_HASH);
 
 	const struct picosystem_game_input right = {.horizontal = 1};
-	step_many(&world, &right, 30U);
-	assert(world.logic_tick_count == 30U);
-	assert_hash("right-30", picosystem_game_world_hash(&world), EXPECTED_RIGHT_30_HASH);
+	step_many(&world, &right, 15U);
+	assert(world.logic_tick_count == 15U);
+	assert_hash("right-15", picosystem_game_world_hash(&world), EXPECTED_RIGHT_15_HASH);
 
 	const struct picosystem_game_input up = {.vertical = -1};
-	step_many(&world, &up, 15U);
-	assert(world.logic_tick_count == 45U);
-	assert_hash("right-30-up-15", picosystem_game_world_hash(&world),
-		    EXPECTED_RIGHT_30_UP_15_HASH);
+	step_many(&world, &up, 8U);
+	assert(world.logic_tick_count == 23U);
+	assert_hash("right-15-up-8", picosystem_game_world_hash(&world),
+		    EXPECTED_RIGHT_15_UP_8_HASH);
 
 	assert(picosystem_game_world_reset(&world) == 0);
 	assert_hash("reset-after-replay", picosystem_game_world_hash(&world), EXPECTED_RESET_HASH);
@@ -595,7 +596,8 @@ static void test_chain_fixture_boundaries_and_replay(void)
 
 		uint64_t maximum_error_squared = 0U;
 		uint32_t extra_position_sweep_tick_count = 0U;
-		for (uint32_t step = 0U; step < 1120U; ++step) {
+		for (uint32_t step = 0U; step < 560U; ++step) {
+			assert(picosystem_physics_world_wake_body(&world.physics, 0U) == 0);
 			assert(picosystem_game_world_step(&world, &neutral) == 0);
 			const uint64_t error_squared = maximum_revolute_error_squared(&world);
 			if (error_squared > maximum_error_squared) {
@@ -616,21 +618,24 @@ static void test_chain_fixture_boundaries_and_replay(void)
 			assert(world.physics.last_work.joint_solver_visit_count ==
 			       link_count * world.physics.last_work.solver_iteration_count);
 		}
-		assert(world.logic_tick_count == 1120U);
+		assert(world.logic_tick_count == 560U);
 		assert(picosystem_game_world_hash(&world) != 0U);
 		fprintf(stderr, "chain links=%u maximum squared anchor error=%llu\n", link_count,
 			(unsigned long long)maximum_error_squared);
 		const int64_t tolerance = CHAIN_CONVERGENCE_TOLERANCE;
 		assert(maximum_error_squared <= (uint64_t)(tolerance * tolerance));
-		if (link_count <= 4U) {
+		if (link_count == 1U) {
 			assert(extra_position_sweep_tick_count == 0U);
-		} else if (link_count == PICOSYSTEM_PHYSICS_CHAIN_FIXTURE_MAX_LINKS) {
+		} else {
 			assert(extra_position_sweep_tick_count > 0U);
 		}
 
 		struct picosystem_game_world replay;
 		assert(picosystem_physics_chain_fixture_reset(&replay, link_count) == 0);
-		step_many(&replay, &neutral, 1120U);
+		for (uint32_t step = 0U; step < 560U; ++step) {
+			assert(picosystem_physics_world_wake_body(&replay.physics, 0U) == 0);
+			assert(picosystem_game_world_step(&replay, &neutral) == 0);
+		}
 		assert_world_equal(&world, &replay);
 	}
 }
@@ -648,6 +653,15 @@ static void assert_bodies_inside_arena(const struct picosystem_game_world *world
 	for (uint16_t index = 0U; index < world->physics.body_count; ++index) {
 		const struct picosystem_physics_body *const body = &world->physics.bodies[index];
 		if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
+			if ((body->center.x < (left + body->radius - BOUNDARY_TOLERANCE)) ||
+			    (body->center.x > (right - body->radius + BOUNDARY_TOLERANCE)) ||
+			    (body->center.y < (top + body->radius - BOUNDARY_TOLERANCE)) ||
+			    (body->center.y > (bottom - body->radius + BOUNDARY_TOLERANCE))) {
+				fprintf(stderr,
+					"circle %u escaped at tick %u: center=(%d,%d), radius=%d\n",
+					index, world->logic_tick_count, body->center.x,
+					body->center.y, body->radius);
+			}
 			assert(body->center.x >= (left + body->radius - BOUNDARY_TOLERANCE));
 			assert(body->center.x <= (right - body->radius + BOUNDARY_TOLERANCE));
 			assert(body->center.y >= (top + body->radius - BOUNDARY_TOLERANCE));
@@ -660,6 +674,22 @@ static void assert_bodies_inside_arena(const struct picosystem_game_world *world
 			assert(picosystem_physics_body_capsule_endpoints(body, &start, &end) == 0);
 			const struct picosystem_physics_vector endpoints[] = {start, end};
 			for (size_t endpoint = 0U; endpoint < 2U; ++endpoint) {
+				if ((endpoints[endpoint].x <
+				     (left + body->radius - BOUNDARY_TOLERANCE)) ||
+				    (endpoints[endpoint].x >
+				     (right - body->radius + BOUNDARY_TOLERANCE)) ||
+				    (endpoints[endpoint].y <
+				     (top + body->radius - BOUNDARY_TOLERANCE)) ||
+				    (endpoints[endpoint].y >
+				     (bottom - body->radius + BOUNDARY_TOLERANCE))) {
+					fprintf(stderr,
+						"capsule %u endpoint %u escaped at tick %u: "
+						"point=(%d,%d), "
+						"radius=%d\n",
+						index, (unsigned int)endpoint,
+						world->logic_tick_count, endpoints[endpoint].x,
+						endpoints[endpoint].y, body->radius);
+				}
 				assert(endpoints[endpoint].x >=
 				       (left + body->radius - BOUNDARY_TOLERANCE));
 				assert(endpoints[endpoint].x <=
@@ -767,7 +797,7 @@ static void test_bounded_motion_contacts_and_saturated_tick(void)
 	uint32_t first_wake_tick = UINT32_MAX;
 
 	for (uint32_t step = 0U; step < 10000U; ++step) {
-		const size_t input_index = (step / 250U) % (sizeof(inputs) / sizeof(inputs[0]));
+		const size_t input_index = (step / 125U) % (sizeof(inputs) / sizeof(inputs[0]));
 		const int err = picosystem_game_world_step(&world, &inputs[input_index]);
 		if (err != 0) {
 			fprintf(stderr, "bounded replay failed at step %u: %d\n", step, err);
@@ -960,9 +990,24 @@ static void test_sleep_smoke_golden(void)
 	struct picosystem_game_world world;
 	assert(picosystem_game_world_reset(&world) == 0);
 	const struct picosystem_game_input neutral = {0};
-	step_many(&world, &neutral, 1723U);
-	assert(world.logic_tick_count == 1723U);
+	while ((world.logic_tick_count < 5000U) && (world.physics.sleeping_body_mask == 0U)) {
+		assert(picosystem_game_world_step(&world, &neutral) == 0);
+	}
+	if (world.physics.sleeping_body_mask == 0U) {
+		for (uint16_t index = 0U; index < world.physics.body_count; ++index) {
+			const struct picosystem_physics_body *const body =
+				&world.physics.bodies[index];
+			fprintf(stderr, "awake body %u: velocity=(%d,%d), angular=%d, quiet=%u\n",
+				index, body->velocity_per_tick.x, body->velocity_per_tick.y,
+				body->angular_velocity_per_tick,
+				world.physics.sleep_quiet_tick_counts[index]);
+		}
+	}
 	assert(world.physics.sleeping_body_mask != 0U);
+	if (world.logic_tick_count != EXPECTED_SLEEP_SMOKE_TICK) {
+		fprintf(stderr, "sleep-smoke tick: %u\n", world.logic_tick_count);
+	}
+	assert(world.logic_tick_count == EXPECTED_SLEEP_SMOKE_TICK);
 	assert_hash("sleep-smoke", picosystem_game_world_hash(&world), EXPECTED_SLEEP_SMOKE_HASH);
 }
 

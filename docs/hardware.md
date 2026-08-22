@@ -134,7 +134,7 @@ with a 16,771 us mean period, no GPIO read errors, and no TE timeout. Runtime
 `sync off` and `sync on` also switched cleanly between unconstrained snapshot
 consumption and TE-driven presentation without rebooting.
 
-## Decoupled 120 Hz simulation and presentation
+## Decoupled 60 Hz simulation and presentation
 
 Zephyr and every device driver run on core 0. Its priority-0 main thread owns
 input and all authoritative simulation state; the USB shell runs at priority 1.
@@ -146,10 +146,10 @@ Zephyr or a driver. Once two or more simulation deadlines are due, the main
 loop reserves a one-millisecond recovery window so the shell can still accept
 diagnostics or a bootloader request. An isolated late tick may catch up and
 reach its ordinary scheduler sleep without the added delay. The scheduler
-represents 120 Hz as rational kernel-tick deadlines rather than rounding it to
+represents 60 Hz as rational kernel-tick deadlines rather than rounding it to
 an integer millisecond period. With the configured 10 kHz kernel tick, the
-deadline spacing repeats 83, 83, and 84 ticks, totaling exactly 250 ticks for
-three updates and 10,000 ticks for 120 updates. A native host test checks this
+deadline spacing repeats 166, 167, and 167 ticks, totaling exactly 500 ticks for
+three updates and 10,000 ticks for 60 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
@@ -158,7 +158,7 @@ of up to 12 circle, oriented-box, or capsule bodies, eight physical static
 segments, 16 render-only guide segments, two ropes with up to 12 particles
 each, eight render records each for distance and revolute joints, and one
 canonical box sensor at a deterministic 30 Hz real-time cadence. Physics remains
-at 120 Hz; pause, reset, redraw, and exact-step controls force a current snapshot.
+at 60 Hz; pause, reset, redraw, and exact-step controls force a current snapshot.
 Two slots and a short spin-lock-protected copy prevent the renderer from
 observing partially updated state. A saturated semaphore is only a wake-up
 hint: if two or more simulation states arrive during a panel period, the
@@ -363,28 +363,37 @@ self-collision or rope/rope collision in this bounded milestone.
 
 Its physics world is 22,636 bytes, each render snapshot is 856 bytes, and the
 serialized profile workspace is 33,304 bytes. The conservative image uses
-221,124 bytes of Zephyr RAM and 216,224 bytes of flash. The recommended 62.5
-MHz PL022/DMA image uses 250,396 bytes of the 255 KiB Zephyr region and 221,976
-bytes of flash, retaining 10,724 bytes of linker RAM headroom plus the
+221,124 bytes of Zephyr RAM and 216,492 bytes of flash. The recommended 62.5
+MHz PL022/DMA image uses 250,428 bytes of the 255 KiB Zephyr region and 222,020
+bytes of flash, retaining 10,692 bytes of linker RAM headroom plus the
 separately reserved 8 KiB core-1 area. Both images route compiler integer
 division through the RP2040 hardware divider using interrupt-safe Pico SDK
 wrappers.
 
-The PIM559 reproduced reset/right-30/right-30-up-15 hashes `abc2002c`,
-`faaf80f7`, and `aad794a0`. The coherently presented tick-45 framebuffer is
-CRC-32 `df718839`; the neutral sequence reached tick 1,723 at `0a0ff729` with
-framebuffer CRC-32 `88c2e21e`.
+The 60 Hz PIM559 build reproduced reset/right-15/right-15-up-8 hashes
+`9ff98b13`, `92a41d99`, and `98edb8a7`. The coherently presented tick-23
+framebuffer is CRC-32 `2ee34019`; the neutral sequence reached tick 259 at
+`aa27c7ef` with framebuffer CRC-32 `257e01aa`.
 
-Its schema-version-12 isolated 2,000-tick moving profile averaged 4.920 ms for
-the grid and 5.313 ms for the brute-force reference, with 6.935/7.470 ms maxima,
-no 8.333 ms budget violations, and exact final agreement at `1600fb06`. The
-rope stage averaged 1.661/1.643 ms while bounded collision considered 234
-rope/collider pairs per tick. The separate neutral profile averaged
-5.590/5.887 ms and agreed exactly at `34a04b59`, again without violations. A
-concurrent window advanced 5,921 ticks at 120.0 Hz with one skipped tick while
-full-frame presentation held 29.6 fps. Main, render, shell-profile, and
-core-1 stack high-water marks were 4,016/5,120, 4,044/5,120, 4,200/5,120, and
-360/4,096 bytes.
+Its schema-version-13 isolated 1,000-tick moving profile averaged 5.566 ms for
+the grid and 6.044 ms for the brute-force reference, with 8.488/9.002 ms
+maxima, no 16.667 ms budget violations, and exact final agreement at
+`2ff3a57b`. The rope stage averaged 1.619/1.613 ms. The separate neutral
+profile averaged 6.000/6.447 ms and agreed exactly at `9d3ad372`, again without
+violations. Relative to the preceding 120 Hz grid profile, scheduled physics
+CPU fell from 590 to 334 ms per real second.
+
+A concurrent window advanced 5,723 measured ticks at 60.0 Hz while full-frame
+presentation held 29.8 fps. Backlog was one, with zero skipped ticks and zero
+over-budget updates; mean/maximum physics time was 7.463/13.399 ms and complete
+updates averaged 7.944 ms with a 14.918 ms maximum. Main, render, and
+shell-profile stack high-water marks were 4,016/5,120, 4,044/5,120, and
+4,184/5,120 bytes.
+
+For comparison, the preceding schema-version-12 120 Hz moving profile averaged
+4.920/5.313 ms with 6.935/7.470 ms maxima and agreed at `1600fb06`. Its neutral
+profile averaged 5.590/5.887 ms and agreed at `34a04b59`; an earlier concurrent
+window held 120.0 Hz and 29.6 fps with one skipped tick.
 
 The preceding one-way capsule-and-rope image added exact capsule interactions
 against all body shapes, static segments, and box sensors, plus two fixed rope
@@ -460,7 +469,7 @@ about 820-833 us. After 3518 fixed updates it sustained 62.5 fps with zero
 skipped ticks, including twelve back-to-back USB status requests. The animated
 sprite, D-pad steering, and synchronous full redraws were visually confirmed
 without corruption. Those 62.5 Hz and blocking-redraw figures are historical;
-the current 120 Hz decoupled loop above replaces that scheduling path.
+the current 60 Hz decoupled loop above replaces that scheduling path.
 
 Full frames now bypass the staging buffer and send the wire-ready framebuffer
 with one display write. This reduced PL022 full-frame time to 77,692-77,711 us
