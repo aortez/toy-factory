@@ -29,9 +29,10 @@ LOG_MODULE_REGISTER(picosystem_game_demo, LOG_LEVEL_INF);
 #define MAX_DIRTY_REGIONS                                                                          \
 	((PICOSYSTEM_PHYSICS_MAX_BODIES +                                                          \
 	  (PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS * PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT) + \
-	  PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS + PICOSYSTEM_SCENE_MAX_BOX_SENSORS + 1U) *        \
+	  PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS + PICOSYSTEM_PHYSICS_MAX_ROPES +                  \
+	  PICOSYSTEM_SCENE_MAX_BOX_SENSORS + 1U) *                                                 \
 	 2U)
-#define RENDER_THREAD_STACK_SIZE 4096U
+#define RENDER_THREAD_STACK_SIZE 5120U
 #if defined(CONFIG_TOY_FACTORY_CORE1_FULL_FRAME_RENDERER)
 #define RENDER_THREAD_PRIORITY -1
 #else
@@ -97,7 +98,8 @@ BUILD_ASSERT(RENDER_THREAD_PRIORITY < CONFIG_SHELL_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_MAIN_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_SHELL_THREAD_PRIORITY);
 #endif
-BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 768U);
+/* Allow both fixed-capacity rope render records while keeping snapshot growth bounded. */
+BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 864U);
 BUILD_ASSERT(PICOSYSTEM_GAME_BOX_SENSOR_COUNT <= PICOSYSTEM_SCENE_MAX_BOX_SENSORS);
 
 static bool core1_full_frame_renderer_enabled(void)
@@ -206,6 +208,7 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 	    (left->distance_joint_count != right->distance_joint_count) ||
 	    (left->revolute_joint_count != right->revolute_joint_count) ||
 	    (left->box_sensor_count != right->box_sensor_count) ||
+	    (left->rope_count != right->rope_count) ||
 	    (left->conveyor_forward_segment_mask != right->conveyor_forward_segment_mask) ||
 	    (left->conveyor_reverse_segment_mask != right->conveyor_reverse_segment_mask)) {
 		return false;
@@ -227,6 +230,12 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 		    (left_segment->start_y != right_segment->start_y) ||
 		    (left_segment->end_x != right_segment->end_x) ||
 		    (left_segment->end_y != right_segment->end_y)) {
+			return false;
+		}
+	}
+	for (uint16_t index = 0U; index < left->rope_count; ++index) {
+		if ((left->ropes[index].id != right->ropes[index].id) ||
+		    (left->ropes[index].particle_count != right->ropes[index].particle_count)) {
 			return false;
 		}
 	}
@@ -317,7 +326,7 @@ static bool body_render_state_matches(const struct picosystem_scene_body *left,
 	    (left->id != right->id) || (left->sleeping != right->sleeping)) {
 		return false;
 	}
-	if (left->shape != PICOSYSTEM_PHYSICS_SHAPE_BOX) {
+	if (left->shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
 		return true;
 	}
 
@@ -350,6 +359,21 @@ static bool joint_render_state_matches(const struct picosystem_scene_joint *left
 	       (left->anchor_b_x == right->anchor_b_x) && (left->anchor_b_y == right->anchor_b_y);
 }
 
+static bool rope_render_state_matches(const struct picosystem_scene_rope *left,
+				      const struct picosystem_scene_rope *right)
+{
+	if ((left->id != right->id) || (left->particle_count != right->particle_count)) {
+		return false;
+	}
+	for (uint8_t index = 0U; index < left->particle_count; ++index) {
+		if ((left->particles[index].x != right->particles[index].x) ||
+		    (left->particles[index].y != right->particles[index].y)) {
+			return false;
+		}
+	}
+	return true;
+}
+
 static int append_prismatic_guides(const struct picosystem_game_demo_state *state,
 				   struct picosystem_scene_snapshot *snapshot)
 {
@@ -369,6 +393,8 @@ static int append_prismatic_guides(const struct picosystem_game_demo_state *stat
 		int32_t guide_offset = body->radius;
 		if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
 			guide_offset = MAX(body->half_extent.x, body->half_extent.y);
+		} else if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+			guide_offset = body->half_extent.x + body->radius;
 		}
 		guide_offset += PICOSYSTEM_PHYSICS_FIXED_FROM_INT(4);
 		const int32_t lower = joint->reference_translation + joint->lower_translation;
@@ -453,6 +479,13 @@ static size_t build_dirty_regions(const struct picosystem_scene_snapshot *snapsh
 		regions[count++] =
 			picosystem_scene_revolute_joint_bounds(&snapshot->revolute_joints[index]);
 	}
+	for (uint16_t index = 0U; index < snapshot->rope_count; ++index) {
+		if (rope_render_state_matches(&snapshot->ropes[index], &presented->ropes[index])) {
+			continue;
+		}
+		regions[count++] = picosystem_scene_rope_bounds(&presented->ropes[index]);
+		regions[count++] = picosystem_scene_rope_bounds(&snapshot->ropes[index]);
+	}
 	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
 		if (snapshot->box_sensors[index].active != presented->box_sensors[index].active) {
 			regions[count++] = snapshot->box_sensors[index].bounds;
@@ -509,8 +542,10 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 		.distance_joint_count = state->world.physics.distance_joint_count,
 		.revolute_joint_count = state->world.physics.revolute_joint_count,
 		.box_sensor_count = state->world.physics.box_sensor_count,
+		.rope_count = state->world.physics.rope_count,
 	};
-	if (snapshot->box_sensor_count > ARRAY_SIZE(snapshot->box_sensors)) {
+	if ((snapshot->box_sensor_count > ARRAY_SIZE(snapshot->box_sensors)) ||
+	    (snapshot->rope_count > ARRAY_SIZE(snapshot->ropes))) {
 		return -ENOSPC;
 	}
 
@@ -530,6 +565,20 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			struct picosystem_physics_vector
 				vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT];
 			const int err = picosystem_physics_body_box_vertices(body, vertices);
+			if (err != 0) {
+				return err;
+			}
+			for (size_t vertex = 0U; vertex < PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT;
+			     ++vertex) {
+				snapshot->bodies[index].vertices[vertex].x =
+					fixed_to_pixel(vertices[vertex].x);
+				snapshot->bodies[index].vertices[vertex].y =
+					fixed_to_pixel(vertices[vertex].y);
+			}
+		} else if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
+			struct picosystem_physics_vector
+				vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT];
+			const int err = picosystem_physics_body_capsule_vertices(body, vertices);
 			if (err != 0) {
 				return err;
 			}
@@ -589,6 +638,21 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			.id = sensor->id,
 			.active = active ? 1U : 0U,
 		};
+	}
+	for (uint16_t index = 0U; index < snapshot->rope_count; ++index) {
+		const struct picosystem_physics_rope *const rope =
+			&state->world.physics.ropes[index];
+		if (rope->particle_count > PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES) {
+			return -ERANGE;
+		}
+		snapshot->ropes[index].id = rope->id;
+		snapshot->ropes[index].particle_count = rope->particle_count;
+		for (uint8_t particle = 0U; particle < rope->particle_count; ++particle) {
+			snapshot->ropes[index].particles[particle].x =
+				fixed_to_pixel(rope->particles[particle].position.x);
+			snapshot->ropes[index].particles[particle].y =
+				fixed_to_pixel(rope->particles[particle].position.y);
+		}
 	}
 	int err = append_prismatic_guides(state, snapshot);
 	if (err != 0) {

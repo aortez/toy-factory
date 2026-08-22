@@ -28,7 +28,8 @@ SCHEMA_2_STAGE_NAMES = {
     "total",
 }
 SCHEMA_7_STAGE_NAMES = SCHEMA_2_STAGE_NAMES | {"narrow_body_sensor"}
-STAGE_NAMES = SCHEMA_7_STAGE_NAMES
+SCHEMA_10_STAGE_NAMES = SCHEMA_7_STAGE_NAMES | {"rope"}
+STAGE_NAMES = SCHEMA_10_STAGE_NAMES
 SCHEMA_2_WORK_NAMES = {
     "possible_pairs",
     "candidate_pairs",
@@ -94,6 +95,13 @@ SCHEMA_9_WORK_NAMES = SCHEMA_8_WORK_NAMES | {
     "conveyor_solver_visits",
     "conveyor_solver_changes",
 }
+SCHEMA_10_WORK_NAMES = SCHEMA_9_WORK_NAMES | {
+    "ropes",
+    "rope_particles",
+    "rope_solver_iterations",
+    "rope_constraint_visits",
+    "rope_constraint_changes",
+}
 WORK_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_WORK_NAMES,
     3: SCHEMA_3_WORK_NAMES,
@@ -103,6 +111,7 @@ WORK_NAMES_BY_SCHEMA = {
     7: SCHEMA_7_WORK_NAMES,
     8: SCHEMA_8_WORK_NAMES,
     9: SCHEMA_9_WORK_NAMES,
+    10: SCHEMA_10_WORK_NAMES,
 }
 STAGE_NAMES_BY_SCHEMA = {
     2: SCHEMA_2_STAGE_NAMES,
@@ -113,6 +122,7 @@ STAGE_NAMES_BY_SCHEMA = {
     7: SCHEMA_7_STAGE_NAMES,
     8: SCHEMA_7_STAGE_NAMES,
     9: SCHEMA_7_STAGE_NAMES,
+    10: SCHEMA_10_STAGE_NAMES,
 }
 GAME_STATE_PATTERN = re.compile(r"^mode=(paused|running) tick=\d+ hash=[0-9a-fA-F]{8}$")
 
@@ -223,6 +233,8 @@ def parse_profile(output: str) -> dict[str, object]:
                 "max_prismatic_angular_error_q16",
                 "max_prismatic_limit_violation_q16",
             }
+        if schema_version >= 10:
+            mode_keys.add("max_rope_segment_error_q16")
     for line in output.splitlines():
         fields = parse_fields(line, "PROFILE_MODE")
         if fields is None:
@@ -260,6 +272,10 @@ def parse_profile(output: str) -> dict[str, object]:
             fields.get("max_prismatic_limit_violation_q16", "0"),
             "max_prismatic_limit_violation_q16",
         )
+        maximum_rope_segment_error_q16 = parse_unsigned(
+            fields.get("max_rope_segment_error_q16", "0"),
+            "max_rope_segment_error_q16",
+        )
         modes[mode] = {
             "final_hash": f"{final_hash:08x}",
             "clock_reads_per_step": {
@@ -294,6 +310,10 @@ def parse_profile(output: str) -> dict[str, object]:
                 ),
                 "maximum_prismatic_limit_violation_pixels": round(
                     maximum_prismatic_limit_violation_q16 / 65536, 6
+                ),
+                "maximum_rope_segment_error_q16": maximum_rope_segment_error_q16,
+                "maximum_rope_segment_error_pixels": round(
+                    maximum_rope_segment_error_q16 / 65536, 6
                 ),
             },
             "stages": {},

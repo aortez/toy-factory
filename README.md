@@ -14,8 +14,9 @@ path:
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and supports both damage-region and
   continuous full-frame presentation;
-- runs a deterministic seven-body circle-and-box lab at an exact 120 Hz fixed
-  step with Q16.16 linear/angular motion, gravity, friction, and restitution;
+- runs a deterministic seven-body circle/box/capsule lab at an exact 120 Hz
+  fixed step with Q16.16 linear/angular motion, gravity, friction, and
+  restitution;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -25,8 +26,11 @@ path:
   without adding normal velocity or moving collision geometry;
 - drives bounded revolute and prismatic motors against creation-relative limits,
   with a powered three-link chain and reciprocating press in the canonical lab;
-- detects exact circle/box overlap against bounded fixed box sensors and emits
-  deterministic pair-level `BEGIN`, `STAY`, and `END` contact events;
+- resolves every circle/box/capsule body pairing, static-segment contact, and
+  fixed-box-sensor overlap without polygonizing capsules;
+- simulates a fixed-capacity Verlet rope with world/body pins and six
+  alternating position-constraint passes;
+- emits deterministic pair-level `BEGIN`, `STAY`, and `END` contact events;
 - deterministically sleeps whole contact/joint islands after 0.5 seconds of
   quiet, wakes them through physical interaction, leaves sensors observational,
   and keeps powered conveyor contacts awake;
@@ -145,12 +149,13 @@ The physical gesture remains the recovery path for a blank or broken image:
 4. Run `make update` again.
 
 The PicoSystem reboots automatically when the copy completes. Its LCD should
-show a dark checkerboard arena, three circles, four moving boxes, two diagonal
-ramps, cyan boundaries and press rails, yellow hinge pins, a magenta sensor,
-and a white `MACHINE LAB 120HZ` heading. The chain's world hinge is motorized, its far-end
-hinge stops at plus or minus one radian relative to the reset pose, and the
-press reverses at the ends of its 48-pixel vertical stroke. The sensor turns
-green while any body overlaps it; the `Sxx` header counter records entries. The world
+show a dark checkerboard arena, two circles, four moving boxes, a rotating
+magenta capsule with a cyan rope, two diagonal ramps, cyan boundaries and press
+rails, yellow hinge pins, a magenta sensor, and a white `MACHINE LAB 120HZ`
+heading. The chain's world hinge is motorized, its far-end hinge stops at plus
+or minus one radian relative to the reset pose, and the press reverses at the
+ends of its 48-pixel vertical stroke. The sensor turns green while any body
+overlaps it; the `Sxx` header counter records entries. The world
 advances on exact rational 120 Hz deadlines. Normal presentation restores each
 moved body's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
@@ -292,18 +297,20 @@ All three commands warm up each implementation for 120 ticks, measure the
 requested replay through the uniform grid and the brute-force reference, and
 reject any final hash or field-by-field state mismatch. Timings are accumulated in
 fixed-size histograms instead of being logged per tick. The report separates
-integration, geometry, broad phase, body/body, body/segment, and body/sensor narrow phase,
-position correction, velocity solving, final clamping, unattributed
+integration, geometry, broad phase, body/body, body/segment, and body/sensor
+narrow phase, position correction, velocity solving, rope solving, final
+clamping, unattributed
 validation/instrumentation work, and the total. Deterministic counters report
 candidate filtering, grid population, manifolds, contact points and pair events,
 sensor tests/overlaps, connected-body
 collision filters, distance/revolute/prismatic joint, motor, and limit counts,
 awake/sleeping bodies, sleep/wake transitions, skipped sleeping constraints,
 separate anchor/limit correction, cached/changed contact work, velocity-row
-visits, and fallbacks. Schema version
-8 identifies the fixture and reports maximum revolute-anchor separation,
-angular-limit violation, prismatic lateral/angular error, and prismatic-limit
-violation; those quality checks run outside the timed physics step.
+visits, rope particles/passes/constraint mutations, and fallbacks. Schema
+version 10 identifies the fixture and reports maximum revolute-anchor
+separation, angular-limit violation, prismatic lateral/angular error,
+prismatic-limit violation, and rope-segment length error; those quality checks
+run outside the timed physics step.
 
 `make profile-ab` and `make profile-sleep` handle pause/resume around the two
 canonical commands.
@@ -359,8 +366,8 @@ and optional final assertions:
     {"input": "up", "ticks": 15}
   ],
   "expect": {
-    "hash": "3db7c5b5",
-    "framebuffer_crc32": "c8ba210d"
+    "hash": "63bfd54f",
+    "framebuffer_crc32": "5111bc8b"
   }
 }
 ```
@@ -440,9 +447,10 @@ shape, configured bus frequency, PL022/PIO polling behavior, and both DMA paths.
 
 ## Game-loop architecture
 
-The authoritative fixed-point bodies, static segments, box sensors, distance,
-revolute, and prismatic joints, uniform-grid candidate filter, contact/event
-generation, sequential-impulse response, and stable field-by-field hash live in
+The authoritative fixed-point circle/box/capsule bodies, static segments, box
+sensors, distance/revolute/prismatic joints, position-based ropes, uniform-grid
+candidate filter, contact/event generation, sequential-impulse response, and
+stable field-by-field hash live in
 [`src/physics_world.c`](src/physics_world.c). Canonical scene construction,
 input-to-acceleration mapping, game ticks, and the outer hash live in
 [`src/game_world.c`](src/game_world.c). Neither module has a Zephyr, scheduler,
@@ -456,7 +464,7 @@ The priority-1 USB shell runs only while higher-priority work is blocked; once
 two or more simulation deadlines are due, the main loop reserves a
 one-millisecond recovery window so diagnostics and the bootloader command cannot
 remain starved. An isolated late tick may catch up and reach its normal sleep
-without paying that extra delay. The main thread publishes a 744-byte immutable
+without paying that extra delay. The main thread publishes an 856-byte immutable
 render snapshot into one of two slots under a short spin lock. A saturated
 semaphore wakes the renderer, which coalesces obsolete snapshots instead of
 making simulation wait.
@@ -499,28 +507,28 @@ framebuffer is allocated.
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
 generation and also runs native rigid-body collision/capacity, bounded
-spring/conveyor response, exact sensor overlap/contact-lifecycle, 1,000-tick
-grid/brute-force oracle, 10,000-tick game-world replay/boundary, deadline-scheduler,
+spring/conveyor response, exact capsule shape-pair coverage, bounded rope
+dynamics, exact sensor overlap/contact-lifecycle, 1,000-tick grid/brute-force
+oracle, 10,000-tick game-world replay/boundary, deadline-scheduler,
 serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted
 reset/right-30/up-15 hashes as native goldens.
-The default image uses 216,228 bytes of its 255 KiB Zephyr RAM region (82.81%)
-and 199,968 bytes of flash. This includes the 115,200-byte framebuffer,
-3,840-byte transfer buffer,
-22,112-byte fixed-capacity physics world with a 1,024-byte scratch grid and eight
-slots each for distance, motor/limit-capable revolute, and motor/limit-capable
-prismatic joints and box sensors, plus bounded contact-event storage, per-step
-deterministic counters, a 31,776-byte serialized benchmark workspace, two
-752-byte render snapshots, a 5,120-byte shell stack, a
-4,096-byte renderer stack,
-display-profile result storage, and a 1,024-byte shell TX ring. The fast image
-uses 240,988 bytes of that region (92.29%) and 205,308 bytes of flash. It keeps
-the 16,592-byte inlined physics step and renderer hot path in SRAM so the two
-cores do not contend for XIP flash during a frame. Both images also reserve
-8 KiB outside Zephyr's region for the core-1 mailbox and stack. The fast image
-retains 20,132 bytes of Zephyr RAM headroom. Full frames bypass the staging
-buffer with one contiguous write.
+The default image uses 220,140 bytes of its 255 KiB Zephyr RAM region (84.31%)
+and 209,628 bytes of flash. This includes the 115,200-byte framebuffer,
+3,840-byte transfer buffer, 22,584-byte fixed-capacity physics world with a
+1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
+revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
+contact/event storage and per-step deterministic counters, a 33,232-byte
+serialized benchmark workspace, two 856-byte render snapshots, 4,608-byte main
+and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
+storage, and a 1,024-byte shell TX ring. The fast image uses 246,684 bytes of
+that region (94.47%) and 214,960 bytes of flash. It keeps the inlined physics
+step and renderer hot path in SRAM so the two cores do not contend for XIP flash
+during a frame. Both images also reserve 8 KiB outside Zephyr's region for the
+core-1 mailbox and stack. The default and fast images retain 40,980 and 14,436
+bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
+with one contiguous write.
 
 On the tested PIM559, the preceding sleeping image's schema-version-8 moving
 profile averaged 2.792 ms on the grid and 3.117 ms through the brute-force
@@ -678,21 +686,28 @@ budget. A longer 14,416-tick live window held 120.0 Hz simulation and 29.8 fps
 presentation, with one isolated skipped tick amid USB profiling and status
 activity.
 
-The current spring-and-conveyor Machine Lab hashes to `a91c46a3` at reset,
-`f3643510` after 30 right ticks, and `3db7c5b5` after a further 15 up ticks. Its
-10,000-tick native replay ends at `8e21e7b8`; the neutral sleep sequence reaches
-tick 1,723 at `51bb08c0`. The PIM559 reproduced both device sequences with
-framebuffer CRC-32 values `c8ba210d` and `0a848efb`. The scene renders its
-bounded soft distance joint as a yellow coil and its signed-speed diagonal belt
-as a green line with directional chevrons. Schema 9 exposes spring and conveyor
-solver work separately from the existing hard-joint and contact counters.
+The current capsule-and-rope Machine Lab hashes to `63a73949` at reset,
+`a1734ba1` after 30 right ticks, and `63bfd54f` after a further 15 up ticks. Its
+10,000-tick native replay ends at `60bd4318`; the neutral sleep sequence reaches
+tick 1,723 at `cfd92dca`. The PIM559 reproduced both device sequences with
+framebuffer CRC-32 values `5111bc8b` and `5c0542c9`. The scene adds a rotating
+magenta capsule and an eight-particle cyan rope while retaining the yellow
+spring coil and green conveyor chevrons.
 
-The schema-version-9 isolated 1,000-tick PIM559 profile averaged 2.718 ms on the
-grid and 3.060 ms through the brute-force reference, with 4.660/4.872 ms maxima,
-zero 8.333 ms budget violations, and exact final agreement at `728d8683`. The
-grid retained 7.043 of 70 possible pairs per tick. A separate 2,000-tick neutral
-profile averaged 3.630/3.989 ms, recorded one body sleep transition and 710
-conveyor contact-ticks, and agreed exactly at `3d88bb5f`.
+The schema-version-10 isolated 2,000-tick PIM559 profile averaged 4.502 ms on
+the grid and 5.100 ms through the brute-force reference, with 6.749/7.458 ms
+maxima, zero 8.333 ms budget violations, and exact final agreement at
+`91744aeb`. The grid retained 6.951 of 70 possible pairs per tick. The rope
+stage averaged 1.157/1.154 ms, visited exactly 42 constraints per tick, and held
+maximum segment error to 0.534 px. A separate 2,000-tick neutral profile
+averaged 5.346/5.949 ms and agreed exactly at `7d4ae8ca`; the production grid
+had no deadline violations while the diagnostic reference path had 18. A clean
+concurrent window advanced 4,233 ticks at 118.9 Hz with 35 skipped ticks while
+full-frame presentation held 29.7 fps; mean physics time was 6.042 ms.
+
+The preceding schema-version-9 spring/conveyor profile averaged 2.718/3.060 ms
+for the moving fixture and 3.630/3.989 ms for the neutral fixture. It ended at
+`728d8683` and `3d88bb5f` respectively.
 
 The preceding sleeping Machine Lab hashes to `765185a2` at reset, `4a1dd4fa` after
 30 right ticks, and `2a43f4e8` after a further 15 up ticks. The exact tick-45
