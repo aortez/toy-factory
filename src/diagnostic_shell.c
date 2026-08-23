@@ -352,6 +352,68 @@ static void print_rope_stats(const struct shell *shell,
 		    game->rope_collision_velocity_changed_count);
 }
 
+static void print_granular_stats(const struct shell *shell,
+				 const struct picosystem_game_demo_stats *game)
+{
+	if (game->granular_particle_count == 0U) {
+		return;
+	}
+	shell_print(shell,
+		    "granular: particles=%u (%u lower), boundaries=%u, passages=%u, "
+		    "pairs=%u/%u candidates/possible, contacts=%u, corrections=%u, "
+		    "walls=%u/%u contacts/tests, grid=%u cells (max occupancy=%u)",
+		    game->granular_particle_count, game->granular_lower_particle_count,
+		    game->granular_boundary_count, game->granular_passage_count,
+		    game->granular_candidate_pair_count, game->granular_possible_pair_count,
+		    game->granular_contact_count, game->granular_position_correction_count,
+		    game->granular_boundary_contact_count, game->granular_boundary_test_count,
+		    game->granular_occupied_grid_cell_count,
+		    game->granular_maximum_grid_cell_occupancy);
+}
+
+static void print_game_runtime_stats(const struct shell *shell,
+				     const struct picosystem_diagnostic_snapshot *snapshot)
+{
+	const struct picosystem_game_demo_stats *const game = &snapshot->game;
+	const int64_t metrics_time_ms = snapshot->snapshot_uptime_ms;
+	const uint32_t simulation_rate_tenths = measured_rate_tenths(
+		game->measured_logic_tick_count, game->start_uptime_ms, metrics_time_ms);
+	const uint32_t frame_rate_tenths = measured_rate_tenths(
+		game->measured_presented_frame_count, game->start_uptime_ms, metrics_time_ms);
+
+	shell_print(shell,
+		    "simulation: ticks=%u, window=%u (%u.%u Hz), update=%u/%u/%u us "
+		    "last/mean/max, physics=%u/%u/%u, snapshot=%u/%u/%u, backlog=%u, "
+		    "skipped=%u, over-budget=%u",
+		    game->logic_tick_count, game->measured_logic_tick_count,
+		    simulation_rate_tenths / 10U, simulation_rate_tenths % 10U,
+		    game->last_update_time_us, game->mean_update_time_us, game->max_update_time_us,
+		    game->last_physics_time_us, game->mean_physics_time_us,
+		    game->max_physics_time_us, game->last_snapshot_time_us,
+		    game->mean_snapshot_time_us, game->max_snapshot_time_us,
+		    game->max_backlog_ticks, game->skipped_tick_count,
+		    game->over_budget_tick_count);
+	shell_print(shell,
+		    "renderer: running=%s, mode=%s, frames=%u, window=%u (%u.%u fps), "
+		    "wall=%u us, full=%u, error=%d",
+		    game->render_thread_running ? "yes" : "no",
+		    game->full_frame_renderer_enabled ? "full-frame" : "damage-region",
+		    game->presented_frame_count, game->measured_presented_frame_count,
+		    frame_rate_tenths / 10U, frame_rate_tenths % 10U, game->last_render_time_us,
+		    game->full_redraw_count, game->render_error);
+	shell_print(shell,
+		    "raster: core=%u, available=%s, %u us (max=%u), core1 frames=%u; "
+		    "present=%u regions/%u pixels/%u us",
+		    game->last_raster_on_core1 ? 1U : 0U,
+		    game->core1_renderer_available ? "yes" : "no", game->last_raster_time_us,
+		    game->maximum_raster_time_us, game->core1_raster_frame_count,
+		    game->last_dirty_region_count, game->last_dirty_pixel_count,
+		    game->last_dirty_present_time_us);
+	shell_print(shell, "snapshots: published=%u, superseded=%u, age=%u us (dirty max=%u us)",
+		    game->published_snapshot_count, game->superseded_snapshot_count,
+		    game->last_snapshot_age_us, game->max_dirty_snapshot_age_us);
+}
+
 static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -443,6 +505,7 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.conveyor_solver_visit_count,
 		    snapshot.game.conveyor_solver_changed_count);
 	print_rope_stats(shell, &snapshot.game);
+	print_granular_stats(shell, &snapshot.game);
 	shell_print(shell,
 		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
 		    "sensor entries=%u",
@@ -562,12 +625,6 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 
 	const struct picosystem_game_demo_stats *const game = &snapshot.game;
 	const struct picosystem_graphics_stats *const graphics = &game->graphics;
-	const int64_t metrics_time_ms = snapshot.snapshot_uptime_ms;
-	const uint32_t simulation_rate_tenths = measured_rate_tenths(
-		game->measured_logic_tick_count, game->start_uptime_ms, metrics_time_ms);
-	const uint32_t frame_rate_tenths = measured_rate_tenths(
-		game->measured_presented_frame_count, game->start_uptime_ms, metrics_time_ms);
-
 	shell_print(shell, "buffers: framebuffer=%u bytes, transfer=%u bytes",
 		    graphics->framebuffer_bytes, graphics->transfer_buffer_bytes);
 	shell_print(shell, "full #%u: %u us, %u KiB/s", graphics->full_present_count,
@@ -577,38 +634,7 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    graphics->last_present_width, graphics->last_present_height,
 		    graphics->last_present_time_us,
 		    graphics->last_present_throughput_kib_per_second);
-	shell_print(shell,
-		    "simulation: ticks=%u, window=%u (%u.%u Hz), update=%u/%u/%u us "
-		    "last/mean/max, physics=%u/%u/%u, snapshot=%u/%u/%u, "
-		    "backlog=%u, "
-		    "skipped=%u, over-budget=%u",
-		    game->logic_tick_count, game->measured_logic_tick_count,
-		    simulation_rate_tenths / 10U, simulation_rate_tenths % 10U,
-		    game->last_update_time_us, game->mean_update_time_us, game->max_update_time_us,
-		    game->last_physics_time_us, game->mean_physics_time_us,
-		    game->max_physics_time_us, game->last_snapshot_time_us,
-		    game->mean_snapshot_time_us, game->max_snapshot_time_us,
-		    game->max_backlog_ticks, game->skipped_tick_count,
-		    game->over_budget_tick_count);
-	shell_print(shell,
-		    "renderer: running=%s, mode=%s, frames=%u, window=%u (%u.%u fps), "
-		    "wall=%u us, full=%u, error=%d",
-		    game->render_thread_running ? "yes" : "no",
-		    game->full_frame_renderer_enabled ? "full-frame" : "damage-region",
-		    game->presented_frame_count, game->measured_presented_frame_count,
-		    frame_rate_tenths / 10U, frame_rate_tenths % 10U, game->last_render_time_us,
-		    game->full_redraw_count, game->render_error);
-	shell_print(shell,
-		    "raster: core=%u, available=%s, %u us (max=%u), core1 frames=%u; "
-		    "present=%u regions/%u pixels/%u us",
-		    game->last_raster_on_core1 ? 1U : 0U,
-		    game->core1_renderer_available ? "yes" : "no", game->last_raster_time_us,
-		    game->maximum_raster_time_us, game->core1_raster_frame_count,
-		    game->last_dirty_region_count, game->last_dirty_pixel_count,
-		    game->last_dirty_present_time_us);
-	shell_print(shell, "snapshots: published=%u, superseded=%u, age=%u us (dirty max=%u us)",
-		    game->published_snapshot_count, game->superseded_snapshot_count,
-		    game->last_snapshot_age_us, game->max_dirty_snapshot_age_us);
+	print_game_runtime_stats(shell, &snapshot);
 	shell_print(shell,
 		    "physics: bodies=%u, segments=%u, joints=%u distance/%u revolute/%u "
 		    "prismatic, sensors=%u, contacts=%u, "
@@ -636,6 +662,7 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->spring_solver_changed_count, game->conveyor_contact_count,
 		    game->conveyor_solver_visit_count, game->conveyor_solver_changed_count);
 	print_rope_stats(shell, game);
+	print_granular_stats(shell, game);
 	shell_print(shell,
 		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
 		    "sensor entries=%u",
@@ -656,6 +683,26 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
 	shell_print(shell, "render stack high-water: %u/%u bytes", game->render_stack_used_bytes,
 		    game->render_stack_size_bytes);
+	return 0;
+}
+
+static int cmd_game_stats(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	struct picosystem_diagnostic_snapshot snapshot;
+	const int err = get_snapshot_or_report(shell, &snapshot);
+	if (err != 0) {
+		return err;
+	}
+
+	print_game_runtime_stats(shell, &snapshot);
+	print_granular_stats(shell, &snapshot.game);
+	shell_print(shell, "main stack high-water: %u/%u bytes",
+		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
+	shell_print(shell, "render stack high-water: %u/%u bytes",
+		    snapshot.game.render_stack_used_bytes, snapshot.game.render_stack_size_bytes);
 	return 0;
 }
 
@@ -823,8 +870,9 @@ static int submit_game_control(const struct shell *shell,
 	struct picosystem_game_control_state state;
 	const int err = picosystem_game_control_submit(request, &state);
 	if (err == -EBUSY) {
-		if (request->operation == PICOSYSTEM_GAME_CONTROL_RESET) {
-			shell_error(shell, "Pause the simulation before resetting");
+		if ((request->operation == PICOSYSTEM_GAME_CONTROL_RESET) ||
+		    (request->operation == PICOSYSTEM_GAME_CONTROL_FLIP)) {
+			shell_error(shell, "Pause the simulation before changing the scene");
 		} else {
 			shell_error(shell, "Pause the simulation before stepping");
 		}
@@ -868,6 +916,17 @@ static int cmd_game_reset(const struct shell *shell, size_t argc, char **argv)
 
 	const struct picosystem_game_control_request request = {
 		.operation = PICOSYSTEM_GAME_CONTROL_RESET,
+	};
+	return submit_game_control(shell, &request);
+}
+
+static int cmd_game_flip(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_FLIP,
 	};
 	return submit_game_control(shell, &request);
 }
@@ -1317,6 +1376,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	game_commands,
+	SHELL_CMD_ARG(flip, NULL, "Rotate the paused Hourglass contents by 180 degrees.",
+		      cmd_game_flip, 1, 0),
 	SHELL_CMD_ARG(input, NULL,
 		      SHELL_HELP("Select physical or injected input.",
 				 "<physical|none|up|down|left|right|"
@@ -1326,7 +1387,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(reset, NULL, "Restore the playable scene to tick zero while paused.",
 		      cmd_game_reset, 1, 0),
 	SHELL_CMD_ARG(stats, NULL, "Show simulation, snapshot, and renderer metrics.",
-		      cmd_display_stats, 1, 0),
+		      cmd_game_stats, 1, 0),
 	SHELL_CMD_ARG(state, NULL, "Show exact authoritative state.", cmd_game_state, 1, 0),
 	SHELL_CMD_ARG(step, NULL,
 		      SHELL_HELP("Advance a paused simulation exactly.",

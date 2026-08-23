@@ -51,6 +51,28 @@ define explicit storage partitions. A peripheral should be added to the device
 tree only when its driver milestone begins, keeping early failures easy to
 isolate.
 
+## Current Hourglass validation
+
+The recommended 62.5 MHz PL022/DMA image runs a deterministic 96-grain
+Hourglass at an exact 60 Hz simulation cadence and presents complete frames at
+about 30 fps. In a 1,013-tick physical-board window, physics averaged 12.807 ms
+and peaked at 32.179 ms; the scheduler recorded no skipped ticks and two updates
+over its 16.667 ms budget. Core-1 rasterization took 8.856 ms and the latest
+complete transfer took 18.801 ms. Main, renderer, and core-1 stack high-water
+marks were 3,116/5,120, 3,708/5,120, and 232/4,096 bytes.
+
+The image uses 257,700 bytes of the 255 KiB Zephyr RAM region and 230,460 bytes
+of flash, leaving 3,420 bytes of linker RAM plus the separately reserved 8 KiB
+core-1 mailbox/stack area. The conservative image uses 227,868 bytes of Zephyr
+RAM and 224,660 bytes of flash. The immutable render snapshot is 1,112 bytes.
+
+Exact USB-controlled replay reproduced tick 360 at hash `65011a1e` and
+framebuffer CRC-32 `d3085b4a` after a directional/flip sequence. A 600-tick
+neutral drain reached hash `734af1ce` and CRC-32 `c4153118`. Rendering the same
+paused scene on each core produced matching CRC-32 `fb1db43e` and restored the
+original framebuffer. Physical D-pad gravity tilt, X flip, Y reset, A redraw,
+and B tone behavior were also exercised on the PIM559.
+
 ## USB power and charging status
 
 GP2 is not a dedicated LED output. The schematic connects VBUS to

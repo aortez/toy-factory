@@ -114,6 +114,15 @@ struct picosystem_game_demo_stats {
 	uint32_t rope_collision_contact_count;
 	uint32_t rope_collision_position_changed_count;
 	uint32_t rope_collision_velocity_changed_count;
+	uint32_t granular_possible_pair_count;
+	uint32_t granular_candidate_pair_count;
+	uint32_t granular_contact_count;
+	uint32_t granular_position_correction_count;
+	uint32_t granular_boundary_test_count;
+	uint32_t granular_boundary_contact_count;
+	uint32_t granular_occupied_grid_cell_count;
+	uint32_t granular_maximum_grid_cell_occupancy;
+	uint32_t granular_passage_count;
 	uint32_t focus_angle_turns;
 	int32_t focus_angular_velocity_milliradians_per_second;
 	uint16_t body_count;
@@ -126,6 +135,9 @@ struct picosystem_game_demo_stats {
 	uint16_t contact_count;
 	uint16_t contact_event_count;
 	uint16_t occupied_grid_cell_count;
+	uint16_t granular_particle_count;
+	uint16_t granular_lower_particle_count;
+	uint16_t granular_boundary_count;
 	uint16_t focus_body_id;
 	uint16_t focus_x;
 	uint16_t focus_y;
@@ -186,6 +198,9 @@ int picosystem_game_demo_restart_measurement(struct picosystem_game_demo_state *
 
 /* Restore the playable scene while preserving renderer sequence monotonicity. */
 int picosystem_game_demo_reset(struct picosystem_game_demo_state *state);
+
+/* Flip the active symmetric scene and publish its new authoritative state. */
+int picosystem_game_demo_flip(struct picosystem_game_demo_state *state);
 
 /* Advance one authoritative 60 Hz simulation step and publish its newest state. */
 int picosystem_game_demo_update(struct picosystem_game_demo_state *state,

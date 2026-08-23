@@ -34,7 +34,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 	bootloader console status game-stats \
 	game-redraw core1-status core1-ping core1-raster core1-scene \
 	display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
-	sim-reset sim-state sim-test \
+	sim-reset sim-flip sim-state sim-test \
 	profile profile-ab profile-sleep profile-chain render-profile update-render-profile \
 	flash monitor shell
 
@@ -247,6 +247,15 @@ sim-reset: image ## Restore the playable scene to tick zero while paused
 			"$(FIRMWARE_IMAGE)" \
 			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
 				picosystem game reset
+
+sim-flip: image ## Rotate the paused Hourglass contents by 180 degrees
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
+				picosystem game flip
 
 sim-step: image ## Advance a paused simulation by STEPS=<1-120> exact ticks
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \

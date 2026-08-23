@@ -11,6 +11,8 @@ import serial
 PROMPTS = (b"toy-factory:~$ ", b"picosystem:~$ ")
 ANSI_ESCAPE = re.compile(rb"\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-_])")
 COMMAND_SETTLE_SECONDS = 0.1
+COMMAND_ECHO_TIMEOUT_SECONDS = 1.0
+COMMAND_ECHO_SETTLE_SECONDS = 0.2
 
 
 class SerialShellError(RuntimeError):
@@ -166,7 +168,19 @@ class SerialShellSession:
         connection = self.connection
         connection.reset_input_buffer()
         try:
-            connection.write(command.encode("utf-8") + b"\r")
+            # Let Zephyr's interactive line editor echo and redraw the complete
+            # command before Enter starts a potentially verbose handler. This
+            # keeps line-edit traffic from consuming the bounded shell TX ring
+            # at the same time as the response we need to preserve.
+            connection.write(command.encode("utf-8"))
+            connection.flush()
+            read_until_prompt(
+                connection,
+                COMMAND_ECHO_TIMEOUT_SECONDS,
+                settle_seconds=COMMAND_ECHO_SETTLE_SECONDS,
+            )
+            connection.reset_input_buffer()
+            connection.write(b"\r")
             connection.flush()
         except (OSError, serial.SerialException):
             if expect_disconnect:

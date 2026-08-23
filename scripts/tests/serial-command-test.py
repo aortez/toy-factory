@@ -67,6 +67,7 @@ class SerialCommandTest(unittest.TestCase):
                 self.response = bytearray()
                 self.commands = []
                 self.closed = False
+                self.pending_command = bytearray()
 
             @property
             def in_waiting(self) -> int:
@@ -76,11 +77,19 @@ class SerialCommandTest(unittest.TestCase):
                 self.response.clear()
 
             def write(self, data: bytes) -> None:
-                command = data.decode().strip()
-                self.commands.append(command)
-                self.response.extend(
-                    f"{command}\r\nresult={len(self.commands)}\r\ntoy-factory:~$ ".encode()
-                )
+                if data == b"\r":
+                    command = self.pending_command.decode()
+                    self.pending_command.clear()
+                    self.commands.append(command)
+                    self.response.extend(
+                        (
+                            f"{command}\r\nresult={len(self.commands)}\r\n"
+                            "toy-factory:~$ "
+                        ).encode()
+                    )
+                    return
+                self.pending_command.extend(data)
+                self.response.extend(b"toy-factory:~$ ")
 
             def flush(self) -> None:
                 pass

@@ -6,24 +6,25 @@ host and device, remain remotely stepable at exact tick boundaries, and produce
 stable authoritative hashes.
 
 This document describes the intended architecture and the current deterministic
-reciprocal-rope milestone. Later milestones may revise measured capacities,
-but they must retain the ownership, determinism, and overload contracts defined
-here.
+Hourglass granular-material milestone. Later milestones may revise measured
+capacities, but they must retain the ownership, determinism, and overload
+contracts defined here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 250,428 bytes of the linker's 255 KiB Zephyr
-RAM region and 222,020 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 257,700 bytes of the linker's 255 KiB Zephyr
+RAM region and 230,460 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
-physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
+rigid physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, two
-12-particle ropes, and bounded pair-event storage. The serialized A/B
-workspace is 33,304 bytes, is inactive during
-normal play, and avoids placing a second world on a thread stack. The profile
+12-particle ropes, and bounded pair-event storage. The independent 128-particle
+granular world is 3,036 bytes, including its 608-byte grid heads and links. The
+serialized A/B workspace is 33,304 bytes, is inactive during normal play, and
+avoids placing a second world on a thread stack. The profile
 command uses a 5,120-byte shell stack and most recently reached 4,184 bytes. The
-856-byte render snapshot and collision traversal raised measured main/render
-stack use to 4,016 and 4,044 bytes; both stacks are bounded at 5,120 bytes. The linked
-image retains 10,692 bytes of Zephyr RAM headroom. The fast build also places
+1,112-byte render snapshot leaves measured main/render stack use at 3,116 and
+3,708 bytes; both stacks are bounded at 5,120 bytes. The linked image retains
+3,420 bytes of Zephyr RAM headroom. The fast build also places
 the physics hot path in SRAM and keeps the collision traversal in a separate,
 bounded stack frame; this avoids core-0/core-1 XIP contention while the second
 core rasterizes a full scene. Both builds route compiler integer division
@@ -35,9 +36,11 @@ The initial engine targets are:
 
 - exact 60 Hz authoritative updates;
 - no heap allocation or capacity growth after initialization;
-- about 6 ms or less for an isolated representative physics update on the PIM559;
+- about 6 ms or less for the isolated rigid profiling fixture, with the denser
+  playable granular workload remaining inside the 16.667 ms simulation budget;
 - at most 32 KiB of physics state and scratch storage before larger features;
-- stable replay for at least 10,000 ticks on the host and RP2040;
+- stable replay for at least 10,000 rigid ticks and 6,000 granular ticks on the
+  host;
 - immutable renderer snapshots that do not expose live world state; and
 - explicit counters or errors for every bounded-capacity failure.
 
@@ -96,7 +99,9 @@ acknowledged requests and block while the main thread services them. The
 platform-neutral layers are:
 
 ```text
-game input -> game world -> physics world -> immutable render snapshot
+                            +-> rigid physics world ---+
+game input -> game world ---|                          +-> immutable render snapshot
+                            +-> granular world --------+
 ```
 
 The physics world owns fixed-capacity body, static-segment, box-sensor,
@@ -115,6 +120,13 @@ are hashed field by field in stable order.
 Per-step joint endpoints, normals, effective mass, accumulated impulse, and
 event payloads are rebuilt scratch state and excluded.
 
+The granular world separately owns fixed-capacity particle, half-plane
+boundary, passage-mask, and work-counter arrays. Current and previous particle
+positions, immutable configuration, the last acceleration, and passage state
+are hashed field by field. Grid heads, links, and per-step work counters are
+scratch. A scene identity in the outer game hash distinguishes equal-looking
+states produced by different builders.
+
 Bodies and shapes receive stable numeric identifiers. Array order is never
 derived from addresses, hash tables, allocation order, or unstable sorting.
 Remote pause, reset, input injection, exact stepping, framebuffer capture, and
@@ -123,6 +135,37 @@ Real-time play publishes immutable snapshots at a deterministic 30 Hz cadence
 while authoritative simulation remains at 60 Hz. Pause, reset, redraw, and
 exact stepping force a current snapshot, so remote state and framebuffer checks
 remain coherent even when presentation is deliberately slower than physics.
+
+## Granular pipeline
+
+The Hourglass is the first separate simulation backend built on the same game
+ownership and snapshot boundary. It initializes 96 two-pixel-radius grains in
+the upper chamber and supports 128 without allocation. Six inward-facing
+half-plane segments form the two chamber caps and four sloped walls. A
+three-pixel deadband around the neck turns each grain's upper/lower state into
+a stable crossing count.
+
+Each fixed update performs these bounded phases:
+
+1. damp and integrate Q16.16 Verlet velocity under the selected gravity vector,
+   clamping each grain to four pixels per tick;
+2. project grains inside the active boundary planes and remove outward boundary
+   velocity with fixed tangent damping;
+3. rebuild a 20 x 24 grid of eight-pixel cells using byte-sized heads and links;
+4. solve every unique pair from the surrounding nine cells, alternating forward
+   and reverse traversal across two fixed passes;
+5. reapply the boundary constraints after each pair pass and once more for
+   slope/cap corners; and
+6. update hysteretic neck-passage state and deterministic work counters.
+
+Coincident particles select a stable index-derived axis. Contact normalization
+uses a Q12 32-bit quotient after one integer square root, avoiding two software
+64-bit divisions per contact on the RP2040. The grid reduces candidate work but
+never changes with wall-clock load; solver quality is always two passes. The X
+action rotates current and previous positions around the configured center and
+inverts the upper/lower mask, so two flips restore the exact hash. This milestone
+does not couple grains to rigid bodies, model grain rotation, or implement
+grain-to-grain friction.
 
 ## Collision pipeline
 
@@ -498,6 +541,10 @@ physical D-pad.
 
 The native suite covers:
 
+- granular configuration and coordinate-range validation without partial
+  mutation, exact capacity rejection, separated and coincident contacts,
+  bounded grid work, container projection, passage tracking, exact double-flip,
+  6,000-tick Hourglass containment, two complete drains, and stable replay;
 - configuration and one-past-capacity rejection without state mutation;
 - free integration and vector-speed clamping;
 - equal-mass head-on circle response;
@@ -669,12 +716,11 @@ are design references rather than code to port.
 
 ## Planned extensions
 
-1. Use the Clockwork scene's reusable builder/snapshot boundary for independent
-   playable toys while retaining Machine Lab as the profiling fixture.
-2. Build the Hourglass as the first bounded granular-material workload.
-3. Use reciprocal rope/body coupling and bounded particle collision to explore
+1. Extend the Hourglass with deliberate grain interactions and denser-scene
+   profiling while preserving the fixed 60 Hz contract.
+2. Use reciprocal rope/body coupling and bounded particle collision to explore
    soft-body gameplay.
-4. Evaluate approximate gravity or magnetic fields as separate gameplay
+3. Evaluate approximate gravity or magnetic fields as separate gameplay
    systems.
 
 Each extension must leave behind a playable device demo, a deterministic host

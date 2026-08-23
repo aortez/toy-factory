@@ -98,8 +98,8 @@ BUILD_ASSERT(RENDER_THREAD_PRIORITY < CONFIG_SHELL_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_MAIN_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_SHELL_THREAD_PRIORITY);
 #endif
-/* Allow both fixed-capacity rope render records while keeping snapshot growth bounded. */
-BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 864U);
+/* Keep two snapshots and the auxiliary-core mailbox bounded after adding packed grains. */
+BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 1152U);
 BUILD_ASSERT((PICOSYSTEM_GAME_TICK_RATE_HZ % PICOSYSTEM_GAME_REALTIME_SNAPSHOT_RATE_HZ) == 0U);
 BUILD_ASSERT(PICOSYSTEM_GAME_BOX_SENSOR_COUNT <= PICOSYSTEM_SCENE_MAX_BOX_SENSORS);
 
@@ -210,6 +210,8 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 	    (left->revolute_joint_count != right->revolute_joint_count) ||
 	    (left->box_sensor_count != right->box_sensor_count) ||
 	    (left->rope_count != right->rope_count) ||
+	    (left->granular_particle_count != right->granular_particle_count) ||
+	    (left->granular_particle_radius != right->granular_particle_radius) ||
 	    (left->conveyor_forward_segment_mask != right->conveyor_forward_segment_mask) ||
 	    (left->conveyor_reverse_segment_mask != right->conveyor_reverse_segment_mask)) {
 		return false;
@@ -281,6 +283,11 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 		}
 	}
 	return true;
+}
+
+static bool snapshot_requires_full_redraw(const struct picosystem_scene_snapshot *snapshot)
+{
+	return snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS;
 }
 
 static size_t merge_dirty_regions(struct picosystem_rect *regions, size_t count,
@@ -545,7 +552,8 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 	    (state->world.physics.distance_joint_count > ARRAY_SIZE(snapshot->distance_joints)) ||
 	    (state->world.physics.revolute_joint_count > ARRAY_SIZE(snapshot->revolute_joints)) ||
 	    (state->world.physics.box_sensor_count > ARRAY_SIZE(snapshot->box_sensors)) ||
-	    (state->world.physics.rope_count > ARRAY_SIZE(snapshot->ropes))) {
+	    (state->world.physics.rope_count > ARRAY_SIZE(snapshot->ropes)) ||
+	    (state->world.granular.particle_count > ARRAY_SIZE(snapshot->grains))) {
 		return -ENOSPC;
 	}
 	*snapshot = (struct picosystem_scene_snapshot){
@@ -562,6 +570,42 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 		.box_sensor_count = (uint8_t)state->world.physics.box_sensor_count,
 		.rope_count = (uint8_t)state->world.physics.rope_count,
 	};
+	if (state->world.scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		if (state->world.granular.boundary_count > ARRAY_SIZE(snapshot->static_segments)) {
+			return -ENOSPC;
+		}
+		snapshot->static_segment_count = (uint8_t)state->world.granular.boundary_count;
+		snapshot->granular_particle_count = (uint8_t)state->world.granular.particle_count;
+		snapshot->granular_particle_radius =
+			(uint8_t)fixed_to_pixel(state->world.granular.particle_radius);
+		snapshot->granular_lower_particle_count =
+			(uint8_t)picosystem_granular_world_lower_particle_count(
+				&state->world.granular);
+		for (uint16_t index = 0U; index < snapshot->static_segment_count; ++index) {
+			const struct picosystem_granular_boundary *const boundary =
+				&state->world.granular.boundaries[index];
+			snapshot->static_segments[index] = (struct picosystem_scene_segment){
+				.start_x = fixed_to_pixel(boundary->start.x),
+				.start_y = fixed_to_pixel(boundary->start.y),
+				.end_x = fixed_to_pixel(boundary->end.x),
+				.end_y = fixed_to_pixel(boundary->end.y),
+			};
+		}
+		for (uint16_t index = 0U; index < snapshot->granular_particle_count; ++index) {
+			const struct picosystem_granular_particle *const particle =
+				&state->world.granular.particles[index];
+			const int16_t particle_x = fixed_to_pixel(particle->position.x);
+			const int16_t particle_y = fixed_to_pixel(particle->position.y);
+			if ((particle_x < 0) || (particle_x >= PICOSYSTEM_GRAPHICS_WIDTH) ||
+			    (particle_y < 0) || (particle_y >= PICOSYSTEM_GRAPHICS_HEIGHT)) {
+				return -ERANGE;
+			}
+			snapshot->grains[index] = (struct picosystem_scene_grain){
+				.x = (uint8_t)particle_x,
+				.y = (uint8_t)particle_y,
+			};
+		}
+	}
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
 		const struct picosystem_physics_body *const body =
 			&state->world.physics.bodies[index];
@@ -610,7 +654,7 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			return -ERANGE;
 		}
 	}
-	for (uint16_t index = 0U; index < snapshot->static_segment_count; ++index) {
+	for (uint16_t index = 0U; index < state->world.physics.static_segment_count; ++index) {
 		const struct picosystem_physics_static_segment *const segment =
 			&state->world.physics.static_segments[index];
 		snapshot->static_segments[index] = (struct picosystem_scene_segment){
@@ -875,6 +919,9 @@ static void record_presented_snapshot(const struct picosystem_scene_snapshot *sn
 	if (snapshot->body_count != 0U) {
 		renderer.metrics.presented_focus_x = (uint16_t)snapshot->bodies[0].center_x;
 		renderer.metrics.presented_focus_y = (uint16_t)snapshot->bodies[0].center_y;
+	} else if (snapshot->granular_particle_count != 0U) {
+		renderer.metrics.presented_focus_x = (uint16_t)snapshot->grains[0].x;
+		renderer.metrics.presented_focus_y = (uint16_t)snapshot->grains[0].y;
 	}
 	k_spin_unlock(&renderer.lock, key);
 	k_sem_give(&renderer.frame_presented);
@@ -889,6 +936,7 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 	uint32_t consumed_sequence;
 	uint32_t consumed_redraw_sequence;
 	struct picosystem_scene_snapshot presented;
+	struct picosystem_scene_snapshot snapshot;
 	{
 		const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
 		presented = renderer.snapshots[renderer.published_index];
@@ -906,15 +954,15 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 			return;
 		}
 
-		struct picosystem_scene_snapshot pending;
-		if (!read_latest_snapshot(&pending) || (pending.sequence == consumed_sequence)) {
+		if (!read_latest_snapshot(&snapshot) || (snapshot.sequence == consumed_sequence)) {
 			continue;
 		}
 
 		const bool full_redraw_pending =
 			core1_full_frame_renderer_enabled() ||
-			(pending.redraw_request_sequence != consumed_redraw_sequence) ||
-			!snapshot_scene_matches(&pending, &presented);
+			snapshot_requires_full_redraw(&snapshot) ||
+			(snapshot.redraw_request_sequence != consumed_redraw_sequence) ||
+			!snapshot_scene_matches(&snapshot, &presented);
 #if defined(CONFIG_TOY_FACTORY_CORE1_FULL_FRAME_RENDERER)
 		/* A framebuffer capture can hold this mutex while it drains over USB.
 		 * Do not wait as the priority -1 coordinator: mutex priority inheritance
@@ -942,7 +990,6 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 		/* Damage rendering latches after TE. Full rendering latches before the
 		 * core-1 raster; present_snapshot() waits for TE after those pixels are ready.
 		 */
-		struct picosystem_scene_snapshot snapshot;
 		if (!read_latest_snapshot(&snapshot) || (snapshot.sequence == consumed_sequence)) {
 			k_mutex_unlock(&renderer.framebuffer_mutex);
 			continue;
@@ -952,6 +999,7 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 		const uint32_t superseded_count = sequence_delta - 1U;
 		const bool full_redraw =
 			core1_full_frame_renderer_enabled() ||
+			snapshot_requires_full_redraw(&snapshot) ||
 			(snapshot.redraw_request_sequence != consumed_redraw_sequence) ||
 			!snapshot_scene_matches(&snapshot, &presented);
 
@@ -994,7 +1042,7 @@ int picosystem_game_demo_init(struct picosystem_game_demo_state *state)
 	}
 
 	memset(state, 0, sizeof(*state));
-	int err = picosystem_game_world_reset_scene(&state->world, PICOSYSTEM_GAME_SCENE_CLOCKWORK);
+	int err = picosystem_game_world_reset_scene(&state->world, PICOSYSTEM_GAME_SCENE_HOURGLASS);
 	if (err != 0) {
 		return err;
 	}
@@ -1044,8 +1092,12 @@ int picosystem_game_demo_init(struct picosystem_game_demo_state *state)
 		.last_raster_time_us = initial_render_stats.raster_time_us,
 		.maximum_raster_time_us = initial_render_stats.raster_time_us,
 		.render_stack_size_bytes = K_THREAD_STACK_SIZEOF(render_thread_stack),
-		.presented_focus_x = (uint16_t)initial_snapshot.bodies[0].center_x,
-		.presented_focus_y = (uint16_t)initial_snapshot.bodies[0].center_y,
+		.presented_focus_x = (initial_snapshot.body_count != 0U)
+					     ? (uint16_t)initial_snapshot.bodies[0].center_x
+					     : (uint16_t)initial_snapshot.grains[0].x,
+		.presented_focus_y = (initial_snapshot.body_count != 0U)
+					     ? (uint16_t)initial_snapshot.bodies[0].center_y
+					     : (uint16_t)initial_snapshot.grains[0].y,
 		.last_raster_on_core1 = initial_render_stats.raster_on_core1,
 	};
 
@@ -1101,7 +1153,7 @@ int picosystem_game_demo_reset(struct picosystem_game_demo_state *state)
 	const uint32_t snapshot_sequence = state->snapshot_sequence;
 	const uint32_t redraw_request_sequence = state->redraw_request_sequence + 1U;
 	const int err =
-		picosystem_game_world_reset_scene(&state->world, PICOSYSTEM_GAME_SCENE_CLOCKWORK);
+		picosystem_game_world_reset_scene(&state->world, PICOSYSTEM_GAME_SCENE_HOURGLASS);
 	if (err != 0) {
 		return err;
 	}
@@ -1128,6 +1180,18 @@ int picosystem_game_demo_reset(struct picosystem_game_demo_state *state)
 	int restart_err = picosystem_game_demo_restart_measurement(state);
 	if (restart_err != 0) {
 		return restart_err;
+	}
+	return publish_snapshot(state, true);
+}
+
+int picosystem_game_demo_flip(struct picosystem_game_demo_state *state)
+{
+	if ((state == NULL) || !state->ready) {
+		return -EINVAL;
+	}
+	const int err = picosystem_game_world_flip(&state->world);
+	if (err != 0) {
+		return err;
 	}
 	return publish_snapshot(state, true);
 }
@@ -1345,6 +1409,20 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 			state->world.physics.last_work.rope_collision_position_changed_count,
 		.rope_collision_velocity_changed_count =
 			state->world.physics.last_work.rope_collision_velocity_changed_count,
+		.granular_possible_pair_count = state->world.granular.last_work.possible_pair_count,
+		.granular_candidate_pair_count =
+			state->world.granular.last_work.candidate_pair_count,
+		.granular_contact_count = state->world.granular.last_work.contact_count,
+		.granular_position_correction_count =
+			state->world.granular.last_work.position_correction_count,
+		.granular_boundary_test_count = state->world.granular.last_work.boundary_test_count,
+		.granular_boundary_contact_count =
+			state->world.granular.last_work.boundary_contact_count,
+		.granular_occupied_grid_cell_count =
+			state->world.granular.last_work.occupied_grid_cell_count,
+		.granular_maximum_grid_cell_occupancy =
+			state->world.granular.last_work.maximum_grid_cell_occupancy,
+		.granular_passage_count = state->world.granular.passage_count,
 		.focus_angle_turns = focus->angle_turns,
 		.focus_angular_velocity_milliradians_per_second =
 			angular_velocity_to_milliradians_per_second(
@@ -1359,6 +1437,10 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.contact_count = state->world.physics.contact_count,
 		.contact_event_count = state->world.physics.contact_event_count,
 		.occupied_grid_cell_count = state->world.physics.last_occupied_grid_cell_count,
+		.granular_particle_count = state->world.granular.particle_count,
+		.granular_lower_particle_count =
+			picosystem_granular_world_lower_particle_count(&state->world.granular),
+		.granular_boundary_count = state->world.granular.boundary_count,
 		.focus_body_id = focus->id,
 		.focus_x = (uint16_t)fixed_to_pixel(focus->center.x),
 		.focus_y = (uint16_t)fixed_to_pixel(focus->center.y),

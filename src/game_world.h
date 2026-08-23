@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "granular_world.h"
 #include "physics_world.h"
 
 #define PICOSYSTEM_GAME_TICK_RATE_HZ        60U
@@ -34,6 +35,7 @@ enum picosystem_game_scene_id {
 	PICOSYSTEM_GAME_SCENE_MACHINE_LAB,
 	PICOSYSTEM_GAME_SCENE_CLOCKWORK,
 	PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN,
+	PICOSYSTEM_GAME_SCENE_HOURGLASS,
 	PICOSYSTEM_GAME_SCENE_COUNT,
 };
 
@@ -51,6 +53,9 @@ struct picosystem_game_input {
 /* Caller-owned authoritative state; production code mutates it only through this API. */
 struct picosystem_game_world {
 	struct picosystem_physics_world physics;
+	struct picosystem_granular_world granular;
+	/* Derived diagnostic proxy used when the active scene has no rigid bodies. */
+	struct picosystem_physics_body focus_proxy;
 	uint32_t logic_tick_count;
 	uint32_t sensor_entry_count;
 	uint8_t scene_id;
@@ -73,6 +78,9 @@ int picosystem_game_world_step_profiled(struct picosystem_game_world *world,
 					enum picosystem_physics_step_mode mode,
 					const struct picosystem_physics_clock *clock,
 					struct picosystem_physics_step_profile *profile);
+
+/* Rotate a scene-defined symmetric container and its contents by 180 degrees. */
+int picosystem_game_world_flip(struct picosystem_game_world *world);
 
 /* Return the scene's first body, used by diagnostics and camera-independent controls. */
 const struct picosystem_physics_body *

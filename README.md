@@ -2,7 +2,7 @@
 
 Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
-![Toy Factory clockwork kinetic sculpture](docs/images/clockwork.png)
+![Toy Factory Hourglass running on the PicoSystem](docs/images/hourglass.png)
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:
@@ -14,11 +14,14 @@ path:
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and supports both damage-region and
   continuous full-frame presentation;
-- runs a deterministic nine-body clockwork sculpture at an exact 60 Hz fixed
-  step with Q16.16 linear/angular motion, gravity, friction, and restitution;
-- meshes a motorized drive wheel with a passive follower, turns the same wheel
-  into a true crank-slider, and animates a pendulum, spring bob, two-link mobile,
-  sensor gate, and reciprocal rope;
+- runs a deterministic 96-grain Hourglass at an exact 60 Hz fixed step with
+  Q16.16 Verlet motion, a fixed two-pass contact solver, six containment planes,
+  and a bounded 20 x 24 uniform grid;
+- tracks grains crossing the neck, tilts gravity with the D-pad, and rotates the
+  complete particle position and velocity state exactly 180 degrees with X;
+- retains the Clockwork and Machine Lab scene builders for rigid-body and
+  profiling coverage, including a motorized gear pair, crank-slider, pendulum,
+  spring bob, two-link mobile, sensor gate, and reciprocal rope;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -47,7 +50,7 @@ path:
 - exposes acknowledged reset, pause, exact-step, injected-input, state-hash, and
   framebuffer-capture controls over USB;
 - runs declarative deterministic device sequences with state/framebuffer assertions;
-- resets the clockwork sculpture to its exact starting state when Y is pressed;
+- resets the Hourglass to its exact starting state when Y is pressed;
 - plays a short, bounded piezo tone when B is pressed;
 - averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
 - classifies the GP2 VBUS and active-low GP24 charger-status inputs;
@@ -90,6 +93,7 @@ make check    # formatting, whitespace, and a clean build
 make container-shell  # enter the build container (`make shell` also works)
 make sim-pause  # pause at a tick boundary and print exact simulation state
 make sim-reset  # restore the playable scene to tick zero while paused
+make sim-flip  # rotate the paused Hourglass contents by exactly 180 degrees
 make sim-step STEPS=1  # advance a paused simulation by exact 1/60-second ticks
 make sim-test  # run the default deterministic hardware sequence
 make screenshot  # save the renderer-owned software framebuffer as a PNG
@@ -252,6 +256,7 @@ picosystem game stats
 picosystem game redraw
 picosystem game pause
 picosystem game reset
+picosystem game flip
 picosystem game step [count]
 picosystem game input physical|none|up|down|left|right|up-left|up-right|down-left|down-right
 picosystem game state
@@ -278,8 +283,11 @@ write, full-redraw count, and both stack high-water marks. `game redraw` only
 posts a coalesced request; the shell never touches the framebuffer or display.
 `game pause` is acknowledged only after the priority-0 simulation owner reaches
 a tick boundary. `game reset` is accepted only while paused; it restores the
-playable Clockwork scene at tick zero, selects neutral remote input, and
+playable Hourglass scene at tick zero, selects neutral remote input, and
 publishes a full-redraw snapshot without rewinding renderer sequence numbers.
+`game flip` is likewise accepted only while paused and rotates every grain's
+current and previous position exactly 180 degrees, preserving its velocity;
+the physical X button performs the same operation during play.
 While paused, `game step` executes 1-120 exact fixed-duration updates without
 advancing wall-clock scheduling. `game run` starts a fresh rational deadline
 sequence and performance-measurement epoch, so time and exact steps spent paused
@@ -364,14 +372,17 @@ and optional final assertions:
 
 ```json
 {
-  "name": "deterministic-smoke",
+  "name": "hourglass-flip-smoke",
   "steps": [
-    {"input": "right", "ticks": 15},
-    {"input": "up", "ticks": 8}
+    {"input": "right", "ticks": 60},
+    {"input": "none", "ticks": 120},
+    {"action": "flip"},
+    {"input": "left", "ticks": 60},
+    {"input": "none", "ticks": 120}
   ],
   "expect": {
-    "hash": "e7a7ba97",
-    "framebuffer_crc32": "4efbf582"
+    "hash": "65011a1e",
+    "framebuffer_crc32": "d3085b4a"
   }
 }
 ```
@@ -383,22 +394,22 @@ make sim-test SEQUENCE=path/to/sequence.json
 ```
 
 The committed
-[`scripts/sequences/clockwork-neutral-smoke.json`](scripts/sequences/clockwork-neutral-smoke.json)
-advances 259 autonomous ticks with neutral input and asserts both the
+[`scripts/sequences/hourglass-neutral-smoke.json`](scripts/sequences/hourglass-neutral-smoke.json)
+advances 600 autonomous ticks with neutral input and asserts both the
 authoritative state and framebuffer:
 
 ```sh
-make sim-test SEQUENCE=scripts/sequences/clockwork-neutral-smoke.json
+make sim-test SEQUENCE=scripts/sequences/hourglass-neutral-smoke.json
 ```
 
-The runner holds one exclusive USB connection, pauses and resets
-the simulation, applies each input, and checks the exact returned tick after
-every request. Segments longer than 120 ticks are automatically divided into
-bounded firmware requests. The complete file is limited to 256 segments and
-100,000 ticks; physical input is deliberately unavailable inside deterministic
-sequences. Hash and framebuffer assertions are independently optional while a
-new baseline is being authored, but committed regression sequences should use
-both.
+The runner holds one exclusive USB connection, pauses and resets the
+simulation, applies each input or exact `flip` action, and checks the returned
+tick after every request. Segments longer than 120 ticks are automatically
+divided into bounded firmware requests. The complete file is limited to 256
+segments and 100,000 ticks; physical input is deliberately unavailable inside
+deterministic sequences. Hash and framebuffer assertions are independently
+optional while a new baseline is being authored, but committed regression
+sequences should use both.
 
 On success, the runner restores physical input and resumes real-time scheduling.
 On failure, it first saves a software-framebuffer diagnostic image to
@@ -458,7 +469,10 @@ candidate filter, contact/event generation, sequential-impulse response, and
 stable field-by-field hash live in
 [`src/physics_world.c`](src/physics_world.c). Scene-independent reset, input,
 ticks, and the outer hash live in [`src/game_world.c`](src/game_world.c);
-flash-resident scene descriptions live in
+the fixed-capacity Verlet grain simulation and its 20 x 24 grid live in
+[`src/granular_world.c`](src/granular_world.c). Flash-resident scene
+descriptions live in
+[`src/game_scene_hourglass.c`](src/game_scene_hourglass.c),
 [`src/game_scene_clockwork.c`](src/game_scene_clockwork.c) and
 [`src/game_scene_machine_lab.c`](src/game_scene_machine_lab.c). The latter is
 retained as the stable profiling fixture. None of these modules has a Zephyr,
@@ -472,7 +486,7 @@ The priority-1 USB shell runs only while higher-priority work is blocked; once
 two or more simulation deadlines are due, the main loop reserves a
 one-millisecond recovery window so diagnostics and the bootloader command cannot
 remain starved. An isolated late tick may catch up and reach its normal sleep
-without paying that extra delay. The main thread publishes an 856-byte immutable
+without paying that extra delay. The main thread publishes a 1,112-byte immutable
 render snapshot at a deterministic 30 Hz cadence into one of two slots under a
 short spin lock. Pause, reset, redraw, and exact remote stepping force a current
 snapshot. A saturated semaphore wakes the renderer, which coalesces obsolete
@@ -515,32 +529,46 @@ framebuffer is allocated.
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation and also runs native rigid-body collision/capacity, bounded
+generation and also runs native granular-world configuration, capacity,
+containment, flip, work-bound, and deterministic replay tests; rigid-body
+collision/capacity; bounded
 spring/conveyor response, exact capsule shape-pair coverage, reciprocal
 rope/body response, bounded rope-particle collision, exact sensor
 overlap/contact-lifecycle, 1,000-tick grid/brute-force
-oracle, 10,000-tick game-world replay/boundary, deadline-scheduler,
+oracle; 10,000-tick rigid and 6,000-tick Hourglass game-world replay/boundary;
+deadline-scheduler,
 serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
-uses the undefined-behavior sanitizer and treats the accepted
-reset/right-30/up-15 hashes as native goldens.
-The default image uses 221,124 bytes of its 255 KiB Zephyr RAM region (84.68%)
-and 216,224 bytes of flash. This includes the 115,200-byte framebuffer,
-3,840-byte transfer buffer, 22,636-byte fixed-capacity physics world with a
+uses the undefined-behavior sanitizer and treats the accepted reset, double-flip,
+full-drain, and retained Machine Lab replay hashes as native goldens.
+The default image uses 227,868 bytes of its 255 KiB Zephyr RAM region (87.27%)
+and 224,660 bytes of flash. This includes the 115,200-byte framebuffer,
+3,840-byte transfer buffer, 22,636-byte fixed-capacity rigid physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
-contact/event storage and per-step deterministic counters, a 33,304-byte
-serialized benchmark workspace, two 856-byte render snapshots, 5,120-byte main
+contact/event storage and per-step deterministic counters, a 3,036-byte
+fixed-capacity granular world, a 33,304-byte serialized benchmark workspace,
+two 1,112-byte render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 250,428 bytes of
-that region (95.91%) and 222,020 bytes of flash. It keeps the physics and
+storage, and a 1,024-byte shell TX ring. The fast image uses 257,700 bytes of
+that region (98.69%) and 230,460 bytes of flash. It keeps the physics and
 renderer hot paths in SRAM so the two cores do not contend for XIP flash
 during a frame, and both images route compiler integer division through the
 RP2040's interrupt-safe hardware-divider wrappers. Both images also reserve
 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 39,996 and 10,692
+core-1 mailbox and stack. The default and fast images retain 33,252 and 3,420
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
+
+On the tested PIM559, a 1,013-tick Hourglass window sustained 59.9 Hz simulation
+with zero skipped ticks and two updates over the 16.667 ms budget. Physics
+averaged 12.807 ms and peaked at 32.179 ms. Presentation held 29.7 fps; core-1
+rasterization took 8.856 ms and the latest complete display transfer took
+18.801 ms. Main, renderer, and core-1 stack high-water marks were 3,116/5,120,
+3,708/5,120, and 232/4,096 bytes. A paused live-scene check rendered identical
+core-0 and core-1 pixels at CRC-32 `fb1db43e` and restored the framebuffer.
+The flip sequence reached tick 360 at hash `65011a1e` and framebuffer CRC-32
+`d3085b4a`; the 600-tick neutral sequence reached `734af1ce` and `c4153118`.
 
 On the tested PIM559, the preceding sleeping image's schema-version-8 moving
 profile averaged 2.792 ms on the grid and 3.117 ms through the brute-force

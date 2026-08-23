@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "game_scene.h"
 
@@ -100,6 +101,44 @@ static int add_body(struct picosystem_physics_world *world,
 	}
 }
 
+static void update_granular_focus_proxy(struct picosystem_game_world *world)
+{
+	const struct picosystem_granular_particle *const particle =
+		picosystem_granular_world_particle_at(&world->granular, 0U);
+	if (particle == NULL) {
+		world->focus_proxy = (struct picosystem_physics_body){0};
+		return;
+	}
+	world->focus_proxy = (struct picosystem_physics_body){
+		.center = particle->position,
+		.velocity_per_tick =
+			{
+				.x = particle->position.x - particle->previous_position.x,
+				.y = particle->position.y - particle->previous_position.y,
+			},
+		.radius = world->granular.particle_radius,
+		.id = 1001U,
+		.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
+	};
+}
+
+static int reset_hourglass(struct picosystem_game_world *world)
+{
+	int err = picosystem_physics_world_init(&world->physics, GAME_MAX_SPEED_PER_TICK);
+	if (err != 0) {
+		return err;
+	}
+	err = picosystem_game_scene_hourglass_reset(&world->granular);
+	if (err != 0) {
+		return err;
+	}
+	world->logic_tick_count = 0U;
+	world->sensor_entry_count = 0U;
+	world->scene_id = PICOSYSTEM_GAME_SCENE_HOURGLASS;
+	update_granular_focus_proxy(world);
+	return 0;
+}
+
 int picosystem_game_world_reset_scene(struct picosystem_game_world *world,
 				      enum picosystem_game_scene_id scene_id)
 {
@@ -108,6 +147,9 @@ int picosystem_game_world_reset_scene(struct picosystem_game_world *world,
 	}
 	if ((unsigned int)scene_id >= PICOSYSTEM_GAME_SCENE_COUNT) {
 		return -ERANGE;
+	}
+	if (scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		return reset_hourglass(world);
 	}
 	const struct picosystem_game_scene_config *const scene = scene_config((uint8_t)scene_id);
 	int err = validate_scene_config(scene);
@@ -122,6 +164,8 @@ int picosystem_game_world_reset_scene(struct picosystem_game_world *world,
 	world->logic_tick_count = 0U;
 	world->sensor_entry_count = 0U;
 	world->scene_id = scene->id;
+	memset(&world->granular, 0, sizeof(world->granular));
+	world->focus_proxy = (struct picosystem_physics_body){0};
 
 	for (uint16_t index = 0U; index < scene->body_count; ++index) {
 		err = add_body(&world->physics, &scene->bodies[index]);
@@ -252,15 +296,30 @@ static int game_world_step(struct picosystem_game_world *world,
 	    (input->vertical > 1)) {
 		return -ERANGE;
 	}
+	const struct picosystem_physics_vector acceleration = {
+		.x = input->horizontal * GAME_CONTROL_PER_TICK,
+		.y = GAME_GRAVITY_PER_TICK + (input->vertical * GAME_CONTROL_PER_TICK),
+	};
+	if (world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		if ((mode != PICOSYSTEM_PHYSICS_STEP_MODE_GRID) || (clock != NULL) ||
+		    (profile != NULL)) {
+			return -ENOTSUP;
+		}
+		const int granular_err =
+			picosystem_granular_world_step(&world->granular, &acceleration);
+		if (granular_err != 0) {
+			return granular_err;
+		}
+		world->sensor_entry_count = world->granular.passage_count;
+		update_granular_focus_proxy(world);
+		increment_saturated(&world->logic_tick_count);
+		return 0;
+	}
 	int err = update_reversing_prismatic_drives(world);
 	if (err != 0) {
 		return err;
 	}
 
-	const struct picosystem_physics_vector acceleration = {
-		.x = input->horizontal * GAME_CONTROL_PER_TICK,
-		.y = GAME_GRAVITY_PER_TICK + (input->vertical * GAME_CONTROL_PER_TICK),
-	};
 	err = picosystem_physics_world_step_profiled(&world->physics, &acceleration, mode, clock,
 						     profile);
 	if (err != 0) {
@@ -273,6 +332,21 @@ static int game_world_step(struct picosystem_game_world *world,
 
 	increment_saturated(&world->logic_tick_count);
 	return 0;
+}
+
+int picosystem_game_world_flip(struct picosystem_game_world *world)
+{
+	if (world == NULL) {
+		return -EINVAL;
+	}
+	if (world->scene_id != PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		return -ENOTSUP;
+	}
+	const int err = picosystem_granular_world_flip(&world->granular);
+	if (err == 0) {
+		update_granular_focus_proxy(world);
+	}
+	return err;
 }
 
 int picosystem_game_world_step(struct picosystem_game_world *world,
@@ -295,6 +369,9 @@ picosystem_game_world_focus_body(const struct picosystem_game_world *world)
 {
 	if (world == NULL) {
 		return NULL;
+	}
+	if (world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		return (world->granular.particle_count != 0U) ? &world->focus_proxy : NULL;
 	}
 	return picosystem_physics_world_body_at(&world->physics, PICOSYSTEM_GAME_FOCUS_BODY_INDEX);
 }
@@ -329,6 +406,10 @@ uint32_t picosystem_game_world_hash(const struct picosystem_game_world *world)
 	hash = fnv1a_u32(hash, world->scene_id);
 	hash = fnv1a_u32(hash, world->logic_tick_count);
 	hash = fnv1a_u32(hash, world->sensor_entry_count);
+	if (world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		const uint32_t granular_hash = picosystem_granular_world_hash(&world->granular);
+		return (granular_hash != 0U) ? fnv1a_u32(hash, granular_hash) : 0U;
+	}
 	const uint32_t physics_hash = picosystem_physics_world_hash(&world->physics);
 	return (physics_hash != 0U) ? fnv1a_u32(hash, physics_hash) : 0U;
 }

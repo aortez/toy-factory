@@ -1145,9 +1145,107 @@ static void test_canonical_neutral_sleep_and_input_wake(void)
 		world.logic_tick_count, sleeping_body_count);
 }
 
+static int32_t granular_boundary_distance(const struct picosystem_granular_particle *particle,
+					  const struct picosystem_granular_boundary *boundary)
+{
+	const int64_t delta_x = (int64_t)particle->position.x - boundary->start.x;
+	const int64_t delta_y = (int64_t)particle->position.y - boundary->start.y;
+	return (int32_t)(((delta_x * boundary->inward_normal.x) +
+			  (delta_y * boundary->inward_normal.y)) /
+			 PICOSYSTEM_PHYSICS_FIXED_ONE);
+}
+
+static void assert_grains_inside_hourglass(const struct picosystem_game_world *world)
+{
+	const int32_t boundary_tolerance = PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8);
+	assert(world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS);
+	for (uint16_t particle_index = 0U; particle_index < world->granular.particle_count;
+	     ++particle_index) {
+		const struct picosystem_granular_particle *const particle =
+			&world->granular.particles[particle_index];
+		for (uint16_t boundary_index = 0U; boundary_index < world->granular.boundary_count;
+		     ++boundary_index) {
+			const struct picosystem_granular_boundary *const boundary =
+				&world->granular.boundaries[boundary_index];
+			if ((particle->position.y < boundary->active_minimum_y) ||
+			    (particle->position.y > boundary->active_maximum_y)) {
+				continue;
+			}
+			const int32_t distance = granular_boundary_distance(particle, boundary);
+			if (distance < world->granular.particle_radius - boundary_tolerance) {
+				fprintf(stderr,
+					"escaped grain=%u boundary=%u position=(%d,%d) distance=%d "
+					"radius=%d tick=%u\n",
+					particle_index, boundary_index, particle->position.x,
+					particle->position.y, distance,
+					world->granular.particle_radius, world->logic_tick_count);
+			}
+			assert(distance >= world->granular.particle_radius - boundary_tolerance);
+		}
+	}
+}
+
+static void run_hourglass_neutral(struct picosystem_game_world *world, uint32_t tick_count)
+{
+	const struct picosystem_game_input neutral = {0};
+	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
+		assert(picosystem_game_world_step(world, &neutral) == 0);
+		assert_grains_inside_hourglass(world);
+		assert(world->granular.last_work.candidate_pair_count <=
+		       world->granular.last_work.possible_pair_count);
+	}
+}
+
+static void test_hourglass_scene_flow_flip_and_replay(void)
+{
+	struct picosystem_game_world world;
+	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_HOURGLASS) == 0);
+	assert(world.physics.body_count == 0U);
+	assert(world.granular.particle_count == 96U);
+	assert(world.granular.boundary_count == 6U);
+	assert(picosystem_game_world_focus_body(&world) != NULL);
+	assert(picosystem_game_world_hash(&world) != 0U);
+	assert(picosystem_game_world_flip(NULL) == -EINVAL);
+
+	const struct picosystem_game_world initial = world;
+	assert(picosystem_game_world_flip(&world) == 0);
+	assert(picosystem_granular_world_lower_particle_count(&world.granular) == 96U);
+	assert(picosystem_game_world_flip(&world) == 0);
+	assert(picosystem_game_world_hash(&world) == picosystem_game_world_hash(&initial));
+
+	run_hourglass_neutral(&world, 3000U);
+	const uint16_t first_lower_count =
+		picosystem_granular_world_lower_particle_count(&world.granular);
+	assert(first_lower_count >= 90U);
+	assert(world.sensor_entry_count == world.granular.passage_count);
+	assert(world.sensor_entry_count >= first_lower_count);
+	const uint32_t first_hash = picosystem_game_world_hash(&world);
+
+	struct picosystem_game_world replay;
+	assert(picosystem_game_world_reset_scene(&replay, PICOSYSTEM_GAME_SCENE_HOURGLASS) == 0);
+	run_hourglass_neutral(&replay, 3000U);
+	assert(picosystem_game_world_hash(&replay) == first_hash);
+
+	assert(picosystem_game_world_flip(&world) == 0);
+	assert(picosystem_granular_world_lower_particle_count(&world.granular) <= 6U);
+	run_hourglass_neutral(&world, 3000U);
+	const uint16_t second_lower_count =
+		picosystem_granular_world_lower_particle_count(&world.granular);
+	assert(second_lower_count >= 90U);
+	assert(world.sensor_entry_count >= 180U);
+	fprintf(stderr,
+		"hourglass hash=%08x lower=%u/%u passages=%u candidates=%u/%u contacts=%u\n",
+		picosystem_game_world_hash(&world), second_lower_count,
+		world.granular.particle_count, world.sensor_entry_count,
+		world.granular.last_work.candidate_pair_count,
+		world.granular.last_work.possible_pair_count,
+		world.granular.last_work.contact_count);
+}
+
 int main(void)
 {
 	test_clockwork_scene_is_bounded_and_deterministic();
+	test_hourglass_scene_flow_flip_and_replay();
 	test_bounded_motion_contacts_and_saturated_tick();
 	test_canonical_reset_and_golden_replay();
 	test_validation_preserves_state();

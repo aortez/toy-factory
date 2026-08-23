@@ -1,0 +1,13 @@
+{
+  "name": "hourglass-neutral-smoke",
+  "steps": [
+    {
+      "input": "none",
+      "ticks": 600
+    }
+  ],
+  "expect": {
+    "hash": "734af1ce",
+    "framebuffer_crc32": "c4153118"
+  }
+}

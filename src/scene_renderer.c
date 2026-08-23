@@ -25,8 +25,10 @@
 #define BACKGROUND_TILE_SIZE    12U
 #define MACHINE_LAB_HEADER_TEXT "MACHINE LAB 60HZ"
 #define CLOCKWORK_HEADER_TEXT   "CLOCKWORK 60HZ"
+#define HOURGLASS_HEADER_TEXT   "HOURGLASS 60HZ"
 #define MACHINE_LAB_HEADER_X    22
 #define CLOCKWORK_HEADER_X      34
+#define HOURGLASS_HEADER_X      34
 #define HEADER_TEXT_Y           7
 #define HEADER_TEXT_SCALE       2U
 #define SENSOR_COUNT_TEXT_X     2
@@ -83,7 +85,18 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 	    (snapshot->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
 	    (snapshot->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
 	    (snapshot->box_sensor_count > PICOSYSTEM_SCENE_MAX_BOX_SENSORS) ||
-	    (snapshot->rope_count > PICOSYSTEM_PHYSICS_MAX_ROPES)) {
+	    (snapshot->rope_count > PICOSYSTEM_PHYSICS_MAX_ROPES) ||
+	    (snapshot->granular_particle_count > PICOSYSTEM_GRANULAR_MAX_PARTICLES) ||
+	    (snapshot->granular_lower_particle_count > snapshot->granular_particle_count)) {
+		return -ERANGE;
+	}
+	if ((snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) !=
+	    (snapshot->granular_particle_count != 0U)) {
+		return -ERANGE;
+	}
+	if ((snapshot->granular_particle_count != 0U) &&
+	    ((snapshot->granular_particle_radius == 0U) ||
+	     (snapshot->granular_particle_radius > 4U))) {
 		return -ERANGE;
 	}
 	const uint32_t valid_segment_mask =
@@ -131,7 +144,8 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC void
-render_playfield_background(const struct picosystem_rect *region)
+render_playfield_background(const struct picosystem_scene_snapshot *snapshot,
+			    const struct picosystem_rect *region)
 {
 	picosystem_graphics_fill_rect(region->x, region->y, region->width, region->height,
 				      PICOSYSTEM_COLOR_BLACK);
@@ -142,6 +156,11 @@ render_playfield_background(const struct picosystem_rect *region)
 	const uint16_t bottom = MIN(region->y + region->height, PLAYFIELD_BOTTOM + 1U);
 
 	if ((left >= right) || (top >= bottom)) {
+		return;
+	}
+	if (snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		picosystem_graphics_fill_rect(left, top, right - left, bottom - top,
+					      PICOSYSTEM_COLOR_NAVY);
 		return;
 	}
 
@@ -599,13 +618,38 @@ render_static_segments(const struct picosystem_scene_snapshot *snapshot,
 		}
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS, index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_OUTLINE);
-		picosystem_graphics_draw_line_clipped(
-			clip, segment->start_x, segment->start_y, segment->end_x, segment->end_y,
-			(direction == 0) ? PICOSYSTEM_COLOR_CYAN : PICOSYSTEM_COLOR_GREEN);
+		const picosystem_color_t segment_color =
+			(snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS)
+				? PICOSYSTEM_COLOR_WHITE
+				: ((direction == 0) ? PICOSYSTEM_COLOR_CYAN
+						    : PICOSYSTEM_COLOR_GREEN);
+		picosystem_graphics_draw_line_clipped(clip, segment->start_x, segment->start_y,
+						      segment->end_x, segment->end_y,
+						      segment_color);
 		if (direction != 0) {
 			render_conveyor_chevrons(segment, direction, clip);
 		}
 	}
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC int
+render_granules(const struct picosystem_scene_snapshot *snapshot,
+		const struct picosystem_rect *clip,
+		struct picosystem_scene_render_progress *progress)
+{
+	for (uint16_t index = 0U; index < snapshot->granular_particle_count; ++index) {
+		const struct picosystem_scene_grain *const grain = &snapshot->grains[index];
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GRANULES, index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_FILL_0);
+		const picosystem_color_t color =
+			((index % 7U) == 0U) ? PICOSYSTEM_COLOR_WHITE : PICOSYSTEM_COLOR_YELLOW;
+		const int err = picosystem_graphics_fill_circle_clipped(
+			clip, grain->x, grain->y, snapshot->granular_particle_radius, color);
+		if (err != 0) {
+			return err;
+		}
+	}
+	return 0;
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC void
@@ -642,8 +686,13 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_header(const struct picosystem_scene
 						   const struct picosystem_rect *clip)
 {
 	const bool clockwork = snapshot->scene_id == PICOSYSTEM_GAME_SCENE_CLOCKWORK;
-	const char *const header_text = clockwork ? CLOCKWORK_HEADER_TEXT : MACHINE_LAB_HEADER_TEXT;
-	const int16_t header_x = clockwork ? CLOCKWORK_HEADER_X : MACHINE_LAB_HEADER_X;
+	const bool hourglass = snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS;
+	const char *const header_text = hourglass   ? HOURGLASS_HEADER_TEXT
+					: clockwork ? CLOCKWORK_HEADER_TEXT
+						    : MACHINE_LAB_HEADER_TEXT;
+	const int16_t header_x = hourglass   ? HOURGLASS_HEADER_X
+				 : clockwork ? CLOCKWORK_HEADER_X
+					     : MACHINE_LAB_HEADER_X;
 	int err;
 	if (clip == NULL) {
 		err = picosystem_graphics_draw_text(header_x, HEADER_TEXT_Y, header_text,
@@ -657,21 +706,23 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_header(const struct picosystem_scene
 		return err;
 	}
 
-	const uint32_t displayed_count = snapshot->sensor_entry_count % 100U;
+	const uint32_t displayed_count = (hourglass ? snapshot->granular_lower_particle_count
+						    : snapshot->sensor_entry_count) %
+					 100U;
 	const char count_text[] = {
-		'S',
+		hourglass ? 'D' : 'S',
 		(char)('0' + (displayed_count / 10U)),
 		(char)('0' + (displayed_count % 10U)),
 		'\0',
 	};
 	if (clip == NULL) {
-		return picosystem_graphics_draw_text(SENSOR_COUNT_TEXT_X, SENSOR_COUNT_TEXT_Y,
-						     count_text, SENSOR_COUNT_SCALE,
-						     PICOSYSTEM_COLOR_GREEN);
+		return picosystem_graphics_draw_text(
+			SENSOR_COUNT_TEXT_X, SENSOR_COUNT_TEXT_Y, count_text, SENSOR_COUNT_SCALE,
+			hourglass ? PICOSYSTEM_COLOR_YELLOW : PICOSYSTEM_COLOR_GREEN);
 	}
-	return picosystem_graphics_draw_text_clipped(clip, SENSOR_COUNT_TEXT_X, SENSOR_COUNT_TEXT_Y,
-						     count_text, SENSOR_COUNT_SCALE,
-						     PICOSYSTEM_COLOR_GREEN);
+	return picosystem_graphics_draw_text_clipped(
+		clip, SENSOR_COUNT_TEXT_X, SENSOR_COUNT_TEXT_Y, count_text, SENSOR_COUNT_SCALE,
+		hourglass ? PICOSYSTEM_COLOR_YELLOW : PICOSYSTEM_COLOR_GREEN);
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC void
@@ -898,7 +949,13 @@ picosystem_scene_render_full_observed(const struct picosystem_scene_snapshot *sn
 	picosystem_graphics_clear(PICOSYSTEM_COLOR_BLACK);
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
-	render_playfield_background(&playfield);
+	render_playfield_background(snapshot, &playfield);
+	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GRANULES, 0U,
+			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
+	int err = render_granules(snapshot, NULL, progress);
+	if (err != 0) {
+		return err;
+	}
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	render_box_sensors(snapshot, NULL, progress);
@@ -913,7 +970,7 @@ picosystem_scene_render_full_observed(const struct picosystem_scene_snapshot *sn
 	render_ropes(snapshot, NULL, progress);
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
-	int err = render_bodies(snapshot, NULL, progress);
+	err = render_bodies(snapshot, NULL, progress);
 	if (err != 0) {
 		return err;
 	}
@@ -959,7 +1016,13 @@ picosystem_scene_render_region_observed(const struct picosystem_scene_snapshot *
 
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
-	render_playfield_background(region);
+	render_playfield_background(snapshot, region);
+	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GRANULES, 0U,
+			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
+	int err = render_granules(snapshot, region, progress);
+	if (err != 0) {
+		return err;
+	}
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	render_box_sensors(snapshot, region, progress);
@@ -974,7 +1037,7 @@ picosystem_scene_render_region_observed(const struct picosystem_scene_snapshot *
 	render_ropes(snapshot, region, progress);
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
-	int err = render_bodies(snapshot, region, progress);
+	err = render_bodies(snapshot, region, progress);
 	if (err != 0) {
 		return err;
 	}
@@ -1010,6 +1073,8 @@ const char *picosystem_scene_render_stage_name(enum picosystem_scene_render_stag
 		return "clear";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND:
 		return "background";
+	case PICOSYSTEM_SCENE_RENDER_STAGE_GRANULES:
+		return "granules";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS:
 		return "sensors";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS:

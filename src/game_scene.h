@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include "game_world.h"
+#include "granular_world.h"
 
 struct picosystem_game_body_config {
 	union {
@@ -43,5 +44,6 @@ struct picosystem_game_scene_config {
 
 const struct picosystem_game_scene_config *picosystem_game_scene_machine_lab(void);
 const struct picosystem_game_scene_config *picosystem_game_scene_clockwork(void);
+int picosystem_game_scene_hourglass_reset(struct picosystem_granular_world *world);
 
 #endif /* PICOSYSTEM_GAME_SCENE_H_ */

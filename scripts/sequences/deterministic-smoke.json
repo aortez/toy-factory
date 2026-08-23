@@ -1,17 +1,28 @@
 {
-  "name": "deterministic-smoke",
+  "name": "hourglass-flip-smoke",
   "steps": [
     {
       "input": "right",
-      "ticks": 15
+      "ticks": 60
     },
     {
-      "input": "up",
-      "ticks": 8
+      "input": "none",
+      "ticks": 120
+    },
+    {
+      "action": "flip"
+    },
+    {
+      "input": "left",
+      "ticks": 60
+    },
+    {
+      "input": "none",
+      "ticks": 120
     }
   ],
   "expect": {
-    "hash": "e7a7ba97",
-    "framebuffer_crc32": "4efbf582"
+    "hash": "65011a1e",
+    "framebuffer_crc32": "d3085b4a"
   }
 }

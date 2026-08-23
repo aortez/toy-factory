@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include "graphics.h"
+#include "granular_world.h"
 #include "physics_world.h"
 
 #define PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT 3U
@@ -72,6 +73,11 @@ struct picosystem_scene_rope {
 	uint8_t particle_count;
 };
 
+struct picosystem_scene_grain {
+	uint8_t x;
+	uint8_t y;
+};
+
 /* Immutable, self-contained input copied to the auxiliary core before rasterization. */
 struct picosystem_scene_snapshot {
 	int64_t published_uptime_ticks;
@@ -86,6 +92,9 @@ struct picosystem_scene_snapshot {
 	uint8_t revolute_joint_count;
 	uint8_t box_sensor_count;
 	uint8_t rope_count;
+	uint8_t granular_particle_count;
+	uint8_t granular_particle_radius;
+	uint8_t granular_lower_particle_count;
 	uint32_t conveyor_forward_segment_mask;
 	uint32_t conveyor_reverse_segment_mask;
 	struct picosystem_scene_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
@@ -94,6 +103,7 @@ struct picosystem_scene_snapshot {
 	struct picosystem_scene_joint revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
 	struct picosystem_scene_box_sensor box_sensors[PICOSYSTEM_SCENE_MAX_BOX_SENSORS];
 	struct picosystem_scene_rope ropes[PICOSYSTEM_PHYSICS_MAX_ROPES];
+	struct picosystem_scene_grain grains[PICOSYSTEM_GRANULAR_MAX_PARTICLES];
 };
 
 enum picosystem_scene_render_stage {
@@ -101,6 +111,7 @@ enum picosystem_scene_render_stage {
 	PICOSYSTEM_SCENE_RENDER_STAGE_VALIDATE,
 	PICOSYSTEM_SCENE_RENDER_STAGE_CLEAR,
 	PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND,
+	PICOSYSTEM_SCENE_RENDER_STAGE_GRANULES,
 	PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS,
