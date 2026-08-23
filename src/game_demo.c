@@ -1185,16 +1185,19 @@ int picosystem_game_demo_restart_measurement(struct picosystem_game_demo_state *
 	return 0;
 }
 
-int picosystem_game_demo_reset(struct picosystem_game_demo_state *state)
+int picosystem_game_demo_reset_scene(struct picosystem_game_demo_state *state,
+				     enum picosystem_game_scene_id scene_id)
 {
 	if ((state == NULL) || !state->ready) {
 		return -EINVAL;
 	}
+	if (!picosystem_game_scene_is_selectable(scene_id)) {
+		return -ENOTSUP;
+	}
 
 	const uint32_t snapshot_sequence = state->snapshot_sequence;
 	const uint32_t redraw_request_sequence = state->redraw_request_sequence + 1U;
-	const int err =
-		picosystem_game_world_reset_scene(&state->world, PICOSYSTEM_GAME_SCENE_HOURGLASS);
+	const int err = picosystem_game_world_reset_scene(&state->world, scene_id);
 	if (err != 0) {
 		return err;
 	}
@@ -1223,6 +1226,16 @@ int picosystem_game_demo_reset(struct picosystem_game_demo_state *state)
 		return restart_err;
 	}
 	return publish_snapshot(state, true);
+}
+
+int picosystem_game_demo_reset(struct picosystem_game_demo_state *state)
+{
+	if ((state == NULL) || !state->ready) {
+		return -EINVAL;
+	}
+
+	return picosystem_game_demo_reset_scene(
+		state, (enum picosystem_game_scene_id)state->world.scene_id);
 }
 
 int picosystem_game_demo_flip(struct picosystem_game_demo_state *state)
@@ -1405,6 +1418,7 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.focus_velocity_y_pixels_per_second =
 			velocity_to_pixels_per_second(focus->velocity_per_tick.y),
 		.focus_shape = focus->shape,
+		.scene_id = state->world.scene_id,
 		.start_uptime_ms = state->start_uptime_ms,
 		.render_error = render_metrics.render_error,
 		.last_raster_on_core1 = render_metrics.last_raster_on_core1,

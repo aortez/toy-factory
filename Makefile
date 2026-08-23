@@ -10,6 +10,7 @@ PL022_DMA_UF2 := build-pl022-dma/zephyr/zephyr.uf2
 SERIAL_PORT_HELPER := ./scripts/find-serial-port.sh
 STEPS ?= 1
 INPUT ?= none
+SCENE ?= hourglass
 OUT ?= artifacts/screenshot.png
 SEQUENCE ?= scripts/sequences/deterministic-smoke.json
 FAIL_SCREENSHOT ?= artifacts/sequence-failure.png
@@ -35,7 +36,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 	bootloader console status game-stats \
 	game-redraw core1-status core1-ping core1-raster core1-scene \
 	display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
-	sim-reset sim-flip sim-state sim-test \
+	sim-reset sim-scene sim-flip sim-state sim-test \
 	profile profile-ab profile-sleep profile-chain render-profile update-render-profile \
 	profile-granular \
 	flash monitor shell
@@ -46,6 +47,7 @@ help: ## Show this list of targets
 	@printf 'Toy Factory\n\n'
 	@printf 'Usage:\n  make <target> [PORT=/dev/ttyACM0] [UF2_MOUNT=/path/to/RPI-RP2]\n'
 	@printf '                    [STEPS=1] [INPUT=none] [OUT=artifacts/screenshot.png]\n'
+	@printf '                    [SCENE=clockwork|hourglass]\n'
 	@printf '                    [SEQUENCE=path.json] [FAIL_SCREENSHOT=artifacts/failure.png]\n'
 	@printf '                    [PROFILE_TICKS=1000] [PROFILE_OUT=artifacts/physics-profile.json]\n'
 	@printf '                    [GRANULAR_PROFILE_TICKS=120]\n'
@@ -250,6 +252,15 @@ sim-reset: image ## Restore the playable scene to tick zero while paused
 			"$(FIRMWARE_IMAGE)" \
 			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
 				picosystem game reset
+
+sim-scene: image ## Select SCENE=clockwork|hourglass at tick zero while paused
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "scene=" "$$port" \
+				picosystem game scene "$(SCENE)"
 
 sim-flip: image ## Rotate the paused Hourglass contents by 180 degrees
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \

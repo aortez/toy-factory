@@ -1,5 +1,6 @@
 {
   "name": "hourglass-flip-smoke",
+  "scene": "hourglass",
   "steps": [
     {
       "input": "right",

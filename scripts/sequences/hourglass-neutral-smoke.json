@@ -1,5 +1,6 @@
 {
   "name": "hourglass-neutral-smoke",
+  "scene": "hourglass",
   "steps": [
     {
       "input": "none",

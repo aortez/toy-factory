@@ -95,6 +95,11 @@ static const struct named_game_input game_inputs[] = {
 	 .remote_input_enabled = true},
 };
 
+static const enum picosystem_game_scene_id game_scenes[] = {
+	PICOSYSTEM_GAME_SCENE_CLOCKWORK,
+	PICOSYSTEM_GAME_SCENE_HOURGLASS,
+};
+
 BUILD_ASSERT(ARRAY_SIZE(button_names) == PICOSYSTEM_BUTTON_COUNT);
 
 K_MUTEX_DEFINE(snapshot_mutex);
@@ -392,6 +397,7 @@ static void print_game_runtime_stats(const struct shell *shell,
 	const uint32_t frame_rate_tenths = measured_rate_tenths(
 		game->measured_presented_frame_count, game->start_uptime_ms, metrics_time_ms);
 
+	shell_print(shell, "scene: %s", picosystem_game_scene_name(game->scene_id));
 	shell_print(shell,
 		    "simulation: ticks=%u, window=%u (%u.%u Hz), update=%u/%u/%u us "
 		    "last/mean/max, physics=%u/%u/%u, snapshot=%u/%u/%u, backlog=%u, "
@@ -461,6 +467,7 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.graphics.last_present_width,
 		    snapshot.game.graphics.last_present_height,
 		    snapshot.game.graphics.present_count);
+	shell_print(shell, "scene: %s", picosystem_game_scene_name(snapshot.game.scene_id));
 	shell_print(shell,
 		    "simulation: ticks=%u, window=%u (%u.%u Hz), update=%u/%u/%u us "
 		    "last/mean/max, physics=%u/%u/%u, snapshot=%u/%u/%u, "
@@ -858,6 +865,8 @@ static int cmd_display_capture(const struct shell *shell, size_t argc, char **ar
 static void print_game_control_state(const struct shell *shell,
 				     const struct picosystem_game_control_state *state)
 {
+	shell_print(shell, "scene=%s scene_id=%u", picosystem_game_scene_name(state->scene_id),
+		    state->scene_id);
 	shell_print(shell, "mode=%s tick=%u hash=%08x", state->paused ? "paused" : "running",
 		    state->logic_tick_count, state->state_hash);
 	shell_print(shell, "input_source=%s input_x=%d input_y=%d",
@@ -882,6 +891,7 @@ static int submit_game_control(const struct shell *shell,
 	const int err = picosystem_game_control_submit(request, &state);
 	if (err == -EBUSY) {
 		if ((request->operation == PICOSYSTEM_GAME_CONTROL_RESET) ||
+		    (request->operation == PICOSYSTEM_GAME_CONTROL_SELECT_SCENE) ||
 		    (request->operation == PICOSYSTEM_GAME_CONTROL_FLIP)) {
 			shell_error(shell, "Pause the simulation before changing the scene");
 		} else {
@@ -929,6 +939,27 @@ static int cmd_game_reset(const struct shell *shell, size_t argc, char **argv)
 		.operation = PICOSYSTEM_GAME_CONTROL_RESET,
 	};
 	return submit_game_control(shell, &request);
+}
+
+static int cmd_game_scene(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+
+	for (size_t index = 0U; index < ARRAY_SIZE(game_scenes); ++index) {
+		const enum picosystem_game_scene_id scene_id = game_scenes[index];
+		if (strcmp(argv[1], picosystem_game_scene_name(scene_id)) != 0) {
+			continue;
+		}
+
+		const struct picosystem_game_control_request request = {
+			.operation = PICOSYSTEM_GAME_CONTROL_SELECT_SCENE,
+			.scene_id = scene_id,
+		};
+		return submit_game_control(shell, &request);
+	}
+
+	shell_error(shell, "Unknown playable scene '%s'", argv[1]);
+	return -EINVAL;
 }
 
 static int cmd_game_flip(const struct shell *shell, size_t argc, char **argv)
@@ -1483,6 +1514,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(pause, NULL, "Pause at the next tick boundary.", cmd_game_pause, 1, 0),
 	SHELL_CMD_ARG(reset, NULL, "Restore the playable scene to tick zero while paused.",
 		      cmd_game_reset, 1, 0),
+	SHELL_CMD_ARG(scene, NULL,
+		      SHELL_HELP("Select a scene at tick zero while paused.",
+				 "<clockwork|hourglass>"),
+		      cmd_game_scene, 2, 0),
 	SHELL_CMD_ARG(stats, NULL, "Show simulation, snapshot, and renderer metrics.",
 		      cmd_game_stats, 1, 0),
 	SHELL_CMD_ARG(state, NULL, "Show exact authoritative state.", cmd_game_state, 1, 0),

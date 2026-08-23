@@ -147,6 +147,7 @@ struct picosystem_game_demo_stats {
 	int16_t focus_velocity_y_pixels_per_second;
 	uint8_t focus_shape;
 	uint8_t solver_iteration_count;
+	uint8_t scene_id;
 	bool focus_sleeping;
 	bool broad_phase_fallback;
 	int64_t start_uptime_ms;
@@ -196,8 +197,12 @@ int picosystem_game_demo_start_simulation(struct picosystem_game_demo_state *sta
 /* Begin a new performance-rate window without changing authoritative state. */
 int picosystem_game_demo_restart_measurement(struct picosystem_game_demo_state *state);
 
-/* Restore the playable scene while preserving renderer sequence monotonicity. */
+/* Restore the active playable scene while preserving renderer sequence monotonicity. */
 int picosystem_game_demo_reset(struct picosystem_game_demo_state *state);
+
+/* Select and restore one player-facing scene while preserving sequence monotonicity. */
+int picosystem_game_demo_reset_scene(struct picosystem_game_demo_state *state,
+				     enum picosystem_game_scene_id scene_id);
 
 /* Flip the active symmetric scene and publish its new authoritative state. */
 int picosystem_game_demo_flip(struct picosystem_game_demo_state *state);

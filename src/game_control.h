@@ -18,6 +18,7 @@ enum picosystem_game_control_operation {
 	PICOSYSTEM_GAME_CONTROL_PAUSE,
 	PICOSYSTEM_GAME_CONTROL_RUN,
 	PICOSYSTEM_GAME_CONTROL_RESET,
+	PICOSYSTEM_GAME_CONTROL_SELECT_SCENE,
 	PICOSYSTEM_GAME_CONTROL_FLIP,
 	PICOSYSTEM_GAME_CONTROL_STEP,
 	PICOSYSTEM_GAME_CONTROL_SET_INPUT,
@@ -30,6 +31,7 @@ struct picosystem_game_control_request {
 	uint32_t step_count;
 	struct picosystem_game_input input;
 	enum picosystem_game_control_operation operation;
+	enum picosystem_game_scene_id scene_id;
 	bool remote_input_enabled;
 };
 
@@ -47,6 +49,7 @@ struct picosystem_game_control_state {
 	struct picosystem_game_input input;
 	uint16_t focus_body_id;
 	uint8_t focus_shape;
+	uint8_t scene_id;
 	bool paused;
 	bool remote_input_enabled;
 };
