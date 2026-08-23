@@ -60,6 +60,44 @@ static struct picosystem_granular_world_config box_config(void)
 	};
 }
 
+static uint32_t reference_integer_square_root(uint64_t value)
+{
+	uint32_t minimum = 0U;
+	uint32_t maximum = UINT32_C(1) << 19U;
+	while ((minimum + 1U) < maximum) {
+		const uint32_t candidate = minimum + ((maximum - minimum) / 2U);
+		if (((uint64_t)candidate * candidate) <= value) {
+			minimum = candidate;
+		} else {
+			maximum = candidate;
+		}
+	}
+	return minimum;
+}
+
+static void test_bounded_integer_square_root(void)
+{
+	const uint32_t root_limit = UINT32_C(1) << 19U;
+	for (uint32_t root = 0U; root < root_limit; ++root) {
+		const uint64_t square = (uint64_t)root * root;
+		assert(picosystem_granular_test_integer_square_root(square) == root);
+		if (square > 0U) {
+			assert(picosystem_granular_test_integer_square_root(square - 1U) ==
+			       (root - 1U));
+		}
+		const uint64_t next = (uint64_t)(root + 1U) * (root + 1U);
+		assert(picosystem_granular_test_integer_square_root(next - 1U) == root);
+	}
+
+	uint64_t random_state = UINT64_C(0x4d595df4d0f33173);
+	for (uint32_t sample = 0U; sample < 100000U; ++sample) {
+		random_state = (random_state * UINT64_C(6364136223846793005)) + UINT64_C(1);
+		const uint64_t value = random_state & ((UINT64_C(1) << 38U) - 1U);
+		assert(picosystem_granular_test_integer_square_root(value) ==
+		       reference_integer_square_root(value));
+	}
+}
+
 static void test_configuration_validation(void)
 {
 	struct picosystem_granular_world world;
@@ -127,8 +165,10 @@ static void test_particle_capacity_and_access(void)
 	const struct picosystem_physics_vector extra = {.x = FIXED(100), .y = FIXED(100)};
 	assert(picosystem_granular_world_add_particle(&world, &extra) == -ENOSPC);
 	assert(memcmp(&world, &full, sizeof(world)) == 0);
-	assert(picosystem_granular_world_particle_at(&world, 127U) != NULL);
-	assert(picosystem_granular_world_particle_at(&world, 128U) == NULL);
+	assert(picosystem_granular_world_particle_at(&world, PICOSYSTEM_GRANULAR_MAX_PARTICLES -
+								     1U) != NULL);
+	assert(picosystem_granular_world_particle_at(&world, PICOSYSTEM_GRANULAR_MAX_PARTICLES) ==
+	       NULL);
 }
 
 static void test_pair_separation_and_falling(void)
@@ -163,6 +203,75 @@ static void test_pair_separation_and_falling(void)
 	}
 	assert(picosystem_granular_world_lower_particle_count(&world) == 2U);
 	assert(world.passage_count == 2U);
+}
+
+static uint32_t fake_clock_now(void *context)
+{
+	uint32_t *const next = context;
+	return (*next)++;
+}
+
+static void test_profiled_step(void)
+{
+	struct picosystem_granular_world unprofiled;
+	const struct picosystem_granular_world_config config = box_config();
+	assert(picosystem_granular_world_init(&unprofiled, &config) == 0);
+	const struct picosystem_physics_vector left = {.x = FIXED(118), .y = FIXED(40)};
+	const struct picosystem_physics_vector right = {.x = FIXED(121), .y = FIXED(40)};
+	assert(picosystem_granular_world_add_particle(&unprofiled, &left) == 0);
+	assert(picosystem_granular_world_add_particle(&unprofiled, &right) == 0);
+	struct picosystem_granular_world profiled = unprofiled;
+	const struct picosystem_physics_vector gravity = {.y = RATIO(1, 8)};
+	assert(picosystem_granular_world_step(&unprofiled, &gravity) == 0);
+
+	uint32_t next_cycle = 0U;
+	const struct picosystem_physics_clock clock = {
+		.now = fake_clock_now,
+		.context = &next_cycle,
+	};
+	struct picosystem_granular_step_profile profile;
+	memset(&profile, 0xa5, sizeof(profile));
+	assert(picosystem_granular_world_step_profiled(&profiled, &gravity, &clock, &profile) == 0);
+	assert(memcmp(&profiled, &unprofiled, sizeof(profiled)) == 0);
+	assert(profile.clock_read_count == 22U);
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_INTEGRATE] == 1U);
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_BOUNDARIES] == 4U);
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_GRID_BUILD] == 2U);
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_PAIR_SOLVE] == 2U);
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_PASSAGES] == 1U);
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_OTHER] == 11U);
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_TOTAL] == 21U);
+	assert(memcmp(&profile.work, &profiled.last_work, sizeof(profile.work)) == 0);
+	assert(profile.work.candidate_pair_count ==
+	       (profile.work.axis_rejection_count + profile.work.diagonal_rejection_count +
+		profile.work.distance_test_count));
+	assert(profile.work.coarse_boundary_rejection_count <= profile.work.boundary_test_count);
+
+	const struct picosystem_granular_world unchanged = profiled;
+	assert(picosystem_granular_world_step_profiled(&profiled, &gravity, NULL, &profile) ==
+	       -EINVAL);
+	assert(memcmp(&profiled, &unchanged, sizeof(profiled)) == 0);
+	assert(picosystem_granular_world_step_profiled(&profiled, &gravity, &clock, NULL) ==
+	       -EINVAL);
+	assert(memcmp(&profiled, &unchanged, sizeof(profiled)) == 0);
+}
+
+static void test_exact_pair_rejections(void)
+{
+	struct picosystem_granular_world world;
+	const struct picosystem_granular_world_config config = box_config();
+	assert(picosystem_granular_world_init(&world, &config) == 0);
+	const struct picosystem_physics_vector upper_left = {.x = FIXED(100), .y = FIXED(100)};
+	const struct picosystem_physics_vector lower_right = {.x = FIXED(103), .y = FIXED(103)};
+	assert(picosystem_granular_world_add_particle(&world, &upper_left) == 0);
+	assert(picosystem_granular_world_add_particle(&world, &lower_right) == 0);
+	const struct picosystem_physics_vector no_acceleration = {0};
+	assert(picosystem_granular_world_step(&world, &no_acceleration) == 0);
+	assert(world.last_work.candidate_pair_count == 2U);
+	assert(world.last_work.axis_rejection_count == 0U);
+	assert(world.last_work.diagonal_rejection_count == 2U);
+	assert(world.last_work.distance_test_count == 0U);
+	assert(world.last_work.contact_count == 0U);
 }
 
 static void populate_replay_world(struct picosystem_granular_world *world)
@@ -221,9 +330,12 @@ static void test_flip_and_deterministic_replay(void)
 
 int main(void)
 {
+	test_bounded_integer_square_root();
 	test_configuration_validation();
 	test_particle_capacity_and_access();
 	test_pair_separation_and_falling();
+	test_profiled_step();
+	test_exact_pair_rejections();
 	test_flip_and_deterministic_replay();
 	printf("granular world tests passed\n");
 	return 0;

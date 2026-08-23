@@ -97,6 +97,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add exact capsule collisions and a bounded position-based rope subsystem.
 - [x] Add deliberate two-way rope/body coupling and bounded particle collision.
 - [x] Add bounded deterministic granular materials with device work counters.
+- [x] Profile and optimize a deterministic 192-grain workload within the 60 Hz budget.
 - [ ] Evaluate approximate force fields.
 
 ## 7. Playable toys

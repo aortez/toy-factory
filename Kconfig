@@ -27,6 +27,33 @@ config TOY_FACTORY_CORE1_FULL_FRAME_RENDERER
 	  transport used by the high-throughput build; slower transports retain the
 	  damage-region renderer.
 
+config TOY_FACTORY_RIGID_PHYSICS_IN_SRAM
+	bool "Copy the rigid-physics hot path into SRAM"
+	default y if TOY_FACTORY_CORE1_FULL_FRAME_RENDERER
+	depends on SOC_RP2040
+	help
+	  Execute the large rigid-body step from SRAM instead of directly from XIP
+	  flash. This avoids flash contention during rigid scenes, but consumes about
+	  20 KiB of SRAM even when a non-rigid scene is active. Disable this for
+	  controlled XIP measurements or RAM-constrained scenario builds.
+
+config TOY_FACTORY_HOURGLASS_96_GRAIN_BENCHMARK
+	bool "Reduce the Hourglass to 96 grains"
+	default n
+	help
+	  Halve the normal Hourglass population for controlled device profiling.
+	  This variant retains the same solver and rendering settings so timings can
+	  be compared with the normal 192-grain scene.
+
+config TOY_FACTORY_GRANULAR_PHYSICS_IN_SRAM
+	bool "Copy the granular-physics hot path into SRAM"
+	default n
+	depends on SOC_RP2040
+	help
+	  Execute the compact granular step from SRAM instead of XIP flash. This is
+	  an optional placement experiment; unlike rigid physics, it is not enabled
+	  automatically by the full-frame renderer.
+
 config TOY_FACTORY_DISPLAY_DMA_HIGH_PRIORITY
 	bool "Prioritize display DMA on the RP2040 bus fabric"
 	default n

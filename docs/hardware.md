@@ -53,22 +53,25 @@ isolate.
 
 ## Current Hourglass validation
 
-The recommended 62.5 MHz PL022/DMA image runs a deterministic 96-grain
+The recommended 62.5 MHz PL022/DMA image runs a deterministic 192-grain
 Hourglass at an exact 60 Hz simulation cadence and presents complete frames at
-about 30 fps. In a 1,013-tick physical-board window, physics averaged 12.807 ms
-and peaked at 32.179 ms; the scheduler recorded no skipped ticks and two updates
-over its 16.667 ms budget. Core-1 rasterization took 8.856 ms and the latest
-complete transfer took 18.801 ms. Main, renderer, and core-1 stack high-water
-marks were 3,116/5,120, 3,708/5,120, and 232/4,096 bytes.
+about 30 fps. Its isolated 1,000-tick replay averaged 13.688 ms, peaked at
+14.394 ms, and recorded no 60 Hz violations. A first live 832-tick window under
+concurrent rendering averaged 14.984 ms in physics and exposed occasional
+deadline overruns, so reducing live contention remains the next optimization
+target.
 
-The image uses 257,700 bytes of the 255 KiB Zephyr RAM region and 230,460 bytes
-of flash, leaving 3,420 bytes of linker RAM plus the separately reserved 8 KiB
-core-1 mailbox/stack area. The conservative image uses 227,868 bytes of Zephyr
-RAM and 224,660 bytes of flash. The immutable render snapshot is 1,112 bytes.
+The image uses 251,180 bytes of the 255 KiB Zephyr RAM region and 234,744 bytes
+of flash, leaving 9,940 bytes of linker RAM plus the separately reserved 8 KiB
+core-1 mailbox/stack area. The conservative image uses 221,276 bytes of Zephyr
+RAM and 229,128 bytes of flash. The immutable render snapshot is 856 bytes.
+The tagged game-world and snapshot unions permit the normal 192-grain scene
+without allocating inactive scene payloads. Full results are in the
+[Hourglass report](../benchmarks/hourglass/README.md).
 
-Exact USB-controlled replay reproduced tick 360 at hash `65011a1e` and
-framebuffer CRC-32 `d3085b4a` after a directional/flip sequence. A 600-tick
-neutral drain reached hash `734af1ce` and CRC-32 `c4153118`. Rendering the same
+Exact USB-controlled replay reproduced tick 360 at hash `010f9b49` and
+framebuffer CRC-32 `d199c13c` after a directional/flip sequence. A 600-tick
+neutral drain reached hash `9d12ec5e` and CRC-32 `09f0b159`. Rendering the same
 paused scene on each core produced matching CRC-32 `fb1db43e` and restored the
 original framebuffer. Physical D-pad gravity tilt, X flip, Y reset, A redraw,
 and B tone behavior were also exercised on the PIM559.

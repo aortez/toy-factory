@@ -14,8 +14,13 @@
 
 #define HOURGLASS_CENTER_X_PIXELS 120
 #define HOURGLASS_CENTER_Y_PIXELS 135
-#define HOURGLASS_GRAIN_COUNT     96U
 #define HOURGLASS_GRAIN_SPACING   5
+
+#if defined(CONFIG_TOY_FACTORY_HOURGLASS_96_GRAIN_BENCHMARK)
+#define HOURGLASS_GRAIN_COUNT 96U
+#else
+#define HOURGLASS_GRAIN_COUNT 192U
+#endif
 
 static const struct picosystem_granular_boundary_config boundaries[] = {
 	{
@@ -63,15 +68,22 @@ static const struct picosystem_granular_boundary_config boundaries[] = {
 	},
 };
 
+#if defined(CONFIG_TOY_FACTORY_HOURGLASS_96_GRAIN_BENCHMARK)
 static const uint8_t row_particle_counts[] = {6U, 8U, 10U, 12U, 14U, 16U, 16U, 14U};
+_Static_assert(6U + 8U + 10U + 12U + 14U + 16U + 16U + 14U == HOURGLASS_GRAIN_COUNT,
+	       "hourglass row population must match its grain count");
+#else
+static const uint8_t row_particle_counts[] = {8U,  10U, 12U, 14U, 14U, 16U,
+					      16U, 18U, 18U, 20U, 22U, 24U};
+_Static_assert(8U + 10U + 12U + 14U + 14U + 16U + 16U + 18U + 18U + 20U + 22U + 24U ==
+		       HOURGLASS_GRAIN_COUNT,
+	       "hourglass row population must match its grain count");
+#endif
 
 _Static_assert(HOURGLASS_GRAIN_COUNT <= PICOSYSTEM_GRANULAR_MAX_PARTICLES,
 	       "hourglass grains must fit granular storage");
 _Static_assert(sizeof(boundaries) / sizeof(boundaries[0]) <= PICOSYSTEM_GRANULAR_MAX_BOUNDARIES,
 	       "hourglass boundaries must fit granular storage");
-_Static_assert(6U + 8U + 10U + 12U + 14U + 16U + 16U + 14U == HOURGLASS_GRAIN_COUNT,
-	       "hourglass row population must match its grain count");
-
 int picosystem_game_scene_hourglass_reset(struct picosystem_granular_world *world)
 {
 	if (world == NULL) {

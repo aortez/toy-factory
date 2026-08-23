@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #define CHAIN_FIXTURE_HALF_LENGTH_PIXELS 4
 #define CHAIN_FIXTURE_HALF_HEIGHT_PIXELS 2
@@ -42,7 +41,6 @@ int picosystem_physics_chain_fixture_reset(struct picosystem_game_world *world, 
 	world->logic_tick_count = 0U;
 	world->sensor_entry_count = 0U;
 	world->scene_id = PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN;
-	memset(&world->granular, 0, sizeof(world->granular));
 	world->focus_proxy = (struct picosystem_physics_body){0};
 
 	for (uint16_t index = 0U; index < link_count; ++index) {

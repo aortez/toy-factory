@@ -32,7 +32,10 @@
 
 #define BOOTLOADER_REBOOT_DELAY_MS 100
 
-static struct picosystem_physics_profile_result profile_result;
+static union {
+	struct picosystem_physics_profile_result physics;
+	struct picosystem_granular_profile_result granular;
+} profile_results;
 static struct picosystem_display_profile_result display_profile_result;
 
 struct named_button {
@@ -1229,23 +1232,24 @@ static int run_physics_profile(const struct shell *shell, uint16_t chain_link_co
 			"mode",
 			measured_tick_count);
 		err = picosystem_physics_profile_compare_neutral(measured_tick_count,
-								 &profile_result);
+								 &profile_results.physics);
 	} else if (chain_link_count == 0U) {
 		shell_print(
 			shell,
 			"Running canonical grid/reference replay for %u measured ticks per mode",
 			measured_tick_count);
-		err = picosystem_physics_profile_compare(measured_tick_count, &profile_result);
+		err = picosystem_physics_profile_compare(measured_tick_count,
+							 &profile_results.physics);
 	} else {
 		shell_print(shell,
 			    "Running %u-link chain grid/reference replay for %u measured ticks per "
 			    "mode",
 			    chain_link_count, measured_tick_count);
 		err = picosystem_physics_profile_compare_chain(
-			chain_link_count, measured_tick_count, &profile_result);
+			chain_link_count, measured_tick_count, &profile_results.physics);
 	}
 	if ((err == 0) || (err == -EILSEQ)) {
-		print_profile_result(shell, &profile_result);
+		print_profile_result(shell, &profile_results.physics);
 		size_t unused_stack_bytes;
 		const int stack_err =
 			k_thread_stack_space_get(k_current_get(), &unused_stack_bytes);
@@ -1259,11 +1263,96 @@ static int run_physics_profile(const struct shell *shell, uint16_t chain_link_co
 			err = stack_err;
 		}
 		shell_print(shell, "PROFILE_END hashes_match=%s states_match=%s",
-			    profile_result.hashes_match ? "yes" : "no",
-			    profile_result.states_match ? "yes" : "no");
+			    profile_results.physics.hashes_match ? "yes" : "no",
+			    profile_results.physics.states_match ? "yes" : "no");
 	}
 	if (err != 0) {
 		shell_error(shell, "Physics profile comparison failed (%d)", err);
+	}
+	return err;
+}
+
+static void print_granular_profile_result(const struct shell *shell,
+					  const struct picosystem_granular_profile_result *result)
+{
+	shell_print(shell,
+		    "GRANULAR_PROFILE_BEGIN schema=%u ticks=%u tick_rate_hz=%u clock_hz=%u "
+		    "particles=%u hash=%08x clock_reads_min=%u clock_reads_max=%u "
+		    "clock_delta_cycles=%u",
+		    result->schema_version, result->measured_tick_count, result->tick_rate_hz,
+		    result->clock_frequency_hz, result->particle_count, result->final_hash,
+		    result->minimum_clock_reads_per_step, result->maximum_clock_reads_per_step,
+		    result->back_to_back_clock_delta_cycles);
+	for (size_t stage = 0U; stage < PICOSYSTEM_GRANULAR_PROFILE_STAGE_COUNT; ++stage) {
+		const struct picosystem_physics_profile_stage_summary *const summary =
+			&result->stages[stage];
+		shell_print(shell,
+			    "GRANULAR_PROFILE_STAGE stage=%s samples=%u mean_us=%u min_us=%u "
+			    "p50_us=%u p95_us=%u p99_us=%u max_us=%u budget_violations=%u",
+			    picosystem_granular_profile_stage_name(stage), summary->sample_count,
+			    profile_cycles_to_microseconds(summary->mean_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->minimum_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->percentile_50_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->percentile_95_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->percentile_99_cycles,
+							   result->clock_frequency_hz),
+			    profile_cycles_to_microseconds(summary->maximum_cycles,
+							   result->clock_frequency_hz),
+			    summary->budget_violation_count);
+	}
+	for (size_t metric = 0U; metric < PICOSYSTEM_GRANULAR_PROFILE_WORK_METRIC_COUNT; ++metric) {
+		const struct picosystem_physics_profile_work_summary *const summary =
+			&result->work[metric];
+		shell_print(shell, "GRANULAR_PROFILE_WORK metric=%s total=%llu max=%u",
+			    picosystem_granular_profile_work_name(metric),
+			    (unsigned long long)summary->total, summary->maximum);
+	}
+	shell_print(shell, "GRANULAR_PROFILE_END lower=%u passages=%u status=ok",
+		    result->lower_particle_count, result->passage_count);
+}
+
+static int cmd_profile_granular(const struct shell *shell, size_t argc, char **argv)
+{
+	uint32_t measured_tick_count = PICOSYSTEM_GRANULAR_PROFILE_DEFAULT_TICKS;
+	if (argc == 2U) {
+		const int parse_err =
+			parse_u32(shell, "measured tick count", argv[1], &measured_tick_count);
+		if (parse_err != 0) {
+			return parse_err;
+		}
+	}
+	if ((measured_tick_count == 0U) ||
+	    (measured_tick_count > PICOSYSTEM_GRANULAR_PROFILE_MAX_TICKS)) {
+		shell_error(shell, "Measured tick count must be 1-%u",
+			    PICOSYSTEM_GRANULAR_PROFILE_MAX_TICKS);
+		return -ERANGE;
+	}
+
+	struct picosystem_game_control_state state;
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_GET_STATE,
+	};
+	int err = picosystem_game_control_submit(&request, &state);
+	if (err != 0) {
+		shell_error(shell, "Could not query simulation state (%d)", err);
+		return err;
+	}
+	if (!state.paused) {
+		shell_error(shell, "Pause the simulation before profiling");
+		return -EBUSY;
+	}
+
+	shell_print(shell, "Running isolated Hourglass replay for %u measured ticks",
+		    measured_tick_count);
+	err = picosystem_granular_profile_run(measured_tick_count, &profile_results.granular);
+	if (err == 0) {
+		print_granular_profile_result(shell, &profile_results.granular);
+	} else {
+		shell_error(shell, "Granular profile failed (%d)", err);
 	}
 	return err;
 }
@@ -1415,6 +1504,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		SHELL_HELP("Compare isolated grid and brute-force physics replays.",
 			   "[ticks] (default 1000, maximum 10000; simulation must be paused)"),
 		cmd_profile_compare, 1, 1),
+	SHELL_CMD_ARG(granular, NULL,
+		      SHELL_HELP("Profile an isolated Hourglass replay by solver stage.",
+				 "[ticks] (default 120, maximum 10000; simulation must be paused)"),
+		      cmd_profile_granular, 1, 1),
 	SHELL_CMD_ARG(
 		sleep, NULL,
 		SHELL_HELP("Compare the canonical world settling under neutral input.",

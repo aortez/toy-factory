@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#if defined(CONFIG_TOY_FACTORY_CORE1_FULL_FRAME_RENDERER)
+#if defined(CONFIG_TOY_FACTORY_RIGID_PHYSICS_IN_SRAM)
 /* Keep the inlined physics step off XIP while core 1 rasterizes from SRAM. */
 #define PICOSYSTEM_PHYSICS_RAMFUNC __attribute__((section(".ramfunc")))
 #else

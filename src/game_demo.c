@@ -100,6 +100,9 @@ BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_SHELL_THREAD_PRIORITY);
 #endif
 /* Keep two snapshots and the auxiliary-core mailbox bounded after adding packed grains. */
 BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 1152U);
+BUILD_ASSERT(sizeof(struct picosystem_scene_granular_payload) <=
+	     sizeof(struct picosystem_scene_rigid_payload));
+BUILD_ASSERT(PICOSYSTEM_GRANULAR_MAX_PARTICLES <= UINT8_MAX);
 BUILD_ASSERT((PICOSYSTEM_GAME_TICK_RATE_HZ % PICOSYSTEM_GAME_REALTIME_SNAPSHOT_RATE_HZ) == 0U);
 BUILD_ASSERT(PICOSYSTEM_GAME_BOX_SENSOR_COUNT <= PICOSYSTEM_SCENE_MAX_BOX_SENSORS);
 
@@ -211,27 +214,49 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 	    (left->box_sensor_count != right->box_sensor_count) ||
 	    (left->rope_count != right->rope_count) ||
 	    (left->granular_particle_count != right->granular_particle_count) ||
-	    (left->granular_particle_radius != right->granular_particle_radius) ||
-	    (left->conveyor_forward_segment_mask != right->conveyor_forward_segment_mask) ||
-	    (left->conveyor_reverse_segment_mask != right->conveyor_reverse_segment_mask)) {
+	    (left->granular_particle_radius != right->granular_particle_radius)) {
 		return false;
 	}
 
+	if (left->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		for (uint16_t index = 0U; index < left->static_segment_count; ++index) {
+			const struct picosystem_scene_segment *const left_segment =
+				&left->payload.granular.boundaries[index];
+			const struct picosystem_scene_segment *const right_segment =
+				&right->payload.granular.boundaries[index];
+			if ((left_segment->start_x != right_segment->start_x) ||
+			    (left_segment->start_y != right_segment->start_y) ||
+			    (left_segment->end_x != right_segment->end_x) ||
+			    (left_segment->end_y != right_segment->end_y)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	const struct picosystem_scene_rigid_payload *const left_rigid = &left->payload.rigid;
+	const struct picosystem_scene_rigid_payload *const right_rigid = &right->payload.rigid;
+	if ((left_rigid->conveyor_forward_segment_mask !=
+	     right_rigid->conveyor_forward_segment_mask) ||
+	    (left_rigid->conveyor_reverse_segment_mask !=
+	     right_rigid->conveyor_reverse_segment_mask)) {
+		return false;
+	}
 	for (uint16_t index = 0U; index < left->body_count; ++index) {
-		if ((left->bodies[index].id != right->bodies[index].id) ||
-		    (left->bodies[index].shape != right->bodies[index].shape) ||
-		    (left->bodies[index].radius != right->bodies[index].radius) ||
-		    ((left->bodies[index].shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) &&
-		     (left->bodies[index].geometry.circle.render_style !=
-		      right->bodies[index].geometry.circle.render_style))) {
+		if ((left_rigid->bodies[index].id != right_rigid->bodies[index].id) ||
+		    (left_rigid->bodies[index].shape != right_rigid->bodies[index].shape) ||
+		    (left_rigid->bodies[index].radius != right_rigid->bodies[index].radius) ||
+		    ((left_rigid->bodies[index].shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) &&
+		     (left_rigid->bodies[index].geometry.circle.render_style !=
+		      right_rigid->bodies[index].geometry.circle.render_style))) {
 			return false;
 		}
 	}
 	for (uint16_t index = 0U; index < left->static_segment_count; ++index) {
 		const struct picosystem_scene_segment *const left_segment =
-			&left->static_segments[index];
+			&left_rigid->static_segments[index];
 		const struct picosystem_scene_segment *const right_segment =
-			&right->static_segments[index];
+			&right_rigid->static_segments[index];
 		if ((left_segment->start_x != right_segment->start_x) ||
 		    (left_segment->start_y != right_segment->start_y) ||
 		    (left_segment->end_x != right_segment->end_x) ||
@@ -240,16 +265,17 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 		}
 	}
 	for (uint16_t index = 0U; index < left->rope_count; ++index) {
-		if ((left->ropes[index].id != right->ropes[index].id) ||
-		    (left->ropes[index].particle_count != right->ropes[index].particle_count)) {
+		if ((left_rigid->ropes[index].id != right_rigid->ropes[index].id) ||
+		    (left_rigid->ropes[index].particle_count !=
+		     right_rigid->ropes[index].particle_count)) {
 			return false;
 		}
 	}
 	for (uint16_t index = 0U; index < left->box_sensor_count; ++index) {
 		const struct picosystem_scene_box_sensor *const left_sensor =
-			&left->box_sensors[index];
+			&left_rigid->box_sensors[index];
 		const struct picosystem_scene_box_sensor *const right_sensor =
-			&right->box_sensors[index];
+			&right_rigid->box_sensors[index];
 		if ((left_sensor->id != right_sensor->id) ||
 		    (left_sensor->bounds.x != right_sensor->bounds.x) ||
 		    (left_sensor->bounds.y != right_sensor->bounds.y) ||
@@ -260,9 +286,9 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 	}
 	for (uint16_t index = 0U; index < left->distance_joint_count; ++index) {
 		const struct picosystem_scene_joint *const left_joint =
-			&left->distance_joints[index];
+			&left_rigid->distance_joints[index];
 		const struct picosystem_scene_joint *const right_joint =
-			&right->distance_joints[index];
+			&right_rigid->distance_joints[index];
 		if ((left_joint->id != right_joint->id) ||
 		    (left_joint->target_radius != right_joint->target_radius)) {
 			return false;
@@ -278,7 +304,8 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 		}
 	}
 	for (uint16_t index = 0U; index < left->revolute_joint_count; ++index) {
-		if (left->revolute_joints[index].id != right->revolute_joints[index].id) {
+		if (left_rigid->revolute_joints[index].id !=
+		    right_rigid->revolute_joints[index].id) {
 			return false;
 		}
 	}
@@ -393,6 +420,8 @@ static bool rope_render_state_matches(const struct picosystem_scene_rope *left,
 static int append_prismatic_guides(const struct picosystem_game_demo_state *state,
 				   struct picosystem_scene_snapshot *snapshot)
 {
+	struct picosystem_scene_rigid_payload *const rigid = &snapshot->payload.rigid;
+
 	for (uint16_t index = 0U; index < state->world.physics.prismatic_joint_count; ++index) {
 		const struct picosystem_physics_prismatic_joint *const joint =
 			&state->world.physics.prismatic_joints[index];
@@ -400,7 +429,7 @@ static int append_prismatic_guides(const struct picosystem_game_demo_state *stat
 		    (joint->limit_enabled == 0U)) {
 			continue;
 		}
-		if ((snapshot->static_segment_count + 2U) > ARRAY_SIZE(snapshot->static_segments)) {
+		if ((snapshot->static_segment_count + 2U) > ARRAY_SIZE(rigid->static_segments)) {
 			return -ENOSPC;
 		}
 
@@ -432,14 +461,14 @@ static int append_prismatic_guides(const struct picosystem_game_demo_state *stat
 			.y = fixed_multiply(perpendicular.y, guide_offset),
 		};
 
-		snapshot->static_segments[snapshot->static_segment_count++] =
+		rigid->static_segments[snapshot->static_segment_count++] =
 			(struct picosystem_scene_segment){
 				.start_x = fixed_to_pixel(lower_center.x + offset.x),
 				.start_y = fixed_to_pixel(lower_center.y + offset.y),
 				.end_x = fixed_to_pixel(upper_center.x + offset.x),
 				.end_y = fixed_to_pixel(upper_center.y + offset.y),
 			};
-		snapshot->static_segments[snapshot->static_segment_count++] =
+		rigid->static_segments[snapshot->static_segment_count++] =
 			(struct picosystem_scene_segment){
 				.start_x = fixed_to_pixel(lower_center.x - offset.x),
 				.start_y = fixed_to_pixel(lower_center.y - offset.y),
@@ -454,57 +483,62 @@ static size_t build_dirty_regions(const struct picosystem_scene_snapshot *snapsh
 				  const struct picosystem_scene_snapshot *presented,
 				  struct picosystem_rect *regions)
 {
+	const struct picosystem_scene_rigid_payload *const rigid = &snapshot->payload.rigid;
+	const struct picosystem_scene_rigid_payload *const presented_rigid =
+		&presented->payload.rigid;
 	size_t count = 0U;
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
-		if (body_render_state_matches(&snapshot->bodies[index],
-					      &presented->bodies[index])) {
+		if (body_render_state_matches(&rigid->bodies[index],
+					      &presented_rigid->bodies[index])) {
 			continue;
 		}
 		const struct picosystem_rect current =
-			picosystem_scene_body_bounds(&snapshot->bodies[index]);
+			picosystem_scene_body_bounds(&rigid->bodies[index]);
 		const struct picosystem_rect previous =
-			picosystem_scene_body_bounds(&presented->bodies[index]);
+			picosystem_scene_body_bounds(&presented_rigid->bodies[index]);
 		regions[count++] = previous;
 		regions[count++] = current;
 	}
 	count = merge_dirty_regions(regions, count, false);
 	for (uint16_t index = 0U; index < snapshot->distance_joint_count; ++index) {
-		if (joint_render_state_matches(&snapshot->distance_joints[index],
-					       &presented->distance_joints[index])) {
+		if (joint_render_state_matches(&rigid->distance_joints[index],
+					       &presented_rigid->distance_joints[index])) {
 			continue;
 		}
 		for (uint8_t segment = 0U; segment < PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT;
 		     ++segment) {
 			const struct picosystem_rect current =
 				picosystem_scene_joint_segment_bounds(
-					&snapshot->distance_joints[index], segment);
+					&rigid->distance_joints[index], segment);
 			const struct picosystem_rect previous =
 				picosystem_scene_joint_segment_bounds(
-					&presented->distance_joints[index], segment);
+					&presented_rigid->distance_joints[index], segment);
 			regions[count++] = previous;
 			regions[count++] = current;
 		}
 	}
 	for (uint16_t index = 0U; index < snapshot->revolute_joint_count; ++index) {
-		if (joint_render_state_matches(&snapshot->revolute_joints[index],
-					       &presented->revolute_joints[index])) {
+		if (joint_render_state_matches(&rigid->revolute_joints[index],
+					       &presented_rigid->revolute_joints[index])) {
 			continue;
 		}
+		regions[count++] = picosystem_scene_revolute_joint_bounds(
+			&presented_rigid->revolute_joints[index]);
 		regions[count++] =
-			picosystem_scene_revolute_joint_bounds(&presented->revolute_joints[index]);
-		regions[count++] =
-			picosystem_scene_revolute_joint_bounds(&snapshot->revolute_joints[index]);
+			picosystem_scene_revolute_joint_bounds(&rigid->revolute_joints[index]);
 	}
 	for (uint16_t index = 0U; index < snapshot->rope_count; ++index) {
-		if (rope_render_state_matches(&snapshot->ropes[index], &presented->ropes[index])) {
+		if (rope_render_state_matches(&rigid->ropes[index],
+					      &presented_rigid->ropes[index])) {
 			continue;
 		}
-		regions[count++] = picosystem_scene_rope_bounds(&presented->ropes[index]);
-		regions[count++] = picosystem_scene_rope_bounds(&snapshot->ropes[index]);
+		regions[count++] = picosystem_scene_rope_bounds(&presented_rigid->ropes[index]);
+		regions[count++] = picosystem_scene_rope_bounds(&rigid->ropes[index]);
 	}
 	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
-		if (snapshot->box_sensors[index].active != presented->box_sensors[index].active) {
-			regions[count++] = snapshot->box_sensors[index].bounds;
+		if (rigid->box_sensors[index].active !=
+		    presented_rigid->box_sensors[index].active) {
+			regions[count++] = rigid->box_sensors[index].bounds;
 		}
 	}
 	if (snapshot->sensor_entry_count != presented->sensor_entry_count) {
@@ -547,15 +581,6 @@ static int render_dirty_scene(const struct picosystem_scene_snapshot *snapshot,
 static int snapshot_from_state(const struct picosystem_game_demo_state *state, uint32_t sequence,
 			       struct picosystem_scene_snapshot *snapshot)
 {
-	if ((state->world.physics.body_count > ARRAY_SIZE(snapshot->bodies)) ||
-	    (state->world.physics.static_segment_count > ARRAY_SIZE(snapshot->static_segments)) ||
-	    (state->world.physics.distance_joint_count > ARRAY_SIZE(snapshot->distance_joints)) ||
-	    (state->world.physics.revolute_joint_count > ARRAY_SIZE(snapshot->revolute_joints)) ||
-	    (state->world.physics.box_sensor_count > ARRAY_SIZE(snapshot->box_sensors)) ||
-	    (state->world.physics.rope_count > ARRAY_SIZE(snapshot->ropes)) ||
-	    (state->world.granular.particle_count > ARRAY_SIZE(snapshot->grains))) {
-		return -ENOSPC;
-	}
 	*snapshot = (struct picosystem_scene_snapshot){
 		.published_uptime_ticks = k_uptime_ticks(),
 		.sequence = sequence,
@@ -563,15 +588,12 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 		.redraw_request_sequence = state->redraw_request_sequence,
 		.sensor_entry_count = state->world.sensor_entry_count,
 		.scene_id = state->world.scene_id,
-		.body_count = (uint8_t)state->world.physics.body_count,
-		.static_segment_count = (uint8_t)state->world.physics.static_segment_count,
-		.distance_joint_count = (uint8_t)state->world.physics.distance_joint_count,
-		.revolute_joint_count = (uint8_t)state->world.physics.revolute_joint_count,
-		.box_sensor_count = (uint8_t)state->world.physics.box_sensor_count,
-		.rope_count = (uint8_t)state->world.physics.rope_count,
 	};
 	if (state->world.scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
-		if (state->world.granular.boundary_count > ARRAY_SIZE(snapshot->static_segments)) {
+		struct picosystem_scene_granular_payload *const granular =
+			&snapshot->payload.granular;
+		if ((state->world.granular.boundary_count > ARRAY_SIZE(granular->boundaries)) ||
+		    (state->world.granular.particle_count > ARRAY_SIZE(granular->grains))) {
 			return -ENOSPC;
 		}
 		snapshot->static_segment_count = (uint8_t)state->world.granular.boundary_count;
@@ -584,7 +606,7 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 		for (uint16_t index = 0U; index < snapshot->static_segment_count; ++index) {
 			const struct picosystem_granular_boundary *const boundary =
 				&state->world.granular.boundaries[index];
-			snapshot->static_segments[index] = (struct picosystem_scene_segment){
+			granular->boundaries[index] = (struct picosystem_scene_segment){
 				.start_x = fixed_to_pixel(boundary->start.x),
 				.start_y = fixed_to_pixel(boundary->start.y),
 				.end_x = fixed_to_pixel(boundary->end.x),
@@ -600,16 +622,32 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			    (particle_y < 0) || (particle_y >= PICOSYSTEM_GRAPHICS_HEIGHT)) {
 				return -ERANGE;
 			}
-			snapshot->grains[index] = (struct picosystem_scene_grain){
+			granular->grains[index] = (struct picosystem_scene_grain){
 				.x = (uint8_t)particle_x,
 				.y = (uint8_t)particle_y,
 			};
 		}
+		return 0;
 	}
+	struct picosystem_scene_rigid_payload *const rigid = &snapshot->payload.rigid;
+	if ((state->world.physics.body_count > ARRAY_SIZE(rigid->bodies)) ||
+	    (state->world.physics.static_segment_count > ARRAY_SIZE(rigid->static_segments)) ||
+	    (state->world.physics.distance_joint_count > ARRAY_SIZE(rigid->distance_joints)) ||
+	    (state->world.physics.revolute_joint_count > ARRAY_SIZE(rigid->revolute_joints)) ||
+	    (state->world.physics.box_sensor_count > ARRAY_SIZE(rigid->box_sensors)) ||
+	    (state->world.physics.rope_count > ARRAY_SIZE(rigid->ropes))) {
+		return -ENOSPC;
+	}
+	snapshot->body_count = (uint8_t)state->world.physics.body_count;
+	snapshot->static_segment_count = (uint8_t)state->world.physics.static_segment_count;
+	snapshot->distance_joint_count = (uint8_t)state->world.physics.distance_joint_count;
+	snapshot->revolute_joint_count = (uint8_t)state->world.physics.revolute_joint_count;
+	snapshot->box_sensor_count = (uint8_t)state->world.physics.box_sensor_count;
+	snapshot->rope_count = (uint8_t)state->world.physics.rope_count;
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
 		const struct picosystem_physics_body *const body =
 			&state->world.physics.bodies[index];
-		snapshot->bodies[index] = (struct picosystem_scene_body){
+		rigid->bodies[index] = (struct picosystem_scene_body){
 			.center_x = fixed_to_pixel(body->center.x),
 			.center_y = fixed_to_pixel(body->center.y),
 			.radius = (uint16_t)fixed_to_pixel(body->radius),
@@ -618,9 +656,9 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			.sleeping = picosystem_physics_world_body_is_sleeping(&state->world.physics,
 									      index),
 		};
-		snapshot->bodies[index].geometry.circle.orientation =
+		rigid->bodies[index].geometry.circle.orientation =
 			(uint8_t)(body->angle_turns >> 26U);
-		snapshot->bodies[index].geometry.circle.render_style =
+		rigid->bodies[index].geometry.circle.render_style =
 			(uint8_t)picosystem_game_world_body_render_style(&state->world, index);
 		if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
 			struct picosystem_physics_vector
@@ -631,9 +669,9 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			}
 			for (size_t vertex = 0U; vertex < PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT;
 			     ++vertex) {
-				snapshot->bodies[index].geometry.vertices[vertex].x =
+				rigid->bodies[index].geometry.vertices[vertex].x =
 					fixed_to_pixel(vertices[vertex].x);
-				snapshot->bodies[index].geometry.vertices[vertex].y =
+				rigid->bodies[index].geometry.vertices[vertex].y =
 					fixed_to_pixel(vertices[vertex].y);
 			}
 		} else if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
@@ -645,9 +683,9 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			}
 			for (size_t vertex = 0U; vertex < PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT;
 			     ++vertex) {
-				snapshot->bodies[index].geometry.vertices[vertex].x =
+				rigid->bodies[index].geometry.vertices[vertex].x =
 					fixed_to_pixel(vertices[vertex].x);
-				snapshot->bodies[index].geometry.vertices[vertex].y =
+				rigid->bodies[index].geometry.vertices[vertex].y =
 					fixed_to_pixel(vertices[vertex].y);
 			}
 		} else if (body->shape != PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
@@ -657,7 +695,7 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 	for (uint16_t index = 0U; index < state->world.physics.static_segment_count; ++index) {
 		const struct picosystem_physics_static_segment *const segment =
 			&state->world.physics.static_segments[index];
-		snapshot->static_segments[index] = (struct picosystem_scene_segment){
+		rigid->static_segments[index] = (struct picosystem_scene_segment){
 			.start_x = fixed_to_pixel(segment->start.x),
 			.start_y = fixed_to_pixel(segment->start.y),
 			.end_x = fixed_to_pixel(segment->end.x),
@@ -665,9 +703,9 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 		};
 		const uint32_t segment_mask = UINT32_C(1) << index;
 		if (segment->surface_speed_per_tick > 0) {
-			snapshot->conveyor_forward_segment_mask |= segment_mask;
+			rigid->conveyor_forward_segment_mask |= segment_mask;
 		} else if (segment->surface_speed_per_tick < 0) {
-			snapshot->conveyor_reverse_segment_mask |= segment_mask;
+			rigid->conveyor_reverse_segment_mask |= segment_mask;
 		}
 	}
 	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
@@ -688,7 +726,7 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			active |= (state->world.physics.active_sensor_contact_masks[body] &
 				   sensor_mask) != 0U;
 		}
-		snapshot->box_sensors[index] = (struct picosystem_scene_box_sensor){
+		rigid->box_sensors[index] = (struct picosystem_scene_box_sensor){
 			.bounds =
 				{
 					.x = (uint16_t)left,
@@ -706,12 +744,12 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 		if (rope->particle_count > PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES) {
 			return -ERANGE;
 		}
-		snapshot->ropes[index].id = rope->id;
-		snapshot->ropes[index].particle_count = rope->particle_count;
+		rigid->ropes[index].id = rope->id;
+		rigid->ropes[index].particle_count = rope->particle_count;
 		for (uint8_t particle = 0U; particle < rope->particle_count; ++particle) {
-			snapshot->ropes[index].particles[particle].x =
+			rigid->ropes[index].particles[particle].x =
 				fixed_to_pixel(rope->particles[particle].position.x);
-			snapshot->ropes[index].particles[particle].y =
+			rigid->ropes[index].particles[particle].y =
 				fixed_to_pixel(rope->particles[particle].position.y);
 		}
 	}
@@ -745,7 +783,7 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			anchor_b_x = quantize_joint_pixel(anchor_b_x);
 			anchor_b_y = quantize_joint_pixel(anchor_b_y);
 		}
-		snapshot->distance_joints[index] = (struct picosystem_scene_joint){
+		rigid->distance_joints[index] = (struct picosystem_scene_joint){
 			.anchor_a_x = anchor_a_x,
 			.anchor_a_y = anchor_a_y,
 			.anchor_b_x = anchor_b_x,
@@ -764,7 +802,7 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 		}
 		const struct picosystem_physics_revolute_joint *const joint =
 			&state->world.physics.revolute_joints[index];
-		snapshot->revolute_joints[index] = (struct picosystem_scene_joint){
+		rigid->revolute_joints[index] = (struct picosystem_scene_joint){
 			.anchor_a_x = fixed_to_pixel(anchor_a.x),
 			.anchor_a_y = fixed_to_pixel(anchor_a.y),
 			.anchor_b_x = fixed_to_pixel(anchor_b.x),
@@ -917,11 +955,15 @@ static void record_presented_snapshot(const struct picosystem_scene_snapshot *sn
 	renderer.metrics.render_stack_used_bytes =
 		MAX(renderer.metrics.render_stack_used_bytes, stack_used);
 	if (snapshot->body_count != 0U) {
-		renderer.metrics.presented_focus_x = (uint16_t)snapshot->bodies[0].center_x;
-		renderer.metrics.presented_focus_y = (uint16_t)snapshot->bodies[0].center_y;
+		renderer.metrics.presented_focus_x =
+			(uint16_t)snapshot->payload.rigid.bodies[0].center_x;
+		renderer.metrics.presented_focus_y =
+			(uint16_t)snapshot->payload.rigid.bodies[0].center_y;
 	} else if (snapshot->granular_particle_count != 0U) {
-		renderer.metrics.presented_focus_x = (uint16_t)snapshot->grains[0].x;
-		renderer.metrics.presented_focus_y = (uint16_t)snapshot->grains[0].y;
+		renderer.metrics.presented_focus_x =
+			(uint16_t)snapshot->payload.granular.grains[0].x;
+		renderer.metrics.presented_focus_y =
+			(uint16_t)snapshot->payload.granular.grains[0].y;
 	}
 	k_spin_unlock(&renderer.lock, key);
 	k_sem_give(&renderer.frame_presented);
@@ -1092,12 +1134,14 @@ int picosystem_game_demo_init(struct picosystem_game_demo_state *state)
 		.last_raster_time_us = initial_render_stats.raster_time_us,
 		.maximum_raster_time_us = initial_render_stats.raster_time_us,
 		.render_stack_size_bytes = K_THREAD_STACK_SIZEOF(render_thread_stack),
-		.presented_focus_x = (initial_snapshot.body_count != 0U)
-					     ? (uint16_t)initial_snapshot.bodies[0].center_x
-					     : (uint16_t)initial_snapshot.grains[0].x,
-		.presented_focus_y = (initial_snapshot.body_count != 0U)
-					     ? (uint16_t)initial_snapshot.bodies[0].center_y
-					     : (uint16_t)initial_snapshot.grains[0].y,
+		.presented_focus_x =
+			(initial_snapshot.body_count != 0U)
+				? (uint16_t)initial_snapshot.payload.rigid.bodies[0].center_x
+				: (uint16_t)initial_snapshot.payload.granular.grains[0].x,
+		.presented_focus_y =
+			(initial_snapshot.body_count != 0U)
+				? (uint16_t)initial_snapshot.payload.rigid.bodies[0].center_y
+				: (uint16_t)initial_snapshot.payload.granular.grains[0].y,
 		.last_raster_on_core1 = initial_render_stats.raster_on_core1,
 	};
 
@@ -1310,9 +1354,6 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 	} else {
 		total_update_time_us += state->total_snapshot_time_us;
 	}
-	const uint32_t sleeping_body_count =
-		(uint32_t)__builtin_popcount((unsigned int)state->world.physics.sleeping_body_mask);
-
 	*stats = (struct picosystem_game_demo_stats){
 		.graphics = render_metrics.graphics,
 		.logic_tick_count = state->world.logic_tick_count,
@@ -1352,95 +1393,11 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.max_dirty_snapshot_age_us = render_metrics.max_dirty_snapshot_age_us,
 		.render_stack_size_bytes = render_metrics.render_stack_size_bytes,
 		.render_stack_used_bytes = render_metrics.render_stack_used_bytes,
-		.candidate_pair_count = state->world.physics.last_candidate_pair_count,
-		.possible_pair_count = state->world.physics.last_possible_pair_count,
-		.active_contact_pair_count =
-			state->world.physics.last_work.active_contact_pair_count,
-		.sensor_overlap_count = state->world.physics.last_work.sensor_overlap_count,
-		.contact_begin_event_count =
-			state->world.physics.last_work.contact_begin_event_count,
-		.contact_stay_event_count = state->world.physics.last_work.contact_stay_event_count,
-		.contact_end_event_count = state->world.physics.last_work.contact_end_event_count,
 		.sensor_entry_count = state->world.sensor_entry_count,
-		.solver_contact_visit_count =
-			state->world.physics.last_work.solver_contact_visit_count,
-		.solver_cached_contact_count =
-			state->world.physics.last_work.solver_cached_contact_count,
-		.solver_changed_contact_count =
-			state->world.physics.last_work.solver_changed_contact_count,
-		.awake_body_count = (uint32_t)state->world.physics.body_count - sleeping_body_count,
-		.sleeping_body_count = sleeping_body_count,
-		.body_sleep_transition_count =
-			state->world.physics.last_work.body_sleep_transition_count,
-		.body_wake_transition_count =
-			state->world.physics.last_work.body_wake_transition_count,
-		.sleeping_contact_count = state->world.physics.last_work.sleeping_contact_count,
-		.sleeping_joint_count = state->world.physics.last_work.sleeping_joint_count,
-		.spring_joint_count = state->world.physics.last_work.spring_joint_count,
-		.spring_solver_visit_count =
-			state->world.physics.last_work.spring_solver_visit_count,
-		.spring_solver_changed_count =
-			state->world.physics.last_work.spring_solver_changed_count,
-		.conveyor_contact_count = state->world.physics.last_work.conveyor_contact_count,
-		.conveyor_solver_visit_count =
-			state->world.physics.last_work.conveyor_solver_visit_count,
-		.conveyor_solver_changed_count =
-			state->world.physics.last_work.conveyor_solver_changed_count,
-		.rope_particle_count = state->world.physics.last_work.rope_particle_count,
-		.rope_constraint_visit_count =
-			state->world.physics.last_work.rope_constraint_visit_count,
-		.rope_constraint_changed_count =
-			state->world.physics.last_work.rope_constraint_changed_count,
-		.rope_body_correction_visit_count =
-			state->world.physics.last_work.rope_body_correction_visit_count,
-		.rope_body_correction_changed_count =
-			state->world.physics.last_work.rope_body_correction_changed_count,
-		.rope_body_velocity_visit_count =
-			state->world.physics.last_work.rope_body_velocity_visit_count,
-		.rope_body_velocity_changed_count =
-			state->world.physics.last_work.rope_body_velocity_changed_count,
-		.rope_collision_possible_pair_count =
-			state->world.physics.last_work.rope_collision_possible_pair_count,
-		.rope_collision_candidate_pair_count =
-			state->world.physics.last_work.rope_collision_candidate_pair_count,
-		.rope_collision_contact_count =
-			state->world.physics.last_work.rope_collision_contact_count,
-		.rope_collision_position_changed_count =
-			state->world.physics.last_work.rope_collision_position_changed_count,
-		.rope_collision_velocity_changed_count =
-			state->world.physics.last_work.rope_collision_velocity_changed_count,
-		.granular_possible_pair_count = state->world.granular.last_work.possible_pair_count,
-		.granular_candidate_pair_count =
-			state->world.granular.last_work.candidate_pair_count,
-		.granular_contact_count = state->world.granular.last_work.contact_count,
-		.granular_position_correction_count =
-			state->world.granular.last_work.position_correction_count,
-		.granular_boundary_test_count = state->world.granular.last_work.boundary_test_count,
-		.granular_boundary_contact_count =
-			state->world.granular.last_work.boundary_contact_count,
-		.granular_occupied_grid_cell_count =
-			state->world.granular.last_work.occupied_grid_cell_count,
-		.granular_maximum_grid_cell_occupancy =
-			state->world.granular.last_work.maximum_grid_cell_occupancy,
-		.granular_passage_count = state->world.granular.passage_count,
 		.focus_angle_turns = focus->angle_turns,
 		.focus_angular_velocity_milliradians_per_second =
 			angular_velocity_to_milliradians_per_second(
 				focus->angular_velocity_per_tick),
-		.body_count = state->world.physics.body_count,
-		.static_segment_count = state->world.physics.static_segment_count,
-		.distance_joint_count = state->world.physics.distance_joint_count,
-		.revolute_joint_count = state->world.physics.revolute_joint_count,
-		.prismatic_joint_count = state->world.physics.prismatic_joint_count,
-		.box_sensor_count = state->world.physics.box_sensor_count,
-		.rope_count = state->world.physics.rope_count,
-		.contact_count = state->world.physics.contact_count,
-		.contact_event_count = state->world.physics.contact_event_count,
-		.occupied_grid_cell_count = state->world.physics.last_occupied_grid_cell_count,
-		.granular_particle_count = state->world.granular.particle_count,
-		.granular_lower_particle_count =
-			picosystem_granular_world_lower_particle_count(&state->world.granular),
-		.granular_boundary_count = state->world.granular.boundary_count,
 		.focus_body_id = focus->id,
 		.focus_x = (uint16_t)fixed_to_pixel(focus->center.x),
 		.focus_y = (uint16_t)fixed_to_pixel(focus->center.y),
@@ -1451,10 +1408,6 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.focus_velocity_y_pixels_per_second =
 			velocity_to_pixels_per_second(focus->velocity_per_tick.y),
 		.focus_shape = focus->shape,
-		.solver_iteration_count = state->world.physics.last_solver_iteration_count,
-		.focus_sleeping = picosystem_physics_world_body_is_sleeping(
-			&state->world.physics, PICOSYSTEM_GAME_FOCUS_BODY_INDEX),
-		.broad_phase_fallback = state->world.physics.last_broad_phase_fallback != 0U,
 		.start_uptime_ms = state->start_uptime_ms,
 		.render_error = render_metrics.render_error,
 		.last_raster_on_core1 = render_metrics.last_raster_on_core1,
@@ -1462,6 +1415,80 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		.full_frame_renderer_enabled = core1_full_frame_renderer_enabled(),
 		.render_thread_running = render_metrics.render_thread_running,
 	};
+	if (state->world.scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		const struct picosystem_granular_world *const granular = &state->world.granular;
+
+		stats->granular_possible_pair_count = granular->last_work.possible_pair_count;
+		stats->granular_candidate_pair_count = granular->last_work.candidate_pair_count;
+		stats->granular_contact_count = granular->last_work.contact_count;
+		stats->granular_position_correction_count =
+			granular->last_work.position_correction_count;
+		stats->granular_boundary_test_count = granular->last_work.boundary_test_count;
+		stats->granular_boundary_contact_count = granular->last_work.boundary_contact_count;
+		stats->granular_occupied_grid_cell_count =
+			granular->last_work.occupied_grid_cell_count;
+		stats->granular_maximum_grid_cell_occupancy =
+			granular->last_work.maximum_grid_cell_occupancy;
+		stats->granular_passage_count = granular->passage_count;
+		stats->granular_particle_count = granular->particle_count;
+		stats->granular_lower_particle_count =
+			picosystem_granular_world_lower_particle_count(granular);
+		stats->granular_boundary_count = granular->boundary_count;
+		return 0;
+	}
+
+	const struct picosystem_physics_world *const physics = &state->world.physics;
+	const struct picosystem_physics_work_counters *const work = &physics->last_work;
+	const uint32_t sleeping_body_count =
+		(uint32_t)__builtin_popcount((unsigned int)physics->sleeping_body_mask);
+	stats->candidate_pair_count = physics->last_candidate_pair_count;
+	stats->possible_pair_count = physics->last_possible_pair_count;
+	stats->active_contact_pair_count = work->active_contact_pair_count;
+	stats->sensor_overlap_count = work->sensor_overlap_count;
+	stats->contact_begin_event_count = work->contact_begin_event_count;
+	stats->contact_stay_event_count = work->contact_stay_event_count;
+	stats->contact_end_event_count = work->contact_end_event_count;
+	stats->solver_contact_visit_count = work->solver_contact_visit_count;
+	stats->solver_cached_contact_count = work->solver_cached_contact_count;
+	stats->solver_changed_contact_count = work->solver_changed_contact_count;
+	stats->awake_body_count = (uint32_t)physics->body_count - sleeping_body_count;
+	stats->sleeping_body_count = sleeping_body_count;
+	stats->body_sleep_transition_count = work->body_sleep_transition_count;
+	stats->body_wake_transition_count = work->body_wake_transition_count;
+	stats->sleeping_contact_count = work->sleeping_contact_count;
+	stats->sleeping_joint_count = work->sleeping_joint_count;
+	stats->spring_joint_count = work->spring_joint_count;
+	stats->spring_solver_visit_count = work->spring_solver_visit_count;
+	stats->spring_solver_changed_count = work->spring_solver_changed_count;
+	stats->conveyor_contact_count = work->conveyor_contact_count;
+	stats->conveyor_solver_visit_count = work->conveyor_solver_visit_count;
+	stats->conveyor_solver_changed_count = work->conveyor_solver_changed_count;
+	stats->rope_particle_count = work->rope_particle_count;
+	stats->rope_constraint_visit_count = work->rope_constraint_visit_count;
+	stats->rope_constraint_changed_count = work->rope_constraint_changed_count;
+	stats->rope_body_correction_visit_count = work->rope_body_correction_visit_count;
+	stats->rope_body_correction_changed_count = work->rope_body_correction_changed_count;
+	stats->rope_body_velocity_visit_count = work->rope_body_velocity_visit_count;
+	stats->rope_body_velocity_changed_count = work->rope_body_velocity_changed_count;
+	stats->rope_collision_possible_pair_count = work->rope_collision_possible_pair_count;
+	stats->rope_collision_candidate_pair_count = work->rope_collision_candidate_pair_count;
+	stats->rope_collision_contact_count = work->rope_collision_contact_count;
+	stats->rope_collision_position_changed_count = work->rope_collision_position_changed_count;
+	stats->rope_collision_velocity_changed_count = work->rope_collision_velocity_changed_count;
+	stats->body_count = physics->body_count;
+	stats->static_segment_count = physics->static_segment_count;
+	stats->distance_joint_count = physics->distance_joint_count;
+	stats->revolute_joint_count = physics->revolute_joint_count;
+	stats->prismatic_joint_count = physics->prismatic_joint_count;
+	stats->box_sensor_count = physics->box_sensor_count;
+	stats->rope_count = physics->rope_count;
+	stats->contact_count = physics->contact_count;
+	stats->contact_event_count = physics->contact_event_count;
+	stats->occupied_grid_cell_count = physics->last_occupied_grid_cell_count;
+	stats->solver_iteration_count = physics->last_solver_iteration_count;
+	stats->focus_sleeping = picosystem_physics_world_body_is_sleeping(
+		physics, PICOSYSTEM_GAME_FOCUS_BODY_INDEX);
+	stats->broad_phase_fallback = physics->last_broad_phase_fallback != 0U;
 	return 0;
 }
 

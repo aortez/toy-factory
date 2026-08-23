@@ -94,49 +94,55 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 	    (snapshot->granular_particle_count != 0U)) {
 		return -ERANGE;
 	}
-	if ((snapshot->granular_particle_count != 0U) &&
-	    ((snapshot->granular_particle_radius == 0U) ||
-	     (snapshot->granular_particle_radius > 4U))) {
-		return -ERANGE;
+	if (snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		if ((snapshot->body_count != 0U) || (snapshot->distance_joint_count != 0U) ||
+		    (snapshot->revolute_joint_count != 0U) || (snapshot->box_sensor_count != 0U) ||
+		    (snapshot->rope_count != 0U) ||
+		    (snapshot->static_segment_count > PICOSYSTEM_GRANULAR_MAX_BOUNDARIES) ||
+		    (snapshot->granular_particle_radius == 0U) ||
+		    (snapshot->granular_particle_radius > 4U)) {
+			return -ERANGE;
+		}
+		return 0;
 	}
+
+	const struct picosystem_scene_rigid_payload *const rigid = &snapshot->payload.rigid;
 	const uint32_t valid_segment_mask =
 		(snapshot->static_segment_count == 0U)
 			? 0U
 			: (UINT32_C(1) << snapshot->static_segment_count) - UINT32_C(1);
 	const uint32_t conveyor_mask =
-		snapshot->conveyor_forward_segment_mask | snapshot->conveyor_reverse_segment_mask;
-	if (((snapshot->conveyor_forward_segment_mask & snapshot->conveyor_reverse_segment_mask) !=
-	     0U) ||
+		rigid->conveyor_forward_segment_mask | rigid->conveyor_reverse_segment_mask;
+	if (((rigid->conveyor_forward_segment_mask & rigid->conveyor_reverse_segment_mask) != 0U) ||
 	    ((conveyor_mask & ~valid_segment_mask) != 0U)) {
 		return -ERANGE;
 	}
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
-		if ((snapshot->bodies[index].shape > PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) ||
-		    (snapshot->bodies[index].sleeping > 1U)) {
+		if ((rigid->bodies[index].shape > PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) ||
+		    (rigid->bodies[index].sleeping > 1U)) {
 			return -ERANGE;
 		}
-		if ((snapshot->bodies[index].shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) &&
-		    ((snapshot->bodies[index].geometry.circle.orientation >= 64U) ||
-		     (snapshot->bodies[index].geometry.circle.render_style >=
+		if ((rigid->bodies[index].shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) &&
+		    ((rigid->bodies[index].geometry.circle.orientation >= 64U) ||
+		     (rigid->bodies[index].geometry.circle.render_style >=
 		      PICOSYSTEM_GAME_BODY_RENDER_STYLE_COUNT))) {
 			return -ERANGE;
 		}
 	}
 	for (uint16_t index = 0U; index < snapshot->box_sensor_count; ++index) {
-		const struct picosystem_rect *const bounds = &snapshot->box_sensors[index].bounds;
+		const struct picosystem_rect *const bounds = &rigid->box_sensors[index].bounds;
 		if ((bounds->width == 0U) || (bounds->height == 0U) ||
 		    (bounds->x >= PICOSYSTEM_GRAPHICS_WIDTH) ||
 		    (bounds->y >= PICOSYSTEM_GRAPHICS_HEIGHT) ||
 		    (bounds->width > (PICOSYSTEM_GRAPHICS_WIDTH - bounds->x)) ||
 		    (bounds->height > (PICOSYSTEM_GRAPHICS_HEIGHT - bounds->y)) ||
-		    (snapshot->box_sensors[index].active > 1U)) {
+		    (rigid->box_sensors[index].active > 1U)) {
 			return -ERANGE;
 		}
 	}
 	for (uint16_t index = 0U; index < snapshot->rope_count; ++index) {
-		if ((snapshot->ropes[index].particle_count < 2U) ||
-		    (snapshot->ropes[index].particle_count >
-		     PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES)) {
+		if ((rigid->ropes[index].particle_count < 2U) ||
+		    (rigid->ropes[index].particle_count > PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES)) {
 			return -ERANGE;
 		}
 	}
@@ -588,10 +594,10 @@ static PICOSYSTEM_RENDER_RAMFUNC int32_t
 conveyor_direction(const struct picosystem_scene_snapshot *snapshot, uint16_t segment_index)
 {
 	const uint32_t mask = UINT32_C(1) << segment_index;
-	if ((snapshot->conveyor_forward_segment_mask & mask) != 0U) {
+	if ((snapshot->payload.rigid.conveyor_forward_segment_mask & mask) != 0U) {
 		return 1;
 	}
-	return ((snapshot->conveyor_reverse_segment_mask & mask) != 0U) ? -1 : 0;
+	return ((snapshot->payload.rigid.conveyor_reverse_segment_mask & mask) != 0U) ? -1 : 0;
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC void
@@ -602,9 +608,11 @@ render_static_segments(const struct picosystem_scene_snapshot *snapshot,
 	for (uint16_t index = 0U; index < snapshot->static_segment_count; ++index) {
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS, index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_BOUNDS);
+		const bool hourglass = snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS;
 		const struct picosystem_scene_segment *const segment =
-			&snapshot->static_segments[index];
-		const int32_t direction = conveyor_direction(snapshot, index);
+			hourglass ? &snapshot->payload.granular.boundaries[index]
+				  : &snapshot->payload.rigid.static_segments[index];
+		const int32_t direction = hourglass ? 0 : conveyor_direction(snapshot, index);
 		if (clip != NULL) {
 			const struct picosystem_rect bounds =
 				(direction == 0)
@@ -619,10 +627,9 @@ render_static_segments(const struct picosystem_scene_snapshot *snapshot,
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS, index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_OUTLINE);
 		const picosystem_color_t segment_color =
-			(snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS)
-				? PICOSYSTEM_COLOR_WHITE
-				: ((direction == 0) ? PICOSYSTEM_COLOR_CYAN
-						    : PICOSYSTEM_COLOR_GREEN);
+			hourglass ? PICOSYSTEM_COLOR_WHITE
+				  : ((direction == 0) ? PICOSYSTEM_COLOR_CYAN
+						      : PICOSYSTEM_COLOR_GREEN);
 		picosystem_graphics_draw_line_clipped(clip, segment->start_x, segment->start_y,
 						      segment->end_x, segment->end_y,
 						      segment_color);
@@ -638,7 +645,8 @@ render_granules(const struct picosystem_scene_snapshot *snapshot,
 		struct picosystem_scene_render_progress *progress)
 {
 	for (uint16_t index = 0U; index < snapshot->granular_particle_count; ++index) {
-		const struct picosystem_scene_grain *const grain = &snapshot->grains[index];
+		const struct picosystem_scene_grain *const grain =
+			&snapshot->payload.granular.grains[index];
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GRANULES, index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_FILL_0);
 		const picosystem_color_t color =
@@ -661,7 +669,7 @@ render_box_sensors(const struct picosystem_scene_snapshot *snapshot,
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS, index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_BOUNDS);
 		const struct picosystem_scene_box_sensor *const sensor =
-			&snapshot->box_sensors[index];
+			&snapshot->payload.rigid.box_sensors[index];
 		if ((clip != NULL) &&
 		    !picosystem_scene_rectangles_intersect(&sensor->bounds, clip)) {
 			continue;
@@ -809,7 +817,7 @@ render_distance_joints(const struct picosystem_scene_snapshot *snapshot,
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS, index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_BOUNDS);
 		const struct picosystem_scene_joint *const joint =
-			&snapshot->distance_joints[index];
+			&snapshot->payload.rigid.distance_joints[index];
 		if (clip != NULL) {
 			const struct picosystem_rect bounds = picosystem_scene_joint_bounds(joint);
 			if (!picosystem_scene_rectangles_intersect(&bounds, clip)) {
@@ -836,7 +844,8 @@ render_ropes(const struct picosystem_scene_snapshot *snapshot, const struct pico
 	     struct picosystem_scene_render_progress *progress)
 {
 	for (uint16_t rope_index = 0U; rope_index < snapshot->rope_count; ++rope_index) {
-		const struct picosystem_scene_rope *const rope = &snapshot->ropes[rope_index];
+		const struct picosystem_scene_rope *const rope =
+			&snapshot->payload.rigid.ropes[rope_index];
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_ROPES, rope_index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_BOUNDS);
 		if (clip != NULL) {
@@ -872,7 +881,7 @@ render_revolute_joints(const struct picosystem_scene_snapshot *snapshot,
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_REVOLUTE_JOINTS, index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_BOUNDS);
 		const struct picosystem_scene_joint *const joint =
-			&snapshot->revolute_joints[index];
+			&snapshot->payload.rigid.revolute_joints[index];
 		if (clip != NULL) {
 			const struct picosystem_rect bounds =
 				picosystem_scene_revolute_joint_bounds(joint);
@@ -912,13 +921,14 @@ render_bodies(const struct picosystem_scene_snapshot *snapshot, const struct pic
 		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, index,
 				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_BOUNDS);
 		if (clip != NULL) {
-			const struct picosystem_rect bounds =
-				picosystem_scene_body_bounds(&snapshot->bodies[index]);
+			const struct picosystem_rect bounds = picosystem_scene_body_bounds(
+				&snapshot->payload.rigid.bodies[index]);
 			if (!picosystem_scene_rectangles_intersect(&bounds, clip)) {
 				continue;
 			}
 		}
-		const int err = render_body(&snapshot->bodies[index], index, clip, progress);
+		const int err =
+			render_body(&snapshot->payload.rigid.bodies[index], index, clip, progress);
 		if (err != 0) {
 			return err;
 		}

@@ -52,8 +52,11 @@ struct picosystem_game_input {
 
 /* Caller-owned authoritative state; production code mutates it only through this API. */
 struct picosystem_game_world {
-	struct picosystem_physics_world physics;
-	struct picosystem_granular_world granular;
+	/* scene_id tags the one authoritative simulation state active in this union. */
+	union {
+		struct picosystem_physics_world physics;
+		struct picosystem_granular_world granular;
+	};
 	/* Derived diagnostic proxy used when the active scene has no rigid bodies. */
 	struct picosystem_physics_body focus_proxy;
 	uint32_t logic_tick_count;
@@ -78,6 +81,12 @@ int picosystem_game_world_step_profiled(struct picosystem_game_world *world,
 					enum picosystem_physics_step_mode mode,
 					const struct picosystem_physics_clock *clock,
 					struct picosystem_physics_step_profile *profile);
+
+/* Advance an Hourglass tick while attributing granular solver cycles. */
+int picosystem_game_world_step_granular_profiled(struct picosystem_game_world *world,
+						 const struct picosystem_game_input *input,
+						 const struct picosystem_physics_clock *clock,
+						 struct picosystem_granular_step_profile *profile);
 
 /* Rotate a scene-defined symmetric container and its contents by 180 degrees. */
 int picosystem_game_world_flip(struct picosystem_game_world *world);

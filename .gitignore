@@ -3,6 +3,7 @@
 /build-pio-dma/
 /build-pl022-dma/
 /build-render-profile-*/
+/build-investigation-*/
 /artifacts/
 /.cache/
 /.west/

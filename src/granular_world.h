@@ -12,7 +12,7 @@
 
 #include "physics_world.h"
 
-#define PICOSYSTEM_GRANULAR_MAX_PARTICLES        128U
+#define PICOSYSTEM_GRANULAR_MAX_PARTICLES        192U
 #define PICOSYSTEM_GRANULAR_MAX_BOUNDARIES       8U
 #define PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS    2U
 #define PICOSYSTEM_GRANULAR_GRID_CELL_PIXELS     8U
@@ -23,6 +23,16 @@
 #define PICOSYSTEM_GRANULAR_GRID_CELL_COUNT                                                        \
 	(PICOSYSTEM_GRANULAR_GRID_COLUMNS * PICOSYSTEM_GRANULAR_GRID_ROWS)
 #define PICOSYSTEM_GRANULAR_GRID_EMPTY UINT8_MAX
+enum picosystem_granular_profile_stage {
+	PICOSYSTEM_GRANULAR_PROFILE_INTEGRATE,
+	PICOSYSTEM_GRANULAR_PROFILE_BOUNDARIES,
+	PICOSYSTEM_GRANULAR_PROFILE_GRID_BUILD,
+	PICOSYSTEM_GRANULAR_PROFILE_PAIR_SOLVE,
+	PICOSYSTEM_GRANULAR_PROFILE_PASSAGES,
+	PICOSYSTEM_GRANULAR_PROFILE_OTHER,
+	PICOSYSTEM_GRANULAR_PROFILE_TOTAL,
+	PICOSYSTEM_GRANULAR_PROFILE_STAGE_COUNT,
+};
 
 struct picosystem_granular_boundary_config {
 	struct picosystem_physics_vector start;
@@ -52,6 +62,7 @@ struct picosystem_granular_boundary {
 	struct picosystem_physics_vector start;
 	struct picosystem_physics_vector end;
 	struct picosystem_physics_vector inward_normal;
+	picosystem_physics_fixed_t coarse_negative_fraction_margin;
 	picosystem_physics_fixed_t active_minimum_y;
 	picosystem_physics_fixed_t active_maximum_y;
 	uint16_t id;
@@ -61,12 +72,23 @@ struct picosystem_granular_boundary {
 struct picosystem_granular_work_counters {
 	uint32_t possible_pair_count;
 	uint32_t candidate_pair_count;
+	uint32_t axis_rejection_count;
+	uint32_t diagonal_rejection_count;
+	uint32_t distance_test_count;
 	uint32_t contact_count;
 	uint32_t position_correction_count;
 	uint32_t boundary_test_count;
+	uint32_t coarse_boundary_rejection_count;
 	uint32_t boundary_contact_count;
 	uint32_t occupied_grid_cell_count;
 	uint32_t maximum_grid_cell_occupancy;
+};
+
+/* Optional elapsed-cycle sample for one step; timing never enters authoritative state. */
+struct picosystem_granular_step_profile {
+	uint32_t stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_STAGE_COUNT];
+	struct picosystem_granular_work_counters work;
+	uint32_t clock_read_count;
 };
 
 /* Caller-owned fixed-capacity state. Grid links are scratch and rebuilt every pass. */
@@ -101,6 +123,12 @@ int picosystem_granular_world_add_particle(struct picosystem_granular_world *wor
 int picosystem_granular_world_step(struct picosystem_granular_world *world,
 				   const struct picosystem_physics_vector *acceleration_per_tick);
 
+int picosystem_granular_world_step_profiled(
+	struct picosystem_granular_world *world,
+	const struct picosystem_physics_vector *acceleration_per_tick,
+	const struct picosystem_physics_clock *clock,
+	struct picosystem_granular_step_profile *profile);
+
 /* Rotate all particle position and velocity state exactly 180 degrees about the configured center.
  */
 int picosystem_granular_world_flip(struct picosystem_granular_world *world);
@@ -113,5 +141,10 @@ picosystem_granular_world_lower_particle_count(const struct picosystem_granular_
 
 /* Hash persistent configuration and particle state, excluding grid links and work counters. */
 uint32_t picosystem_granular_world_hash(const struct picosystem_granular_world *world);
+
+#if defined(PICOSYSTEM_GRANULAR_WORLD_TEST)
+/* Test-only access to the exact square root used for bounded contact distances. */
+uint32_t picosystem_granular_test_integer_square_root(uint64_t value);
+#endif
 
 #endif /* PICOSYSTEM_GRANULAR_WORLD_H_ */

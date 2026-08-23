@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "granular_world.h"
 #include "physics_world.h"
 
 #define PICOSYSTEM_PHYSICS_PROFILE_SCHEMA_VERSION             13U
@@ -25,6 +26,12 @@
 	(PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_FINE_BIN_COUNT +                                     \
 	 PICOSYSTEM_PHYSICS_PROFILE_HISTOGRAM_COARSE_BIN_COUNT)
 #define PICOSYSTEM_PHYSICS_PROFILE_MODE_COUNT 2U
+
+#define PICOSYSTEM_GRANULAR_PROFILE_SCHEMA_VERSION          1U
+#define PICOSYSTEM_GRANULAR_PROFILE_DEFAULT_TICKS           120U
+#define PICOSYSTEM_GRANULAR_PROFILE_MAX_TICKS               10000U
+#define PICOSYSTEM_GRANULAR_PROFILE_HISTOGRAM_FINE_BIN_US   128U
+#define PICOSYSTEM_GRANULAR_PROFILE_HISTOGRAM_COARSE_BIN_US 512U
 
 enum picosystem_physics_profile_fixture {
 	PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_CANONICAL,
@@ -101,6 +108,22 @@ enum picosystem_physics_profile_work_metric {
 	PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT,
 };
 
+enum picosystem_granular_profile_work_metric {
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_POSSIBLE_PAIRS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_CANDIDATE_PAIRS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_AXIS_REJECTIONS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_DIAGONAL_REJECTIONS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_DISTANCE_TESTS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_CONTACTS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_POSITION_CORRECTIONS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_BOUNDARY_TESTS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_COARSE_BOUNDARY_REJECTIONS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_BOUNDARY_CONTACTS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_OCCUPIED_GRID_CELLS,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_MAXIMUM_GRID_CELL_OCCUPANCY,
+	PICOSYSTEM_GRANULAR_PROFILE_WORK_METRIC_COUNT,
+};
+
 struct picosystem_physics_profile_stage_summary {
 	uint32_t sample_count;
 	uint32_t mean_cycles;
@@ -149,6 +172,26 @@ struct picosystem_physics_profile_result {
 	bool states_match;
 };
 
+struct picosystem_granular_profile_result {
+	struct picosystem_physics_profile_stage_summary
+		stages[PICOSYSTEM_GRANULAR_PROFILE_STAGE_COUNT];
+	struct picosystem_physics_profile_work_summary
+		work[PICOSYSTEM_GRANULAR_PROFILE_WORK_METRIC_COUNT];
+	uint32_t final_hash;
+	uint32_t schema_version;
+	uint32_t measured_tick_count;
+	uint32_t tick_rate_hz;
+	uint32_t clock_frequency_hz;
+	uint32_t histogram_fine_bin_cycles;
+	uint32_t histogram_coarse_bin_cycles;
+	uint32_t back_to_back_clock_delta_cycles;
+	uint32_t minimum_clock_reads_per_step;
+	uint32_t maximum_clock_reads_per_step;
+	uint32_t passage_count;
+	uint16_t particle_count;
+	uint16_t lower_particle_count;
+};
+
 /* Run an isolated canonical replay. The caller owns result; internal scratch is serialized. */
 int picosystem_physics_profile_compare(uint32_t measured_tick_count,
 				       struct picosystem_physics_profile_result *result);
@@ -156,10 +199,14 @@ int picosystem_physics_profile_compare_neutral(uint32_t measured_tick_count,
 					       struct picosystem_physics_profile_result *result);
 int picosystem_physics_profile_compare_chain(uint16_t link_count, uint32_t measured_tick_count,
 					     struct picosystem_physics_profile_result *result);
+int picosystem_granular_profile_run(uint32_t measured_tick_count,
+				    struct picosystem_granular_profile_result *result);
 
 const char *picosystem_physics_profile_fixture_name(size_t fixture_index);
 const char *picosystem_physics_profile_mode_name(size_t mode_index);
 const char *picosystem_physics_profile_stage_name(size_t stage_index);
 const char *picosystem_physics_profile_work_name(size_t metric_index);
+const char *picosystem_granular_profile_stage_name(size_t stage_index);
+const char *picosystem_granular_profile_work_name(size_t metric_index);
 
 #endif /* PICOSYSTEM_PHYSICS_PROFILE_H_ */

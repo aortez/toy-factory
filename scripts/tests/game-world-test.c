@@ -1201,7 +1201,7 @@ static void test_hourglass_scene_flow_flip_and_replay(void)
 	struct picosystem_game_world world;
 	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_HOURGLASS) == 0);
 	assert(world.physics.body_count == 0U);
-	assert(world.granular.particle_count == 96U);
+	assert(world.granular.particle_count == 192U);
 	assert(world.granular.boundary_count == 6U);
 	assert(picosystem_game_world_focus_body(&world) != NULL);
 	assert(picosystem_game_world_hash(&world) != 0U);
@@ -1209,14 +1209,14 @@ static void test_hourglass_scene_flow_flip_and_replay(void)
 
 	const struct picosystem_game_world initial = world;
 	assert(picosystem_game_world_flip(&world) == 0);
-	assert(picosystem_granular_world_lower_particle_count(&world.granular) == 96U);
+	assert(picosystem_granular_world_lower_particle_count(&world.granular) == 192U);
 	assert(picosystem_game_world_flip(&world) == 0);
 	assert(picosystem_game_world_hash(&world) == picosystem_game_world_hash(&initial));
 
 	run_hourglass_neutral(&world, 3000U);
 	const uint16_t first_lower_count =
 		picosystem_granular_world_lower_particle_count(&world.granular);
-	assert(first_lower_count >= 90U);
+	assert(first_lower_count >= 180U);
 	assert(world.sensor_entry_count == world.granular.passage_count);
 	assert(world.sensor_entry_count >= first_lower_count);
 	const uint32_t first_hash = picosystem_game_world_hash(&world);
@@ -1231,8 +1231,8 @@ static void test_hourglass_scene_flow_flip_and_replay(void)
 	run_hourglass_neutral(&world, 3000U);
 	const uint16_t second_lower_count =
 		picosystem_granular_world_lower_particle_count(&world.granular);
-	assert(second_lower_count >= 90U);
-	assert(world.sensor_entry_count >= 180U);
+	assert(second_lower_count >= 180U);
+	assert(world.sensor_entry_count >= 360U);
 	fprintf(stderr,
 		"hourglass hash=%08x lower=%u/%u passages=%u candidates=%u/%u contacts=%u\n",
 		picosystem_game_world_hash(&world), second_lower_count,

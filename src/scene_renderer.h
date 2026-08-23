@@ -78,6 +78,22 @@ struct picosystem_scene_grain {
 	uint8_t y;
 };
 
+struct picosystem_scene_rigid_payload {
+	uint32_t conveyor_forward_segment_mask;
+	uint32_t conveyor_reverse_segment_mask;
+	struct picosystem_scene_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
+	struct picosystem_scene_segment static_segments[PICOSYSTEM_SCENE_MAX_SEGMENTS];
+	struct picosystem_scene_joint distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
+	struct picosystem_scene_joint revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
+	struct picosystem_scene_box_sensor box_sensors[PICOSYSTEM_SCENE_MAX_BOX_SENSORS];
+	struct picosystem_scene_rope ropes[PICOSYSTEM_PHYSICS_MAX_ROPES];
+};
+
+struct picosystem_scene_granular_payload {
+	struct picosystem_scene_segment boundaries[PICOSYSTEM_GRANULAR_MAX_BOUNDARIES];
+	struct picosystem_scene_grain grains[PICOSYSTEM_GRANULAR_MAX_PARTICLES];
+};
+
 /* Immutable, self-contained input copied to the auxiliary core before rasterization. */
 struct picosystem_scene_snapshot {
 	int64_t published_uptime_ticks;
@@ -95,15 +111,11 @@ struct picosystem_scene_snapshot {
 	uint8_t granular_particle_count;
 	uint8_t granular_particle_radius;
 	uint8_t granular_lower_particle_count;
-	uint32_t conveyor_forward_segment_mask;
-	uint32_t conveyor_reverse_segment_mask;
-	struct picosystem_scene_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
-	struct picosystem_scene_segment static_segments[PICOSYSTEM_SCENE_MAX_SEGMENTS];
-	struct picosystem_scene_joint distance_joints[PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS];
-	struct picosystem_scene_joint revolute_joints[PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS];
-	struct picosystem_scene_box_sensor box_sensors[PICOSYSTEM_SCENE_MAX_BOX_SENSORS];
-	struct picosystem_scene_rope ropes[PICOSYSTEM_PHYSICS_MAX_ROPES];
-	struct picosystem_scene_grain grains[PICOSYSTEM_GRANULAR_MAX_PARTICLES];
+	/* scene_id tags the only payload valid for this immutable snapshot. */
+	union {
+		struct picosystem_scene_rigid_payload rigid;
+		struct picosystem_scene_granular_payload granular;
+	} payload;
 };
 
 enum picosystem_scene_render_stage {
