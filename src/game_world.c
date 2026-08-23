@@ -22,6 +22,56 @@
 #define FNV1A_OFFSET_BASIS          UINT32_C(2166136261)
 #define FNV1A_PRIME                 UINT32_C(16777619)
 
+static const enum picosystem_game_scene_id selectable_scenes[] = {
+	PICOSYSTEM_GAME_SCENE_CLOCKWORK,
+	PICOSYSTEM_GAME_SCENE_HOURGLASS,
+};
+
+const char *picosystem_game_scene_name(enum picosystem_game_scene_id scene_id)
+{
+	switch (scene_id) {
+	case PICOSYSTEM_GAME_SCENE_MACHINE_LAB:
+		return "machine-lab";
+	case PICOSYSTEM_GAME_SCENE_CLOCKWORK:
+		return "clockwork";
+	case PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN:
+		return "diagnostic-chain";
+	case PICOSYSTEM_GAME_SCENE_HOURGLASS:
+		return "hourglass";
+	default:
+		return "unknown";
+	}
+}
+
+bool picosystem_game_scene_is_selectable(enum picosystem_game_scene_id scene_id)
+{
+	for (size_t index = 0U; index < (sizeof(selectable_scenes) / sizeof(selectable_scenes[0]));
+	     ++index) {
+		if (selectable_scenes[index] == scene_id) {
+			return true;
+		}
+	}
+	return false;
+}
+
+int picosystem_game_scene_next(enum picosystem_game_scene_id scene_id,
+			       enum picosystem_game_scene_id *next_scene_id)
+{
+	if (next_scene_id == NULL) {
+		return -EINVAL;
+	}
+	for (size_t index = 0U; index < (sizeof(selectable_scenes) / sizeof(selectable_scenes[0]));
+	     ++index) {
+		if (selectable_scenes[index] == scene_id) {
+			const size_t next = (index + 1U) % (sizeof(selectable_scenes) /
+							    sizeof(selectable_scenes[0]));
+			*next_scene_id = selectable_scenes[next];
+			return 0;
+		}
+	}
+	return -ENOTSUP;
+}
+
 static const struct picosystem_game_scene_config *scene_config(uint8_t scene_id)
 {
 	switch (scene_id) {

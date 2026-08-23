@@ -292,6 +292,35 @@ static void assert_hash(const char *label, uint32_t actual, uint32_t expected)
 	assert(actual == expected);
 }
 
+static void test_scene_catalog(void)
+{
+	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_CLOCKWORK), "clockwork") ==
+	       0);
+	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_HOURGLASS), "hourglass") ==
+	       0);
+	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_MACHINE_LAB),
+		      "machine-lab") == 0);
+	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN),
+		      "diagnostic-chain") == 0);
+	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_COUNT), "unknown") == 0);
+
+	assert(picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_CLOCKWORK));
+	assert(picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_HOURGLASS));
+	assert(!picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_MACHINE_LAB));
+	assert(!picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN));
+
+	enum picosystem_game_scene_id next_scene_id = PICOSYSTEM_GAME_SCENE_COUNT;
+	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_CLOCKWORK, &next_scene_id) == 0);
+	assert(next_scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS);
+	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_HOURGLASS, &next_scene_id) == 0);
+	assert(next_scene_id == PICOSYSTEM_GAME_SCENE_CLOCKWORK);
+	next_scene_id = PICOSYSTEM_GAME_SCENE_HOURGLASS;
+	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_MACHINE_LAB, &next_scene_id) ==
+	       -ENOTSUP);
+	assert(next_scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS);
+	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_CLOCKWORK, NULL) == -EINVAL);
+}
+
 static void step_many(struct picosystem_game_world *world,
 		      const struct picosystem_game_input *input, uint32_t count)
 {
@@ -1285,6 +1314,7 @@ static void test_hourglass_scene_flow_flip_and_replay(void)
 
 int main(void)
 {
+	test_scene_catalog();
 	test_clockwork_scene_is_bounded_and_deterministic();
 	test_hourglass_scene_flow_flip_and_replay();
 	test_bounded_motion_contacts_and_saturated_tick();

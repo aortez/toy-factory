@@ -7,6 +7,7 @@
 #ifndef PICOSYSTEM_GAME_WORLD_H_
 #define PICOSYSTEM_GAME_WORLD_H_
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -38,6 +39,16 @@ enum picosystem_game_scene_id {
 	PICOSYSTEM_GAME_SCENE_HOURGLASS,
 	PICOSYSTEM_GAME_SCENE_COUNT,
 };
+
+/* Return the stable command-line name for a scene, or "unknown" for an invalid ID. */
+const char *picosystem_game_scene_name(enum picosystem_game_scene_id scene_id);
+
+/* Clockwork and Hourglass are the scenes exposed by the player-facing selector. */
+bool picosystem_game_scene_is_selectable(enum picosystem_game_scene_id scene_id);
+
+/* Select the following player-facing scene, wrapping at the end of the list. */
+int picosystem_game_scene_next(enum picosystem_game_scene_id scene_id,
+			       enum picosystem_game_scene_id *next_scene_id);
 
 enum picosystem_game_body_render_style {
 	PICOSYSTEM_GAME_BODY_RENDER_STYLE_DEFAULT,

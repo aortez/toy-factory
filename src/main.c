@@ -22,6 +22,7 @@
 #include "fixed_rate_scheduler.h"
 #include "game_control.h"
 #include "game_demo.h"
+#include "game_scene_selector.h"
 #include "piezo.h"
 #include "power_status.h"
 
@@ -310,6 +311,7 @@ static int fill_game_control_state(const struct game_runtime_control *control,
 		.input = selected_game_input(control, physical_input),
 		.focus_body_id = focus->id,
 		.focus_shape = focus->shape,
+		.scene_id = game->world.scene_id,
 		.paused = control->paused,
 		.remote_input_enabled = control->remote_input_enabled,
 	};
@@ -358,6 +360,17 @@ static int process_game_control_requests(struct game_runtime_control *control,
 				break;
 			}
 			result = picosystem_game_demo_reset(game);
+			if (result == 0) {
+				control->remote_input = (struct picosystem_game_input){0};
+				control->remote_input_enabled = true;
+			}
+			break;
+		case PICOSYSTEM_GAME_CONTROL_SELECT_SCENE:
+			if (!control->paused) {
+				result = -EBUSY;
+				break;
+			}
+			result = picosystem_game_demo_reset_scene(game, request.scene_id);
 			if (result == 0) {
 				control->remote_input = (struct picosystem_game_input){0};
 				control->remote_input_enabled = true;
@@ -423,11 +436,24 @@ static int process_game_control_requests(struct game_runtime_control *control,
 		if ((result != 0) &&
 		    ((request.operation == PICOSYSTEM_GAME_CONTROL_STEP) ||
 		     (request.operation == PICOSYSTEM_GAME_CONTROL_RUN) ||
-		     (request.operation == PICOSYSTEM_GAME_CONTROL_RESET)) &&
+		     (request.operation == PICOSYSTEM_GAME_CONTROL_RESET) ||
+		     (request.operation == PICOSYSTEM_GAME_CONTROL_SELECT_SCENE)) &&
 		    (result != -EBUSY) && (result != -ERANGE)) {
 			return result;
 		}
 	}
+}
+
+static int restart_game_scheduler_if_running(const struct game_runtime_control *control,
+					     struct picosystem_fixed_rate_scheduler *scheduler,
+					     int64_t now_ticks)
+{
+	if (control->paused) {
+		return 0;
+	}
+
+	return picosystem_fixed_rate_scheduler_init(
+		scheduler, now_ticks, CONFIG_SYS_CLOCK_TICKS_PER_SEC, PICOSYSTEM_GAME_TICK_RATE_HZ);
 }
 
 static int sample_main_stack(struct picosystem_runtime_metrics *runtime)
@@ -477,6 +503,7 @@ int main(void)
 	static struct picosystem_game_demo_state game_state;
 	struct picosystem_game_demo_stats game_stats;
 	struct game_runtime_control game_control = {0};
+	struct picosystem_game_scene_selector scene_selector = {0};
 	struct picosystem_power_status power_status;
 	struct picosystem_runtime_metrics runtime_metrics;
 
@@ -576,9 +603,10 @@ int main(void)
 		return err;
 	}
 
-	LOG_INF("PicoSystem %u Hz Hourglass scene and asynchronous renderer ready",
+	LOG_INF("PicoSystem %u Hz scene runtime and asynchronous renderer ready",
 		PICOSYSTEM_GAME_TICK_RATE_HZ);
-	LOG_INF("D-pad tilts gravity; X flips the glass; Y resets all grains");
+	LOG_INF("D-pad tilts gravity; tap Y to reset; hold Y to change scenes");
+	LOG_INF("X flips the Hourglass");
 	LOG_INF("A queues a full redraw; B plays a short 440 Hz piezo tone");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 	LOG_INF("GP2 remains an input; the automatic red charge indicator is enabled");
@@ -664,34 +692,65 @@ int main(void)
 			return err;
 		}
 
-		if ((pressed & BIT(PICOSYSTEM_BUTTON_Y)) != 0U) {
+		enum picosystem_game_scene_selector_action selector_action;
+		err = picosystem_game_scene_selector_update(
+			&scene_selector, now, (state & BIT(PICOSYSTEM_BUTTON_Y)) != 0U,
+			&selector_action);
+		if (err != 0) {
+			LOG_ERR("Scene-selector input failed (%d)", err);
+			return err;
+		}
+
+		if (selector_action == PICOSYSTEM_GAME_SCENE_SELECTOR_RESET) {
 			err = picosystem_game_demo_reset(&game_state);
 			if (err != 0) {
-				LOG_ERR("Failed to reset physics world (%d)", err);
+				LOG_ERR("Failed to reset %s scene (%d)",
+					picosystem_game_scene_name(game_state.world.scene_id), err);
 				return err;
 			}
-
-			if (!game_control.paused) {
-				err = picosystem_fixed_rate_scheduler_init(
-					&game_scheduler, tick_start_ticks,
-					CONFIG_SYS_CLOCK_TICKS_PER_SEC,
-					PICOSYSTEM_GAME_TICK_RATE_HZ);
-				if (err != 0) {
-					LOG_ERR("Failed to restart game scheduler after reset (%d)",
-						err);
-					return err;
-				}
+			err = restart_game_scheduler_if_running(&game_control, &game_scheduler,
+								tick_start_ticks);
+			if (err != 0) {
+				LOG_ERR("Failed to restart game scheduler after reset (%d)", err);
+				return err;
 			}
-			LOG_INF("Reset physics world from Y button");
+			LOG_INF("Reset %s scene from short Y press",
+				picosystem_game_scene_name(game_state.world.scene_id));
+		} else if (selector_action == PICOSYSTEM_GAME_SCENE_SELECTOR_NEXT) {
+			enum picosystem_game_scene_id next_scene_id;
+			err = picosystem_game_scene_next(
+				(enum picosystem_game_scene_id)game_state.world.scene_id,
+				&next_scene_id);
+			if (err == 0) {
+				err = picosystem_game_demo_reset_scene(&game_state, next_scene_id);
+			}
+			if (err != 0) {
+				LOG_ERR("Failed to select the next scene (%d)", err);
+				return err;
+			}
+			err = restart_game_scheduler_if_running(&game_control, &game_scheduler,
+								tick_start_ticks);
+			if (err != 0) {
+				LOG_ERR("Failed to restart game scheduler after scene change (%d)",
+					err);
+				return err;
+			}
+			LOG_INF("Selected %s scene from long Y press",
+				picosystem_game_scene_name(next_scene_id));
 		}
 
 		if ((pressed & BIT(PICOSYSTEM_BUTTON_X)) != 0U) {
-			err = picosystem_game_demo_flip(&game_state);
-			if (err != 0) {
-				LOG_ERR("Failed to flip hourglass (%d)", err);
-				return err;
+			if (game_state.world.scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+				err = picosystem_game_demo_flip(&game_state);
+				if (err != 0) {
+					LOG_ERR("Failed to flip Hourglass (%d)", err);
+					return err;
+				}
+				LOG_INF("Flipped Hourglass from X button");
+			} else {
+				LOG_INF("X has no scene action in %s",
+					picosystem_game_scene_name(game_state.world.scene_id));
 			}
-			LOG_INF("Flipped hourglass from X button");
 		}
 
 		const uint32_t due_ticks =

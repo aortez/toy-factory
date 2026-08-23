@@ -19,9 +19,10 @@ path:
   and a bounded 40 x 48 uniform grid; the fixed engine capacity is 512 grains;
 - tracks grains crossing the neck, tilts gravity with the D-pad, and rotates the
   complete particle position and velocity state exactly 180 degrees with X;
-- retains the Clockwork and Machine Lab scene builders for rigid-body and
-  profiling coverage, including a motorized gear pair, crank-slider, pendulum,
-  spring bob, two-link mobile, sensor gate, and reciprocal rope;
+- exposes the Clockwork and Hourglass as switchable player-facing scenes while
+  retaining Machine Lab as a rigid-body profiling fixture; Clockwork includes a
+  motorized gear pair, crank-slider, pendulum, spring bob, two-link mobile,
+  sensor gate, and reciprocal rope;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -47,10 +48,11 @@ path:
   on core 0;
 - late-latches immutable snapshots and aligns display writes with the LCD's GP8
   tearing-effect signal;
-- exposes acknowledged reset, pause, exact-step, injected-input, state-hash, and
-  framebuffer-capture controls over USB;
+- exposes acknowledged scene selection, reset, pause, exact-step,
+  injected-input, state-hash, and framebuffer-capture controls over USB;
 - runs declarative deterministic device sequences with state/framebuffer assertions;
-- resets the Hourglass to its exact starting state when Y is pressed;
+- resets the active scene on a short Y press and switches between Clockwork and
+  Hourglass when Y is held for 750 ms;
 - plays a short, bounded piezo tone when B is pressed;
 - averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
 - classifies the GP2 VBUS and active-low GP24 charger-status inputs;
@@ -92,6 +94,7 @@ make format   # format the application C source in the container
 make check    # formatting, whitespace, and a clean build
 make container-shell  # enter the build container (`make shell` also works)
 make sim-pause  # pause at a tick boundary and print exact simulation state
+make sim-scene SCENE=clockwork  # select a scene at tick zero while paused
 make sim-reset  # restore the playable scene to tick zero while paused
 make sim-flip  # rotate the paused Hourglass contents by exactly 180 degrees
 make sim-step STEPS=1  # advance a paused simulation by exact 1/60-second ticks
@@ -157,20 +160,22 @@ The physical gesture remains the recovery path for a blank or broken image:
 3. Release X when the `RPI-RP2` mass-storage volume appears.
 4. Run `make update` again.
 
-The PicoSystem reboots automatically when the copy completes. Its LCD should
-show a dark checkerboard arena under a white `CLOCKWORK 60HZ` heading. At upper
-left, the yellow motor wheel drives a magenta follower and a red connecting rod
-moves the white horizontal slider. A pendulum and spring bob move at upper
-right; a hinged mobile pulls a cyan rope across the lower half. The narrow
-sensor gate turns green while occupied, and the `Sxx` header counter records
-entries. The world advances on exact rational 60 Hz deadlines. Normal
+The PicoSystem reboots automatically when the copy completes into the
+`HOURGLASS 60HZ` scene. Tap Y to reset the active scene, or hold Y for 750 ms
+to switch between Hourglass and Clockwork. In Clockwork, the yellow motor wheel
+drives a magenta follower and a red connecting rod moves the white horizontal
+slider. A pendulum and spring bob move at upper right; a hinged mobile pulls a
+cyan rope across the lower half. The narrow sensor gate turns green while
+occupied, and the `Sxx` header counter records entries. The world advances on
+exact rational 60 Hz deadlines. Normal
 presentation restores each
 moved body's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
 empty swept area between distant footprints.
 The D-pad tilts the global acceleration field while neutral input retains
-downward gravity. Press A to queue a full-screen redraw for comparison, B to
-play a 440 Hz tone for 180 ms, and Y to reset the world. In the conservative
+downward gravity. Press A to queue a full-screen redraw for comparison and B to
+play a 440 Hz tone for 180 ms. X flips Hourglass and has no action in Clockwork.
+In the conservative
 20 MHz build, a full transfer occupies the panel for roughly 80 ms, but it runs
 on the renderer thread: physics and input sampling continue at 60 Hz and newer
 snapshots coalesce while the renderer is busy. The fast build instead
@@ -214,6 +219,7 @@ make core1-ping
 make display-sync
 make sim-pause
 make core1-scene  # compare paused core-0/core-1 scene pixels by CRC
+make sim-scene SCENE=clockwork
 make sim-reset
 make sim-input INPUT=right
 make sim-step STEPS=1
@@ -257,6 +263,7 @@ picosystem game stats
 picosystem game redraw
 picosystem game pause
 picosystem game reset
+picosystem game scene clockwork|hourglass
 picosystem game flip
 picosystem game step [count]
 picosystem game input physical|none|up|down|left|right|up-left|up-right|down-left|down-right
@@ -283,9 +290,10 @@ counters, published/coalesced snapshots, renderer health, state age at the SPI
 write, full-redraw count, and both stack high-water marks. `game redraw` only
 posts a coalesced request; the shell never touches the framebuffer or display.
 `game pause` is acknowledged only after the priority-0 simulation owner reaches
-a tick boundary. `game reset` is accepted only while paused; it restores the
-playable Hourglass scene at tick zero, selects neutral remote input, and
-publishes a full-redraw snapshot without rewinding renderer sequence numbers.
+a tick boundary. `game scene` is accepted only while paused; it selects
+Clockwork or Hourglass at tick zero with neutral remote input. `game reset`
+restores whichever scene is active. Both publish a full-redraw snapshot without
+rewinding renderer sequence numbers.
 `game flip` is likewise accepted only while paused and rotates every grain's
 current and previous position exactly 180 degrees, preserving its velocity;
 the physical X button performs the same operation during play.
@@ -296,8 +304,8 @@ never become catch-up debt or distort subsequent real-time rate reporting.
 `game input` selects either physical buttons or a persistent injected direction;
 `none` is a neutral remote input and `physical` restores the D-pad. In the
 current demo, neutral means “apply gravity without directional tilt,” rather
-than “stop.” Every control response includes the exact tick, Q16.16 focus-body
-state, input source,
+than “stop.” Every control response includes the active scene, exact tick,
+Q16.16 focus-body state, input source,
 published/presented snapshot sequence, and a deterministic hash that excludes
 clocks and performance counters.
 
@@ -382,6 +390,7 @@ and optional final assertions:
 ```json
 {
   "name": "hourglass-flip-smoke",
+  "scene": "hourglass",
   "steps": [
     {"input": "right", "ticks": 60},
     {"input": "none", "ticks": 120},
@@ -390,8 +399,8 @@ and optional final assertions:
     {"input": "none", "ticks": 120}
   ],
   "expect": {
-    "hash": "20b82113",
-    "framebuffer_crc32": "cecc86d5"
+    "hash": "a0919f8b",
+    "framebuffer_crc32": "41e4cdd1"
   }
 }
 ```
@@ -411,9 +420,12 @@ authoritative state and framebuffer:
 make sim-test SEQUENCE=scripts/sequences/hourglass-neutral-smoke.json
 ```
 
-The runner holds one exclusive USB connection, pauses and resets the
-simulation, applies each input or exact `flip` action, and checks the returned
-tick after every request. Segments longer than 120 ticks are automatically
+[`scripts/sequences/clockwork-smoke.json`](scripts/sequences/clockwork-smoke.json)
+selects Clockwork and verifies its established input-replay hash and framebuffer CRC.
+
+The runner holds one exclusive USB connection, pauses and selects the declared
+scene at tick zero, applies each input or exact `flip` action, and checks the
+returned scene and tick after every request. Segments longer than 120 ticks are automatically
 divided into bounded firmware requests. The complete file is limited to 256
 segments and 100,000 ticks; physical input is deliberately unavailable inside
 deterministic sequences. Hash and framebuffer assertions are independently
@@ -527,8 +539,8 @@ preserve the same simulation/snapshot boundary, so renderer throughput can
 change without changing the fixed-step world model.
 
 Remote game-control requests cross a bounded message queue and are completed by
-that same simulation-owning main thread. Canonical reset rewinds only
-authoritative state; renderer publication numbers remain monotonic. The host
+that same simulation-owning main thread. Scene selection and canonical reset
+rewind only authoritative state; renderer publication numbers remain monotonic. The host
 sequence runner keeps one CDC ACM connection open, but every mutation still
 crosses the acknowledged queue. Framebuffer readers never mutate graphics
 state: they wait for a presented sequence and share a mutex with the renderer

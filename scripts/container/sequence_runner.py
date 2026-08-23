@@ -29,6 +29,7 @@ VALID_INPUTS = {
     "down-right": (1, 1),
 }
 VALID_ACTIONS = {"flip"}
+VALID_SCENES = {"clockwork", "hourglass"}
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 HEX32_PATTERN = re.compile(r"^[0-9a-fA-F]{8}$")
 GAME_STATE_PATTERN = re.compile(
@@ -37,6 +38,7 @@ GAME_STATE_PATTERN = re.compile(
 INPUT_STATE_PATTERN = re.compile(
     r"^input_source=(physical|remote) input_x=(-?\d+) input_y=(-?\d+)$"
 )
+SCENE_STATE_PATTERN = re.compile(r"^scene=(clockwork|hourglass) scene_id=(\d+)$")
 CHECKSUM_PATTERN = re.compile(
     r"^width=(\d+) height=(\d+) format=([a-z0-9]+) bytes=(\d+) "
     r"sequence=(\d+) crc32=([0-9a-fA-F]{8})$"
@@ -55,12 +57,15 @@ class SequenceSegment(NamedTuple):
 
 class SequenceSpec(NamedTuple):
     name: str
+    scene: str
     segments: tuple[SequenceSegment, ...]
     expected_hash: int | None
     expected_framebuffer_crc32: int | None
 
 
 class GameState(NamedTuple):
+    scene: str
+    scene_id: int
     mode: str
     tick: int
     state_hash: int
@@ -104,11 +109,16 @@ def parse_hex32(value: object, label: str) -> int:
 
 def parse_sequence_spec(value: object) -> SequenceSpec:
     root = require_object(value, "sequence")
-    reject_unknown_keys(root, {"name", "steps", "expect"}, "sequence")
+    reject_unknown_keys(root, {"name", "scene", "steps", "expect"}, "sequence")
 
     name = root.get("name")
     if not isinstance(name, str) or NAME_PATTERN.fullmatch(name) is None:
         raise SequenceError("sequence.name must use 1-64 letters, digits, '.', '_', or '-'")
+
+    scene = root.get("scene", "hourglass")
+    if not isinstance(scene, str) or scene not in VALID_SCENES:
+        choices = ", ".join(sorted(VALID_SCENES))
+        raise SequenceError(f"sequence.scene must be one of: {choices}")
 
     raw_steps = root.get("steps")
     if not isinstance(raw_steps, list) or not raw_steps:
@@ -169,6 +179,7 @@ def parse_sequence_spec(value: object) -> SequenceSpec:
 
     return SequenceSpec(
         name=name,
+        scene=scene,
         segments=tuple(segments),
         expected_hash=expected_hash,
         expected_framebuffer_crc32=expected_framebuffer_crc32,
@@ -193,12 +204,15 @@ def one_matching_line(output: str, pattern: re.Pattern[str], label: str) -> re.M
 def parse_game_state(output: str) -> GameState:
     state_match = one_matching_line(output, GAME_STATE_PATTERN, "game-state")
     input_match = one_matching_line(output, INPUT_STATE_PATTERN, "input-state")
+    scene_match = one_matching_line(output, SCENE_STATE_PATTERN, "scene-state")
     input_x = int(input_match.group(2))
     input_y = int(input_match.group(3))
     if not (-1 <= input_x <= 1) or not (-1 <= input_y <= 1):
         raise SequenceError(f"device returned invalid input vector ({input_x}, {input_y})")
 
     return GameState(
+        scene=scene_match.group(1),
+        scene_id=int(scene_match.group(2)),
         mode=state_match.group(1),
         tick=int(state_match.group(2)),
         state_hash=int(state_match.group(3), 16),
@@ -250,6 +264,11 @@ def require_remote_input(state: GameState, input_name: str, context: str) -> Non
         raise SequenceError(f"{context} did not retain remote input {input_name}")
 
 
+def require_scene(state: GameState, scene: str, context: str) -> None:
+    if state.scene != scene:
+        raise SequenceError(f"{context} returned scene={state.scene}, expected {scene}")
+
+
 def run_sequence(
     session: SerialShellSession,
     spec: SequenceSpec,
@@ -261,10 +280,11 @@ def run_sequence(
     if paused_state.mode != "paused":
         raise SequenceError(f"pause returned mode={paused_state.mode}")
 
-    state = parse_game_state(session.run("picosystem game reset"))
-    require_paused_tick(state, 0, "reset")
-    require_remote_input(state, "none", "reset")
-    emit(f"reset: tick=0 hash={state.state_hash:08x}")
+    state = parse_game_state(session.run(f"picosystem game scene {spec.scene}"))
+    require_paused_tick(state, 0, "scene selection")
+    require_remote_input(state, "none", "scene selection")
+    require_scene(state, spec.scene, "scene selection")
+    emit(f"scene={spec.scene}: tick=0 hash={state.state_hash:08x}")
 
     expected_tick = 0
     current_input_name = "none"
@@ -273,6 +293,7 @@ def run_sequence(
             state = parse_game_state(session.run(f"picosystem game {segment.action}"))
             require_paused_tick(state, expected_tick, f"segment {index} action")
             require_remote_input(state, current_input_name, f"segment {index} action")
+            require_scene(state, spec.scene, f"segment {index} action")
             emit(
                 f"segment {index}: action={segment.action} tick={state.tick} "
                 f"hash={state.state_hash:08x}"
@@ -286,6 +307,7 @@ def run_sequence(
         )
         require_paused_tick(state, expected_tick, f"segment {index} input")
         require_remote_input(state, segment.input_name, f"segment {index} input")
+        require_scene(state, spec.scene, f"segment {index} input")
         current_input_name = segment.input_name
 
         remaining_ticks = segment.ticks
@@ -297,6 +319,7 @@ def run_sequence(
             expected_tick += step_ticks
             require_paused_tick(state, expected_tick, f"segment {index} step")
             require_remote_input(state, segment.input_name, f"segment {index} step")
+            require_scene(state, spec.scene, f"segment {index} step")
             remaining_ticks -= step_ticks
 
         emit(
@@ -307,6 +330,7 @@ def run_sequence(
     state = parse_game_state(session.run("picosystem game state"))
     require_paused_tick(state, expected_tick, "final state")
     require_remote_input(state, current_input_name, "final state")
+    require_scene(state, spec.scene, "final state")
     if spec.expected_hash is not None and state.state_hash != spec.expected_hash:
         raise SequenceError(
             f"state hash mismatch: expected {spec.expected_hash:08x}, "

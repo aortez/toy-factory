@@ -30,6 +30,7 @@ class FakeSession:
         self.tick = 900
         self.input_source = "physical"
         self.input_name = "none"
+        self.scene = "hourglass"
         self.commands = []
 
     def __enter__(self) -> "FakeSession":
@@ -45,6 +46,7 @@ class FakeSession:
         input_x, input_y = sequence_runner.VALID_INPUTS[self.input_name]
         return "\n".join(
             (
+                f"scene={self.scene} scene_id={1 if self.scene == 'clockwork' else 3}",
                 f"mode={self.mode} tick={self.tick} hash={self.state_hash():08x}",
                 f"input_source={self.input_source} input_x={input_x} input_y={input_y}",
                 "focus_id=1 focus_x_q16=1 focus_y_q16=2 "
@@ -61,6 +63,13 @@ class FakeSession:
         elif command == "picosystem game reset":
             if self.mode != "paused":
                 raise AssertionError("test reset must be paused")
+            self.tick = 0
+            self.input_source = "remote"
+            self.input_name = "none"
+        elif command.startswith("picosystem game scene "):
+            if self.mode != "paused":
+                raise AssertionError("test scene selection must be paused")
+            self.scene = command.rsplit(" ", 1)[1]
             self.tick = 0
             self.input_source = "remote"
             self.input_name = "none"
@@ -91,6 +100,7 @@ class FakeSession:
 def valid_spec(*, expected_hash: str = "abc000fa") -> dict[str, object]:
     return {
         "name": "long-step-test",
+        "scene": "hourglass",
         "steps": [{"input": "right", "ticks": 250}],
         "expect": {
             "hash": expected_hash,
@@ -109,6 +119,7 @@ class SequenceRunnerTest(unittest.TestCase):
         self.assertEqual(result.state.tick, 250)
         self.assertEqual(result.state.state_hash, 0xABC000FA)
         self.assertEqual(result.framebuffer_crc32, 0x1234ABCD)
+        self.assertEqual(result.state.scene, "hourglass")
         self.assertEqual(
             [command for command in session.commands if " game step " in command],
             [
@@ -117,6 +128,31 @@ class SequenceRunnerTest(unittest.TestCase):
                 "picosystem game step 10",
             ],
         )
+
+    def test_selects_clockwork_before_replay(self) -> None:
+        value = valid_spec()
+        value["scene"] = "clockwork"
+        spec = sequence_runner.parse_sequence_spec(value)
+        session = FakeSession()
+
+        result = sequence_runner.run_sequence(session, spec)
+
+        self.assertEqual(result.state.scene, "clockwork")
+        self.assertIn("picosystem game scene clockwork", session.commands)
+
+    def test_rejects_unknown_scene(self) -> None:
+        value = valid_spec()
+        value["scene"] = "machine-lab"
+        with self.assertRaisesRegex(sequence_runner.SequenceError, "sequence.scene"):
+            sequence_runner.parse_sequence_spec(value)
+
+    def test_legacy_sequence_defaults_to_hourglass(self) -> None:
+        value = valid_spec()
+        del value["scene"]
+
+        spec = sequence_runner.parse_sequence_spec(value)
+
+        self.assertEqual(spec.scene, "hourglass")
 
     def test_rejects_hash_mismatch(self) -> None:
         spec = sequence_runner.parse_sequence_spec(valid_spec(expected_hash="00000000"))

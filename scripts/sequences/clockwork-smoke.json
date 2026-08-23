@@ -1,0 +1,18 @@
+{
+  "name": "clockwork-input-smoke",
+  "scene": "clockwork",
+  "steps": [
+    {
+      "input": "right",
+      "ticks": 15
+    },
+    {
+      "input": "up",
+      "ticks": 8
+    }
+  ],
+  "expect": {
+    "hash": "e7a7ba97",
+    "framebuffer_crc32": "4efbf582"
+  }
+}
