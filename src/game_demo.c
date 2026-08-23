@@ -100,9 +100,7 @@ BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_SHELL_THREAD_PRIORITY);
 #endif
 /* Keep two snapshots and the auxiliary-core mailbox bounded after adding packed grains. */
 BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 1152U);
-BUILD_ASSERT(sizeof(struct picosystem_scene_granular_payload) <=
-	     sizeof(struct picosystem_scene_rigid_payload));
-BUILD_ASSERT(PICOSYSTEM_GRANULAR_MAX_PARTICLES <= UINT8_MAX);
+BUILD_ASSERT(PICOSYSTEM_GRANULAR_MAX_PARTICLES <= UINT16_MAX);
 BUILD_ASSERT((PICOSYSTEM_GAME_TICK_RATE_HZ % PICOSYSTEM_GAME_REALTIME_SNAPSHOT_RATE_HZ) == 0U);
 BUILD_ASSERT(PICOSYSTEM_GAME_BOX_SENSOR_COUNT <= PICOSYSTEM_SCENE_MAX_BOX_SENSORS);
 
@@ -597,12 +595,11 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			return -ENOSPC;
 		}
 		snapshot->static_segment_count = (uint8_t)state->world.granular.boundary_count;
-		snapshot->granular_particle_count = (uint8_t)state->world.granular.particle_count;
+		snapshot->granular_particle_count = state->world.granular.particle_count;
 		snapshot->granular_particle_radius =
 			(uint8_t)fixed_to_pixel(state->world.granular.particle_radius);
 		snapshot->granular_lower_particle_count =
-			(uint8_t)picosystem_granular_world_lower_particle_count(
-				&state->world.granular);
+			picosystem_granular_world_lower_particle_count(&state->world.granular);
 		for (uint16_t index = 0U; index < snapshot->static_segment_count; ++index) {
 			const struct picosystem_granular_boundary *const boundary =
 				&state->world.granular.boundaries[index];

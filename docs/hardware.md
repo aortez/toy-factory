@@ -53,28 +53,34 @@ isolate.
 
 ## Current Hourglass validation
 
-The recommended 62.5 MHz PL022/DMA image runs a deterministic 192-grain
+The recommended 62.5 MHz PL022/DMA image runs a deterministic 320-grain
 Hourglass at an exact 60 Hz simulation cadence and presents complete frames at
-about 30 fps. Its counter-bearing isolated 1,000-tick replay averaged 10.180
-ms, peaked at 10.811 ms, and recorded no 60 Hz violations. The counter-free
-production path sustained 60.0 Hz under concurrent rendering with no skipped or
-over-budget updates across 23,601 ticks; physics averaged 10.860 ms and peaked
-at 14.573 ms. Presentation held 29.8 fps.
+about 30 fps. Its isolated 1,000-tick replay averaged 12.568 ms and peaked at
+13.118 ms. A 12,837-tick live window held 60.0 Hz with zero skipped ticks, one
+over-budget update, and backlog two; physics averaged 12.799 ms and peaked at
+16.453 ms. The same firmware supports a controlled 384-grain stretch build.
+That build's isolated replay
+averaged 15.037 ms, peaked at 15.777 ms, and recorded no 60 Hz violations. A
+concurrent 2,013-update window had no skipped ticks and backlog never exceeded
+one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
+updates crossed the 16.667 ms budget. The 320-grain population remains normal
+to preserve headroom for additional gameplay.
 
-The image uses 251,276 bytes of the 255 KiB Zephyr RAM region and 236,060 bytes
-of flash, leaving 9,844 bytes of linker RAM plus the separately reserved 8 KiB
-core-1 mailbox/stack area. The conservative image uses 221,276 bytes of Zephyr
-RAM and 230,348 bytes of flash. The immutable render snapshot is 856 bytes.
-The tagged game-world and snapshot unions permit the normal 192-grain scene
-without allocating inactive scene payloads. Full results are in the
-[Hourglass report](../benchmarks/hourglass/README.md).
+The image uses 251,836 bytes of the 255 KiB Zephyr RAM region and 236,080 bytes
+of flash, leaving 9,284 bytes of linker RAM plus the separately reserved 8 KiB
+core-1 mailbox/stack area. The conservative image uses 221,820 bytes of Zephyr
+RAM and 230,352 bytes of flash. The fixed granular capacity is 512 particles,
+the immutable render snapshot is 1,128 bytes, and the tagged game-world and
+snapshot unions avoid allocating inactive scene alternatives. Full results are
+in the [Hourglass report](../benchmarks/hourglass/README.md).
 
-Exact USB-controlled replay reproduced tick 360 at hash `20b82113` and
-framebuffer CRC-32 `cecc86d5` after a directional/flip sequence. A 600-tick
-neutral drain reached hash `f9de5870` and CRC-32 `ef323e84`. A paused core-1
-verification render produced CRC-32 `33aa52af` in 9.654 ms and restored the
-original framebuffer. Physical D-pad gravity tilt, X flip, Y reset, A redraw,
-and B tone behavior were also exercised on the PIM559.
+Native tests retain exact replay and complete-drain checks for the 96-, 192-,
+320-, and 384-grain packings. Physical D-pad gravity tilt, X flip, Y reset, A
+redraw, and B tone behavior were also exercised on the PIM559.
+
+Exact USB-controlled replay reproduced tick 360 at hash `a0919f8b` and
+framebuffer CRC-32 `41e4cdd1` after a directional/flip sequence. A 600-tick
+neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
 
 ## USB power and charging status
 
@@ -178,7 +184,7 @@ three updates and 10,000 ticks for 60 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes an 856-byte immutable snapshot
+Simulation uses Q16.16 positions and publishes a 1,128-byte immutable snapshot
 of up to 12 circle, oriented-box, or capsule bodies, eight physical static
 segments, 16 render-only guide segments, two ropes with up to 12 particles
 each, eight render records each for distance and revolute joints, and one

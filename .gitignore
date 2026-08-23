@@ -4,6 +4,7 @@
 /build-pl022-dma/
 /build-render-profile-*/
 /build-investigation-*/
+/build-hourglass-*/
 /artifacts/
 /.cache/
 /.west/

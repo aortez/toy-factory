@@ -42,9 +42,10 @@
 #define GRANULAR_MAX_BOUNDARY_CORRECTION   PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
 #define GRANULAR_MAX_COORDINATE            PICOSYSTEM_PHYSICS_FIXED_FROM_INT(239)
 #define GRANULAR_BOUNDARY_SLOP             PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
-#define GRANULAR_PAIR_NORMAL_FRACTION_BITS 12U
-#define GRANULAR_PAIR_NORMAL_SCALE         (INT32_C(1) << GRANULAR_PAIR_NORMAL_FRACTION_BITS)
-#define GRANULAR_PAIR_NORMAL_TO_FIXED      (PICOSYSTEM_PHYSICS_FIXED_ONE / GRANULAR_PAIR_NORMAL_SCALE)
+#define GRANULAR_PAIR_LENGTH_WEIGHT_SCALE  UINT32_C(4096)
+#define GRANULAR_PAIR_SMALL_RADIAL_SCALE   UINT32_C(8192)
+#define GRANULAR_PAIR_LARGE_RADIAL_SCALE   UINT32_C(4096)
+#define GRANULAR_PAIR_SMALL_DIAMETER       PICOSYSTEM_PHYSICS_FIXED_FROM_INT(4)
 #define GRANULAR_PAIR_SQUARED_LENGTH_LIMIT (UINT64_C(1) << 38U)
 #define GRANULAR_HASH_COMPATIBILITY_WORDS  4U
 #define FNV1A_OFFSET_BASIS                 UINT32_C(2166136261)
@@ -80,13 +81,43 @@ static void build_grid_boundary_masks(struct picosystem_granular_world *world);
 
 _Static_assert((PICOSYSTEM_GRANULAR_MAX_PARTICLES % 32U) == 0U,
 	       "granular particle capacity must fill complete mask words");
+_Static_assert(PICOSYSTEM_GRANULAR_MAX_BOUNDARIES <= 8U,
+	       "granular boundary masks must fit one byte");
+_Static_assert(PICOSYSTEM_GRANULAR_MAX_PARTICLES < PICOSYSTEM_GRANULAR_GRID_EMPTY,
+	       "granular particle indices must not equal the empty-grid sentinel");
 _Static_assert(GRANULAR_HASH_COMPATIBILITY_WORDS <= (PICOSYSTEM_GRANULAR_MAX_PARTICLES / 32U),
 	       "hash compatibility words must fit granular mask storage");
 _Static_assert(((uint64_t)GRANULAR_MAX_DIAMETER * GRANULAR_MAX_DIAMETER) <=
 		       GRANULAR_PAIR_SQUARED_LENGTH_LIMIT,
-	       "granular contact square-root bound must cover the maximum diameter");
-_Static_assert((int64_t)GRANULAR_PAIR_NORMAL_SCALE *(GRANULAR_MAX_DIAMETER / 2) <= INT32_MAX,
-	       "granular Q12 correction product must fit int32_t");
+	       "granular distance-test bound must cover the maximum diameter");
+_Static_assert((uint64_t)GRANULAR_MAX_DIAMETER *GRANULAR_PAIR_LENGTH_WEIGHT_SCALE <= UINT32_MAX,
+	       "granular length projections must fit uint32_t");
+_Static_assert(((int64_t)GRANULAR_PAIR_SMALL_RADIAL_SCALE * (GRANULAR_PAIR_SMALL_DIAMETER / 2)) +
+			       GRANULAR_PAIR_SMALL_DIAMETER <=
+		       INT32_MAX,
+	       "small-grain radial correction products must fit int32_t");
+_Static_assert(((int64_t)GRANULAR_PAIR_LARGE_RADIAL_SCALE * (GRANULAR_MAX_DIAMETER / 2)) +
+			       GRANULAR_MAX_DIAMETER <=
+		       INT32_MAX,
+	       "large-grain radial correction products must fit int32_t");
+_Static_assert((UINT32_C(4060) * 4060U) + (UINT32_C(534) * 534U) <=
+		       (GRANULAR_PAIR_LENGTH_WEIGHT_SCALE * GRANULAR_PAIR_LENGTH_WEIGHT_SCALE),
+	       "7.5-degree length projection must remain inside the unit circle");
+_Static_assert((UINT32_C(3956) * 3956U) + (UINT32_C(1060) * 1060U) <=
+		       (GRANULAR_PAIR_LENGTH_WEIGHT_SCALE * GRANULAR_PAIR_LENGTH_WEIGHT_SCALE),
+	       "15-degree length projection must remain inside the unit circle");
+_Static_assert((UINT32_C(3784) * 3784U) + (UINT32_C(1567) * 1567U) <=
+		       (GRANULAR_PAIR_LENGTH_WEIGHT_SCALE * GRANULAR_PAIR_LENGTH_WEIGHT_SCALE),
+	       "22.5-degree length projection must remain inside the unit circle");
+_Static_assert((UINT32_C(3547) * 3547U) + (UINT32_C(2048) * 2048U) <=
+		       (GRANULAR_PAIR_LENGTH_WEIGHT_SCALE * GRANULAR_PAIR_LENGTH_WEIGHT_SCALE),
+	       "30-degree length projection must remain inside the unit circle");
+_Static_assert((UINT32_C(3249) * 3249U) + (UINT32_C(2493) * 2493U) <=
+		       (GRANULAR_PAIR_LENGTH_WEIGHT_SCALE * GRANULAR_PAIR_LENGTH_WEIGHT_SCALE),
+	       "37.5-degree length projection must remain inside the unit circle");
+_Static_assert((UINT32_C(2896) * 2896U) + (UINT32_C(2896) * 2896U) <=
+		       (GRANULAR_PAIR_LENGTH_WEIGHT_SCALE * GRANULAR_PAIR_LENGTH_WEIGHT_SCALE),
+	       "45-degree length projection must remain inside the unit circle");
 
 static bool profiler_is_active(const struct granular_step_profiler *profiler)
 {
@@ -181,63 +212,70 @@ static uint32_t integer_square_root(uint64_t value)
 	return integer_square_root_from_bit(value, UINT64_C(1) << 62U);
 }
 
-static PICOSYSTEM_GRANULAR_NOINLINE uint32_t integer_square_root_bounded(uint64_t value)
+static PICOSYSTEM_GRANULAR_ALWAYS_INLINE uint32_t project_contact_length(uint32_t maximum_component,
+									 uint32_t minimum_component,
+									 uint32_t maximum_weight,
+									 uint32_t minimum_weight)
 {
-	uint32_t remainder = 0U;
-	uint32_t root = 0U;
-	const uint32_t high = (uint32_t)(value >> 32U);
-	const uint32_t low = (uint32_t)value;
+	return ((maximum_component * maximum_weight) + (minimum_component * minimum_weight)) /
+	       GRANULAR_PAIR_LENGTH_WEIGHT_SCALE;
+}
 
-	/* Contact length squared is below 2^38. Consume its 19 base-four digits
-	 * from most to least significant; root and remainder stay within 20 bits.
-	 */
-	for (int32_t shift = 4; shift >= 0; shift -= 2) {
-		remainder = (remainder << 2U) | ((high >> shift) & UINT32_C(3));
-		root <<= 1U;
-		const uint32_t trial = (root << 1U) | UINT32_C(1);
-		if (remainder >= trial) {
-			remainder -= trial;
-			++root;
-		}
+static PICOSYSTEM_GRANULAR_NOINLINE uint32_t particle_contact_length(uint32_t absolute_x,
+								     uint32_t absolute_y)
+{
+	const uint32_t maximum_component = (absolute_x >= absolute_y) ? absolute_x : absolute_y;
+	const uint32_t minimum_component = (absolute_x >= absolute_y) ? absolute_y : absolute_x;
+	uint32_t length = maximum_component;
+	uint32_t candidate =
+		project_contact_length(maximum_component, minimum_component, 4060U, 534U);
+	if (candidate > length) {
+		length = candidate;
 	}
-	for (int32_t shift = 30; shift >= 0; shift -= 2) {
-		remainder = (remainder << 2U) | ((low >> shift) & UINT32_C(3));
-		root <<= 1U;
-		const uint32_t trial = (root << 1U) | UINT32_C(1);
-		if (remainder >= trial) {
-			remainder -= trial;
-			++root;
-		}
+	candidate = project_contact_length(maximum_component, minimum_component, 3956U, 1060U);
+	if (candidate > length) {
+		length = candidate;
 	}
-	return root;
+	candidate = project_contact_length(maximum_component, minimum_component, 3784U, 1567U);
+	if (candidate > length) {
+		length = candidate;
+	}
+	candidate = project_contact_length(maximum_component, minimum_component, 3547U, 2048U);
+	if (candidate > length) {
+		length = candidate;
+	}
+	candidate = project_contact_length(maximum_component, minimum_component, 3249U, 2493U);
+	if (candidate > length) {
+		length = candidate;
+	}
+	candidate = project_contact_length(maximum_component, minimum_component, 2896U, 2896U);
+	if (candidate > length) {
+		length = candidate;
+	}
+	return length;
 }
 
 #if defined(PICOSYSTEM_GRANULAR_WORLD_TEST)
-uint32_t picosystem_granular_test_integer_square_root(uint64_t value)
+uint32_t picosystem_granular_test_particle_contact_length(uint32_t absolute_x, uint32_t absolute_y)
 {
-	return integer_square_root_bounded(value);
+	return particle_contact_length(absolute_x, absolute_y);
 }
 #endif
 
-static void divide_pair_s32(int32_t first_dividend, int32_t second_dividend, int32_t divisor,
-			    int32_t *first_quotient, int32_t *second_quotient)
+static uint32_t divide_u32(uint32_t dividend, uint32_t divisor)
 {
 #if defined(CONFIG_SOC_SERIES_RP2040)
-	/* Each RP2040 core owns a divider. Masking this core's interrupts across the
-	 * two operations protects its divider state while amortizing the generic
-	 * wrapper's state check over both vector components.
+	/* Each RP2040 core owns a divider. Masking this core's interrupts protects
+	 * its divider state from interrupt handlers using the same peripheral.
 	 */
 	const unsigned int key = irq_lock();
-	hw_divider_divmod_s32_start(first_dividend, divisor);
+	hw_divider_divmod_u32_start(dividend, divisor);
 	hw_divider_pause();
-	*first_quotient = (int32_t)sio_hw->div_quotient;
-	hw_divider_divmod_s32_start(second_dividend, divisor);
-	hw_divider_pause();
-	*second_quotient = (int32_t)sio_hw->div_quotient;
+	const uint32_t quotient = sio_hw->div_quotient;
 	irq_unlock(key);
+	return quotient;
 #else
-	*first_quotient = first_dividend / divisor;
-	*second_quotient = second_dividend / divisor;
+	return dividend / divisor;
 #endif
 }
 
@@ -256,35 +294,6 @@ static picosystem_physics_fixed_t normalize_vector(const struct picosystem_physi
 	normal->y =
 		(picosystem_physics_fixed_t)(((int64_t)vector->y * PICOSYSTEM_PHYSICS_FIXED_ONE) /
 					     length);
-	return (picosystem_physics_fixed_t)length;
-}
-
-static picosystem_physics_fixed_t
-normalize_particle_delta(const struct picosystem_physics_vector *delta, uint64_t length_squared,
-			 const struct picosystem_physics_vector *fallback,
-			 struct picosystem_physics_vector *normal_q12)
-{
-	/* Pair overlap guarantees length squared is below maximum diameter squared. */
-	const uint32_t length = integer_square_root_bounded(length_squared);
-	if (length == 0U) {
-		normal_q12->x = fallback->x / GRANULAR_PAIR_NORMAL_TO_FIXED;
-		normal_q12->y = fallback->y / GRANULAR_PAIR_NORMAL_TO_FIXED;
-		return 0;
-	}
-
-	/* Contact deltas are strictly shorter than the maximum eight-pixel diameter,
-	 * so scaling them to Q12 fits int32_t. Keeping this hot quotient 32-bit lets
-	 * the RP2040 hardware divider replace two software 64-bit divisions per
-	 * contact while retaining sub-pixel normal precision.
-	 */
-	const int32_t denominator = (int32_t)length;
-	int32_t quotient_x;
-	int32_t quotient_y;
-	divide_pair_s32(delta->x * GRANULAR_PAIR_NORMAL_SCALE,
-			delta->y * GRANULAR_PAIR_NORMAL_SCALE, denominator, &quotient_x,
-			&quotient_y);
-	normal_q12->x = quotient_x;
-	normal_q12->y = quotient_y;
 	return (picosystem_physics_fixed_t)length;
 }
 
@@ -623,6 +632,21 @@ constrain_particle_to_boundary(struct picosystem_granular_particle *particle,
 	return GRANULAR_BOUNDARY_CONTACT;
 }
 
+static uint16_t first_set_boundary_index(uint8_t mask)
+{
+	/* A small branch tree is cheaper on ARMv6-M than a generic count-trailing-zeros helper. */
+	if ((mask & UINT8_C(0x0f)) != 0U) {
+		if ((mask & UINT8_C(0x03)) != 0U) {
+			return (uint16_t)(((mask & UINT8_C(0x01)) != 0U) ? 0U : 1U);
+		}
+		return (uint16_t)(((mask & UINT8_C(0x04)) != 0U) ? 2U : 3U);
+	}
+	if ((mask & UINT8_C(0x30)) != 0U) {
+		return (uint16_t)(((mask & UINT8_C(0x10)) != 0U) ? 4U : 5U);
+	}
+	return (uint16_t)(((mask & UINT8_C(0x40)) != 0U) ? 6U : 7U);
+}
+
 /* Each optional-counter loop is inlined once into a compact normal wrapper and once into its
  * profiled wrapper. The normal machine code therefore has no work-pointer branches without
  * duplicating the loop at every solver call site.
@@ -632,18 +656,20 @@ constrain_particles_to_boundaries_internal(struct picosystem_granular_world *wor
 					   uint16_t iteration_count,
 					   struct picosystem_granular_work_counters *work)
 {
+	const uint8_t valid_boundary_mask =
+		(uint8_t)((UINT16_C(1) << world->boundary_count) - UINT16_C(1));
 	for (uint16_t iteration = 0U; iteration < iteration_count; ++iteration) {
 		for (uint16_t particle_index = 0U; particle_index < world->particle_count;
 		     ++particle_index) {
 			struct picosystem_granular_particle *const particle =
 				&world->particles[particle_index];
 			uint8_t boundary_mask =
-				world->grid_boundary_masks[particle_grid_cell(particle)];
-			for (uint16_t boundary_index = 0U; boundary_index < world->boundary_count;
-			     ++boundary_index) {
-				if ((boundary_mask & (UINT8_C(1) << boundary_index)) == 0U) {
-					continue;
-				}
+				world->grid_boundary_masks[particle_grid_cell(particle)] &
+				valid_boundary_mask;
+			while (boundary_mask != 0U) {
+				const uint16_t boundary_index =
+					first_set_boundary_index(boundary_mask);
+				boundary_mask &= (uint8_t) ~(UINT8_C(1) << boundary_index);
 				const struct picosystem_granular_boundary *const boundary =
 					&world->boundaries[boundary_index];
 				if ((particle->position.y < boundary->active_minimum_y) ||
@@ -660,9 +686,14 @@ constrain_particles_to_boundaries_internal(struct picosystem_granular_world *wor
 				    (result == GRANULAR_BOUNDARY_COARSE_REJECTION)) {
 					++work->coarse_boundary_rejection_count;
 				} else if (result == GRANULAR_BOUNDARY_CONTACT) {
-					boundary_mask =
+					const uint8_t updated_mask =
 						world->grid_boundary_masks[particle_grid_cell(
-							particle)];
+							particle)] &
+						valid_boundary_mask;
+					const uint16_t processed_mask =
+						(uint16_t)((UINT16_C(1) << (boundary_index + 1U)) -
+							   UINT16_C(1));
+					boundary_mask = updated_mask & (uint8_t)~processed_mask;
 					if (work != NULL) {
 						++work->boundary_contact_count;
 						++work->position_correction_count;
@@ -714,16 +745,24 @@ static uint16_t particle_grid_cell(const struct picosystem_granular_particle *pa
 }
 
 static PICOSYSTEM_GRANULAR_ALWAYS_INLINE void
-build_grid_internal(struct picosystem_granular_world *world,
+build_grid_internal(struct picosystem_granular_world *world, bool reverse,
 		    struct picosystem_granular_work_counters *work)
 {
-	memset(world->grid_heads, PICOSYSTEM_GRANULAR_GRID_EMPTY, sizeof(world->grid_heads));
-	memset(world->grid_next, PICOSYSTEM_GRANULAR_GRID_EMPTY, sizeof(world->grid_next));
-	for (uint16_t index = 0U; index < world->particle_count; ++index) {
+	/* Every active particle rewrites its link below, so only previously occupied heads need
+	 * clearing between builds.
+	 */
+	for (uint16_t occupied = 0U; occupied < world->occupied_grid_cell_count; ++occupied) {
+		world->grid_heads[world->occupied_grid_cells[occupied]] =
+			PICOSYSTEM_GRANULAR_GRID_EMPTY;
+	}
+	world->occupied_grid_cell_count = 0U;
+	for (uint16_t visit = 0U; visit < world->particle_count; ++visit) {
+		const uint16_t index =
+			reverse ? (uint16_t)(world->particle_count - visit - 1U) : visit;
 		const uint16_t cell = particle_grid_cell(&world->particles[index]);
 		if (work != NULL) {
 			uint32_t occupancy = 1U;
-			for (uint8_t other = world->grid_heads[cell];
+			for (uint16_t other = world->grid_heads[cell];
 			     other != PICOSYSTEM_GRANULAR_GRID_EMPTY;
 			     other = world->grid_next[other]) {
 				++occupancy;
@@ -735,20 +774,24 @@ build_grid_internal(struct picosystem_granular_world *world,
 				work->maximum_grid_cell_occupancy = occupancy;
 			}
 		}
+		if (world->grid_heads[cell] == PICOSYSTEM_GRANULAR_GRID_EMPTY) {
+			world->occupied_grid_cells[world->occupied_grid_cell_count] = cell;
+			++world->occupied_grid_cell_count;
+		}
 		world->grid_next[index] = world->grid_heads[cell];
-		world->grid_heads[cell] = (uint8_t)index;
+		world->grid_heads[cell] = index;
 	}
 }
 
-static void build_grid(struct picosystem_granular_world *world)
+static void build_grid(struct picosystem_granular_world *world, bool reverse)
 {
-	build_grid_internal(world, NULL);
+	build_grid_internal(world, reverse, NULL);
 }
 
-static void build_grid_profiled(struct picosystem_granular_world *world,
+static void build_grid_profiled(struct picosystem_granular_world *world, bool reverse,
 				struct picosystem_granular_work_counters *work)
 {
-	build_grid_internal(world, work);
+	build_grid_internal(world, reverse, work);
 }
 
 static struct picosystem_physics_vector pair_fallback_normal(uint16_t left, uint16_t right)
@@ -793,24 +836,78 @@ static enum granular_pair_result solve_particle_pair(struct picosystem_granular_
 		return GRANULAR_PAIR_DISTANCE_REJECTION;
 	}
 
-	struct picosystem_physics_vector normal_q12;
-	const struct picosystem_physics_vector fallback =
-		pair_fallback_normal(left_index, right_index);
-	const picosystem_physics_fixed_t distance =
-		normalize_particle_delta(&delta, length_squared, &fallback, &normal_q12);
-	const picosystem_physics_fixed_t correction = (diameter - distance + 1) / 2;
-	/* The Q12 normal and fixed-point correction have a bounded 32-bit product.
-	 * This is exactly the prior Q16 multiply with its common factor cancelled.
+	/* The maximum of seven unit-vector projections is an inscribed-polygon
+	 * length: conservative, deterministic, and within 0.28% of Euclidean.
 	 */
-	const picosystem_physics_fixed_t correction_x =
-		(normal_q12.x * correction) / GRANULAR_PAIR_NORMAL_SCALE;
-	const picosystem_physics_fixed_t correction_y =
-		(normal_q12.y * correction) / GRANULAR_PAIR_NORMAL_SCALE;
+	const picosystem_physics_fixed_t distance =
+		(picosystem_physics_fixed_t)particle_contact_length(absolute_x, absolute_y);
+	const picosystem_physics_fixed_t correction = (diameter - distance + 1) / 2;
+	picosystem_physics_fixed_t correction_x;
+	picosystem_physics_fixed_t correction_y;
+	if (distance == 0) {
+		const struct picosystem_physics_vector fallback =
+			pair_fallback_normal(left_index, right_index);
+		correction_x = (fallback.x / PICOSYSTEM_PHYSICS_FIXED_ONE) * correction;
+		correction_y = (fallback.y / PICOSYSTEM_PHYSICS_FIXED_ONE) * correction;
+	} else {
+		/* Quantize the shared radial correction instead of both normal
+		 * components. Component magnitude is bounded by distance, so these
+		 * products fit int32_t while one hardware division serves both axes.
+		 */
+		const bool small_grain = diameter <= GRANULAR_PAIR_SMALL_DIAMETER;
+		const uint32_t radial_scale = small_grain ? GRANULAR_PAIR_SMALL_RADIAL_SCALE
+							  : GRANULAR_PAIR_LARGE_RADIAL_SCALE;
+		const uint32_t scaled_correction = (uint32_t)correction * radial_scale;
+		const uint32_t correction_scale =
+			divide_u32(scaled_correction + (uint32_t)distance - 1U, (uint32_t)distance);
+		if (small_grain) {
+			correction_x = (delta.x * (int32_t)correction_scale) /
+				       (int32_t)GRANULAR_PAIR_SMALL_RADIAL_SCALE;
+			correction_y = (delta.y * (int32_t)correction_scale) /
+				       (int32_t)GRANULAR_PAIR_SMALL_RADIAL_SCALE;
+		} else {
+			correction_x = (delta.x * (int32_t)correction_scale) /
+				       (int32_t)GRANULAR_PAIR_LARGE_RADIAL_SCALE;
+			correction_y = (delta.y * (int32_t)correction_scale) /
+				       (int32_t)GRANULAR_PAIR_LARGE_RADIAL_SCALE;
+		}
+	}
 	left->position.x -= correction_x;
 	left->position.y -= correction_y;
 	right->position.x += correction_x;
 	right->position.y += correction_y;
 	return GRANULAR_PAIR_CONTACT;
+}
+
+static PICOSYSTEM_GRANULAR_ALWAYS_INLINE void
+solve_and_count_particle_pair(struct picosystem_granular_world *world, uint16_t left_index,
+			      uint16_t right_index, picosystem_physics_fixed_t diameter,
+			      uint64_t diameter_squared,
+			      struct picosystem_granular_work_counters *work)
+{
+	const enum granular_pair_result result =
+		solve_particle_pair(world, left_index, right_index, diameter, diameter_squared);
+	if (work == NULL) {
+		return;
+	}
+
+	++work->candidate_pair_count;
+	switch (result) {
+	case GRANULAR_PAIR_AXIS_REJECTION:
+		++work->axis_rejection_count;
+		break;
+	case GRANULAR_PAIR_DIAGONAL_REJECTION:
+		++work->diagonal_rejection_count;
+		break;
+	case GRANULAR_PAIR_DISTANCE_REJECTION:
+		++work->distance_test_count;
+		break;
+	case GRANULAR_PAIR_CONTACT:
+		++work->distance_test_count;
+		++work->contact_count;
+		++work->position_correction_count;
+		break;
+	}
 }
 
 static PICOSYSTEM_GRANULAR_ALWAYS_INLINE void
@@ -823,64 +920,51 @@ solve_grid_pairs_internal(struct picosystem_granular_world *world, bool reverse,
 	}
 	const picosystem_physics_fixed_t diameter = world->particle_radius * 2;
 	const uint64_t diameter_squared = (uint64_t)((int64_t)diameter * diameter);
-	for (uint16_t visit = 0U; visit < world->particle_count; ++visit) {
-		const uint16_t particle_index =
-			reverse ? (uint16_t)(world->particle_count - visit - 1U) : visit;
-		const uint16_t cell = particle_grid_cell(&world->particles[particle_index]);
+	const int32_t direction = reverse ? -1 : 1;
+	for (uint16_t occupied = 0U; occupied < world->occupied_grid_cell_count; ++occupied) {
+		const uint16_t cell = world->occupied_grid_cells[occupied];
 		const uint16_t center_row = cell / PICOSYSTEM_GRANULAR_GRID_COLUMNS;
 		const uint16_t center_column = cell % PICOSYSTEM_GRANULAR_GRID_COLUMNS;
-		const uint16_t minimum_row = (center_row == 0U) ? 0U : (uint16_t)(center_row - 1U);
-		const uint16_t maximum_row = (center_row + 1U < PICOSYSTEM_GRANULAR_GRID_ROWS)
-						     ? (uint16_t)(center_row + 1U)
-						     : PICOSYSTEM_GRANULAR_GRID_ROWS - 1U;
-		const uint16_t minimum_column =
-			(center_column == 0U) ? 0U : (uint16_t)(center_column - 1U);
-		const uint16_t maximum_column =
-			(center_column + 1U < PICOSYSTEM_GRANULAR_GRID_COLUMNS)
-				? (uint16_t)(center_column + 1U)
-				: PICOSYSTEM_GRANULAR_GRID_COLUMNS - 1U;
 
-		for (uint16_t row_visit = 0U; row_visit <= (maximum_row - minimum_row);
-		     ++row_visit) {
-			const uint16_t row =
-				reverse ? maximum_row - row_visit : minimum_row + row_visit;
-			for (uint16_t column_visit = 0U;
-			     column_visit <= (maximum_column - minimum_column); ++column_visit) {
-				const uint16_t column = reverse ? maximum_column - column_visit
-								: minimum_column + column_visit;
+		for (uint16_t left = world->grid_heads[cell];
+		     left != PICOSYSTEM_GRANULAR_GRID_EMPTY; left = world->grid_next[left]) {
+			for (uint16_t right = world->grid_next[left];
+			     right != PICOSYSTEM_GRANULAR_GRID_EMPTY;
+			     right = world->grid_next[right]) {
+				solve_and_count_particle_pair(world, left, right, diameter,
+							      diameter_squared, work);
+			}
+		}
+
+		for (int32_t row_step = 0; row_step <= 1; ++row_step) {
+			const int32_t neighbor_row = (int32_t)center_row + (direction * row_step);
+			if ((neighbor_row < 0) ||
+			    (neighbor_row >= (int32_t)PICOSYSTEM_GRANULAR_GRID_ROWS)) {
+				continue;
+			}
+			const int32_t first_column_step = (row_step == 0) ? 1 : -1;
+			for (int32_t column_step = first_column_step; column_step <= 1;
+			     ++column_step) {
+				const int32_t neighbor_column =
+					(int32_t)center_column + (direction * column_step);
+				if ((neighbor_column < 0) ||
+				    (neighbor_column >=
+				     (int32_t)PICOSYSTEM_GRANULAR_GRID_COLUMNS)) {
+					continue;
+				}
 				const uint16_t neighbor_cell =
-					(uint16_t)((row * PICOSYSTEM_GRANULAR_GRID_COLUMNS) +
-						   column);
-				for (uint8_t other = world->grid_heads[neighbor_cell];
-				     other != PICOSYSTEM_GRANULAR_GRID_EMPTY;
-				     other = world->grid_next[other]) {
-					const bool unique = reverse ? (other < particle_index)
-								    : (other > particle_index);
-					if (unique) {
-						const enum granular_pair_result result =
-							solve_particle_pair(world, particle_index,
-									    other, diameter,
-									    diameter_squared);
-						if (work == NULL) {
-							continue;
-						}
-						++work->candidate_pair_count;
-						switch (result) {
-						case GRANULAR_PAIR_AXIS_REJECTION:
-							++work->axis_rejection_count;
-							break;
-						case GRANULAR_PAIR_DIAGONAL_REJECTION:
-							++work->diagonal_rejection_count;
-							break;
-						case GRANULAR_PAIR_DISTANCE_REJECTION:
-							++work->distance_test_count;
-							break;
-						case GRANULAR_PAIR_CONTACT:
-							++work->distance_test_count;
-							++work->contact_count;
-							++work->position_correction_count;
-							break;
-						}
+					(uint16_t)((neighbor_row *
+						    (int32_t)PICOSYSTEM_GRANULAR_GRID_COLUMNS) +
+						   neighbor_column);
+				for (uint16_t left = world->grid_heads[cell];
+				     left != PICOSYSTEM_GRANULAR_GRID_EMPTY;
+				     left = world->grid_next[left]) {
+					for (uint16_t right = world->grid_heads[neighbor_cell];
+					     right != PICOSYSTEM_GRANULAR_GRID_EMPTY;
+					     right = world->grid_next[right]) {
+						solve_and_count_particle_pair(
+							world, left, right, diameter,
+							diameter_squared, work);
 					}
 				}
 			}
@@ -982,12 +1066,13 @@ granular_world_step_counted(struct picosystem_granular_world *world,
 	for (uint16_t iteration = 0U; iteration < PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS;
 	     ++iteration) {
 		section_start = profiler_section_begin(&profiler);
-		build_grid_profiled(world, work);
+		const bool reverse = (iteration & 1U) != 0U;
+		build_grid_profiled(world, reverse, work);
 		profiler_section_end(&profiler, PICOSYSTEM_GRANULAR_PROFILE_GRID_BUILD,
 				     section_start);
 
 		section_start = profiler_section_begin(&profiler);
-		solve_grid_pairs_profiled(world, (iteration & 1U) != 0U, work);
+		solve_grid_pairs_profiled(world, reverse, work);
 		profiler_section_end(&profiler, PICOSYSTEM_GRANULAR_PROFILE_PAIR_SOLVE,
 				     section_start);
 
@@ -1042,8 +1127,9 @@ picosystem_granular_world_step(struct picosystem_granular_world *world,
 	constrain_particles_to_boundaries(world, 1U);
 	for (uint16_t iteration = 0U; iteration < PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS;
 	     ++iteration) {
-		build_grid(world);
-		solve_grid_pairs(world, (iteration & 1U) != 0U);
+		const bool reverse = (iteration & 1U) != 0U;
+		build_grid(world, reverse);
+		solve_grid_pairs(world, reverse);
 		constrain_particles_to_boundaries(world, 1U);
 	}
 	/* The extra pass converges cap/slope corner contacts after the final pair solve. */

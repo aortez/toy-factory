@@ -12,21 +12,22 @@ contracts defined here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 251,276 bytes of the linker's 255 KiB Zephyr
-RAM region and 236,060 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 251,836 bytes of the linker's 255 KiB Zephyr
+RAM region and 236,080 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
 rigid physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, two
-12-particle ropes, and bounded pair-event storage. The independent 192-particle
-granular world is 7,540 bytes, including its 40 x 48 grid heads, per-cell
-boundary masks, and particle links. The rigid and granular alternatives share
+12-particle ropes, and bounded pair-event storage. The independent 512-particle
+granular world is 16,480 bytes, including its 40 x 48 16-bit grid heads,
+per-cell boundary masks, particle links, and sparse occupied-cell list. The
+rigid and granular alternatives share
 one tagged game-world union. The serialized A/B
 workspace is 33,360 bytes, is inactive during normal play, and
 avoids placing a second world on a thread stack. The profile
 command uses a 5,120-byte shell stack and most recently reached 4,184 bytes. The
-856-byte render snapshot leaves measured main/render stack use at 2,860 and
-3,196 bytes; both stacks are bounded at 5,120 bytes. The linked image retains
-9,844 bytes of Zephyr RAM headroom. The fast build also places
+1,128-byte render snapshot leaves measured main/render stack use at 3,132 and
+3,740 bytes; both stacks are bounded at 5,120 bytes. The linked image retains
+9,284 bytes of Zephyr RAM headroom. The fast build also places
 the rigid-physics hot path in SRAM and keeps the collision traversal in a separate,
 bounded stack frame; this avoids core-0/core-1 XIP contention while the second
 core rasterizes a full scene. Both builds route compiler integer division
@@ -143,10 +144,10 @@ remain coherent even when presentation is deliberately slower than physics.
 ## Granular pipeline
 
 The Hourglass is the first separate simulation backend built on the same game
-ownership and snapshot boundary. It initializes 192 two-pixel-radius grains in
-the upper chamber without allocation; a benchmark fragment retains the earlier
-96-grain population. Six inward-facing
-half-plane segments form the two chamber caps and four sloped walls. A
+ownership and snapshot boundary. It normally initializes 320 two-pixel-radius
+grains in the upper chamber without allocation. Benchmark fragments retain the
+earlier 96- and 192-grain populations and a 384-grain stretch workload. Six
+inward-facing half-plane segments form the two chamber caps and four sloped walls. A
 three-pixel deadband around the neck turns each grain's upper/lower state into
 a stable crossing count.
 
@@ -156,19 +157,25 @@ Each fixed update performs these bounded phases:
    clamping each grain to four pixels per tick;
 2. project grains inside the active boundary planes and remove outward boundary
    velocity with fixed tangent damping;
-3. rebuild a 40 x 48 grid of four-pixel cells using byte-sized heads and links;
-4. solve every unique pair from the surrounding nine cells, alternating forward
-   and reverse traversal across two fixed passes;
+3. clear only the previously occupied cells, then rebuild a 40 x 48 grid of
+   four-pixel cells using 16-bit heads and links;
+4. visit occupied cells and one canonical half of their neighbors, solving
+   every unique pair while alternating forward and reverse order across two
+   fixed passes;
 5. reapply the boundary constraints after each pair pass and once more for
    slope/cap corners; and
 6. update hysteretic neck-passage state and, for an explicit profile, work
    counters.
 
-Coincident particles select a stable index-derived axis. Contact normalization
-uses an exact bounded 32-bit digit square root and a Q12 normal. Two components
-share a short use of the RP2040's per-core hardware divider, and the final
-correction stays in bounded 32-bit arithmetic. The grid reduces candidate work
-but never changes with wall-clock load; solver quality is always two passes.
+Coincident particles select a stable index-derived axis. An exact
+squared-distance test decides contact. The correction length is the maximum of seven fixed-point
+unit-vector projections: an inscribed-polygon approximation that never exceeds
+Euclidean length and differs by at most 0.28% over the bounded contact domain.
+One shared radial scale uses the RP2040's per-core hardware divider; both signed
+components then reduce to constant power-of-two shifts. All intermediate ranges
+are asserted and the final correction stays in bounded 32-bit arithmetic. The
+grid reduces candidate work but never changes with wall-clock load; solver
+quality is always two passes.
 Conservative per-cell masks skip boundaries that cannot reach a cell; edge
 cells test every wall because out-of-grid positions fold into those cells. The
 X action rotates current and previous positions around the configured center
@@ -263,7 +270,7 @@ position corrections, exact/coarse wall work, and grid occupancy. The fixed
 128/512-microsecond histogram reports the longer granular tail through the same
 summary schema. Normal granular gameplay uses a separate counter-free wrapper;
 the explicit profiler always counts work, and a Kconfig diagnostic can opt live
-gameplay back into counter collection. The measured 192-grain results and
+gameplay back into counter collection. The measured 96/192/320/384-grain results and
 placement A/B are in
 [`benchmarks/hourglass`](../benchmarks/hourglass/README.md).
 
@@ -564,8 +571,10 @@ physical D-pad.
 The native suite covers:
 
 - granular configuration and coordinate-range validation without partial
-  mutation, exact capacity rejection, exhaustive bounded-square-root interval
-  endpoints plus 100,000 reference comparisons, separated and coincident contacts,
+  mutation, exact capacity rejection, a wide-link regression beyond particle
+  index 255, exhaustive axes plus sampled and 100,000 randomized comparisons of
+  the bounded contact length against an independent square-root reference,
+  separated, angular-overlap, deep-overlap, and coincident contacts,
   bounded grid work, container projection, passage tracking, exact double-flip,
   6,000-tick Hourglass containment, two complete drains, and stable replay;
 - configuration and one-past-capacity rejection without state mutation;
@@ -739,7 +748,8 @@ are design references rather than code to port.
 
 ## Planned extensions
 
-1. Use the proven 192-grain headroom to explore friction, mixed radii, gates,
+1. Use the normal 320-grain workload and 384-grain stretch evidence to explore
+   friction, mixed radii, gates,
    and richer granular interactions while preserving the fixed 60 Hz contract.
 2. Use reciprocal rope/body coupling and bounded particle collision to explore
    soft-body gameplay.

@@ -37,13 +37,26 @@ config TOY_FACTORY_RIGID_PHYSICS_IN_SRAM
 	  20 KiB of SRAM even when a non-rigid scene is active. Disable this for
 	  controlled XIP measurements or RAM-constrained scenario builds.
 
-config TOY_FACTORY_HOURGLASS_96_GRAIN_BENCHMARK
-	bool "Reduce the Hourglass to 96 grains"
-	default n
+choice TOY_FACTORY_HOURGLASS_POPULATION
+	prompt "Hourglass grain population"
+	default TOY_FACTORY_HOURGLASS_GRAINS_320
 	help
-	  Halve the normal Hourglass population for controlled device profiling.
-	  This variant retains the same solver and rendering settings so timings can
-	  be compared with the normal 192-grain scene.
+	  Select a fixed deterministic packing for normal play or controlled device
+	  profiling. Every population uses the same solver and rendering settings.
+
+config TOY_FACTORY_HOURGLASS_GRAINS_96
+	bool "96 grains (sparse benchmark)"
+
+config TOY_FACTORY_HOURGLASS_GRAINS_192
+	bool "192 grains (previous baseline)"
+
+config TOY_FACTORY_HOURGLASS_GRAINS_320
+	bool "320 grains (normal)"
+
+config TOY_FACTORY_HOURGLASS_GRAINS_384
+	bool "384 grains (stretch benchmark)"
+
+endchoice
 
 config TOY_FACTORY_GRANULAR_PHYSICS_IN_SRAM
 	bool "Copy the granular-physics hot path into SRAM"

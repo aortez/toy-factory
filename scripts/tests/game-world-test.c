@@ -25,6 +25,16 @@
 #define ROPE_BOUNDARY_TOLERANCE       PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 64)
 #define CHAIN_CONVERGENCE_TOLERANCE   PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
 #define ANGULAR_BOUNDARY_TOLERANCE    PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 12)
+#if defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_96)
+#define EXPECTED_HOURGLASS_GRAIN_COUNT 96U
+#elif defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_192)
+#define EXPECTED_HOURGLASS_GRAIN_COUNT 192U
+#elif defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_384)
+#define EXPECTED_HOURGLASS_GRAIN_COUNT 384U
+#else
+#define EXPECTED_HOURGLASS_GRAIN_COUNT 320U
+#endif
+#define EXPECTED_HOURGLASS_DRAIN_COUNT (EXPECTED_HOURGLASS_GRAIN_COUNT - 20U)
 #define CANONICAL_POSSIBLE_PAIR_COUNT                                                              \
 	(((PICOSYSTEM_GAME_BODY_COUNT * (PICOSYSTEM_GAME_BODY_COUNT - 1U)) / 2U) +                 \
 	 (PICOSYSTEM_GAME_BODY_COUNT * PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT) +                     \
@@ -1223,7 +1233,8 @@ static void run_hourglass_neutral_with_unfiltered_reference(struct picosystem_ga
 		struct picosystem_granular_step_profile profile;
 		assert(picosystem_game_world_step_granular_profiled(&unfiltered, &neutral, &clock,
 								    &profile) == 0);
-		assert(profile.clock_read_count == 22U);
+		assert(profile.clock_read_count ==
+		       (10U + (6U * PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS)));
 		assert(profile.work.candidate_pair_count > 0U);
 		assert_grains_inside_hourglass(world);
 		assert_grains_inside_hourglass(&unfiltered);
@@ -1236,7 +1247,7 @@ static void test_hourglass_scene_flow_flip_and_replay(void)
 {
 	struct picosystem_game_world world;
 	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_HOURGLASS) == 0);
-	assert(world.granular.particle_count == 192U);
+	assert(world.granular.particle_count == EXPECTED_HOURGLASS_GRAIN_COUNT);
 	assert(world.granular.boundary_count == 6U);
 	assert(picosystem_game_world_focus_body(&world) != NULL);
 	assert(picosystem_game_world_hash(&world) != 0U);
@@ -1244,24 +1255,25 @@ static void test_hourglass_scene_flow_flip_and_replay(void)
 
 	const struct picosystem_game_world initial = world;
 	assert(picosystem_game_world_flip(&world) == 0);
-	assert(picosystem_granular_world_lower_particle_count(&world.granular) == 192U);
+	assert(picosystem_granular_world_lower_particle_count(&world.granular) ==
+	       EXPECTED_HOURGLASS_GRAIN_COUNT);
 	assert(picosystem_game_world_flip(&world) == 0);
 	assert(picosystem_game_world_hash(&world) == picosystem_game_world_hash(&initial));
 
 	run_hourglass_neutral_with_unfiltered_reference(&world, 3000U);
 	const uint16_t first_lower_count =
 		picosystem_granular_world_lower_particle_count(&world.granular);
-	assert(first_lower_count >= 180U);
+	assert(first_lower_count >= EXPECTED_HOURGLASS_DRAIN_COUNT);
 	assert(world.sensor_entry_count == world.granular.passage_count);
 	assert(world.sensor_entry_count >= first_lower_count);
 
 	assert(picosystem_game_world_flip(&world) == 0);
-	assert(picosystem_granular_world_lower_particle_count(&world.granular) <= 6U);
+	assert(picosystem_granular_world_lower_particle_count(&world.granular) <= 10U);
 	run_hourglass_neutral(&world, 3000U);
 	const uint16_t second_lower_count =
 		picosystem_granular_world_lower_particle_count(&world.granular);
-	assert(second_lower_count >= 180U);
-	assert(world.sensor_entry_count >= 360U);
+	assert(second_lower_count >= EXPECTED_HOURGLASS_DRAIN_COUNT);
+	assert(world.sensor_entry_count >= (2U * EXPECTED_HOURGLASS_DRAIN_COUNT));
 	fprintf(stderr,
 		"hourglass hash=%08x lower=%u/%u passages=%u candidates=%u/%u contacts=%u\n",
 		picosystem_game_world_hash(&world), second_lower_count,

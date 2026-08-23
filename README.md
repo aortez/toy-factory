@@ -14,9 +14,9 @@ path:
 - performs an RGB LED self-test and then mirrors the face buttons;
 - owns one 240 x 240 RGB565 framebuffer and supports both damage-region and
   continuous full-frame presentation;
-- runs a deterministic 192-grain Hourglass at an exact 60 Hz fixed step with
+- runs a deterministic 320-grain Hourglass at an exact 60 Hz fixed step with
   Q16.16 Verlet motion, a fixed two-pass contact solver, six containment planes,
-  and a bounded 40 x 48 uniform grid;
+  and a bounded 40 x 48 uniform grid; the fixed engine capacity is 512 grains;
 - tracks grains crossing the neck, tilts gravity with the D-pad, and rotates the
   complete particle position and velocity state exactly 180 degrees with X;
 - retains the Clockwork and Machine Lab scene builders for rigid-body and
@@ -341,7 +341,7 @@ Hourglass replay to integration, boundaries, grid construction, pair solving,
 passage tracking, and total time while retaining deterministic work totals.
 Pause the live game first, then use
 `make profile-granular GRANULAR_PROFILE_TICKS=1000`. Capacity, placement,
-96/192-grain timing, and optimization results are in the
+96/192/320/384-grain timing, and optimization results are in the
 [Hourglass report](benchmarks/hourglass/README.md).
 
 `display profile` requires a paused simulation and runs deterministic 10%,
@@ -495,7 +495,7 @@ The priority-1 USB shell runs only while higher-priority work is blocked; once
 two or more simulation deadlines are due, the main loop reserves a
 one-millisecond recovery window so diagnostics and the bootloader command cannot
 remain starved. An isolated late tick may catch up and reach its normal sleep
-without paying that extra delay. The main thread publishes an 856-byte immutable
+without paying that extra delay. The main thread publishes a 1,128-byte immutable
 render snapshot at a deterministic 30 Hz cadence into one of two slots under a
 short spin lock. Pause, reset, redraw, and exact remote stepping force a current
 snapshot. A saturated semaphore wakes the renderer, which coalesces obsolete
@@ -538,8 +538,9 @@ framebuffer is allocated.
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation and also runs native granular-world configuration, capacity,
-bounded-square-root, containment, flip, work-bound, and deterministic replay
+generation and also runs native granular-world configuration, 512-grain
+capacity and wide-index handling, conservative contact-length approximation,
+containment, flip, work-bound, and deterministic replay
 tests; rigid-body
 collision/capacity; bounded
 spring/conveyor response, exact capsule shape-pair coverage, reciprocal
@@ -551,39 +552,42 @@ serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted reset, double-flip,
 full-drain, and retained Machine Lab replay hashes as native goldens.
-The default image uses 221,276 bytes of its 255 KiB Zephyr RAM region (84.74%)
-and 230,348 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 221,820 bytes of its 255 KiB Zephyr RAM region (84.95%)
+and 230,352 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer, 22,636-byte fixed-capacity rigid physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
-contact/event storage and per-step deterministic counters, a 7,540-byte
-fixed-capacity 192-particle granular world with a 40 x 48 scratch grid and
-boundary masks, a 33,360-byte serialized benchmark
-workspace, two 856-byte render snapshots, 5,120-byte main
+contact/event storage and per-step deterministic counters, a 16,480-byte
+fixed-capacity 512-particle granular world with a 40 x 48 scratch grid,
+boundary masks, and sparse occupied-cell storage, a 33,360-byte serialized
+benchmark workspace, two 1,128-byte render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 251,276 bytes of
-that region (96.23%) and 236,060 bytes of flash. It keeps the rigid-physics and
+storage, and a 1,024-byte shell TX ring. The fast image uses 251,836 bytes of
+that region (96.44%) and 236,080 bytes of flash. It keeps the rigid-physics and
 renderer hot paths in SRAM while the granular solver remains in XIP flash, and
 both images route compiler integer division through the RP2040's interrupt-safe
 hardware-divider wrappers. Both images also reserve
 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 39,844 and 9,844
+core-1 mailbox and stack. The default and fast images retain 39,300 and 9,284
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
 
-On the tested PIM559, the optimized dense Hourglass sustained its exact 60.0 Hz
-simulation cadence with no skipped or over-budget updates. Concurrent physics
-averaged 10.860 ms and peaked at 14.573 ms over 23,601 ticks, leaving about 5.8
-ms of mean headroom in the 16.667 ms tick. Core-1 full-scene rasterization
-averaged 9.050 ms and the full-frame transfer took 18.471 ms, retaining 29.8 fps
-presentation. An isolated, counter-bearing 1,000-tick replay measured
-10.180/10.811 ms mean/maximum with zero 60 Hz violations. See the
-[Hourglass report](benchmarks/hourglass/README.md) for controlled grid,
-boundary, renderer, and work-count A/B results. A paused core-1 verification
-render reproduced CRC-32 `33aa52af` in 9.654 ms.
-The 192-grain flip sequence reached tick 360 at hash `20b82113` and framebuffer
-CRC-32 `cecc86d5`; the 600-tick neutral sequence reached `f9de5870` and
-`ef323e84`.
+On the tested PIM559, the normal 320-grain image completed a 1,000-tick
+isolated replay in 12.568 ms mean and 13.118 ms maximum, with no 60 Hz deadline
+violations. A 12,837-tick live window held 60.0 Hz with zero skipped ticks, one
+over-budget update, and backlog two; physics averaged 12.799 ms and peaked at
+16.453 ms. The 384-grain stretch image completed a 1,000-tick
+isolated replay in 15.037 ms mean and 15.777 ms maximum, with no 60 Hz deadline
+violations. A concurrent 2,013-update window retained zero skipped ticks and a
+maximum backlog of one while core 1 continuously rasterized full frames;
+physics averaged 15.267 ms and peaked at 17.869 ms, with 105 individual updates
+over the 16.667 ms budget. The normal build therefore remains the
+headroom-oriented default, while `dense-384.conf` preserves the demonstrated
+stretch workload. See the [Hourglass report](benchmarks/hourglass/README.md) for
+the controlled scaling, placement, math, and work-count results.
+The default 320-grain directional/flip sequence reached tick 360 at hash
+`a0919f8b` and framebuffer CRC-32 `41e4cdd1`; the 600-tick neutral sequence
+reached `82da7b6c` and `3e3e0901`.
 
 On the tested PIM559, the preceding sleeping image's schema-version-8 moving
 profile averaged 2.792 ms on the grid and 3.117 ms through the brute-force

@@ -12,7 +12,7 @@
 
 #include "physics_world.h"
 
-#define PICOSYSTEM_GRANULAR_MAX_PARTICLES        192U
+#define PICOSYSTEM_GRANULAR_MAX_PARTICLES        512U
 #define PICOSYSTEM_GRANULAR_MAX_BOUNDARIES       8U
 #define PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS    2U
 #define PICOSYSTEM_GRANULAR_GRID_CELL_PIXELS     4U
@@ -22,7 +22,7 @@
 #define PICOSYSTEM_GRANULAR_GRID_ROWS            48U
 #define PICOSYSTEM_GRANULAR_GRID_CELL_COUNT                                                        \
 	(PICOSYSTEM_GRANULAR_GRID_COLUMNS * PICOSYSTEM_GRANULAR_GRID_ROWS)
-#define PICOSYSTEM_GRANULAR_GRID_EMPTY UINT8_MAX
+#define PICOSYSTEM_GRANULAR_GRID_EMPTY UINT16_MAX
 enum picosystem_granular_profile_stage {
 	PICOSYSTEM_GRANULAR_PROFILE_INTEGRATE,
 	PICOSYSTEM_GRANULAR_PROFILE_BOUNDARIES,
@@ -107,9 +107,11 @@ struct picosystem_granular_world {
 	uint32_t passage_count;
 	uint16_t particle_count;
 	uint16_t boundary_count;
+	uint16_t occupied_grid_cell_count;
 	uint8_t grid_boundary_masks[PICOSYSTEM_GRANULAR_GRID_CELL_COUNT];
-	uint8_t grid_heads[PICOSYSTEM_GRANULAR_GRID_CELL_COUNT];
-	uint8_t grid_next[PICOSYSTEM_GRANULAR_MAX_PARTICLES];
+	uint16_t grid_heads[PICOSYSTEM_GRANULAR_GRID_CELL_COUNT];
+	uint16_t grid_next[PICOSYSTEM_GRANULAR_MAX_PARTICLES];
+	uint16_t occupied_grid_cells[PICOSYSTEM_GRANULAR_MAX_PARTICLES];
 };
 
 /* Initialize an empty world after validating the complete immutable configuration. */
@@ -144,8 +146,8 @@ picosystem_granular_world_lower_particle_count(const struct picosystem_granular_
 uint32_t picosystem_granular_world_hash(const struct picosystem_granular_world *world);
 
 #if defined(PICOSYSTEM_GRANULAR_WORLD_TEST)
-/* Test-only access to the exact square root used for bounded contact distances. */
-uint32_t picosystem_granular_test_integer_square_root(uint64_t value);
+/* Test-only access to the conservative length used for bounded particle contacts. */
+uint32_t picosystem_granular_test_particle_contact_length(uint32_t absolute_x, uint32_t absolute_y);
 #endif
 
 #endif /* PICOSYSTEM_GRANULAR_WORLD_H_ */

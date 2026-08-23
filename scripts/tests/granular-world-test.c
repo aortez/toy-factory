@@ -75,26 +75,49 @@ static uint32_t reference_integer_square_root(uint64_t value)
 	return minimum;
 }
 
-static void test_bounded_integer_square_root(void)
+static void assert_particle_contact_length(uint32_t absolute_x, uint32_t absolute_y)
 {
-	const uint32_t root_limit = UINT32_C(1) << 19U;
-	for (uint32_t root = 0U; root < root_limit; ++root) {
-		const uint64_t square = (uint64_t)root * root;
-		assert(picosystem_granular_test_integer_square_root(square) == root);
-		if (square > 0U) {
-			assert(picosystem_granular_test_integer_square_root(square - 1U) ==
-			       (root - 1U));
+	const uint64_t squared_length =
+		((uint64_t)absolute_x * absolute_x) + ((uint64_t)absolute_y * absolute_y);
+	const uint32_t expected = reference_integer_square_root(squared_length);
+	const uint32_t actual =
+		picosystem_granular_test_particle_contact_length(absolute_x, absolute_y);
+	const uint32_t maximum_error = (expected / 360U) + 2U;
+	assert(actual <= expected);
+	assert((expected - actual) <= maximum_error);
+}
+
+static void test_particle_contact_length(void)
+{
+	const uint32_t component_limit = (uint32_t)FIXED(8);
+	const uint64_t squared_limit = (uint64_t)component_limit * component_limit;
+	for (uint32_t component = 0U; component < component_limit; ++component) {
+		assert(picosystem_granular_test_particle_contact_length(component, 0U) ==
+		       component);
+		assert(picosystem_granular_test_particle_contact_length(0U, component) ==
+		       component);
+	}
+	for (uint32_t absolute_x = 0U; absolute_x < component_limit; absolute_x += 1021U) {
+		for (uint32_t absolute_y = 0U; absolute_y < component_limit; absolute_y += 1021U) {
+			const uint64_t squared_length = ((uint64_t)absolute_x * absolute_x) +
+							((uint64_t)absolute_y * absolute_y);
+			if (squared_length < squared_limit) {
+				assert_particle_contact_length(absolute_x, absolute_y);
+			}
 		}
-		const uint64_t next = (uint64_t)(root + 1U) * (root + 1U);
-		assert(picosystem_granular_test_integer_square_root(next - 1U) == root);
 	}
 
 	uint64_t random_state = UINT64_C(0x4d595df4d0f33173);
 	for (uint32_t sample = 0U; sample < 100000U; ++sample) {
 		random_state = (random_state * UINT64_C(6364136223846793005)) + UINT64_C(1);
-		const uint64_t value = random_state & ((UINT64_C(1) << 38U) - 1U);
-		assert(picosystem_granular_test_integer_square_root(value) ==
-		       reference_integer_square_root(value));
+		const uint32_t absolute_x = (uint32_t)random_state & (component_limit - 1U);
+		random_state = (random_state * UINT64_C(6364136223846793005)) + UINT64_C(1);
+		const uint32_t absolute_y = (uint32_t)random_state & (component_limit - 1U);
+		const uint64_t squared_length =
+			((uint64_t)absolute_x * absolute_x) + ((uint64_t)absolute_y * absolute_y);
+		if (squared_length < squared_limit) {
+			assert_particle_contact_length(absolute_x, absolute_y);
+		}
 	}
 }
 
@@ -171,6 +194,36 @@ static void test_particle_capacity_and_access(void)
 	       NULL);
 }
 
+static void test_wide_particle_grid_indices(void)
+{
+	struct picosystem_granular_world world;
+	const struct picosystem_granular_world_config config = box_config();
+	assert(picosystem_granular_world_init(&world, &config) == 0);
+	for (uint16_t index = 0U; index < 256U; ++index) {
+		const struct picosystem_physics_vector position = {
+			.x = FIXED(30) + ((int32_t)(index % 16U) * FIXED(5)),
+			.y = FIXED(30) + ((int32_t)(index / 16U) * FIXED(5)),
+		};
+		assert(picosystem_granular_world_add_particle(&world, &position) == 0);
+	}
+	const struct picosystem_physics_vector overlapping = {
+		.x = FIXED(108),
+		.y = FIXED(105),
+	};
+	assert(picosystem_granular_world_add_particle(&world, &overlapping) == 0);
+	assert(world.particle_count == 257U);
+
+	const struct picosystem_physics_vector no_acceleration = {0};
+	assert(picosystem_granular_world_step(&world, &no_acceleration) == 0);
+	const int64_t delta_x =
+		(int64_t)world.particles[256].position.x - world.particles[255].position.x;
+	const int64_t delta_y =
+		(int64_t)world.particles[256].position.y - world.particles[255].position.y;
+	const int64_t diameter = FIXED(4);
+	assert((delta_x * delta_x) + (delta_y * delta_y) >= (diameter * diameter) - 8);
+	assert(world.last_work.contact_count > 0U);
+}
+
 static void test_pair_separation_and_falling(void)
 {
 	struct picosystem_granular_world world;
@@ -205,6 +258,41 @@ static void test_pair_separation_and_falling(void)
 	assert(world.passage_count == 2U);
 }
 
+static void test_polygon_contact_separation(void)
+{
+	static const struct picosystem_physics_vector offsets[] = {
+		{0},
+		{.x = FIXED(1), .y = FIXED(1)},
+		{.x = FIXED(2), .y = FIXED(1)},
+		{.x = FIXED(1), .y = FIXED(2)},
+		{.x = FIXED(3), .y = FIXED(1)},
+		{.x = FIXED(1), .y = FIXED(3)},
+		{.x = FIXED(3), .y = FIXED(2)},
+		{.x = FIXED(2), .y = FIXED(3)},
+	};
+	const struct picosystem_physics_vector no_acceleration = {0};
+	const int64_t diameter = FIXED(4);
+	for (size_t index = 0U; index < (sizeof(offsets) / sizeof(offsets[0])); ++index) {
+		struct picosystem_granular_world world;
+		const struct picosystem_granular_world_config config = box_config();
+		assert(picosystem_granular_world_init(&world, &config) == 0);
+		const struct picosystem_physics_vector left = {.x = FIXED(100), .y = FIXED(100)};
+		const struct picosystem_physics_vector right = {
+			.x = left.x + offsets[index].x,
+			.y = left.y + offsets[index].y,
+		};
+		assert(picosystem_granular_world_add_particle(&world, &left) == 0);
+		assert(picosystem_granular_world_add_particle(&world, &right) == 0);
+		assert(picosystem_granular_world_step(&world, &no_acceleration) == 0);
+		const int64_t delta_x =
+			(int64_t)world.particles[1].position.x - world.particles[0].position.x;
+		const int64_t delta_y =
+			(int64_t)world.particles[1].position.y - world.particles[0].position.y;
+		assert((delta_x * delta_x) + (delta_y * delta_y) >= (diameter * diameter) - 8);
+		assert(world.last_work.contact_count > 0U);
+	}
+}
+
 static uint32_t fake_clock_now(void *context)
 {
 	uint32_t *const next = context;
@@ -233,14 +321,19 @@ static void test_profiled_step(void)
 	memset(&profile, 0xa5, sizeof(profile));
 	assert(picosystem_granular_world_step_profiled(&profiled, &gravity, &clock, &profile) == 0);
 	assert(memcmp(&profiled, &unprofiled, sizeof(profiled)) == 0);
-	assert(profile.clock_read_count == 22U);
+	assert(profile.clock_read_count == (10U + (6U * PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS)));
 	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_INTEGRATE] == 1U);
-	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_BOUNDARIES] == 4U);
-	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_GRID_BUILD] == 2U);
-	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_PAIR_SOLVE] == 2U);
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_BOUNDARIES] ==
+	       (PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS + 2U));
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_GRID_BUILD] ==
+	       PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS);
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_PAIR_SOLVE] ==
+	       PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS);
 	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_PASSAGES] == 1U);
-	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_OTHER] == 11U);
-	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_TOTAL] == 21U);
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_OTHER] ==
+	       (5U + (3U * PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS)));
+	assert(profile.stage_cycles[PICOSYSTEM_GRANULAR_PROFILE_TOTAL] ==
+	       (9U + (6U * PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS)));
 	assert(memcmp(&profile.work, &profiled.last_work, sizeof(profile.work)) == 0);
 	assert(profile.work.candidate_pair_count ==
 	       (profile.work.axis_rejection_count + profile.work.diagonal_rejection_count +
@@ -330,10 +423,12 @@ static void test_flip_and_deterministic_replay(void)
 
 int main(void)
 {
-	test_bounded_integer_square_root();
+	test_particle_contact_length();
 	test_configuration_validation();
 	test_particle_capacity_and_access();
+	test_wide_particle_grid_indices();
 	test_pair_separation_and_falling();
+	test_polygon_contact_separation();
 	test_profiled_step();
 	test_exact_pair_rejections();
 	test_flip_and_deterministic_replay();

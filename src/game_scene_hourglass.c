@@ -14,12 +14,19 @@
 
 #define HOURGLASS_CENTER_X_PIXELS 120
 #define HOURGLASS_CENTER_Y_PIXELS 135
-#define HOURGLASS_GRAIN_SPACING   5
 
-#if defined(CONFIG_TOY_FACTORY_HOURGLASS_96_GRAIN_BENCHMARK)
-#define HOURGLASS_GRAIN_COUNT 96U
+#if defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_96)
+#define HOURGLASS_GRAIN_COUNT   96U
+#define HOURGLASS_GRAIN_SPACING 5
+#elif defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_192)
+#define HOURGLASS_GRAIN_COUNT   192U
+#define HOURGLASS_GRAIN_SPACING 5
+#elif defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_384)
+#define HOURGLASS_GRAIN_COUNT   384U
+#define HOURGLASS_GRAIN_SPACING 4
 #else
-#define HOURGLASS_GRAIN_COUNT 192U
+#define HOURGLASS_GRAIN_COUNT   320U
+#define HOURGLASS_GRAIN_SPACING 4
 #endif
 
 static const struct picosystem_granular_boundary_config boundaries[] = {
@@ -68,14 +75,28 @@ static const struct picosystem_granular_boundary_config boundaries[] = {
 	},
 };
 
-#if defined(CONFIG_TOY_FACTORY_HOURGLASS_96_GRAIN_BENCHMARK)
+#if defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_96)
 static const uint8_t row_particle_counts[] = {6U, 8U, 10U, 12U, 14U, 16U, 16U, 14U};
 _Static_assert(6U + 8U + 10U + 12U + 14U + 16U + 16U + 14U == HOURGLASS_GRAIN_COUNT,
 	       "hourglass row population must match its grain count");
-#else
+#elif defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_192)
 static const uint8_t row_particle_counts[] = {8U,  10U, 12U, 14U, 14U, 16U,
 					      16U, 18U, 18U, 20U, 22U, 24U};
 _Static_assert(8U + 10U + 12U + 14U + 14U + 16U + 16U + 18U + 18U + 20U + 22U + 24U ==
+		       HOURGLASS_GRAIN_COUNT,
+	       "hourglass row population must match its grain count");
+#elif defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_384)
+static const uint8_t row_particle_counts[] = {12U, 12U, 14U, 16U, 16U, 18U, 20U, 22U, 22U,
+					      24U, 26U, 28U, 28U, 30U, 32U, 32U, 32U};
+_Static_assert(12U + 12U + 14U + 16U + 16U + 18U + 20U + 22U + 22U + 24U + 26U + 28U + 28U + 30U +
+			       32U + 32U + 32U ==
+		       HOURGLASS_GRAIN_COUNT,
+	       "hourglass row population must match its grain count");
+#else
+static const uint8_t row_particle_counts[] = {12U, 12U, 14U, 16U, 16U, 18U, 20U, 22U,
+					      22U, 24U, 26U, 28U, 28U, 30U, 32U};
+_Static_assert(12U + 12U + 14U + 16U + 16U + 18U + 20U + 22U + 22U + 24U + 26U + 28U + 28U + 30U +
+			       32U ==
 		       HOURGLASS_GRAIN_COUNT,
 	       "hourglass row population must match its grain count");
 #endif

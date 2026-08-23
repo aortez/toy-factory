@@ -101,6 +101,8 @@ struct picosystem_scene_snapshot {
 	uint32_t logic_tick_count;
 	uint32_t redraw_request_sequence;
 	uint32_t sensor_entry_count;
+	uint16_t granular_particle_count;
+	uint16_t granular_lower_particle_count;
 	uint8_t scene_id;
 	uint8_t body_count;
 	uint8_t static_segment_count;
@@ -108,9 +110,7 @@ struct picosystem_scene_snapshot {
 	uint8_t revolute_joint_count;
 	uint8_t box_sensor_count;
 	uint8_t rope_count;
-	uint8_t granular_particle_count;
 	uint8_t granular_particle_radius;
-	uint8_t granular_lower_particle_count;
 	/* scene_id tags the only payload valid for this immutable snapshot. */
 	union {
 		struct picosystem_scene_rigid_payload rigid;
