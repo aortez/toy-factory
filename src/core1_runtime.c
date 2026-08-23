@@ -28,7 +28,7 @@
 #include <hardware/sync.h>
 
 #define CORE1_PROTOCOL_MAGIC       0x54463143U
-#define CORE1_PROTOCOL_VERSION     5U
+#define CORE1_PROTOCOL_VERSION     6U
 #define CORE1_RESERVED_BANK_BYTES  4096U
 #define CORE1_STACK_BYTES          4096U
 #define CORE1_STACK_WORDS          (CORE1_STACK_BYTES / sizeof(uint32_t))

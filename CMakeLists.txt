@@ -19,7 +19,11 @@ target_sources(app PRIVATE
 	src/fixed_rate_scheduler.c
 	src/game_control.c
 	src/game_demo.c
+	src/game_scene_clockwork.c
+	src/game_scene_hourglass.c
+	src/game_scene_machine_lab.c
 	src/game_world.c
+	src/granular_world.c
 	src/graphics.c
 	src/main.c
 	src/physics_chain_fixture.c

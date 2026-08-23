@@ -39,6 +39,9 @@ int picosystem_physics_chain_fixture_reset(struct picosystem_game_world *world, 
 		return err;
 	}
 	world->logic_tick_count = 0U;
+	world->sensor_entry_count = 0U;
+	world->scene_id = PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN;
+	world->focus_proxy = (struct picosystem_physics_body){0};
 
 	for (uint16_t index = 0U; index < link_count; ++index) {
 		const int32_t center_x =

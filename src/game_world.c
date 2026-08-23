@@ -10,303 +10,65 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
+
+#include "game_scene.h"
 
 #define GAME_MAX_SPEED_PER_TICK     PICOSYSTEM_PHYSICS_FIXED_FROM_INT(5)
 #define GAME_GRAVITY_PER_TICK       PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
 #define GAME_CONTROL_PER_TICK       PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 16)
-#define GAME_RESTITUTION            PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 4)
-#define GAME_FRICTION               PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
-#define GAME_PRISMATIC_MOTOR_SPEED  PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 4)
 #define GAME_PRISMATIC_REVERSE_SLOP PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 32)
-#define GAME_WORLD_HASH_VERSION     UINT32_C(14)
+#define GAME_WORLD_HASH_VERSION     UINT32_C(15)
 #define FNV1A_OFFSET_BASIS          UINT32_C(2166136261)
 #define FNV1A_PRIME                 UINT32_C(16777619)
 
-#define FIXED(value)                  PICOSYSTEM_PHYSICS_FIXED_FROM_INT(value)
-#define RATIO(numerator, denominator) PICOSYSTEM_PHYSICS_FIXED_RATIO(numerator, denominator)
+static const struct picosystem_game_scene_config *scene_config(uint8_t scene_id)
+{
+	switch (scene_id) {
+	case PICOSYSTEM_GAME_SCENE_MACHINE_LAB:
+		return picosystem_game_scene_machine_lab();
+	case PICOSYSTEM_GAME_SCENE_CLOCKWORK:
+		return picosystem_game_scene_clockwork();
+	default:
+		return NULL;
+	}
+}
 
-struct canonical_body_config {
-	union {
-		struct picosystem_physics_circle_config circle;
-		struct picosystem_physics_box_config box;
-		struct picosystem_physics_capsule_config capsule;
-	};
-	uint8_t shape;
-};
-
-static const struct canonical_body_config canonical_bodies[] =
-	{
-		{
-			.box =
-				{
-					.center = {.x = FIXED(55), .y = FIXED(55)},
-					.velocity_per_tick = {.x = RATIO(3, 2)},
-					.half_extent = {.x = FIXED(10), .y = FIXED(7)},
-					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
-					.restitution = GAME_RESTITUTION,
-					.friction = GAME_FRICTION,
-					.angular_velocity_per_tick = RATIO(1, 40),
-					.angle_turns = UINT32_C(0x08000000),
-					.id = 1U,
-				},
-			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
-		},
-		{
-			.circle =
-				{
-					.center = {.x = FIXED(88), .y = FIXED(68)},
-					.velocity_per_tick = {.x = -RATIO(1, 2), .y = RATIO(1, 4)},
-					.radius = FIXED(7),
-					.inverse_mass = RATIO(5, 4),
-					.restitution = RATIO(2, 3),
-					.friction = RATIO(1, 6),
-					.id = 2U,
-				},
-			.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
-		},
-		{
-			.capsule =
-				{
-					.center = {.x = FIXED(162), .y = FIXED(72)},
-					.velocity_per_tick = {.x = -FIXED(1), .y = -RATIO(1, 4)},
-					.half_length = FIXED(7),
-					.radius = FIXED(4),
-					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
-					.restitution = RATIO(7, 10),
-					.friction = RATIO(1, 5),
-					.angular_velocity_per_tick = -RATIO(1, 48),
-					.angle_turns = UINT32_C(0x18000000),
-					.id = 4U,
-				},
-			.shape = PICOSYSTEM_PHYSICS_SHAPE_CAPSULE,
-		},
-		{
-			.box =
-				{
-					.center = {.x = FIXED(144), .y = FIXED(88)},
-					.half_extent = {.x = FIXED(10), .y = FIXED(4)},
-					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
-					.restitution = RATIO(1, 4),
-					.friction = RATIO(1, 5),
-					.id = 5U,
-				},
-			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
-		},
-		{
-			.box =
-				{
-					.center = {.x = FIXED(164), .y = FIXED(88)},
-					.half_extent = {.x = FIXED(10), .y = FIXED(4)},
-					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
-					.restitution = RATIO(1, 4),
-					.friction = RATIO(1, 5),
-					.id = 6U,
-				},
-			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
-		},
-		{
-			.box =
-				{
-					.center = {.x = FIXED(184), .y = FIXED(88)},
-					.half_extent = {.x = FIXED(10), .y = FIXED(4)},
-					.inverse_mass = PICOSYSTEM_PHYSICS_FIXED_ONE,
-					.restitution = RATIO(1, 4),
-					.friction = RATIO(1, 5),
-					.id = 7U,
-				},
-			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
-		},
-		{
-			.box =
-				{
-					.center = {.x = FIXED(118), .y = FIXED(190)},
-					.half_extent = {.x = FIXED(14), .y = FIXED(5)},
-					.inverse_mass = RATIO(1, 2),
-					.restitution = RATIO(1, 4),
-					.friction = RATIO(1, 3),
-					.id = 9U,
-				},
-			.shape = PICOSYSTEM_PHYSICS_SHAPE_BOX,
-		},
-};
-
-static const struct picosystem_physics_segment_config canonical_segments[] = {
-	{
-		.start = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS),
-			  .y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS)},
-		.end = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS),
-			.y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS)},
-		.restitution = GAME_RESTITUTION,
-		.friction = GAME_FRICTION,
-		.id = 101U,
-	},
-	{
-		.start = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS),
-			  .y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS)},
-		.end = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS),
-			.y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS)},
-		.restitution = GAME_RESTITUTION,
-		.friction = GAME_FRICTION,
-		.id = 102U,
-	},
-	{
-		.start = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS),
-			  .y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS)},
-		.end = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS),
-			.y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS)},
-		.restitution = GAME_RESTITUTION,
-		.friction = GAME_FRICTION,
-		.id = 103U,
-	},
-	{
-		.start = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS),
-			  .y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS)},
-		.end = {.x = FIXED(PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS),
-			.y = FIXED(PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS)},
-		.restitution = GAME_RESTITUTION,
-		.friction = GAME_FRICTION,
-		.id = 104U,
-	},
-	{
-		.start = {.x = FIXED(34), .y = FIXED(160)},
-		.end = {.x = FIXED(103), .y = FIXED(188)},
-		.restitution = RATIO(2, 3),
-		.friction = RATIO(1, 4),
-		.surface_speed_per_tick = RATIO(1, 2),
-		.id = 105U,
-	},
-	{
-		.start = {.x = FIXED(137), .y = FIXED(145)},
-		.end = {.x = FIXED(210), .y = FIXED(112)},
-		.restitution = RATIO(4, 5),
-		.friction = RATIO(1, 12),
-		.id = 106U,
-	},
-};
-
-static const struct picosystem_physics_distance_joint_config canonical_distance_joints[] = {
-	{
-		.anchor_b = {.x = FIXED(162), .y = FIXED(44)},
-		.target_distance = FIXED(28),
-		.spring_angular_frequency_per_tick = RATIO(1, 6),
-		.spring_damping_ratio = RATIO(1, 2),
-		.maximum_spring_impulse_per_tick = FIXED(2),
-		.id = 201U,
-		.body_a_id = 4U,
-		.body_b_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
-		.spring_enabled = 1U,
-	},
-};
-
-static const struct picosystem_physics_box_sensor_config canonical_box_sensors[] = {
-	{
-		.center = {.x = FIXED(70), .y = FIXED(124)},
-		.half_extent = {.x = FIXED(30), .y = FIXED(10)},
-		.id = 501U,
-	},
-};
-
-static const struct picosystem_physics_revolute_joint_config canonical_revolute_joints[] = {
-	{
-		.local_anchor_a = {.x = -FIXED(10)},
-		.anchor_b = {.x = FIXED(134), .y = FIXED(88)},
-		.motor_speed_per_tick = RATIO(1, 48),
-		.maximum_motor_impulse_per_tick = RATIO(1, 2),
-		.id = 301U,
-		.body_a_id = 5U,
-		.body_b_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
-		.motor_enabled = 1U,
-	},
-	{
-		.local_anchor_a = {.x = FIXED(10)},
-		.anchor_b = {.x = -FIXED(10)},
-		.id = 302U,
-		.body_a_id = 5U,
-		.body_b_id = 6U,
-	},
-	{
-		.local_anchor_a = {.x = FIXED(10)},
-		.anchor_b = {.x = -FIXED(10)},
-		.lower_angle_radians = -PICOSYSTEM_PHYSICS_FIXED_ONE,
-		.upper_angle_radians = PICOSYSTEM_PHYSICS_FIXED_ONE,
-		.id = 303U,
-		.body_a_id = 6U,
-		.body_b_id = 7U,
-		.limit_enabled = 1U,
-	},
-};
-
-static const struct picosystem_physics_prismatic_joint_config canonical_prismatic_joints[] = {
-	{
-		.anchor_b = {.x = FIXED(118), .y = FIXED(190)},
-		.axis_b = {.y = PICOSYSTEM_PHYSICS_FIXED_ONE},
-		.motor_speed_per_tick = -GAME_PRISMATIC_MOTOR_SPEED,
-		.maximum_motor_impulse_per_tick = FIXED(2),
-		.lower_translation = -FIXED(48),
-		.upper_translation = 0,
-		.id = 401U,
-		.body_a_id = 9U,
-		.body_b_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
-		.motor_enabled = 1U,
-		.limit_enabled = 1U,
-	},
-};
-
-static const struct picosystem_physics_rope_config canonical_ropes[] = {
-	{
-		.endpoint_a =
-			{
-				.anchor = {.x = FIXED(7)},
-				.body_id = 4U,
-				.pinned = 1U,
-				.reaction_enabled = 1U,
-			},
-		.endpoint_b =
-			{
-				.anchor = {.x = FIXED(218), .y = FIXED(45)},
-				.body_id = PICOSYSTEM_PHYSICS_WORLD_BODY_ID,
-				.pinned = 1U,
-			},
-		.segment_length = FIXED(18),
-		.collision_radius = FIXED(1),
-		.id = 501U,
-		.particle_count = 8U,
-	},
-};
-
-_Static_assert(sizeof(canonical_bodies) / sizeof(canonical_bodies[0]) == PICOSYSTEM_GAME_BODY_COUNT,
-	       "canonical body count must match the public contract");
-_Static_assert(sizeof(canonical_segments) / sizeof(canonical_segments[0]) ==
-		       PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT,
-	       "canonical segment count must match the public contract");
-_Static_assert(sizeof(canonical_distance_joints) / sizeof(canonical_distance_joints[0]) ==
-		       PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT,
-	       "canonical distance-joint count must match the public contract");
-_Static_assert(sizeof(canonical_revolute_joints) / sizeof(canonical_revolute_joints[0]) ==
-		       PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT,
-	       "canonical revolute-joint count must match the public contract");
-_Static_assert(sizeof(canonical_prismatic_joints) / sizeof(canonical_prismatic_joints[0]) ==
-		       PICOSYSTEM_GAME_PRISMATIC_JOINT_COUNT,
-	       "canonical prismatic-joint count must match the public contract");
-_Static_assert(sizeof(canonical_box_sensors) / sizeof(canonical_box_sensors[0]) ==
-		       PICOSYSTEM_GAME_BOX_SENSOR_COUNT,
-	       "canonical box-sensor count must match the public contract");
-_Static_assert(sizeof(canonical_ropes) / sizeof(canonical_ropes[0]) == PICOSYSTEM_GAME_ROPE_COUNT,
-	       "canonical rope count must match the public contract");
-_Static_assert(PICOSYSTEM_GAME_BODY_COUNT <= PICOSYSTEM_PHYSICS_MAX_BODIES,
-	       "canonical bodies must fit physics storage");
-_Static_assert(PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT <= PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS,
-	       "canonical segments must fit physics storage");
-_Static_assert(PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT <= PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS,
-	       "canonical joints must fit physics storage");
-_Static_assert(PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT <= PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS,
-	       "canonical revolute joints must fit physics storage");
-_Static_assert(PICOSYSTEM_GAME_PRISMATIC_JOINT_COUNT <= PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS,
-	       "canonical prismatic joints must fit physics storage");
-_Static_assert(PICOSYSTEM_GAME_BOX_SENSOR_COUNT <= PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS,
-	       "canonical box sensors must fit physics storage");
-_Static_assert(PICOSYSTEM_GAME_ROPE_COUNT <= PICOSYSTEM_PHYSICS_MAX_ROPES,
-	       "canonical ropes must fit physics storage");
+static int validate_scene_config(const struct picosystem_game_scene_config *scene)
+{
+	if (scene == NULL) {
+		return -EINVAL;
+	}
+	if ((scene->id >= PICOSYSTEM_GAME_SCENE_COUNT) || (scene->body_count == 0U) ||
+	    (scene->body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
+	    (scene->segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||
+	    (scene->distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
+	    (scene->revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
+	    (scene->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS) ||
+	    (scene->box_sensor_count > PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS) ||
+	    (scene->rope_count > PICOSYSTEM_PHYSICS_MAX_ROPES)) {
+		return -ERANGE;
+	}
+	const uint16_t valid_body_mask = (uint16_t)((UINT16_C(1) << scene->body_count) - 1U);
+	const uint16_t valid_prismatic_mask =
+		(uint16_t)((scene->prismatic_joint_count == 0U)
+				   ? 0U
+				   : ((UINT16_C(1) << scene->prismatic_joint_count) - 1U));
+	if (((scene->gear_body_mask & (uint16_t)~valid_body_mask) != 0U) ||
+	    ((scene->reversing_prismatic_motor_mask & (uint16_t)~valid_prismatic_mask) != 0U)) {
+		return -ERANGE;
+	}
+	if (((scene->body_count != 0U) && (scene->bodies == NULL)) ||
+	    ((scene->segment_count != 0U) && (scene->segments == NULL)) ||
+	    ((scene->distance_joint_count != 0U) && (scene->distance_joints == NULL)) ||
+	    ((scene->revolute_joint_count != 0U) && (scene->revolute_joints == NULL)) ||
+	    ((scene->prismatic_joint_count != 0U) && (scene->prismatic_joints == NULL)) ||
+	    ((scene->box_sensor_count != 0U) && (scene->box_sensors == NULL)) ||
+	    ((scene->rope_count != 0U) && (scene->ropes == NULL))) {
+		return -EINVAL;
+	}
+	return 0;
+}
 
 static void increment_saturated(uint32_t *value)
 {
@@ -324,111 +86,180 @@ static uint32_t fnv1a_u32(uint32_t hash, uint32_t value)
 	return hash;
 }
 
-int picosystem_game_world_reset(struct picosystem_game_world *world)
+static int add_body(struct picosystem_physics_world *world,
+		    const struct picosystem_game_body_config *config)
 {
-	if (world == NULL) {
-		return -EINVAL;
+	switch (config->shape) {
+	case PICOSYSTEM_PHYSICS_SHAPE_CIRCLE:
+		return picosystem_physics_world_add_circle(world, &config->circle);
+	case PICOSYSTEM_PHYSICS_SHAPE_BOX:
+		return picosystem_physics_world_add_box(world, &config->box);
+	case PICOSYSTEM_PHYSICS_SHAPE_CAPSULE:
+		return picosystem_physics_world_add_capsule(world, &config->capsule);
+	default:
+		return -ERANGE;
 	}
+}
 
-	int err = picosystem_physics_world_init(&world->physics, GAME_MAX_SPEED_PER_TICK);
+static void update_granular_focus_proxy(struct picosystem_game_world *world)
+{
+	const struct picosystem_granular_particle *const particle =
+		picosystem_granular_world_particle_at(&world->granular, 0U);
+	if (particle == NULL) {
+		world->focus_proxy = (struct picosystem_physics_body){0};
+		return;
+	}
+	world->focus_proxy = (struct picosystem_physics_body){
+		.center = particle->position,
+		.velocity_per_tick =
+			{
+				.x = particle->position.x - particle->previous_position.x,
+				.y = particle->position.y - particle->previous_position.y,
+			},
+		.radius = world->granular.particle_radius,
+		.id = 1001U,
+		.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
+	};
+}
+
+static int reset_hourglass(struct picosystem_game_world *world)
+{
+	const int err = picosystem_game_scene_hourglass_reset(&world->granular);
 	if (err != 0) {
 		return err;
 	}
 	world->logic_tick_count = 0U;
 	world->sensor_entry_count = 0U;
-
-	for (size_t index = 0U; index < PICOSYSTEM_GAME_BODY_COUNT; ++index) {
-		if (canonical_bodies[index].shape == PICOSYSTEM_PHYSICS_SHAPE_CIRCLE) {
-			err = picosystem_physics_world_add_circle(&world->physics,
-								  &canonical_bodies[index].circle);
-		} else if (canonical_bodies[index].shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
-			err = picosystem_physics_world_add_box(&world->physics,
-							       &canonical_bodies[index].box);
-		} else if (canonical_bodies[index].shape == PICOSYSTEM_PHYSICS_SHAPE_CAPSULE) {
-			err = picosystem_physics_world_add_capsule(
-				&world->physics, &canonical_bodies[index].capsule);
-		} else {
-			return -ERANGE;
-		}
-		if (err != 0) {
-			return err;
-		}
-	}
-	for (size_t index = 0U; index < PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT; ++index) {
-		err = picosystem_physics_world_add_static_segment(&world->physics,
-								  &canonical_segments[index]);
-		if (err != 0) {
-			return err;
-		}
-	}
-	for (size_t index = 0U; index < PICOSYSTEM_GAME_BOX_SENSOR_COUNT; ++index) {
-		err = picosystem_physics_world_add_box_sensor(&world->physics,
-							      &canonical_box_sensors[index]);
-		if (err != 0) {
-			return err;
-		}
-	}
-	for (size_t index = 0U; index < PICOSYSTEM_GAME_DISTANCE_JOINT_COUNT; ++index) {
-		err = picosystem_physics_world_add_distance_joint(
-			&world->physics, &canonical_distance_joints[index]);
-		if (err != 0) {
-			return err;
-		}
-	}
-	for (size_t index = 0U; index < PICOSYSTEM_GAME_REVOLUTE_JOINT_COUNT; ++index) {
-		err = picosystem_physics_world_add_revolute_joint(
-			&world->physics, &canonical_revolute_joints[index]);
-		if (err != 0) {
-			return err;
-		}
-	}
-	for (size_t index = 0U; index < PICOSYSTEM_GAME_PRISMATIC_JOINT_COUNT; ++index) {
-		err = picosystem_physics_world_add_prismatic_joint(
-			&world->physics, &canonical_prismatic_joints[index]);
-		if (err != 0) {
-			return err;
-		}
-	}
-	for (size_t index = 0U; index < PICOSYSTEM_GAME_ROPE_COUNT; ++index) {
-		err = picosystem_physics_world_add_rope(&world->physics, &canonical_ropes[index]);
-		if (err != 0) {
-			return err;
-		}
-	}
-
+	world->scene_id = PICOSYSTEM_GAME_SCENE_HOURGLASS;
+	update_granular_focus_proxy(world);
 	return 0;
 }
 
-static int update_prismatic_drive(struct picosystem_game_world *world)
+int picosystem_game_world_reset_scene(struct picosystem_game_world *world,
+				      enum picosystem_game_scene_id scene_id)
 {
-	if (world->physics.prismatic_joint_count == 0U) {
-		return 0;
+	if (world == NULL) {
+		return -EINVAL;
 	}
-	if (world->physics.prismatic_joint_count != PICOSYSTEM_GAME_PRISMATIC_JOINT_COUNT) {
+	if ((unsigned int)scene_id >= PICOSYSTEM_GAME_SCENE_COUNT) {
 		return -ERANGE;
 	}
-	struct picosystem_physics_prismatic_joint *const joint =
-		&world->physics.prismatic_joints[0];
-	picosystem_physics_fixed_t translation;
-	int err = picosystem_physics_world_prismatic_joint_translation(&world->physics, 0U,
-								       &translation);
+	if (scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		return reset_hourglass(world);
+	}
+	const struct picosystem_game_scene_config *const scene = scene_config((uint8_t)scene_id);
+	int err = validate_scene_config(scene);
 	if (err != 0) {
 		return err;
 	}
 
-	picosystem_physics_fixed_t target_speed = joint->motor_speed_per_tick;
-	if ((target_speed < 0) &&
-	    (translation <= (joint->lower_translation + GAME_PRISMATIC_REVERSE_SLOP))) {
-		target_speed = GAME_PRISMATIC_MOTOR_SPEED;
-	} else if ((target_speed > 0) &&
-		   (translation >= (joint->upper_translation - GAME_PRISMATIC_REVERSE_SLOP))) {
-		target_speed = -GAME_PRISMATIC_MOTOR_SPEED;
+	err = picosystem_physics_world_init(&world->physics, GAME_MAX_SPEED_PER_TICK);
+	if (err != 0) {
+		return err;
 	}
-	if (target_speed == joint->motor_speed_per_tick) {
+	world->logic_tick_count = 0U;
+	world->sensor_entry_count = 0U;
+	world->scene_id = scene->id;
+	world->focus_proxy = (struct picosystem_physics_body){0};
+
+	for (uint16_t index = 0U; index < scene->body_count; ++index) {
+		err = add_body(&world->physics, &scene->bodies[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (uint16_t index = 0U; index < scene->segment_count; ++index) {
+		err = picosystem_physics_world_add_static_segment(&world->physics,
+								  &scene->segments[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (uint16_t index = 0U; index < scene->box_sensor_count; ++index) {
+		err = picosystem_physics_world_add_box_sensor(&world->physics,
+							      &scene->box_sensors[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (uint16_t index = 0U; index < scene->distance_joint_count; ++index) {
+		err = picosystem_physics_world_add_distance_joint(&world->physics,
+								  &scene->distance_joints[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (uint16_t index = 0U; index < scene->revolute_joint_count; ++index) {
+		err = picosystem_physics_world_add_revolute_joint(&world->physics,
+								  &scene->revolute_joints[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (uint16_t index = 0U; index < scene->prismatic_joint_count; ++index) {
+		err = picosystem_physics_world_add_prismatic_joint(&world->physics,
+								   &scene->prismatic_joints[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	for (uint16_t index = 0U; index < scene->rope_count; ++index) {
+		err = picosystem_physics_world_add_rope(&world->physics, &scene->ropes[index]);
+		if (err != 0) {
+			return err;
+		}
+	}
+	return 0;
+}
+
+int picosystem_game_world_reset(struct picosystem_game_world *world)
+{
+	return picosystem_game_world_reset_scene(world, PICOSYSTEM_GAME_SCENE_MACHINE_LAB);
+}
+
+static int update_reversing_prismatic_drives(struct picosystem_game_world *world)
+{
+	if (world->physics.prismatic_joint_count == 0U) {
 		return 0;
 	}
-	err = picosystem_physics_world_set_prismatic_motor_speed(&world->physics, 0U, target_speed);
-	return err;
+	const struct picosystem_game_scene_config *const scene = scene_config(world->scene_id);
+	if ((scene == NULL) ||
+	    (scene->prismatic_joint_count != world->physics.prismatic_joint_count)) {
+		return -ERANGE;
+	}
+
+	for (uint16_t index = 0U; index < world->physics.prismatic_joint_count; ++index) {
+		if ((scene->reversing_prismatic_motor_mask & (UINT16_C(1) << index)) == 0U) {
+			continue;
+		}
+		struct picosystem_physics_prismatic_joint *const joint =
+			&world->physics.prismatic_joints[index];
+		if ((joint->motor_enabled == 0U) || (joint->limit_enabled == 0U) ||
+		    (joint->motor_speed_per_tick == 0)) {
+			return -ERANGE;
+		}
+
+		picosystem_physics_fixed_t translation;
+		int err = picosystem_physics_world_prismatic_joint_translation(&world->physics,
+									       index, &translation);
+		if (err != 0) {
+			return err;
+		}
+		const bool at_lower =
+			(joint->motor_speed_per_tick < 0) &&
+			(translation <= (joint->lower_translation + GAME_PRISMATIC_REVERSE_SLOP));
+		const bool at_upper =
+			(joint->motor_speed_per_tick > 0) &&
+			(translation >= (joint->upper_translation - GAME_PRISMATIC_REVERSE_SLOP));
+		if (at_lower || at_upper) {
+			err = picosystem_physics_world_set_prismatic_motor_speed(
+				&world->physics, index, -joint->motor_speed_per_tick);
+			if (err != 0) {
+				return err;
+			}
+		}
+	}
+	return 0;
 }
 
 static int process_contact_events(struct picosystem_game_world *world)
@@ -447,6 +278,24 @@ static int process_contact_events(struct picosystem_game_world *world)
 	return 0;
 }
 
+static int step_granular_world(struct picosystem_game_world *world,
+			       const struct picosystem_physics_vector *acceleration,
+			       const struct picosystem_physics_clock *clock,
+			       struct picosystem_granular_step_profile *profile)
+{
+	const int err = (profile == NULL)
+				? picosystem_granular_world_step(&world->granular, acceleration)
+				: picosystem_granular_world_step_profiled(
+					  &world->granular, acceleration, clock, profile);
+	if (err != 0) {
+		return err;
+	}
+	world->sensor_entry_count = world->granular.passage_count;
+	update_granular_focus_proxy(world);
+	increment_saturated(&world->logic_tick_count);
+	return 0;
+}
+
 static int game_world_step(struct picosystem_game_world *world,
 			   const struct picosystem_game_input *input,
 			   enum picosystem_physics_step_mode mode,
@@ -460,15 +309,22 @@ static int game_world_step(struct picosystem_game_world *world,
 	    (input->vertical > 1)) {
 		return -ERANGE;
 	}
-	int err = update_prismatic_drive(world);
-	if (err != 0) {
-		return err;
-	}
-
 	const struct picosystem_physics_vector acceleration = {
 		.x = input->horizontal * GAME_CONTROL_PER_TICK,
 		.y = GAME_GRAVITY_PER_TICK + (input->vertical * GAME_CONTROL_PER_TICK),
 	};
+	if (world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		if ((mode != PICOSYSTEM_PHYSICS_STEP_MODE_GRID) || (clock != NULL) ||
+		    (profile != NULL)) {
+			return -ENOTSUP;
+		}
+		return step_granular_world(world, &acceleration, NULL, NULL);
+	}
+	int err = update_reversing_prismatic_drives(world);
+	if (err != 0) {
+		return err;
+	}
+
 	err = picosystem_physics_world_step_profiled(&world->physics, &acceleration, mode, clock,
 						     profile);
 	if (err != 0) {
@@ -481,6 +337,21 @@ static int game_world_step(struct picosystem_game_world *world,
 
 	increment_saturated(&world->logic_tick_count);
 	return 0;
+}
+
+int picosystem_game_world_flip(struct picosystem_game_world *world)
+{
+	if (world == NULL) {
+		return -EINVAL;
+	}
+	if (world->scene_id != PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		return -ENOTSUP;
+	}
+	const int err = picosystem_granular_world_flip(&world->granular);
+	if (err == 0) {
+		update_granular_focus_proxy(world);
+	}
+	return err;
 }
 
 int picosystem_game_world_step(struct picosystem_game_world *world,
@@ -498,18 +369,69 @@ int picosystem_game_world_step_profiled(struct picosystem_game_world *world,
 	return game_world_step(world, input, mode, clock, profile);
 }
 
+int picosystem_game_world_step_granular_profiled(struct picosystem_game_world *world,
+						 const struct picosystem_game_input *input,
+						 const struct picosystem_physics_clock *clock,
+						 struct picosystem_granular_step_profile *profile)
+{
+	if ((world == NULL) || (input == NULL)) {
+		return -EINVAL;
+	}
+	if ((input->horizontal < -1) || (input->horizontal > 1) || (input->vertical < -1) ||
+	    (input->vertical > 1)) {
+		return -ERANGE;
+	}
+	if (world->scene_id != PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		return -ENOTSUP;
+	}
+	const struct picosystem_physics_vector acceleration = {
+		.x = input->horizontal * GAME_CONTROL_PER_TICK,
+		.y = GAME_GRAVITY_PER_TICK + (input->vertical * GAME_CONTROL_PER_TICK),
+	};
+	return step_granular_world(world, &acceleration, clock, profile);
+}
+
 const struct picosystem_physics_body *
 picosystem_game_world_focus_body(const struct picosystem_game_world *world)
 {
 	if (world == NULL) {
 		return NULL;
 	}
+	if (world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		return (world->granular.particle_count != 0U) ? &world->focus_proxy : NULL;
+	}
 	return picosystem_physics_world_body_at(&world->physics, PICOSYSTEM_GAME_FOCUS_BODY_INDEX);
+}
+
+enum picosystem_game_body_render_style
+picosystem_game_world_body_render_style(const struct picosystem_game_world *world, size_t index)
+{
+	if ((world == NULL) || (world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) ||
+	    (index >= world->physics.body_count) || (index >= 16U)) {
+		return PICOSYSTEM_GAME_BODY_RENDER_STYLE_DEFAULT;
+	}
+	const struct picosystem_game_scene_config *const scene = scene_config(world->scene_id);
+	if ((scene != NULL) && ((scene->gear_body_mask & (UINT16_C(1) << index)) != 0U)) {
+		return PICOSYSTEM_GAME_BODY_RENDER_STYLE_GEAR;
+	}
+	return PICOSYSTEM_GAME_BODY_RENDER_STYLE_DEFAULT;
 }
 
 uint32_t picosystem_game_world_hash(const struct picosystem_game_world *world)
 {
-	if ((world == NULL) || (world->physics.body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
+	if ((world == NULL) || (world->scene_id >= PICOSYSTEM_GAME_SCENE_COUNT)) {
+		return 0U;
+	}
+
+	uint32_t hash = fnv1a_u32(FNV1A_OFFSET_BASIS, GAME_WORLD_HASH_VERSION);
+	hash = fnv1a_u32(hash, world->scene_id);
+	hash = fnv1a_u32(hash, world->logic_tick_count);
+	hash = fnv1a_u32(hash, world->sensor_entry_count);
+	if (world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
+		const uint32_t granular_hash = picosystem_granular_world_hash(&world->granular);
+		return (granular_hash != 0U) ? fnv1a_u32(hash, granular_hash) : 0U;
+	}
+	if ((world->physics.body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
 	    (world->physics.static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||
 	    (world->physics.distance_joint_count > PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS) ||
 	    (world->physics.revolute_joint_count > PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS) ||
@@ -518,10 +440,6 @@ uint32_t picosystem_game_world_hash(const struct picosystem_game_world *world)
 	    (world->physics.rope_count > PICOSYSTEM_PHYSICS_MAX_ROPES)) {
 		return 0U;
 	}
-
-	uint32_t hash = fnv1a_u32(FNV1A_OFFSET_BASIS, GAME_WORLD_HASH_VERSION);
-	hash = fnv1a_u32(hash, world->logic_tick_count);
-	hash = fnv1a_u32(hash, world->sensor_entry_count);
 	const uint32_t physics_hash = picosystem_physics_world_hash(&world->physics);
 	return (physics_hash != 0U) ? fnv1a_u32(hash, physics_hash) : 0U;
 }

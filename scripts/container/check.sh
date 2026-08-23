@@ -9,6 +9,7 @@ clang-format --dry-run --Werror src/*.c src/*.h scripts/tests/*.c
 bash -n scripts/*.sh scripts/container/*.sh scripts/tests/*.sh
 ./scripts/tests/fixed-rate-scheduler-test.sh
 ./scripts/tests/physics-world-test.sh
+./scripts/tests/granular-world-test.sh
 ./scripts/tests/game-world-test.sh
 ./scripts/tests/mount-uf2-volume-test.sh
 python3 - <<'PY'

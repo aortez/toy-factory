@@ -15,6 +15,7 @@ SEQUENCE ?= scripts/sequences/deterministic-smoke.json
 FAIL_SCREENSHOT ?= artifacts/sequence-failure.png
 PROFILE_TICKS ?= 1000
 PROFILE_OUT ?= artifacts/physics-profile.json
+GRANULAR_PROFILE_TICKS ?= 120
 SLEEP_PROFILE_OUT ?= artifacts/physics-sleep-profile.json
 CHAIN_PROFILE_TICKS ?= 500
 CHAIN_LINKS ?= 4,6,8
@@ -34,8 +35,9 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 	bootloader console status game-stats \
 	game-redraw core1-status core1-ping core1-raster core1-scene \
 	display-sync display-checksum screenshot sim-pause sim-run sim-step sim-input \
-	sim-reset sim-state sim-test \
+	sim-reset sim-flip sim-state sim-test \
 	profile profile-ab profile-sleep profile-chain render-profile update-render-profile \
+	profile-granular \
 	flash monitor shell
 
 ##@ General
@@ -46,6 +48,7 @@ help: ## Show this list of targets
 	@printf '                    [STEPS=1] [INPUT=none] [OUT=artifacts/screenshot.png]\n'
 	@printf '                    [SEQUENCE=path.json] [FAIL_SCREENSHOT=artifacts/failure.png]\n'
 	@printf '                    [PROFILE_TICKS=1000] [PROFILE_OUT=artifacts/physics-profile.json]\n'
+	@printf '                    [GRANULAR_PROFILE_TICKS=120]\n'
 	@printf '                    [SLEEP_PROFILE_OUT=artifacts/physics-sleep-profile.json]\n'
 	@printf '                    [CHAIN_PROFILE_TICKS=500] [CHAIN_LINKS=4,6,8]\n'
 	@printf '                    [CHAIN_PROFILE_OUT=artifacts/physics-chain-profile.json]\n'
@@ -239,7 +242,7 @@ sim-run: image ## Resume exact real-time 60 Hz simulation scheduling
 			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
 				picosystem game run
 
-sim-reset: image ## Restore canonical tick-zero state while paused
+sim-reset: image ## Restore the playable scene to tick zero while paused
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
@@ -247,6 +250,15 @@ sim-reset: image ## Restore canonical tick-zero state while paused
 			"$(FIRMWARE_IMAGE)" \
 			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
 				picosystem game reset
+
+sim-flip: image ## Rotate the paused Hourglass contents by 180 degrees
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
+				picosystem game flip
 
 sim-step: image ## Advance a paused simulation by STEPS=<1-120> exact ticks
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
@@ -298,6 +310,16 @@ profile-ab: image ## Compare isolated grid/reference physics and save PROFILE_OU
 				"$$port" "/workspace/app/$(PROFILE_OUT)"
 
 profile: profile-ab ## Alias for profile-ab
+
+profile-granular: image ## Profile Hourglass stages for GRANULAR_PROFILE_TICKS=<count>
+	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
+		$(DOCKER) run --rm --user 0:0 \
+			--device "$$port:$$port" \
+			--volume "$(CURDIR):/workspace/app:ro" \
+			"$(FIRMWARE_IMAGE)" \
+			python3 ./scripts/container/serial-command.py --timeout 60 \
+				--require-prefix "GRANULAR_PROFILE_END" "$$port" \
+				picosystem profile granular "$(GRANULAR_PROFILE_TICKS)"
 
 profile-sleep: image ## Profile the canonical world settling into sleep
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \

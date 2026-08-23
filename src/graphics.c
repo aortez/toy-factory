@@ -739,7 +739,23 @@ picosystem_graphics_fill_circle_clipped(const struct picosystem_rect *clip, int1
 	if (radius > MAX(DISPLAY_WIDTH, DISPLAY_HEIGHT)) {
 		return -ERANGE;
 	}
-
+	if (radius == 2U) {
+		/* The generic midpoint loop reaches this exact five-span footprint after
+		 * eight writes, including three overlapping spans. Granular scenes use
+		 * radius two for every grain, so emit only the final visible union.
+		 */
+		fill_circle_span(clip, (int32_t)center_x - 1, (int32_t)center_x + 1,
+				 (int32_t)center_y - 2, color);
+		fill_circle_span(clip, (int32_t)center_x - 2, (int32_t)center_x + 2,
+				 (int32_t)center_y - 1, color);
+		fill_circle_span(clip, (int32_t)center_x - 2, (int32_t)center_x + 2, center_y,
+				 color);
+		fill_circle_span(clip, (int32_t)center_x - 2, (int32_t)center_x + 2,
+				 (int32_t)center_y + 1, color);
+		fill_circle_span(clip, (int32_t)center_x - 1, (int32_t)center_x + 1,
+				 (int32_t)center_y + 2, color);
+		return 0;
+	}
 	int32_t x = radius;
 	int32_t y = 0;
 	int32_t decision = 1 - x;

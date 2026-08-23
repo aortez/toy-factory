@@ -363,6 +363,13 @@ static int process_game_control_requests(struct game_runtime_control *control,
 				control->remote_input_enabled = true;
 			}
 			break;
+		case PICOSYSTEM_GAME_CONTROL_FLIP:
+			if (!control->paused) {
+				result = -EBUSY;
+				break;
+			}
+			result = picosystem_game_demo_flip(game);
+			break;
 		case PICOSYSTEM_GAME_CONTROL_STEP:
 			if (!control->paused) {
 				result = -EBUSY;
@@ -569,10 +576,10 @@ int main(void)
 		return err;
 	}
 
-	LOG_INF("PicoSystem %u Hz physics lab and asynchronous renderer ready",
+	LOG_INF("PicoSystem %u Hz Hourglass scene and asynchronous renderer ready",
 		PICOSYSTEM_GAME_TICK_RATE_HZ);
-	LOG_INF("D-pad tilts gravity for all bodies; A queues a full redraw for comparison");
-	LOG_INF("B plays a short 440 Hz piezo tone; Y resets the physics world");
+	LOG_INF("D-pad tilts gravity; X flips the glass; Y resets all grains");
+	LOG_INF("A queues a full redraw; B plays a short 440 Hz piezo tone");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 	LOG_INF("GP2 remains an input; the automatic red charge indicator is enabled");
 	LOG_INF("USB diagnostics ready; enter 'picosystem -h'");
@@ -676,6 +683,15 @@ int main(void)
 				}
 			}
 			LOG_INF("Reset physics world from Y button");
+		}
+
+		if ((pressed & BIT(PICOSYSTEM_BUTTON_X)) != 0U) {
+			err = picosystem_game_demo_flip(&game_state);
+			if (err != 0) {
+				LOG_ERR("Failed to flip hourglass (%d)", err);
+				return err;
+			}
+			LOG_INF("Flipped hourglass from X button");
 		}
 
 		const uint32_t due_ticks =

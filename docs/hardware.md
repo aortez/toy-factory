@@ -51,6 +51,37 @@ define explicit storage partitions. A peripheral should be added to the device
 tree only when its driver milestone begins, keeping early failures easy to
 isolate.
 
+## Current Hourglass validation
+
+The recommended 62.5 MHz PL022/DMA image runs a deterministic 320-grain
+Hourglass at an exact 60 Hz simulation cadence and presents complete frames at
+about 30 fps. Its isolated 1,000-tick replay averaged 12.568 ms and peaked at
+13.118 ms. A 12,837-tick live window held 60.0 Hz with zero skipped ticks, one
+over-budget update, and backlog two; physics averaged 12.799 ms and peaked at
+16.453 ms. The same firmware supports a controlled 384-grain stretch build.
+That build's isolated replay
+averaged 15.037 ms, peaked at 15.777 ms, and recorded no 60 Hz violations. A
+concurrent 2,013-update window had no skipped ticks and backlog never exceeded
+one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
+updates crossed the 16.667 ms budget. The 320-grain population remains normal
+to preserve headroom for additional gameplay.
+
+The image uses 251,836 bytes of the 255 KiB Zephyr RAM region and 236,080 bytes
+of flash, leaving 9,284 bytes of linker RAM plus the separately reserved 8 KiB
+core-1 mailbox/stack area. The conservative image uses 221,820 bytes of Zephyr
+RAM and 230,352 bytes of flash. The fixed granular capacity is 512 particles,
+the immutable render snapshot is 1,128 bytes, and the tagged game-world and
+snapshot unions avoid allocating inactive scene alternatives. Full results are
+in the [Hourglass report](../benchmarks/hourglass/README.md).
+
+Native tests retain exact replay and complete-drain checks for the 96-, 192-,
+320-, and 384-grain packings. Physical D-pad gravity tilt, X flip, Y reset, A
+redraw, and B tone behavior were also exercised on the PIM559.
+
+Exact USB-controlled replay reproduced tick 360 at hash `a0919f8b` and
+framebuffer CRC-32 `41e4cdd1` after a directional/flip sequence. A 600-tick
+neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
+
 ## USB power and charging status
 
 GP2 is not a dedicated LED output. The schematic connects VBUS to
@@ -153,7 +184,7 @@ three updates and 10,000 ticks for 60 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes an 856-byte immutable snapshot
+Simulation uses Q16.16 positions and publishes a 1,128-byte immutable snapshot
 of up to 12 circle, oriented-box, or capsule bodies, eight physical static
 segments, 16 render-only guide segments, two ropes with up to 12 particles
 each, eight render records each for distance and revolute joints, and one
@@ -353,7 +384,7 @@ bytes. A paused live-scene check produced identical core-0/core-1 pixels in
 9.809 ms and restored the framebuffer exactly. A CRC-validated 240 x 240 PNG
 capture completed in 8.2 seconds.
 
-The current reciprocal-rope image makes body endpoint pins two-way and gives
+The reciprocal-rope implementation makes body endpoint pins two-way and gives
 unpinned particles a one-pixel collision radius against external circles,
 boxes, capsules, and static segments. It uses six alternating length passes and
 three interleaved collision passes. Equal-and-opposite position and
@@ -362,18 +393,24 @@ reciprocal body/body pins also join the deterministic sleep graph. There is no
 self-collision or rope/rope collision in this bounded milestone.
 
 Its physics world is 22,636 bytes, each render snapshot is 856 bytes, and the
-serialized profile workspace is 33,304 bytes. The conservative image uses
-221,124 bytes of Zephyr RAM and 216,492 bytes of flash. The recommended 62.5
-MHz PL022/DMA image uses 250,428 bytes of the 255 KiB Zephyr region and 222,020
-bytes of flash, retaining 10,692 bytes of linker RAM headroom plus the
-separately reserved 8 KiB core-1 area. Both images route compiler integer
+serialized profile workspace is 33,304 bytes. The current conservative
+Clockwork image uses 221,124 bytes of Zephyr RAM and 218,252 bytes of flash. The
+recommended 62.5 MHz PL022/DMA image uses 250,620 bytes of the 255 KiB Zephyr
+region and 223,976 bytes of flash, retaining 10,500 bytes of linker RAM headroom
+plus the separately reserved 8 KiB core-1 area. Both images route compiler integer
 division through the RP2040 hardware divider using interrupt-safe Pico SDK
 wrappers.
 
-The 60 Hz PIM559 build reproduced reset/right-15/right-15-up-8 hashes
-`9ff98b13`, `92a41d99`, and `98edb8a7`. The coherently presented tick-23
-framebuffer is CRC-32 `2ee34019`; the neutral sequence reached tick 259 at
-`aa27c7ef` with framebuffer CRC-32 `257e01aa`.
+The 60 Hz PIM559 Clockwork build reproduced reset and right-15/up-8 hashes
+`13d7f3d0` and `e7a7ba97`. The coherently presented tick-23 framebuffer is
+CRC-32 `4efbf582`; the neutral sequence reached tick 259 at `3f94eab2` with
+framebuffer CRC-32 `73e6b4d7`.
+
+A clean 3,744-tick device window sustained 60.0 Hz simulation and 29.8 fps
+presentation with zero skipped or over-budget updates. Physics averaged 9.719
+ms and peaked at 13.000 ms; complete updates averaged 10.243 ms and peaked at
+13.644 ms. Core-1 rasterization was 10.913 ms with an 11.437 ms observed
+maximum, and the 62.5 MHz PL022/DMA full-frame transfer took 19.284 ms.
 
 Its schema-version-13 isolated 1,000-tick moving profile averaged 5.566 ms for
 the grid and 6.044 ms for the brute-force reference, with 8.488/9.002 ms

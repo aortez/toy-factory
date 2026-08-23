@@ -28,6 +28,7 @@ VALID_INPUTS = {
     "down-left": (-1, 1),
     "down-right": (1, 1),
 }
+VALID_ACTIONS = {"flip"}
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 HEX32_PATTERN = re.compile(r"^[0-9a-fA-F]{8}$")
 GAME_STATE_PATTERN = re.compile(
@@ -47,8 +48,9 @@ class SequenceError(RuntimeError):
 
 
 class SequenceSegment(NamedTuple):
-    input_name: str
+    input_name: str | None
     ticks: int
+    action: str | None
 
 
 class SequenceSpec(NamedTuple):
@@ -119,7 +121,17 @@ def parse_sequence_spec(value: object) -> SequenceSpec:
     for index, raw_step in enumerate(raw_steps):
         label = f"sequence.steps[{index}]"
         step = require_object(raw_step, label)
-        reject_unknown_keys(step, {"input", "ticks"}, label)
+        reject_unknown_keys(step, {"input", "ticks", "action"}, label)
+
+        action = step.get("action")
+        if action is not None:
+            if set(step) != {"action"}:
+                raise SequenceError(f"{label} action cannot be combined with input or ticks")
+            if not isinstance(action, str) or action not in VALID_ACTIONS:
+                choices = ", ".join(sorted(VALID_ACTIONS))
+                raise SequenceError(f"{label}.action must be one of: {choices}")
+            segments.append(SequenceSegment(input_name=None, ticks=0, action=action))
+            continue
 
         input_name = step.get("input")
         if not isinstance(input_name, str) or input_name not in VALID_INPUTS:
@@ -134,7 +146,7 @@ def parse_sequence_spec(value: object) -> SequenceSpec:
             raise SequenceError(
                 f"sequence exceeds the {MAX_SEQUENCE_TICKS}-tick safety limit"
             )
-        segments.append(SequenceSegment(input_name=input_name, ticks=ticks))
+        segments.append(SequenceSegment(input_name=input_name, ticks=ticks, action=None))
 
     expected_hash = None
     expected_framebuffer_crc32 = None
@@ -255,12 +267,26 @@ def run_sequence(
     emit(f"reset: tick=0 hash={state.state_hash:08x}")
 
     expected_tick = 0
+    current_input_name = "none"
     for index, segment in enumerate(spec.segments, start=1):
+        if segment.action is not None:
+            state = parse_game_state(session.run(f"picosystem game {segment.action}"))
+            require_paused_tick(state, expected_tick, f"segment {index} action")
+            require_remote_input(state, current_input_name, f"segment {index} action")
+            emit(
+                f"segment {index}: action={segment.action} tick={state.tick} "
+                f"hash={state.state_hash:08x}"
+            )
+            continue
+
+        if segment.input_name is None:
+            raise SequenceError(f"segment {index} has neither input nor action")
         state = parse_game_state(
             session.run(f"picosystem game input {segment.input_name}")
         )
         require_paused_tick(state, expected_tick, f"segment {index} input")
         require_remote_input(state, segment.input_name, f"segment {index} input")
+        current_input_name = segment.input_name
 
         remaining_ticks = segment.ticks
         while remaining_ticks > 0:
@@ -280,7 +306,7 @@ def run_sequence(
 
     state = parse_game_state(session.run("picosystem game state"))
     require_paused_tick(state, expected_tick, "final state")
-    require_remote_input(state, spec.segments[-1].input_name, "final state")
+    require_remote_input(state, current_input_name, "final state")
     if spec.expected_hash is not None and state.state_hash != spec.expected_hash:
         raise SequenceError(
             f"state hash mismatch: expected {spec.expected_hash:08x}, "

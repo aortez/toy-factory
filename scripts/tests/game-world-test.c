@@ -7,20 +7,34 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "game_world.h"
 #include "physics_chain_fixture.h"
 
-#define EXPECTED_RESET_HASH         UINT32_C(0x9ff98b13)
-#define EXPECTED_RIGHT_15_HASH      UINT32_C(0x92a41d99)
-#define EXPECTED_RIGHT_15_UP_8_HASH UINT32_C(0x98edb8a7)
-#define EXPECTED_REPLAY_10000_HASH  UINT32_C(0x175b56c2)
-#define EXPECTED_SLEEP_SMOKE_HASH   UINT32_C(0xaa27c7ef)
-#define EXPECTED_SLEEP_SMOKE_TICK   259U
-#define BOUNDARY_TOLERANCE          PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
-#define ROPE_BOUNDARY_TOLERANCE     PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 64)
-#define CHAIN_CONVERGENCE_TOLERANCE PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
-#define ANGULAR_BOUNDARY_TOLERANCE  PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 12)
+#define EXPECTED_RESET_HASH           UINT32_C(0x3fc3de22)
+#define EXPECTED_RIGHT_15_HASH        UINT32_C(0xfff75d40)
+#define EXPECTED_RIGHT_15_UP_8_HASH   UINT32_C(0x1bc0f502)
+#define EXPECTED_REPLAY_10000_HASH    UINT32_C(0xc6e1c977)
+#define EXPECTED_SLEEP_SMOKE_HASH     UINT32_C(0x7d016466)
+#define EXPECTED_SLEEP_SMOKE_TICK     259U
+#define EXPECTED_CLOCKWORK_RESET_HASH UINT32_C(0x13d7f3d0)
+#define EXPECTED_CLOCKWORK_INPUT_HASH UINT32_C(0xe7a7ba97)
+#define EXPECTED_CLOCKWORK_3000_HASH  UINT32_C(0x0152ec75)
+#define BOUNDARY_TOLERANCE            PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
+#define ROPE_BOUNDARY_TOLERANCE       PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 64)
+#define CHAIN_CONVERGENCE_TOLERANCE   PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
+#define ANGULAR_BOUNDARY_TOLERANCE    PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 12)
+#if defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_96)
+#define EXPECTED_HOURGLASS_GRAIN_COUNT 96U
+#elif defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_192)
+#define EXPECTED_HOURGLASS_GRAIN_COUNT 192U
+#elif defined(CONFIG_TOY_FACTORY_HOURGLASS_GRAINS_384)
+#define EXPECTED_HOURGLASS_GRAIN_COUNT 384U
+#else
+#define EXPECTED_HOURGLASS_GRAIN_COUNT 320U
+#endif
+#define EXPECTED_HOURGLASS_DRAIN_COUNT (EXPECTED_HOURGLASS_GRAIN_COUNT - 20U)
 #define CANONICAL_POSSIBLE_PAIR_COUNT                                                              \
 	(((PICOSYSTEM_GAME_BODY_COUNT * (PICOSYSTEM_GAME_BODY_COUNT - 1U)) / 2U) +                 \
 	 (PICOSYSTEM_GAME_BODY_COUNT * PICOSYSTEM_GAME_STATIC_SEGMENT_COUNT) +                     \
@@ -38,6 +52,7 @@ static void assert_world_equal(const struct picosystem_game_world *left,
 {
 	assert(left->logic_tick_count == right->logic_tick_count);
 	assert(left->sensor_entry_count == right->sensor_entry_count);
+	assert(left->scene_id == right->scene_id);
 	assert(left->physics.max_speed_per_tick == right->physics.max_speed_per_tick);
 	assert(left->physics.body_count == right->physics.body_count);
 	assert(left->physics.static_segment_count == right->physics.static_segment_count);
@@ -762,6 +777,111 @@ static void assert_ropes_inside_arena(const struct picosystem_game_world *world)
 	}
 }
 
+static void run_clockwork_neutral_replay(struct picosystem_game_world *world, uint32_t tick_count)
+{
+	const struct picosystem_game_input neutral = {0};
+	const int64_t joint_tolerance = PICOSYSTEM_PHYSICS_FIXED_FROM_INT(5);
+	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
+		assert(picosystem_game_world_step(world, &neutral) == 0);
+		assert_bodies_inside_arena(world);
+		assert_ropes_inside_arena(world);
+		assert(maximum_revolute_error_squared(world) <=
+		       (uint64_t)(joint_tolerance * joint_tolerance));
+		assert(world->physics.last_broad_phase_fallback == 0U);
+	}
+}
+
+static void test_clockwork_scene_is_bounded_and_deterministic(void)
+{
+	struct picosystem_game_world world;
+	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_CLOCKWORK) == 0);
+	assert(world.scene_id == PICOSYSTEM_GAME_SCENE_CLOCKWORK);
+	assert(world.physics.body_count == 9U);
+	assert(world.physics.static_segment_count == 4U);
+	assert(world.physics.distance_joint_count == 1U);
+	assert(world.physics.revolute_joint_count == 8U);
+	assert(world.physics.prismatic_joint_count == 1U);
+	assert(world.physics.box_sensor_count == 1U);
+	assert(world.physics.rope_count == 1U);
+	assert(world.physics.ropes[0].particle_count == 6U);
+	assert_hash("clockwork-reset", picosystem_game_world_hash(&world),
+		    EXPECTED_CLOCKWORK_RESET_HASH);
+	assert(picosystem_game_world_body_render_style(&world, 0U) ==
+	       PICOSYSTEM_GAME_BODY_RENDER_STYLE_GEAR);
+	assert(picosystem_game_world_body_render_style(&world, 1U) ==
+	       PICOSYSTEM_GAME_BODY_RENDER_STYLE_GEAR);
+	assert(picosystem_game_world_body_render_style(&world, 2U) ==
+	       PICOSYSTEM_GAME_BODY_RENDER_STYLE_DEFAULT);
+	assert(picosystem_game_world_body_render_style(&world, 9U) ==
+	       PICOSYSTEM_GAME_BODY_RENDER_STYLE_DEFAULT);
+
+	const struct picosystem_game_world initial = world;
+	assert(picosystem_game_world_reset_scene(NULL, PICOSYSTEM_GAME_SCENE_CLOCKWORK) == -EINVAL);
+	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_COUNT) == -ERANGE);
+	assert_world_equal(&world, &initial);
+	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN) ==
+	       -EINVAL);
+	assert_world_equal(&world, &initial);
+	struct picosystem_game_world input_replay;
+	assert(picosystem_game_world_reset_scene(&input_replay, PICOSYSTEM_GAME_SCENE_CLOCKWORK) ==
+	       0);
+	const struct picosystem_game_input right = {.horizontal = 1};
+	const struct picosystem_game_input up = {.vertical = -1};
+	step_many(&input_replay, &right, 15U);
+	step_many(&input_replay, &up, 8U);
+	assert_hash("clockwork-right-15-up-8", picosystem_game_world_hash(&input_replay),
+		    EXPECTED_CLOCKWORK_INPUT_HASH);
+
+	picosystem_physics_fixed_t minimum_slider_x = world.physics.bodies[3].center.x;
+	picosystem_physics_fixed_t maximum_slider_x = minimum_slider_x;
+	const uint32_t initial_drive_angle = world.physics.bodies[0].angle_turns;
+	const uint32_t initial_follower_angle = world.physics.bodies[1].angle_turns;
+	const picosystem_physics_fixed_t initial_pendulum_x = world.physics.bodies[4].center.x;
+	const struct picosystem_game_input neutral = {0};
+	const int64_t joint_tolerance = PICOSYSTEM_PHYSICS_FIXED_FROM_INT(5);
+	uint64_t maximum_anchor_error_squared = 0U;
+	for (uint32_t tick = 0U; tick < 3000U; ++tick) {
+		assert(picosystem_game_world_step(&world, &neutral) == 0);
+		assert_bodies_inside_arena(&world);
+		assert_ropes_inside_arena(&world);
+		const uint64_t anchor_error_squared = maximum_revolute_error_squared(&world);
+		if (anchor_error_squared > maximum_anchor_error_squared) {
+			maximum_anchor_error_squared = anchor_error_squared;
+		}
+		assert(anchor_error_squared <= (uint64_t)(joint_tolerance * joint_tolerance));
+		assert(maximum_revolute_limit_violation(&world) <= ANGULAR_BOUNDARY_TOLERANCE);
+		assert(maximum_prismatic_limit_violation(&world) <= BOUNDARY_TOLERANCE);
+		if (world.physics.bodies[3].center.x < minimum_slider_x) {
+			minimum_slider_x = world.physics.bodies[3].center.x;
+		}
+		if (world.physics.bodies[3].center.x > maximum_slider_x) {
+			maximum_slider_x = world.physics.bodies[3].center.x;
+		}
+		assert(world.physics.last_broad_phase_fallback == 0U);
+		assert(world.physics.last_work.revolute_motor_count == 1U);
+		assert(world.physics.last_work.prismatic_motor_count == 0U);
+		assert(world.physics.last_work.spring_joint_count == 1U);
+		assert(world.physics.last_work.rope_particle_count == 6U);
+	}
+	assert(world.physics.bodies[0].angle_turns != initial_drive_angle);
+	assert(world.physics.bodies[1].angle_turns != initial_follower_angle);
+	assert(world.physics.bodies[4].center.x != initial_pendulum_x);
+	assert((maximum_slider_x - minimum_slider_x) >= PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8));
+	assert(world.sensor_entry_count > 0U);
+	assert_hash("clockwork-3000", picosystem_game_world_hash(&world),
+		    EXPECTED_CLOCKWORK_3000_HASH);
+
+	struct picosystem_game_world replay;
+	assert(picosystem_game_world_reset_scene(&replay, PICOSYSTEM_GAME_SCENE_CLOCKWORK) == 0);
+	run_clockwork_neutral_replay(&replay, 3000U);
+	assert_world_equal(&world, &replay);
+	fprintf(stderr,
+		"clockwork hash=%08x slider travel=%d q16 px sensor entries=%u maximum squared "
+		"anchor error=%llu\n",
+		picosystem_game_world_hash(&world), maximum_slider_x - minimum_slider_x,
+		world.sensor_entry_count, (unsigned long long)maximum_anchor_error_squared);
+}
+
 static void test_bounded_motion_contacts_and_saturated_tick(void)
 {
 	struct picosystem_game_world world;
@@ -1036,8 +1156,137 @@ static void test_canonical_neutral_sleep_and_input_wake(void)
 		world.logic_tick_count, sleeping_body_count);
 }
 
+static int32_t granular_boundary_distance(const struct picosystem_granular_particle *particle,
+					  const struct picosystem_granular_boundary *boundary)
+{
+	const int64_t delta_x = (int64_t)particle->position.x - boundary->start.x;
+	const int64_t delta_y = (int64_t)particle->position.y - boundary->start.y;
+	return (int32_t)(((delta_x * boundary->inward_normal.x) +
+			  (delta_y * boundary->inward_normal.y)) /
+			 PICOSYSTEM_PHYSICS_FIXED_ONE);
+}
+
+static void assert_grains_inside_hourglass(const struct picosystem_game_world *world)
+{
+	const int32_t boundary_tolerance = PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8);
+	assert(world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS);
+	for (uint16_t particle_index = 0U; particle_index < world->granular.particle_count;
+	     ++particle_index) {
+		const struct picosystem_granular_particle *const particle =
+			&world->granular.particles[particle_index];
+		for (uint16_t boundary_index = 0U; boundary_index < world->granular.boundary_count;
+		     ++boundary_index) {
+			const struct picosystem_granular_boundary *const boundary =
+				&world->granular.boundaries[boundary_index];
+			if ((particle->position.y < boundary->active_minimum_y) ||
+			    (particle->position.y > boundary->active_maximum_y)) {
+				continue;
+			}
+			const int32_t distance = granular_boundary_distance(particle, boundary);
+			if (distance < world->granular.particle_radius - boundary_tolerance) {
+				fprintf(stderr,
+					"escaped grain=%u boundary=%u position=(%d,%d) distance=%d "
+					"radius=%d tick=%u\n",
+					particle_index, boundary_index, particle->position.x,
+					particle->position.y, distance,
+					world->granular.particle_radius, world->logic_tick_count);
+			}
+			assert(distance >= world->granular.particle_radius - boundary_tolerance);
+		}
+	}
+}
+
+static void run_hourglass_neutral(struct picosystem_game_world *world, uint32_t tick_count)
+{
+	const struct picosystem_game_input neutral = {0};
+	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
+		assert(picosystem_game_world_step(world, &neutral) == 0);
+		assert_grains_inside_hourglass(world);
+		assert(world->granular.last_work.candidate_pair_count <=
+		       world->granular.last_work.possible_pair_count);
+	}
+}
+
+static uint32_t fake_granular_clock_now(void *context)
+{
+	uint32_t *const next_cycle = context;
+	return (*next_cycle)++;
+}
+
+static void run_hourglass_neutral_with_unfiltered_reference(struct picosystem_game_world *world,
+							    uint32_t tick_count)
+{
+	struct picosystem_game_world unfiltered;
+	assert(picosystem_game_world_reset_scene(&unfiltered, PICOSYSTEM_GAME_SCENE_HOURGLASS) ==
+	       0);
+	memset(unfiltered.granular.grid_boundary_masks, UINT8_MAX,
+	       sizeof(unfiltered.granular.grid_boundary_masks));
+
+	const struct picosystem_game_input neutral = {0};
+	uint32_t next_cycle = 0U;
+	const struct picosystem_physics_clock clock = {
+		.now = fake_granular_clock_now,
+		.context = &next_cycle,
+	};
+	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
+		assert(picosystem_game_world_step(world, &neutral) == 0);
+		struct picosystem_granular_step_profile profile;
+		assert(picosystem_game_world_step_granular_profiled(&unfiltered, &neutral, &clock,
+								    &profile) == 0);
+		assert(profile.clock_read_count ==
+		       (10U + (6U * PICOSYSTEM_GRANULAR_SOLVER_ITERATIONS)));
+		assert(profile.work.candidate_pair_count > 0U);
+		assert_grains_inside_hourglass(world);
+		assert_grains_inside_hourglass(&unfiltered);
+		assert(picosystem_game_world_hash(world) ==
+		       picosystem_game_world_hash(&unfiltered));
+	}
+}
+
+static void test_hourglass_scene_flow_flip_and_replay(void)
+{
+	struct picosystem_game_world world;
+	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_HOURGLASS) == 0);
+	assert(world.granular.particle_count == EXPECTED_HOURGLASS_GRAIN_COUNT);
+	assert(world.granular.boundary_count == 6U);
+	assert(picosystem_game_world_focus_body(&world) != NULL);
+	assert(picosystem_game_world_hash(&world) != 0U);
+	assert(picosystem_game_world_flip(NULL) == -EINVAL);
+
+	const struct picosystem_game_world initial = world;
+	assert(picosystem_game_world_flip(&world) == 0);
+	assert(picosystem_granular_world_lower_particle_count(&world.granular) ==
+	       EXPECTED_HOURGLASS_GRAIN_COUNT);
+	assert(picosystem_game_world_flip(&world) == 0);
+	assert(picosystem_game_world_hash(&world) == picosystem_game_world_hash(&initial));
+
+	run_hourglass_neutral_with_unfiltered_reference(&world, 3000U);
+	const uint16_t first_lower_count =
+		picosystem_granular_world_lower_particle_count(&world.granular);
+	assert(first_lower_count >= EXPECTED_HOURGLASS_DRAIN_COUNT);
+	assert(world.sensor_entry_count == world.granular.passage_count);
+	assert(world.sensor_entry_count >= first_lower_count);
+
+	assert(picosystem_game_world_flip(&world) == 0);
+	assert(picosystem_granular_world_lower_particle_count(&world.granular) <= 10U);
+	run_hourglass_neutral(&world, 3000U);
+	const uint16_t second_lower_count =
+		picosystem_granular_world_lower_particle_count(&world.granular);
+	assert(second_lower_count >= EXPECTED_HOURGLASS_DRAIN_COUNT);
+	assert(world.sensor_entry_count >= (2U * EXPECTED_HOURGLASS_DRAIN_COUNT));
+	fprintf(stderr,
+		"hourglass hash=%08x lower=%u/%u passages=%u candidates=%u/%u contacts=%u\n",
+		picosystem_game_world_hash(&world), second_lower_count,
+		world.granular.particle_count, world.sensor_entry_count,
+		world.granular.last_work.candidate_pair_count,
+		world.granular.last_work.possible_pair_count,
+		world.granular.last_work.contact_count);
+}
+
 int main(void)
 {
+	test_clockwork_scene_is_bounded_and_deterministic();
+	test_hourglass_scene_flow_flip_and_replay();
 	test_bounded_motion_contacts_and_saturated_tick();
 	test_canonical_reset_and_golden_replay();
 	test_validation_preserves_state();

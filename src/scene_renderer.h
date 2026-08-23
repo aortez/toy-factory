@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include "graphics.h"
+#include "granular_world.h"
 #include "physics_world.h"
 
 #define PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT 3U
@@ -24,10 +25,16 @@
 struct picosystem_scene_body {
 	int16_t center_x;
 	int16_t center_y;
-	struct {
-		int16_t x;
-		int16_t y;
-	} vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT];
+	union {
+		struct {
+			int16_t x;
+			int16_t y;
+		} vertices[PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT];
+		struct {
+			uint8_t orientation;
+			uint8_t render_style;
+		} circle;
+	} geometry;
 	uint16_t radius;
 	uint16_t id;
 	uint8_t shape;
@@ -66,19 +73,12 @@ struct picosystem_scene_rope {
 	uint8_t particle_count;
 };
 
-/* Immutable, self-contained input copied to the auxiliary core before rasterization. */
-struct picosystem_scene_snapshot {
-	int64_t published_uptime_ticks;
-	uint32_t sequence;
-	uint32_t logic_tick_count;
-	uint32_t redraw_request_sequence;
-	uint32_t sensor_entry_count;
-	uint16_t body_count;
-	uint16_t static_segment_count;
-	uint16_t distance_joint_count;
-	uint16_t revolute_joint_count;
-	uint16_t box_sensor_count;
-	uint16_t rope_count;
+struct picosystem_scene_grain {
+	uint8_t x;
+	uint8_t y;
+};
+
+struct picosystem_scene_rigid_payload {
 	uint32_t conveyor_forward_segment_mask;
 	uint32_t conveyor_reverse_segment_mask;
 	struct picosystem_scene_body bodies[PICOSYSTEM_PHYSICS_MAX_BODIES];
@@ -89,11 +89,41 @@ struct picosystem_scene_snapshot {
 	struct picosystem_scene_rope ropes[PICOSYSTEM_PHYSICS_MAX_ROPES];
 };
 
+struct picosystem_scene_granular_payload {
+	struct picosystem_scene_segment boundaries[PICOSYSTEM_GRANULAR_MAX_BOUNDARIES];
+	struct picosystem_scene_grain grains[PICOSYSTEM_GRANULAR_MAX_PARTICLES];
+};
+
+/* Immutable, self-contained input copied to the auxiliary core before rasterization. */
+struct picosystem_scene_snapshot {
+	int64_t published_uptime_ticks;
+	uint32_t sequence;
+	uint32_t logic_tick_count;
+	uint32_t redraw_request_sequence;
+	uint32_t sensor_entry_count;
+	uint16_t granular_particle_count;
+	uint16_t granular_lower_particle_count;
+	uint8_t scene_id;
+	uint8_t body_count;
+	uint8_t static_segment_count;
+	uint8_t distance_joint_count;
+	uint8_t revolute_joint_count;
+	uint8_t box_sensor_count;
+	uint8_t rope_count;
+	uint8_t granular_particle_radius;
+	/* scene_id tags the only payload valid for this immutable snapshot. */
+	union {
+		struct picosystem_scene_rigid_payload rigid;
+		struct picosystem_scene_granular_payload granular;
+	} payload;
+};
+
 enum picosystem_scene_render_stage {
 	PICOSYSTEM_SCENE_RENDER_STAGE_IDLE,
 	PICOSYSTEM_SCENE_RENDER_STAGE_VALIDATE,
 	PICOSYSTEM_SCENE_RENDER_STAGE_CLEAR,
 	PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND,
+	PICOSYSTEM_SCENE_RENDER_STAGE_GRANULES,
 	PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_STATIC_SEGMENTS,
 	PICOSYSTEM_SCENE_RENDER_STAGE_DISTANCE_JOINTS,

@@ -71,6 +71,9 @@ K_MUTEX_DEFINE(profile_mutex);
 
 _Static_assert(PICOSYSTEM_PHYSICS_PROFILE_WARMUP_TICKS == PICOSYSTEM_GAME_TICK_RATE_HZ,
 	       "physics profile warm-up must remain one simulation second");
+_Static_assert((unsigned int)PICOSYSTEM_GRANULAR_PROFILE_STAGE_COUNT <=
+		       (unsigned int)PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT,
+	       "shared profile workspace must fit every granular stage");
 
 static const char *const fixture_names[] = {
 	"canonical",
@@ -81,6 +84,10 @@ static const char *const fixture_names[] = {
 static const char *const mode_names[] = {
 	"grid",
 	"reference",
+};
+
+static const char *const granular_stage_names[] = {
+	"integrate", "boundaries", "grid_build", "pair_solve", "passages", "other", "total",
 };
 
 static const char *const stage_names[] = {
@@ -165,6 +172,13 @@ static const char *const work_names[] = {
 	"rope_collision_velocity_changes",
 };
 
+static const char *const granular_work_names[] = {
+	"possible_pairs",       "candidate_pairs",     "axis_rejections",
+	"diagonal_rejections",  "distance_tests",      "contacts",
+	"position_corrections", "boundary_tests",      "coarse_boundary_rejections",
+	"boundary_contacts",    "occupied_grid_cells", "maximum_grid_cell_occupancy",
+};
+
 _Static_assert(sizeof(fixture_names) / sizeof(fixture_names[0]) ==
 		       PICOSYSTEM_PHYSICS_PROFILE_FIXTURE_COUNT,
 	       "profile fixture names must cover every fixture");
@@ -178,6 +192,12 @@ _Static_assert(sizeof(stage_names) / sizeof(stage_names[0]) ==
 _Static_assert(sizeof(work_names) / sizeof(work_names[0]) ==
 		       PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT,
 	       "profile work names must cover every metric");
+_Static_assert(sizeof(granular_stage_names) / sizeof(granular_stage_names[0]) ==
+		       PICOSYSTEM_GRANULAR_PROFILE_STAGE_COUNT,
+	       "granular profile stage names must cover every stage");
+_Static_assert(sizeof(granular_work_names) / sizeof(granular_work_names[0]) ==
+		       PICOSYSTEM_GRANULAR_PROFILE_WORK_METRIC_COUNT,
+	       "granular profile work names must cover every metric");
 
 const char *picosystem_physics_profile_mode_name(size_t mode_index)
 {
@@ -201,6 +221,20 @@ const char *picosystem_physics_profile_work_name(size_t metric_index)
 {
 	return (metric_index < PICOSYSTEM_PHYSICS_PROFILE_WORK_METRIC_COUNT)
 		       ? work_names[metric_index]
+		       : NULL;
+}
+
+const char *picosystem_granular_profile_stage_name(size_t stage_index)
+{
+	return (stage_index < PICOSYSTEM_GRANULAR_PROFILE_STAGE_COUNT)
+		       ? granular_stage_names[stage_index]
+		       : NULL;
+}
+
+const char *picosystem_granular_profile_work_name(size_t metric_index)
+{
+	return (metric_index < PICOSYSTEM_GRANULAR_PROFILE_WORK_METRIC_COUNT)
+		       ? granular_work_names[metric_index]
 		       : NULL;
 }
 
@@ -374,15 +408,49 @@ static uint32_t work_value(const struct picosystem_physics_work_counters *work,
 	}
 }
 
+static uint32_t granular_work_value(const struct picosystem_granular_work_counters *work,
+				    enum picosystem_granular_profile_work_metric metric)
+{
+	switch (metric) {
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_POSSIBLE_PAIRS:
+		return work->possible_pair_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_CANDIDATE_PAIRS:
+		return work->candidate_pair_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_AXIS_REJECTIONS:
+		return work->axis_rejection_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_DIAGONAL_REJECTIONS:
+		return work->diagonal_rejection_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_DISTANCE_TESTS:
+		return work->distance_test_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_CONTACTS:
+		return work->contact_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_POSITION_CORRECTIONS:
+		return work->position_correction_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_BOUNDARY_TESTS:
+		return work->boundary_test_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_COARSE_BOUNDARY_REJECTIONS:
+		return work->coarse_boundary_rejection_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_BOUNDARY_CONTACTS:
+		return work->boundary_contact_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_OCCUPIED_GRID_CELLS:
+		return work->occupied_grid_cell_count;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_MAXIMUM_GRID_CELL_OCCUPANCY:
+		return work->maximum_grid_cell_occupancy;
+	case PICOSYSTEM_GRANULAR_PROFILE_WORK_METRIC_COUNT:
+	default:
+		return 0U;
+	}
+}
+
 static void stage_accumulator_reset(struct profile_stage_accumulator *accumulator)
 {
 	memset(accumulator, 0, sizeof(*accumulator));
 	accumulator->minimum_cycles = UINT32_MAX;
 }
 
-static void accumulators_reset(void)
+static void accumulators_reset(size_t stage_count)
 {
-	for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
+	for (size_t stage = 0U; stage < stage_count; ++stage) {
 		stage_accumulator_reset(&workspace.stages[stage]);
 	}
 }
@@ -441,13 +509,14 @@ static uint32_t histogram_percentile(const struct profile_stage_accumulator *acc
 	return accumulator->maximum_cycles;
 }
 
-static void summarize_stages(struct picosystem_physics_profile_mode_result *mode_result,
-			     uint32_t fine_bin_cycles, uint32_t coarse_bin_cycles)
+static void summarize_stages(struct picosystem_physics_profile_stage_summary *summaries,
+			     size_t stage_count, uint32_t fine_bin_cycles,
+			     uint32_t coarse_bin_cycles)
 {
-	for (size_t stage = 0U; stage < PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT; ++stage) {
+	for (size_t stage = 0U; stage < stage_count; ++stage) {
 		const struct profile_stage_accumulator *const accumulator =
 			&workspace.stages[stage];
-		mode_result->stages[stage] = (struct picosystem_physics_profile_stage_summary){
+		summaries[stage] = (struct picosystem_physics_profile_stage_summary){
 			.sample_count = accumulator->sample_count,
 			.mean_cycles =
 				(uint32_t)(accumulator->total_cycles / accumulator->sample_count),
@@ -933,7 +1002,7 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 		}
 	}
 
-	accumulators_reset();
+	accumulators_reset(PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT);
 	const struct picosystem_physics_clock clock = {
 		.now = profile_clock_now,
 	};
@@ -1026,7 +1095,8 @@ static int run_mode(size_t mode_index, enum picosystem_physics_profile_fixture f
 		}
 	}
 
-	summarize_stages(mode_result, fine_bin_cycles, coarse_bin_cycles);
+	summarize_stages(mode_result->stages, PICOSYSTEM_PHYSICS_PROFILE_STAGE_COUNT,
+			 fine_bin_cycles, coarse_bin_cycles);
 	mode_result->final_hash = picosystem_game_world_hash(&workspace.world);
 	mode_result->maximum_revolute_anchor_error_q16 =
 		integer_square_root(maximum_anchor_error_squared);
@@ -1105,6 +1175,100 @@ static int compare_fixture(enum picosystem_physics_profile_fixture fixture,
 		}
 	}
 
+	k_mutex_unlock(&profile_mutex);
+	return err;
+}
+
+int picosystem_granular_profile_run(uint32_t measured_tick_count,
+				    struct picosystem_granular_profile_result *result)
+{
+	if (result == NULL) {
+		return -EINVAL;
+	}
+	if ((measured_tick_count == 0U) ||
+	    (measured_tick_count > PICOSYSTEM_GRANULAR_PROFILE_MAX_TICKS)) {
+		return -ERANGE;
+	}
+
+	const int lock_err = k_mutex_lock(&profile_mutex, K_FOREVER);
+	if (lock_err != 0) {
+		return lock_err;
+	}
+
+	memset(result, 0, sizeof(*result));
+	result->schema_version = PICOSYSTEM_GRANULAR_PROFILE_SCHEMA_VERSION;
+	result->measured_tick_count = measured_tick_count;
+	result->tick_rate_hz = PICOSYSTEM_GAME_TICK_RATE_HZ;
+	result->clock_frequency_hz = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC;
+	result->histogram_fine_bin_cycles =
+		(uint32_t)(((uint64_t)result->clock_frequency_hz *
+				    PICOSYSTEM_GRANULAR_PROFILE_HISTOGRAM_FINE_BIN_US +
+			    999999U) /
+			   1000000U);
+	result->histogram_coarse_bin_cycles =
+		(uint32_t)(((uint64_t)result->clock_frequency_hz *
+				    PICOSYSTEM_GRANULAR_PROFILE_HISTOGRAM_COARSE_BIN_US +
+			    999999U) /
+			   1000000U);
+	result->back_to_back_clock_delta_cycles = measure_clock_delta();
+	result->minimum_clock_reads_per_step = UINT32_MAX;
+	const uint32_t budget_cycles = result->clock_frequency_hz / PICOSYSTEM_GAME_TICK_RATE_HZ;
+
+	int err = picosystem_game_world_reset_scene(&workspace.world,
+						    PICOSYSTEM_GAME_SCENE_HOURGLASS);
+	if (err != 0) {
+		goto out;
+	}
+	result->particle_count = workspace.world.granular.particle_count;
+	accumulators_reset(PICOSYSTEM_GRANULAR_PROFILE_STAGE_COUNT);
+	const struct picosystem_physics_clock clock = {
+		.now = profile_clock_now,
+	};
+	const struct picosystem_game_input input = {0};
+	for (uint32_t measured_tick = 0U; measured_tick < measured_tick_count; ++measured_tick) {
+		struct picosystem_granular_step_profile profile;
+		k_sched_lock();
+		err = picosystem_game_world_step_granular_profiled(&workspace.world, &input, &clock,
+								   &profile);
+		k_sched_unlock();
+		if (err != 0) {
+			goto out;
+		}
+
+		for (size_t stage = 0U; stage < PICOSYSTEM_GRANULAR_PROFILE_STAGE_COUNT; ++stage) {
+			const uint32_t stage_budget =
+				(stage == PICOSYSTEM_GRANULAR_PROFILE_TOTAL) ? budget_cycles : 0U;
+			stage_accumulate(&workspace.stages[stage], profile.stage_cycles[stage],
+					 result->histogram_fine_bin_cycles,
+					 result->histogram_coarse_bin_cycles, stage_budget);
+		}
+		for (enum picosystem_granular_profile_work_metric metric =
+			     PICOSYSTEM_GRANULAR_PROFILE_WORK_POSSIBLE_PAIRS;
+		     metric < PICOSYSTEM_GRANULAR_PROFILE_WORK_METRIC_COUNT; ++metric) {
+			const uint32_t value = granular_work_value(&profile.work, metric);
+			result->work[metric].total += value;
+			if (value > result->work[metric].maximum) {
+				result->work[metric].maximum = value;
+			}
+		}
+		if (profile.clock_read_count < result->minimum_clock_reads_per_step) {
+			result->minimum_clock_reads_per_step = profile.clock_read_count;
+		}
+		if (profile.clock_read_count > result->maximum_clock_reads_per_step) {
+			result->maximum_clock_reads_per_step = profile.clock_read_count;
+		}
+		if (((measured_tick + 1U) % PROFILE_YIELD_INTERVAL_TICKS) == 0U) {
+			k_yield();
+		}
+	}
+
+	summarize_stages(result->stages, PICOSYSTEM_GRANULAR_PROFILE_STAGE_COUNT,
+			 result->histogram_fine_bin_cycles, result->histogram_coarse_bin_cycles);
+	result->final_hash = picosystem_game_world_hash(&workspace.world);
+	result->passage_count = workspace.world.granular.passage_count;
+	result->lower_particle_count =
+		picosystem_granular_world_lower_particle_count(&workspace.world.granular);
+out:
 	k_mutex_unlock(&profile_mutex);
 	return err;
 }

@@ -64,6 +64,9 @@ class FakeSession:
             self.tick = 0
             self.input_source = "remote"
             self.input_name = "none"
+        elif command == "picosystem game flip":
+            if self.mode != "paused":
+                raise AssertionError("test flip must be paused")
         elif command.startswith("picosystem game input "):
             self.input_name = command.rsplit(" ", 1)[1]
             self.input_source = "physical" if self.input_name == "physical" else "remote"
@@ -119,6 +122,28 @@ class SequenceRunnerTest(unittest.TestCase):
         spec = sequence_runner.parse_sequence_spec(valid_spec(expected_hash="00000000"))
         with self.assertRaisesRegex(sequence_runner.SequenceError, "hash mismatch"):
             sequence_runner.run_sequence(FakeSession(), spec)
+
+    def test_runs_flip_action_without_advancing_time(self) -> None:
+        value = valid_spec()
+        value["steps"] = [
+            {"input": "right", "ticks": 10},
+            {"action": "flip"},
+            {"input": "none", "ticks": 5},
+        ]
+        value["expect"] = {"hash": "abc0000f"}
+        spec = sequence_runner.parse_sequence_spec(value)
+        session = FakeSession()
+
+        result = sequence_runner.run_sequence(session, spec)
+
+        self.assertEqual(result.state.tick, 15)
+        self.assertEqual(session.commands.count("picosystem game flip"), 1)
+
+    def test_rejects_action_combined_with_ticks(self) -> None:
+        value = valid_spec()
+        value["steps"] = [{"action": "flip", "ticks": 1}]
+        with self.assertRaisesRegex(sequence_runner.SequenceError, "cannot be combined"):
+            sequence_runner.parse_sequence_spec(value)
 
     def test_rejects_physical_input_in_deterministic_sequence(self) -> None:
         value = valid_spec()
