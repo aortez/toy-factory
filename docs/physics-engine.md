@@ -12,20 +12,21 @@ contracts defined here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 251,180 bytes of the linker's 255 KiB Zephyr
-RAM region and 234,744 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 251,276 bytes of the linker's 255 KiB Zephyr
+RAM region and 236,060 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
 rigid physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, two
 12-particle ropes, and bounded pair-event storage. The independent 192-particle
-granular world is 4,180 bytes, including its grid heads and links. The rigid and
-granular alternatives share one tagged game-world union. The serialized A/B
+granular world is 7,540 bytes, including its 40 x 48 grid heads, per-cell
+boundary masks, and particle links. The rigid and granular alternatives share
+one tagged game-world union. The serialized A/B
 workspace is 33,360 bytes, is inactive during normal play, and
 avoids placing a second world on a thread stack. The profile
 command uses a 5,120-byte shell stack and most recently reached 4,184 bytes. The
 856-byte render snapshot leaves measured main/render stack use at 2,860 and
 3,196 bytes; both stacks are bounded at 5,120 bytes. The linked image retains
-9,940 bytes of Zephyr RAM headroom. The fast build also places
+9,844 bytes of Zephyr RAM headroom. The fast build also places
 the rigid-physics hot path in SRAM and keeps the collision traversal in a separate,
 bounded stack frame; this avoids core-0/core-1 XIP contention while the second
 core rasterizes a full scene. Both builds route compiler integer division
@@ -142,8 +143,9 @@ remain coherent even when presentation is deliberately slower than physics.
 ## Granular pipeline
 
 The Hourglass is the first separate simulation backend built on the same game
-ownership and snapshot boundary. It initializes 96 two-pixel-radius grains in
-the upper chamber and supports 192 without allocation. Six inward-facing
+ownership and snapshot boundary. It initializes 192 two-pixel-radius grains in
+the upper chamber without allocation; a benchmark fragment retains the earlier
+96-grain population. Six inward-facing
 half-plane segments form the two chamber caps and four sloped walls. A
 three-pixel deadband around the neck turns each grain's upper/lower state into
 a stable crossing count.
@@ -154,22 +156,25 @@ Each fixed update performs these bounded phases:
    clamping each grain to four pixels per tick;
 2. project grains inside the active boundary planes and remove outward boundary
    velocity with fixed tangent damping;
-3. rebuild a 20 x 24 grid of eight-pixel cells using byte-sized heads and links;
+3. rebuild a 40 x 48 grid of four-pixel cells using byte-sized heads and links;
 4. solve every unique pair from the surrounding nine cells, alternating forward
    and reverse traversal across two fixed passes;
 5. reapply the boundary constraints after each pair pass and once more for
    slope/cap corners; and
-6. update hysteretic neck-passage state and deterministic work counters.
+6. update hysteretic neck-passage state and, for an explicit profile, work
+   counters.
 
 Coincident particles select a stable index-derived axis. Contact normalization
 uses an exact bounded 32-bit digit square root and a Q12 normal. Two components
 share a short use of the RP2040's per-core hardware divider, and the final
 correction stays in bounded 32-bit arithmetic. The grid reduces candidate work
-but never changes with wall-clock load; solver quality is always two passes. The X
-action rotates current and previous positions around the configured center and
-inverts the upper/lower mask, so two flips restore the exact hash. This milestone
-does not couple grains to rigid bodies, model grain rotation, or implement
-grain-to-grain friction.
+but never changes with wall-clock load; solver quality is always two passes.
+Conservative per-cell masks skip boundaries that cannot reach a cell; edge
+cells test every wall because out-of-grid positions fold into those cells. The
+X action rotates current and previous positions around the configured center
+and inverts the upper/lower mask, so two flips restore the exact hash. This
+milestone does not couple grains to rigid bodies, model grain rotation, or
+implement grain-to-grain friction.
 
 ## Collision pipeline
 
@@ -256,7 +261,10 @@ grid construction, pair solving, passage tracking, `other`, and total time.
 Additional work summaries split axis/diagonal/distance rejection, contacts,
 position corrections, exact/coarse wall work, and grid occupancy. The fixed
 128/512-microsecond histogram reports the longer granular tail through the same
-summary schema. The measured 192-grain results and placement A/B are in
+summary schema. Normal granular gameplay uses a separate counter-free wrapper;
+the explicit profiler always counts work, and a Kconfig diagnostic can opt live
+gameplay back into counter collection. The measured 192-grain results and
+placement A/B are in
 [`benchmarks/hourglass`](../benchmarks/hourglass/README.md).
 
 Stage samples accumulate into 64 fine 32-microsecond bins followed by 64 coarse

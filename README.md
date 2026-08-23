@@ -16,7 +16,7 @@ path:
   continuous full-frame presentation;
 - runs a deterministic 192-grain Hourglass at an exact 60 Hz fixed step with
   Q16.16 Verlet motion, a fixed two-pass contact solver, six containment planes,
-  and a bounded 20 x 24 uniform grid;
+  and a bounded 40 x 48 uniform grid;
 - tracks grains crossing the neck, tilts gravity with the D-pad, and rotates the
   complete particle position and velocity state exactly 180 degrees with X;
 - retains the Clockwork and Machine Lab scene builders for rigid-body and
@@ -390,8 +390,8 @@ and optional final assertions:
     {"input": "none", "ticks": 120}
   ],
   "expect": {
-    "hash": "010f9b49",
-    "framebuffer_crc32": "d199c13c"
+    "hash": "20b82113",
+    "framebuffer_crc32": "cecc86d5"
   }
 }
 ```
@@ -478,7 +478,7 @@ candidate filter, contact/event generation, sequential-impulse response, and
 stable field-by-field hash live in
 [`src/physics_world.c`](src/physics_world.c). Scene-independent reset, input,
 ticks, and the outer hash live in [`src/game_world.c`](src/game_world.c);
-the fixed-capacity Verlet grain simulation and its 20 x 24 grid live in
+the fixed-capacity Verlet grain simulation and its 40 x 48 grid live in
 [`src/granular_world.c`](src/granular_world.c). Flash-resident scene
 descriptions live in
 [`src/game_scene_hourglass.c`](src/game_scene_hourglass.c),
@@ -552,39 +552,38 @@ physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted reset, double-flip,
 full-drain, and retained Machine Lab replay hashes as native goldens.
 The default image uses 221,276 bytes of its 255 KiB Zephyr RAM region (84.74%)
-and 229,128 bytes of flash. This includes the 115,200-byte framebuffer,
+and 230,348 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer, 22,636-byte fixed-capacity rigid physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
-contact/event storage and per-step deterministic counters, a 4,180-byte
-fixed-capacity 192-particle granular world, a 33,360-byte serialized benchmark
+contact/event storage and per-step deterministic counters, a 7,540-byte
+fixed-capacity 192-particle granular world with a 40 x 48 scratch grid and
+boundary masks, a 33,360-byte serialized benchmark
 workspace, two 856-byte render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 251,180 bytes of
-that region (96.19%) and 234,744 bytes of flash. It keeps the rigid-physics and
+storage, and a 1,024-byte shell TX ring. The fast image uses 251,276 bytes of
+that region (96.23%) and 236,060 bytes of flash. It keeps the rigid-physics and
 renderer hot paths in SRAM while the granular solver remains in XIP flash, and
 both images route compiler integer division through the RP2040's interrupt-safe
 hardware-divider wrappers. Both images also reserve
 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 39,844 and 9,940
+core-1 mailbox and stack. The default and fast images retain 39,844 and 9,844
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
 
-On the tested PIM559, a 4,038-tick optimized Hourglass window sustained 60.0 Hz
-simulation with no skipped or over-budget updates. Physics averaged 6.628 ms
-and peaked at 9.748 ms; complete updates peaked at 10.020 ms. Presentation held
-29.8 fps; the latest core-1 raster and full-frame transfer took 8.884 and 18.379
-ms. Main, renderer, and core-1 stack high-water marks were 2,860/5,120,
-3,196/5,120, and 232/4,096 bytes. An isolated 1,000-tick replay measured
-13.688/14.394 ms mean/maximum for the normal 192 grains with zero isolated
-60 Hz violations; the retained sparse 96-grain comparison measured
-5.849/6.236 ms. See the
-[Hourglass report](benchmarks/hourglass/README.md). A paused live-scene check
-rendered identical core-0 and core-1 pixels at CRC-32 `fb1db43e` and restored
-the framebuffer.
-The 192-grain flip sequence reached tick 360 at hash `010f9b49` and framebuffer
-CRC-32 `d199c13c`; the 600-tick neutral sequence reached `9d12ec5e` and
-`09f0b159`.
+On the tested PIM559, the optimized dense Hourglass sustained its exact 60.0 Hz
+simulation cadence with no skipped or over-budget updates. Concurrent physics
+averaged 10.860 ms and peaked at 14.573 ms over 23,601 ticks, leaving about 5.8
+ms of mean headroom in the 16.667 ms tick. Core-1 full-scene rasterization
+averaged 9.050 ms and the full-frame transfer took 18.471 ms, retaining 29.8 fps
+presentation. An isolated, counter-bearing 1,000-tick replay measured
+10.180/10.811 ms mean/maximum with zero 60 Hz violations. See the
+[Hourglass report](benchmarks/hourglass/README.md) for controlled grid,
+boundary, renderer, and work-count A/B results. A paused core-1 verification
+render reproduced CRC-32 `33aa52af` in 9.654 ms.
+The 192-grain flip sequence reached tick 360 at hash `20b82113` and framebuffer
+CRC-32 `cecc86d5`; the 600-tick neutral sequence reached `f9de5870` and
+`ef323e84`.
 
 On the tested PIM559, the preceding sleeping image's schema-version-8 moving
 profile averaged 2.792 ms on the grid and 3.117 ms through the brute-force

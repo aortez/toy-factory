@@ -54,6 +54,16 @@ config TOY_FACTORY_GRANULAR_PHYSICS_IN_SRAM
 	  an optional placement experiment; unlike rigid physics, it is not enabled
 	  automatically by the full-frame renderer.
 
+config TOY_FACTORY_GRANULAR_WORK_COUNTERS
+	bool "Collect granular solver work counters on every tick"
+	default n
+	help
+	  Count broad-phase candidates, contacts, corrections, boundary work, and
+	  grid occupancy for live diagnostics. This is disabled by default because
+	  the bookkeeping has measurable cost in dense scenes. The explicit
+	  "picosystem profile granular" command always collects these counters;
+	  deterministic simulation state is unaffected.
+
 config TOY_FACTORY_DISPLAY_DMA_HIGH_PRIORITY
 	bool "Prioritize display DMA on the RP2040 bus fabric"
 	default n

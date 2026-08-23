@@ -283,8 +283,10 @@ static int step_granular_world(struct picosystem_game_world *world,
 			       const struct picosystem_physics_clock *clock,
 			       struct picosystem_granular_step_profile *profile)
 {
-	const int err = picosystem_granular_world_step_profiled(&world->granular, acceleration,
-								clock, profile);
+	const int err = (profile == NULL)
+				? picosystem_granular_world_step(&world->granular, acceleration)
+				: picosystem_granular_world_step_profiled(
+					  &world->granular, acceleration, clock, profile);
 	if (err != 0) {
 		return err;
 	}

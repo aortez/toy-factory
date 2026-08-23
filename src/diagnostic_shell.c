@@ -361,6 +361,13 @@ static void print_granular_stats(const struct shell *shell,
 	if (game->granular_particle_count == 0U) {
 		return;
 	}
+#if !defined(CONFIG_TOY_FACTORY_GRANULAR_WORK_COUNTERS)
+	shell_print(shell,
+		    "granular: particles=%u (%u lower), boundaries=%u, passages=%u, "
+		    "live work counters=disabled (use 'picosystem profile granular')",
+		    game->granular_particle_count, game->granular_lower_particle_count,
+		    game->granular_boundary_count, game->granular_passage_count);
+#else
 	shell_print(shell,
 		    "granular: particles=%u (%u lower), boundaries=%u, passages=%u, "
 		    "pairs=%u/%u candidates/possible, contacts=%u, corrections=%u, "
@@ -372,6 +379,7 @@ static void print_granular_stats(const struct shell *shell,
 		    game->granular_boundary_contact_count, game->granular_boundary_test_count,
 		    game->granular_occupied_grid_cell_count,
 		    game->granular_maximum_grid_cell_occupancy);
+#endif
 }
 
 static void print_game_runtime_stats(const struct shell *shell,
