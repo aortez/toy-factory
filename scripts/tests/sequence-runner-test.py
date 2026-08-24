@@ -44,9 +44,10 @@ class FakeSession:
 
     def state_output(self) -> str:
         input_x, input_y = sequence_runner.VALID_INPUTS[self.input_name]
+        scene_ids = {"clockwork": 1, "hourglass": 3, "marble-machine": 4}
         return "\n".join(
             (
-                f"scene={self.scene} scene_id={1 if self.scene == 'clockwork' else 3}",
+                f"scene={self.scene} scene_id={scene_ids[self.scene]}",
                 f"mode={self.mode} tick={self.tick} hash={self.state_hash():08x}",
                 f"input_source={self.input_source} input_x={input_x} input_y={input_y}",
                 "focus_id=1 focus_x_q16=1 focus_y_q16=2 "
@@ -73,9 +74,9 @@ class FakeSession:
             self.tick = 0
             self.input_source = "remote"
             self.input_name = "none"
-        elif command == "picosystem game flip":
+        elif command in {"picosystem game action", "picosystem game flip"}:
             if self.mode != "paused":
-                raise AssertionError("test flip must be paused")
+                raise AssertionError("test action must be paused")
         elif command.startswith("picosystem game input "):
             self.input_name = command.rsplit(" ", 1)[1]
             self.input_source = "physical" if self.input_name == "physical" else "remote"
@@ -140,6 +141,17 @@ class SequenceRunnerTest(unittest.TestCase):
         self.assertEqual(result.state.scene, "clockwork")
         self.assertIn("picosystem game scene clockwork", session.commands)
 
+    def test_selects_marble_machine_before_replay(self) -> None:
+        value = valid_spec()
+        value["scene"] = "marble-machine"
+        spec = sequence_runner.parse_sequence_spec(value)
+        session = FakeSession()
+
+        result = sequence_runner.run_sequence(session, spec)
+
+        self.assertEqual(result.state.scene, "marble-machine")
+        self.assertIn("picosystem game scene marble-machine", session.commands)
+
     def test_rejects_unknown_scene(self) -> None:
         value = valid_spec()
         value["scene"] = "machine-lab"
@@ -159,11 +171,11 @@ class SequenceRunnerTest(unittest.TestCase):
         with self.assertRaisesRegex(sequence_runner.SequenceError, "hash mismatch"):
             sequence_runner.run_sequence(FakeSession(), spec)
 
-    def test_runs_flip_action_without_advancing_time(self) -> None:
+    def test_runs_primary_action_without_advancing_time(self) -> None:
         value = valid_spec()
         value["steps"] = [
             {"input": "right", "ticks": 10},
-            {"action": "flip"},
+            {"action": "primary"},
             {"input": "none", "ticks": 5},
         ]
         value["expect"] = {"hash": "abc0000f"}
@@ -173,11 +185,11 @@ class SequenceRunnerTest(unittest.TestCase):
         result = sequence_runner.run_sequence(session, spec)
 
         self.assertEqual(result.state.tick, 15)
-        self.assertEqual(session.commands.count("picosystem game flip"), 1)
+        self.assertEqual(session.commands.count("picosystem game action"), 1)
 
     def test_rejects_action_combined_with_ticks(self) -> None:
         value = valid_spec()
-        value["steps"] = [{"action": "flip", "ticks": 1}]
+        value["steps"] = [{"action": "primary", "ticks": 1}]
         with self.assertRaisesRegex(sequence_runner.SequenceError, "cannot be combined"):
             sequence_runner.parse_sequence_spec(value)
 

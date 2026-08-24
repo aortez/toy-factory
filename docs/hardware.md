@@ -66,10 +66,10 @@ one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
 updates crossed the 16.667 ms budget. The 320-grain population remains normal
 to preserve headroom for additional gameplay.
 
-The image uses 251,836 bytes of the 255 KiB Zephyr RAM region and 236,080 bytes
-of flash, leaving 9,284 bytes of linker RAM plus the separately reserved 8 KiB
+The image uses 252,316 bytes of the 255 KiB Zephyr RAM region and 242,888 bytes
+of flash, leaving 8,804 bytes of linker RAM plus the separately reserved 8 KiB
 core-1 mailbox/stack area. The conservative image uses 221,820 bytes of Zephyr
-RAM and 230,352 bytes of flash. The fixed granular capacity is 512 particles,
+RAM and 237,188 bytes of flash. The fixed granular capacity is 512 particles,
 the immutable render snapshot is 1,128 bytes, and the tagged game-world and
 snapshot unions avoid allocating inactive scene alternatives. Full results are
 in the [Hourglass report](../benchmarks/hourglass/README.md).
@@ -81,6 +81,57 @@ redraw, and B tone behavior were also exercised on the PIM559.
 Exact USB-controlled replay reproduced tick 360 at hash `a0919f8b` and
 framebuffer CRC-32 `41e4cdd1` after a directional/flip sequence. A 600-tick
 neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
+
+## Current Marble Machine validation
+
+Marble Machine uses all 12 rigid-body slots for nine circles, a spring-loaded
+capsule launcher, one motorized capsule rotor, and one hinged accumulation
+tray. It also uses all eight static segments, two powered return surfaces, two
+distance springs, three revolute joints, one box sensor, and one flash-resident
+velocity zone. The lower ramp
+ends near mid-screen instead of discharging beside the lift. Its long powered
+floor runout preserves upstream spacing, while a downward-extended guide makes
+the lift entrance one marble high. The guide and its discharge rise from y=100
+to y=70, filling more of the playfield and giving each marble a longer upper
+descent. The zone
+models a cleated elevator by approaching a bounded target velocity only for
+selected bodies whose centers are inside its shaft; it adds no default-image
+RAM. Powered segments animate from authoritative tick time, and a vertical
+powered segment is presented as a pulley belt with moving cleats.
+
+A marble begin-contact unlocks the charged launcher's angular limit. The spring
+acts on the arm, ordinary reciprocal contacts transfer that energy to marbles,
+and a slow torque-limited motor winds it back before the limit relatches. The
+upper-right tray is likewise contact-driven: a revolute joint supplies its
+pivot and an off-center distance spring restores it after accumulated marble
+torque opens the dump path. The 6,000-tick native baseline remains bounded and
+ends at hash `fed080d5` with 131 valid upward returns, including 68 after tick
+3,000. All nine stable marble IDs return, traverse both ramps in the intended
+direction, contact both the launcher and accumulation tray, and span at least
+140 vertical pixels during that second half. The launcher fires 97 times,
+including 50 late releases. The accumulator spends 869 ticks carrying at least
+two contacts and completes 39 tip/reset cycles, including 20 late cycles.
+All nine marbles achieve at least an eight-pixel ballistic rise and combine it
+with at least 20 pixels of horizontal travel; maxima are 40.1 pixels up, 88.2
+pixels across, and 2.84 pixels/tick upward at departure. Average lower-left
+occupancy remains 0.781 marbles, with 211 ticks at three or more and 189 local
+marble-contact ticks. The passive runout records 132 elevator admissions,
+including 66 late, with all nine IDs in both halves. The separate 2,400-tick
+powered-return reversal replay ends at `a1fb5de3`.
+
+Exact USB-controlled replay reaches hash `ee7a9565` and framebuffer CRC-32
+`1d4595e2` at tick 480. A clean 3,462-tick neutral window sustained 60.0 Hz
+simulation and 29.7 fps presentation with zero skipped or over-budget updates.
+Physics averaged 5.746 ms and peaked at 11.485 ms; complete updates averaged
+6.153 ms with an 11.565 ms maximum. Core-1 rasterization took 10.717 ms with an
+11.161 ms observed maximum, followed by an 18.806 ms full-frame DMA transfer.
+The earlier isolated 1,000-tick A/B run matched grid and brute-force state at
+hash `42228152`; grid and reference averaged 5.380 and 5.973 ms per tick.
+
+This supersedes the original prototype's claimed 93 returns. Its sensor
+overlapped the reciprocating pusher, whose two crossings per cycle exactly
+explained that count, while the marbles visibly settled at the bottom. Those
+results are not hardware evidence for circulation.
 
 ## USB power and charging status
 

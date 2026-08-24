@@ -11,7 +11,7 @@
       "ticks": 120
     },
     {
-      "action": "flip"
+      "action": "primary"
     },
     {
       "input": "left",

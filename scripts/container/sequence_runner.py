@@ -28,8 +28,12 @@ VALID_INPUTS = {
     "down-left": (-1, 1),
     "down-right": (1, 1),
 }
-VALID_ACTIONS = {"flip"}
-VALID_SCENES = {"clockwork", "hourglass"}
+ACTION_COMMANDS = {
+    "flip": "picosystem game flip",
+    "primary": "picosystem game action",
+}
+VALID_ACTIONS = set(ACTION_COMMANDS)
+VALID_SCENES = {"clockwork", "hourglass", "marble-machine"}
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 HEX32_PATTERN = re.compile(r"^[0-9a-fA-F]{8}$")
 GAME_STATE_PATTERN = re.compile(
@@ -38,7 +42,9 @@ GAME_STATE_PATTERN = re.compile(
 INPUT_STATE_PATTERN = re.compile(
     r"^input_source=(physical|remote) input_x=(-?\d+) input_y=(-?\d+)$"
 )
-SCENE_STATE_PATTERN = re.compile(r"^scene=(clockwork|hourglass) scene_id=(\d+)$")
+SCENE_STATE_PATTERN = re.compile(
+    r"^scene=(clockwork|hourglass|marble-machine) scene_id=(\d+)$"
+)
 CHECKSUM_PATTERN = re.compile(
     r"^width=(\d+) height=(\d+) format=([a-z0-9]+) bytes=(\d+) "
     r"sequence=(\d+) crc32=([0-9a-fA-F]{8})$"
@@ -290,7 +296,7 @@ def run_sequence(
     current_input_name = "none"
     for index, segment in enumerate(spec.segments, start=1):
         if segment.action is not None:
-            state = parse_game_state(session.run(f"picosystem game {segment.action}"))
+            state = parse_game_state(session.run(ACTION_COMMANDS[segment.action]))
             require_paused_tick(state, expected_tick, f"segment {index} action")
             require_remote_input(state, current_input_name, f"segment {index} action")
             require_scene(state, spec.scene, f"segment {index} action")

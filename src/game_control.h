@@ -19,7 +19,7 @@ enum picosystem_game_control_operation {
 	PICOSYSTEM_GAME_CONTROL_RUN,
 	PICOSYSTEM_GAME_CONTROL_RESET,
 	PICOSYSTEM_GAME_CONTROL_SELECT_SCENE,
-	PICOSYSTEM_GAME_CONTROL_FLIP,
+	PICOSYSTEM_GAME_CONTROL_APPLY_SCENE_ACTION,
 	PICOSYSTEM_GAME_CONTROL_STEP,
 	PICOSYSTEM_GAME_CONTROL_SET_INPUT,
 	PICOSYSTEM_GAME_CONTROL_GET_STATE,
@@ -32,6 +32,7 @@ struct picosystem_game_control_request {
 	struct picosystem_game_input input;
 	enum picosystem_game_control_operation operation;
 	enum picosystem_game_scene_id scene_id;
+	enum picosystem_game_scene_action scene_action;
 	bool remote_input_enabled;
 };
 

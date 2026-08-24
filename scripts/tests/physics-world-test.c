@@ -1458,7 +1458,7 @@ static void test_revolute_joint_boundaries_and_anchors(void)
 	invalid.motor_enabled = 1U;
 	invalid.motor_speed_per_tick = RATIO(1, 64);
 	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
-	invalid.maximum_motor_impulse_per_tick = FIXED(9);
+	invalid.maximum_motor_impulse_per_tick = FIXED(257);
 	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
 	invalid.maximum_motor_impulse_per_tick = RATIO(1, 4);
 	invalid.motor_speed_per_tick = PICOSYSTEM_PHYSICS_FIXED_ONE;
@@ -1621,6 +1621,24 @@ static void test_revolute_joint_motor_and_limits(void)
 	drive.maximum_motor_impulse_per_tick = RATIO(1, 4);
 	drive.motor_enabled = 1U;
 	assert(picosystem_physics_world_add_revolute_joint(&motor, &drive) == 0);
+	assert(picosystem_physics_world_configure_revolute_motor(NULL, 0U, false, 0, 0) == -EINVAL);
+	assert(picosystem_physics_world_configure_revolute_motor(&motor, 1U, false, 0, 0) ==
+	       -ENOENT);
+	assert(picosystem_physics_world_configure_revolute_motor(
+		       &motor, 0U, false, drive.motor_speed_per_tick, 0) == -ERANGE);
+	assert(picosystem_physics_world_configure_revolute_motor(
+		       &motor, 0U, true, PICOSYSTEM_PHYSICS_FIXED_ONE,
+		       drive.maximum_motor_impulse_per_tick) == -ERANGE);
+	assert(picosystem_physics_world_configure_revolute_motor(
+		       &motor, 0U, true, drive.motor_speed_per_tick, FIXED(257)) == -ERANGE);
+	assert(picosystem_physics_world_configure_revolute_motor(&motor, 0U, false, 0, 0) == 0);
+	assert(motor.revolute_joints[0].motor_enabled == 0U);
+	assert(motor.revolute_joints[0].motor_speed_per_tick == 0);
+	assert(motor.revolute_joints[0].maximum_motor_impulse_per_tick == 0);
+	assert(picosystem_physics_world_configure_revolute_motor(
+		       &motor, 0U, true, drive.motor_speed_per_tick,
+		       drive.maximum_motor_impulse_per_tick) == 0);
+	assert(motor.revolute_joints[0].motor_enabled != 0U);
 	for (uint32_t step = 0U; step < 32U; ++step) {
 		assert(picosystem_physics_world_step(&motor, &no_acceleration) == 0);
 		assert(motor.last_work.revolute_motor_count == 1U);
@@ -1680,6 +1698,19 @@ static void test_revolute_joint_motor_and_limits(void)
 	drive.motor_enabled = 1U;
 	drive.limit_enabled = 1U;
 	assert(picosystem_physics_world_add_revolute_joint(&limited, &drive) == 0);
+	assert(picosystem_physics_world_set_revolute_limits(NULL, 0U, 0, 0) == -EINVAL);
+	assert(picosystem_physics_world_set_revolute_limits(&limited, 1U, 0, 0) == -ENOENT);
+	assert(picosystem_physics_world_set_revolute_limits(&motor, 0U, -RATIO(1, 2),
+							    RATIO(1, 2)) == -ENOTSUP);
+	assert(picosystem_physics_world_set_revolute_limits(&limited, 0U, RATIO(1, 2),
+							    -RATIO(1, 2)) == -ERANGE);
+	assert(picosystem_physics_world_set_revolute_limits(&limited, 0U, 0, 1) == -ERANGE);
+	assert(picosystem_physics_world_set_revolute_limits(&limited, 0U, -RATIO(1, 2),
+							    RATIO(1, 2)) == 0);
+	assert(limited.revolute_joints[0].lower_angle_radians == -RATIO(1, 2));
+	assert(limited.revolute_joints[0].upper_angle_radians == RATIO(1, 2));
+	assert(picosystem_physics_world_set_revolute_limits(&limited, 0U, drive.lower_angle_radians,
+							    drive.upper_angle_radians) == 0);
 	struct picosystem_physics_world reference = limited;
 	bool saw_active_limit = false;
 	for (uint32_t step = 0U; step < 1000U; ++step) {
@@ -2979,13 +3010,18 @@ static void test_spring_dynamics_sleep_and_reference(void)
 
 static void init_conveyor_world(struct picosystem_physics_world *world,
 				picosystem_physics_fixed_t surface_speed,
-				picosystem_physics_fixed_t friction)
+				picosystem_physics_fixed_t friction, bool reverse_endpoints)
 {
 	init_world(world, FIXED(4));
 	struct picosystem_physics_circle_config body = circle_config(1U, 0, -1, 2);
 	body.restitution = 0;
 	body.friction = friction;
 	struct picosystem_physics_segment_config segment = horizontal_segment(101U, 0);
+	if (reverse_endpoints) {
+		const struct picosystem_physics_vector start = segment.start;
+		segment.start = segment.end;
+		segment.end = start;
+	}
 	segment.restitution = 0;
 	segment.friction = friction;
 	segment.surface_speed_per_tick = surface_speed;
@@ -2997,7 +3033,7 @@ static void test_conveyor_direction_setter_sleep_and_reference(void)
 {
 	const struct picosystem_physics_vector gravity = {.y = RATIO(1, 64)};
 	struct picosystem_physics_world forward;
-	init_conveyor_world(&forward, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE);
+	init_conveyor_world(&forward, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE, false);
 	assert(picosystem_physics_world_step(&forward, &gravity) == 0);
 	assert(forward.bodies[0].velocity_per_tick.x > 0);
 	assert(forward.last_work.conveyor_contact_count == 1U);
@@ -3005,12 +3041,17 @@ static void test_conveyor_direction_setter_sleep_and_reference(void)
 	assert(forward.last_work.conveyor_solver_changed_count > 0U);
 
 	struct picosystem_physics_world reverse;
-	init_conveyor_world(&reverse, -RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE);
+	init_conveyor_world(&reverse, -RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE, false);
 	assert(picosystem_physics_world_step(&reverse, &gravity) == 0);
 	assert(reverse.bodies[0].velocity_per_tick.x < 0);
 
+	struct picosystem_physics_world reversed_endpoints;
+	init_conveyor_world(&reversed_endpoints, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE, true);
+	assert(picosystem_physics_world_step(&reversed_endpoints, &gravity) == 0);
+	assert(reversed_endpoints.bodies[0].velocity_per_tick.x < 0);
+
 	struct picosystem_physics_world frictionless;
-	init_conveyor_world(&frictionless, RATIO(1, 2), 0);
+	init_conveyor_world(&frictionless, RATIO(1, 2), 0, false);
 	assert(picosystem_physics_world_step(&frictionless, &gravity) == 0);
 	assert(frictionless.bodies[0].velocity_per_tick.x == 0);
 	assert(frictionless.last_work.conveyor_contact_count == 1U);
@@ -3027,7 +3068,7 @@ static void test_conveyor_direction_setter_sleep_and_reference(void)
 	assert(picosystem_physics_world_hash(&forward) != forward_hash);
 
 	struct picosystem_physics_world sleeping;
-	init_conveyor_world(&sleeping, 0, PICOSYSTEM_PHYSICS_FIXED_ONE);
+	init_conveyor_world(&sleeping, 0, PICOSYSTEM_PHYSICS_FIXED_ONE, false);
 	for (uint32_t tick = 0U; tick < PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS; ++tick) {
 		assert(picosystem_physics_world_step(&sleeping, &gravity) == 0);
 	}
@@ -3040,7 +3081,7 @@ static void test_conveyor_direction_setter_sleep_and_reference(void)
 	}
 
 	struct picosystem_physics_world grid;
-	init_conveyor_world(&grid, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE);
+	init_conveyor_world(&grid, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE, false);
 	struct picosystem_physics_world reference = grid;
 	for (uint32_t tick = 0U; tick < 24U; ++tick) {
 		assert(picosystem_physics_world_step(&grid, &gravity) == 0);

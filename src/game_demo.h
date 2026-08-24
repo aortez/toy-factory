@@ -204,8 +204,9 @@ int picosystem_game_demo_reset(struct picosystem_game_demo_state *state);
 int picosystem_game_demo_reset_scene(struct picosystem_game_demo_state *state,
 				     enum picosystem_game_scene_id scene_id);
 
-/* Flip the active symmetric scene and publish its new authoritative state. */
-int picosystem_game_demo_flip(struct picosystem_game_demo_state *state);
+/* Apply one scene-owned action and publish its new authoritative state. */
+int picosystem_game_demo_apply_scene_action(struct picosystem_game_demo_state *state,
+					    enum picosystem_game_scene_action action);
 
 /* Advance one authoritative 60 Hz simulation step and publish its newest state. */
 int picosystem_game_demo_update(struct picosystem_game_demo_state *state,
