@@ -6,14 +6,14 @@ host and device, remain remotely stepable at exact tick boundaries, and produce
 stable authoritative hashes.
 
 This document describes the intended architecture and the current deterministic
-Hourglass granular-material milestone. Later milestones may revise measured
+rigid, granular, and multi-scene runtime. Later milestones may revise measured
 capacities, but they must retain the ownership, determinism, and overload
 contracts defined here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 251,836 bytes of the linker's 255 KiB Zephyr
-RAM region and 236,080 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 251,852 bytes of the linker's 255 KiB Zephyr
+RAM region and 240,608 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
 rigid physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, two
@@ -25,9 +25,9 @@ one tagged game-world union. The serialized A/B
 workspace is 33,360 bytes, is inactive during normal play, and
 avoids placing a second world on a thread stack. The profile
 command uses a 5,120-byte shell stack and most recently reached 4,184 bytes. The
-1,128-byte render snapshot leaves measured main/render stack use at 3,132 and
+1,128-byte render snapshot leaves measured main/render stack use at 4,024 and
 3,740 bytes; both stacks are bounded at 5,120 bytes. The linked image retains
-9,284 bytes of Zephyr RAM headroom. The fast build also places
+9,268 bytes of Zephyr RAM headroom. The fast build also places
 the rigid-physics hot path in SRAM and keeps the collision traversal in a separate,
 bounded stack frame; this avoids core-0/core-1 XIP contention while the second
 core rasterizes a full scene. Both builds route compiler integer division
@@ -136,6 +136,11 @@ Bodies and shapes receive stable numeric identifiers. Array order is never
 derived from addresses, hash tables, allocation order, or unstable sorting.
 Remote pause, reset, input injection, exact stepping, framebuffer capture, and
 state hashing continue to cross the acknowledged main-thread request queue.
+Scene-owned primary actions cross that same queue: Hourglass maps the action to
+its exact 180-degree transform, while rigid scenes may declaratively identify
+motorized prismatic joints and powered static-segment surfaces whose direction
+should reverse. Input and shell layers therefore do not encode scene-specific
+physics behavior.
 Real-time play publishes immutable snapshots at a deterministic 30 Hz cadence
 while authoritative simulation remains at 60 Hz. Pause, reset, redraw, and
 exact stepping force a current snapshot, so remote state and framebuffer checks
@@ -178,7 +183,8 @@ grid reduces candidate work but never changes with wall-clock load; solver
 quality is always two passes.
 Conservative per-cell masks skip boundaries that cannot reach a cell; edge
 cells test every wall because out-of-grid positions fold into those cells. The
-X action rotates current and previous positions around the configured center
+Hourglass primary action rotates current and previous positions around the
+configured center
 and inverts the upper/lower mask, so two flips restore the exact hash. This
 milestone does not couple grains to rigid bodies, model grain rotation, or
 implement grain-to-grain friction.
@@ -565,6 +571,31 @@ counts entries modulo 100 without affecting the underlying saturated counter.
 A still performs the asynchronous full-redraw comparison and B keeps the
 bounded piezo test. Remote directional input has the same physics meaning as the
 physical D-pad.
+
+## Playable Marble Machine
+
+Marble Machine reuses the rigid backend with eight five-pixel circles, six
+static segments, one box sensor, and one flash-resident velocity zone. The
+powered recovery floor feeds a narrow left shaft. Inside that shaft, the zone
+approaches `(0.25, -1.5)` pixels/tick with at most `0.5` pixel/tick of change per
+axis. This models cleats carrying marbles upward while ordinary rigid contacts
+continue to own stacking, the guide rail, chute landing, and all subsequent
+falls. The powered lower return starts at the outer wall, crosses the playfield,
+and leaves a deliberate opening before the elevator guide. The opening avoids a
+pinching corner as it returns marbles to the recovery floor. The vertical guide
+is also rendered as a powered surface so its direction is visible as chevrons.
+X reverses both return surfaces through the generic scene action machinery.
+
+The sensor surrounds the upper elevator gate and counts only selected bodies
+entering with negative vertical velocity as `Mxx`. Its body mask and direction
+are scene data rather than Marble Machine conditionals in the contact-event
+path. Native validation keeps every body inside the playfield through a
+2,400-tick action/reversal replay and a separate 6,000-tick neutral run. The
+neutral baseline records 43 upward returns at hash `08f3a75a`. After tick 3,000,
+all eight marble IDs return, cross the middle of the upper ramp moving right,
+and cross the middle of the lower ramp moving left. Twenty-four entries occur
+in that second half, and every marble traverses at least 140 vertical pixels
+there. Four downward re-entries are observed but deliberately excluded.
 
 ## Validation scenarios
 

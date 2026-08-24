@@ -66,10 +66,10 @@ one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
 updates crossed the 16.667 ms budget. The 320-grain population remains normal
 to preserve headroom for additional gameplay.
 
-The image uses 251,836 bytes of the 255 KiB Zephyr RAM region and 236,080 bytes
-of flash, leaving 9,284 bytes of linker RAM plus the separately reserved 8 KiB
+The image uses 251,852 bytes of the 255 KiB Zephyr RAM region and 240,608 bytes
+of flash, leaving 9,268 bytes of linker RAM plus the separately reserved 8 KiB
 core-1 mailbox/stack area. The conservative image uses 221,820 bytes of Zephyr
-RAM and 230,352 bytes of flash. The fixed granular capacity is 512 particles,
+RAM and 234,860 bytes of flash. The fixed granular capacity is 512 particles,
 the immutable render snapshot is 1,128 bytes, and the tagged game-world and
 snapshot unions avoid allocating inactive scene alternatives. Full results are
 in the [Hourglass report](../benchmarks/hourglass/README.md).
@@ -81,6 +81,36 @@ redraw, and B tone behavior were also exercised on the PIM559.
 Exact USB-controlled replay reproduced tick 360 at hash `a0919f8b` and
 framebuffer CRC-32 `41e4cdd1` after a directional/flip sequence. A 600-tick
 neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
+
+## Current Marble Machine validation
+
+Marble Machine reuses the fixed rigid-world storage for eight circles, six
+static segments, two powered return surfaces, one box sensor, and one
+flash-resident velocity zone. The zone models a cleated elevator by approaching
+a bounded target velocity only for selected bodies whose centers are inside its
+shaft; it adds no default-image RAM.
+
+The neutral 6,000-tick native baseline remains bounded, records 43 valid upward
+returns, and ends at hash `08f3a75a`. After tick 3,000, all eight stable marble
+IDs again reach the upper gate, cross the middle of the upper ramp moving
+right, and cross the middle of the lower ramp moving left. Twenty-four returns
+occur in that second half, and every marble spans at least 140 vertical pixels
+there. Four downward sensor entries are rejected by the scene's declarative
+direction filter. The separate 2,400-tick powered-return reversal replay ends
+at `4fe37951`.
+
+Exact USB-controlled replay reproduced tick 480 at hash `d834b324` and
+framebuffer CRC-32 `193762a8`. A clean 1,343-tick device window sustained
+60.0 Hz simulation and 29.7 fps presentation with zero skipped or over-budget
+updates. Physics averaged 3.232 ms and peaked at 8.539 ms; complete updates
+averaged 3.472 ms with an 8.957 ms maximum. Core-1 rasterization took 9.002 ms
+with a 10.164 ms observed maximum, followed by an 18.603 ms full-frame DMA
+transfer.
+
+This supersedes the original prototype's claimed 93 returns. Its sensor
+overlapped the reciprocating pusher, whose two crossings per cycle exactly
+explained that count, while the marbles visibly settled at the bottom. Those
+results are not hardware evidence for circulation.
 
 ## USB power and charging status
 

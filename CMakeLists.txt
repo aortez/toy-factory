@@ -21,6 +21,7 @@ target_sources(app PRIVATE
 	src/game_demo.c
 	src/game_scene_clockwork.c
 	src/game_scene_hourglass.c
+	src/game_scene_marble_machine.c
 	src/game_scene_machine_lab.c
 	src/game_scene_selector.c
 	src/game_world.c

@@ -95,11 +95,6 @@ static const struct named_game_input game_inputs[] = {
 	 .remote_input_enabled = true},
 };
 
-static const enum picosystem_game_scene_id game_scenes[] = {
-	PICOSYSTEM_GAME_SCENE_CLOCKWORK,
-	PICOSYSTEM_GAME_SCENE_HOURGLASS,
-};
-
 BUILD_ASSERT(ARRAY_SIZE(button_names) == PICOSYSTEM_BUTTON_COUNT);
 
 K_MUTEX_DEFINE(snapshot_mutex);
@@ -890,13 +885,19 @@ static int submit_game_control(const struct shell *shell,
 	struct picosystem_game_control_state state;
 	const int err = picosystem_game_control_submit(request, &state);
 	if (err == -EBUSY) {
-		if ((request->operation == PICOSYSTEM_GAME_CONTROL_RESET) ||
-		    (request->operation == PICOSYSTEM_GAME_CONTROL_SELECT_SCENE) ||
-		    (request->operation == PICOSYSTEM_GAME_CONTROL_FLIP)) {
+		if (request->operation == PICOSYSTEM_GAME_CONTROL_APPLY_SCENE_ACTION) {
+			shell_error(shell, "Pause the simulation before applying a scene action");
+		} else if ((request->operation == PICOSYSTEM_GAME_CONTROL_RESET) ||
+			   (request->operation == PICOSYSTEM_GAME_CONTROL_SELECT_SCENE)) {
 			shell_error(shell, "Pause the simulation before changing the scene");
 		} else {
 			shell_error(shell, "Pause the simulation before stepping");
 		}
+		return err;
+	}
+	if ((err == -ENOTSUP) &&
+	    (request->operation == PICOSYSTEM_GAME_CONTROL_APPLY_SCENE_ACTION)) {
+		shell_error(shell, "The active scene has no primary action");
 		return err;
 	}
 	if (err != 0) {
@@ -945,30 +946,28 @@ static int cmd_game_scene(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
 
-	for (size_t index = 0U; index < ARRAY_SIZE(game_scenes); ++index) {
-		const enum picosystem_game_scene_id scene_id = game_scenes[index];
-		if (strcmp(argv[1], picosystem_game_scene_name(scene_id)) != 0) {
-			continue;
-		}
-
-		const struct picosystem_game_control_request request = {
-			.operation = PICOSYSTEM_GAME_CONTROL_SELECT_SCENE,
-			.scene_id = scene_id,
-		};
-		return submit_game_control(shell, &request);
+	enum picosystem_game_scene_id scene_id;
+	const int err = picosystem_game_scene_find_selectable(argv[1], &scene_id);
+	if (err != 0) {
+		shell_error(shell, "Unknown playable scene '%s'", argv[1]);
+		return err;
 	}
 
-	shell_error(shell, "Unknown playable scene '%s'", argv[1]);
-	return -EINVAL;
+	const struct picosystem_game_control_request request = {
+		.operation = PICOSYSTEM_GAME_CONTROL_SELECT_SCENE,
+		.scene_id = scene_id,
+	};
+	return submit_game_control(shell, &request);
 }
 
-static int cmd_game_flip(const struct shell *shell, size_t argc, char **argv)
+static int cmd_game_action(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
 	const struct picosystem_game_control_request request = {
-		.operation = PICOSYSTEM_GAME_CONTROL_FLIP,
+		.operation = PICOSYSTEM_GAME_CONTROL_APPLY_SCENE_ACTION,
+		.scene_action = PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY,
 	};
 	return submit_game_control(shell, &request);
 }
@@ -1504,8 +1503,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	game_commands,
-	SHELL_CMD_ARG(flip, NULL, "Rotate the paused Hourglass contents by 180 degrees.",
-		      cmd_game_flip, 1, 0),
+	SHELL_CMD_ARG(action, NULL, "Apply the paused scene's primary action.", cmd_game_action, 1,
+		      0),
+	SHELL_CMD_ARG(flip, NULL, "Compatibility alias for 'game action'.", cmd_game_action, 1, 0),
 	SHELL_CMD_ARG(input, NULL,
 		      SHELL_HELP("Select physical or injected input.",
 				 "<physical|none|up|down|left|right|"
@@ -1516,7 +1516,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      cmd_game_reset, 1, 0),
 	SHELL_CMD_ARG(scene, NULL,
 		      SHELL_HELP("Select a scene at tick zero while paused.",
-				 "<clockwork|hourglass>"),
+				 "<clockwork|hourglass|marble-machine>"),
 		      cmd_game_scene, 2, 0),
 	SHELL_CMD_ARG(stats, NULL, "Show simulation, snapshot, and renderer metrics.",
 		      cmd_game_stats, 1, 0),

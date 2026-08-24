@@ -16,24 +16,26 @@
 #include "game_world.h"
 #include "render_placement.h"
 
-#define PLAYFIELD_LEFT          PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS
-#define PLAYFIELD_RIGHT         PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS
-#define PLAYFIELD_TOP           PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS
-#define PLAYFIELD_BOTTOM        PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS
-#define PLAYFIELD_WIDTH         (PLAYFIELD_RIGHT - PLAYFIELD_LEFT + 1U)
-#define PLAYFIELD_HEIGHT        (PLAYFIELD_BOTTOM - PLAYFIELD_TOP + 1U)
-#define BACKGROUND_TILE_SIZE    12U
-#define MACHINE_LAB_HEADER_TEXT "MACHINE LAB 60HZ"
-#define CLOCKWORK_HEADER_TEXT   "CLOCKWORK 60HZ"
-#define HOURGLASS_HEADER_TEXT   "HOURGLASS 60HZ"
-#define MACHINE_LAB_HEADER_X    22
-#define CLOCKWORK_HEADER_X      34
-#define HOURGLASS_HEADER_X      34
-#define HEADER_TEXT_Y           7
-#define HEADER_TEXT_SCALE       2U
-#define SENSOR_COUNT_TEXT_X     2
-#define SENSOR_COUNT_TEXT_Y     10
-#define SENSOR_COUNT_SCALE      1U
+#define PLAYFIELD_LEFT             PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS
+#define PLAYFIELD_RIGHT            PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS
+#define PLAYFIELD_TOP              PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS
+#define PLAYFIELD_BOTTOM           PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS
+#define PLAYFIELD_WIDTH            (PLAYFIELD_RIGHT - PLAYFIELD_LEFT + 1U)
+#define PLAYFIELD_HEIGHT           (PLAYFIELD_BOTTOM - PLAYFIELD_TOP + 1U)
+#define BACKGROUND_TILE_SIZE       12U
+#define MACHINE_LAB_HEADER_TEXT    "MACHINE LAB 60HZ"
+#define CLOCKWORK_HEADER_TEXT      "CLOCKWORK 60HZ"
+#define HOURGLASS_HEADER_TEXT      "HOURGLASS 60HZ"
+#define MARBLE_MACHINE_HEADER_TEXT "MARBLE MACHINE 60HZ"
+#define MACHINE_LAB_HEADER_X       22
+#define CLOCKWORK_HEADER_X         34
+#define HOURGLASS_HEADER_X         34
+#define MARBLE_MACHINE_HEADER_X    44
+#define HEADER_TEXT_Y              7
+#define HEADER_TEXT_SCALE          2U
+#define SENSOR_COUNT_TEXT_X        2
+#define SENSOR_COUNT_TEXT_Y        10
+#define SENSOR_COUNT_SCALE         1U
 
 static const picosystem_color_t body_colors[] = {
 	PICOSYSTEM_COLOR_YELLOW,  PICOSYSTEM_COLOR_CYAN, PICOSYSTEM_COLOR_GREEN,
@@ -693,14 +695,27 @@ render_box_sensors(const struct picosystem_scene_snapshot *snapshot,
 static PICOSYSTEM_RENDER_RAMFUNC int render_header(const struct picosystem_scene_snapshot *snapshot,
 						   const struct picosystem_rect *clip)
 {
-	const bool clockwork = snapshot->scene_id == PICOSYSTEM_GAME_SCENE_CLOCKWORK;
-	const bool hourglass = snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS;
-	const char *const header_text = hourglass   ? HOURGLASS_HEADER_TEXT
-					: clockwork ? CLOCKWORK_HEADER_TEXT
-						    : MACHINE_LAB_HEADER_TEXT;
-	const int16_t header_x = hourglass   ? HOURGLASS_HEADER_X
-				 : clockwork ? CLOCKWORK_HEADER_X
-					     : MACHINE_LAB_HEADER_X;
+	const char *header_text = MACHINE_LAB_HEADER_TEXT;
+	int16_t header_x = MACHINE_LAB_HEADER_X;
+	char counter_prefix = 'S';
+	switch (snapshot->scene_id) {
+	case PICOSYSTEM_GAME_SCENE_CLOCKWORK:
+		header_text = CLOCKWORK_HEADER_TEXT;
+		header_x = CLOCKWORK_HEADER_X;
+		break;
+	case PICOSYSTEM_GAME_SCENE_HOURGLASS:
+		header_text = HOURGLASS_HEADER_TEXT;
+		header_x = HOURGLASS_HEADER_X;
+		counter_prefix = 'D';
+		break;
+	case PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE:
+		header_text = MARBLE_MACHINE_HEADER_TEXT;
+		header_x = MARBLE_MACHINE_HEADER_X;
+		counter_prefix = 'M';
+		break;
+	default:
+		break;
+	}
 	int err;
 	if (clip == NULL) {
 		err = picosystem_graphics_draw_text(header_x, HEADER_TEXT_Y, header_text,
@@ -714,11 +729,12 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_header(const struct picosystem_scene
 		return err;
 	}
 
+	const bool hourglass = snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS;
 	const uint32_t displayed_count = (hourglass ? snapshot->granular_lower_particle_count
 						    : snapshot->sensor_entry_count) %
 					 100U;
 	const char count_text[] = {
-		hourglass ? 'D' : 'S',
+		counter_prefix,
 		(char)('0' + (displayed_count / 10U)),
 		(char)('0' + (displayed_count % 10U)),
 		'\0',

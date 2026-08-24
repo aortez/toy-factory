@@ -1,0 +1,25 @@
+{
+  "name": "marble-machine-input-smoke",
+  "scene": "marble-machine",
+  "steps": [
+    {
+      "input": "none",
+      "ticks": 180
+    },
+    {
+      "action": "primary"
+    },
+    {
+      "input": "right",
+      "ticks": 120
+    },
+    {
+      "input": "none",
+      "ticks": 180
+    }
+  ],
+  "expect": {
+    "hash": "d834b324",
+    "framebuffer_crc32": "193762a8"
+  }
+}

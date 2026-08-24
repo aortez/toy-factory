@@ -2979,13 +2979,18 @@ static void test_spring_dynamics_sleep_and_reference(void)
 
 static void init_conveyor_world(struct picosystem_physics_world *world,
 				picosystem_physics_fixed_t surface_speed,
-				picosystem_physics_fixed_t friction)
+				picosystem_physics_fixed_t friction, bool reverse_endpoints)
 {
 	init_world(world, FIXED(4));
 	struct picosystem_physics_circle_config body = circle_config(1U, 0, -1, 2);
 	body.restitution = 0;
 	body.friction = friction;
 	struct picosystem_physics_segment_config segment = horizontal_segment(101U, 0);
+	if (reverse_endpoints) {
+		const struct picosystem_physics_vector start = segment.start;
+		segment.start = segment.end;
+		segment.end = start;
+	}
 	segment.restitution = 0;
 	segment.friction = friction;
 	segment.surface_speed_per_tick = surface_speed;
@@ -2997,7 +3002,7 @@ static void test_conveyor_direction_setter_sleep_and_reference(void)
 {
 	const struct picosystem_physics_vector gravity = {.y = RATIO(1, 64)};
 	struct picosystem_physics_world forward;
-	init_conveyor_world(&forward, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE);
+	init_conveyor_world(&forward, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE, false);
 	assert(picosystem_physics_world_step(&forward, &gravity) == 0);
 	assert(forward.bodies[0].velocity_per_tick.x > 0);
 	assert(forward.last_work.conveyor_contact_count == 1U);
@@ -3005,12 +3010,17 @@ static void test_conveyor_direction_setter_sleep_and_reference(void)
 	assert(forward.last_work.conveyor_solver_changed_count > 0U);
 
 	struct picosystem_physics_world reverse;
-	init_conveyor_world(&reverse, -RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE);
+	init_conveyor_world(&reverse, -RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE, false);
 	assert(picosystem_physics_world_step(&reverse, &gravity) == 0);
 	assert(reverse.bodies[0].velocity_per_tick.x < 0);
 
+	struct picosystem_physics_world reversed_endpoints;
+	init_conveyor_world(&reversed_endpoints, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE, true);
+	assert(picosystem_physics_world_step(&reversed_endpoints, &gravity) == 0);
+	assert(reversed_endpoints.bodies[0].velocity_per_tick.x < 0);
+
 	struct picosystem_physics_world frictionless;
-	init_conveyor_world(&frictionless, RATIO(1, 2), 0);
+	init_conveyor_world(&frictionless, RATIO(1, 2), 0, false);
 	assert(picosystem_physics_world_step(&frictionless, &gravity) == 0);
 	assert(frictionless.bodies[0].velocity_per_tick.x == 0);
 	assert(frictionless.last_work.conveyor_contact_count == 1U);
@@ -3027,7 +3037,7 @@ static void test_conveyor_direction_setter_sleep_and_reference(void)
 	assert(picosystem_physics_world_hash(&forward) != forward_hash);
 
 	struct picosystem_physics_world sleeping;
-	init_conveyor_world(&sleeping, 0, PICOSYSTEM_PHYSICS_FIXED_ONE);
+	init_conveyor_world(&sleeping, 0, PICOSYSTEM_PHYSICS_FIXED_ONE, false);
 	for (uint32_t tick = 0U; tick < PICOSYSTEM_PHYSICS_SLEEP_QUIET_TICKS; ++tick) {
 		assert(picosystem_physics_world_step(&sleeping, &gravity) == 0);
 	}
@@ -3040,7 +3050,7 @@ static void test_conveyor_direction_setter_sleep_and_reference(void)
 	}
 
 	struct picosystem_physics_world grid;
-	init_conveyor_world(&grid, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE);
+	init_conveyor_world(&grid, RATIO(1, 2), PICOSYSTEM_PHYSICS_FIXED_ONE, false);
 	struct picosystem_physics_world reference = grid;
 	for (uint32_t tick = 0U; tick < 24U; ++tick) {
 		assert(picosystem_physics_world_step(&grid, &gravity) == 0);

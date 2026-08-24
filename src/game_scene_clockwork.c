@@ -334,6 +334,7 @@ static const struct picosystem_game_scene_config scene = {
 	.box_sensors = box_sensors,
 	.ropes = ropes,
 	.gear_body_mask = UINT16_C(0x0003),
+	.sensor_entry_body_mask = UINT16_C(0x01ff),
 	.body_count = ELEMENT_COUNT(bodies),
 	.segment_count = ELEMENT_COUNT(segments),
 	.distance_joint_count = ELEMENT_COUNT(distance_joints),

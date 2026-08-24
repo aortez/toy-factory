@@ -21,6 +21,18 @@
 #define EXPECTED_CLOCKWORK_RESET_HASH UINT32_C(0x13d7f3d0)
 #define EXPECTED_CLOCKWORK_INPUT_HASH UINT32_C(0xe7a7ba97)
 #define EXPECTED_CLOCKWORK_3000_HASH  UINT32_C(0x0152ec75)
+#define EXPECTED_MARBLE_RESET_HASH    UINT32_C(0x0d775b8d)
+#define EXPECTED_MARBLE_INPUT_HASH    UINT32_C(0xd834b324)
+#define EXPECTED_MARBLE_2400_HASH     UINT32_C(0x4fe37951)
+#define EXPECTED_MARBLE_NEUTRAL_HASH  UINT32_C(0x08f3a75a)
+#define MARBLE_BODY_COUNT             8U
+#define MARBLE_FIRST_BODY_ID          701U
+#define MARBLE_ALL_BODY_MASK          UINT8_C(0xff)
+#define MARBLE_MINIMUM_LATE_TRAVEL    PICOSYSTEM_PHYSICS_FIXED_FROM_INT(140)
+#define MARBLE_UPPER_RAMP_INDEX       4U
+#define MARBLE_LOWER_RAMP_INDEX       5U
+#define MARBLE_RAMP_MIDDLE_MIN_X      PICOSYSTEM_PHYSICS_FIXED_FROM_INT(80)
+#define MARBLE_RAMP_MIDDLE_MAX_X      PICOSYSTEM_PHYSICS_FIXED_FROM_INT(190)
 #define BOUNDARY_TOLERANCE            PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
 #define ROPE_BOUNDARY_TOLERANCE       PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 64)
 #define CHAIN_CONVERGENCE_TOLERANCE   PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2)
@@ -298,6 +310,8 @@ static void test_scene_catalog(void)
 	       0);
 	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_HOURGLASS), "hourglass") ==
 	       0);
+	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE),
+		      "marble-machine") == 0);
 	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_MACHINE_LAB),
 		      "machine-lab") == 0);
 	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN),
@@ -306,6 +320,7 @@ static void test_scene_catalog(void)
 
 	assert(picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_CLOCKWORK));
 	assert(picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_HOURGLASS));
+	assert(picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE));
 	assert(!picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_MACHINE_LAB));
 	assert(!picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN));
 
@@ -313,12 +328,23 @@ static void test_scene_catalog(void)
 	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_CLOCKWORK, &next_scene_id) == 0);
 	assert(next_scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS);
 	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_HOURGLASS, &next_scene_id) == 0);
+	assert(next_scene_id == PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE);
+	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE, &next_scene_id) ==
+	       0);
 	assert(next_scene_id == PICOSYSTEM_GAME_SCENE_CLOCKWORK);
 	next_scene_id = PICOSYSTEM_GAME_SCENE_HOURGLASS;
 	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_MACHINE_LAB, &next_scene_id) ==
 	       -ENOTSUP);
 	assert(next_scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS);
 	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_CLOCKWORK, NULL) == -EINVAL);
+
+	enum picosystem_game_scene_id found_scene = PICOSYSTEM_GAME_SCENE_COUNT;
+	assert(picosystem_game_scene_find_selectable("marble-machine", &found_scene) == 0);
+	assert(found_scene == PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE);
+	assert(picosystem_game_scene_find_selectable("machine-lab", &found_scene) == -ENOENT);
+	assert(found_scene == PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE);
+	assert(picosystem_game_scene_find_selectable(NULL, &found_scene) == -EINVAL);
+	assert(picosystem_game_scene_find_selectable("clockwork", NULL) == -EINVAL);
 }
 
 static void step_many(struct picosystem_game_world *world,
@@ -845,6 +871,9 @@ static void test_clockwork_scene_is_bounded_and_deterministic(void)
 	       PICOSYSTEM_GAME_BODY_RENDER_STYLE_DEFAULT);
 
 	const struct picosystem_game_world initial = world;
+	assert(picosystem_game_world_apply_scene_action(
+		       &world, PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == -ENOTSUP);
+	assert_world_equal(&world, &initial);
 	assert(picosystem_game_world_reset_scene(NULL, PICOSYSTEM_GAME_SCENE_CLOCKWORK) == -EINVAL);
 	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_COUNT) == -ERANGE);
 	assert_world_equal(&world, &initial);
@@ -909,6 +938,246 @@ static void test_clockwork_scene_is_bounded_and_deterministic(void)
 		"anchor error=%llu\n",
 		picosystem_game_world_hash(&world), maximum_slider_x - minimum_slider_x,
 		world.sensor_entry_count, (unsigned long long)maximum_anchor_error_squared);
+}
+
+static void run_marble_machine_sequence(struct picosystem_game_world *world, uint32_t tick_count)
+{
+	const struct picosystem_game_input neutral = {0};
+	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
+		if ((tick == 480U) || (tick == 1320U)) {
+			assert(picosystem_game_world_apply_scene_action(
+				       world, PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == 0);
+		}
+		assert(picosystem_game_world_step(world, &neutral) == 0);
+		assert_bodies_inside_arena(world);
+		assert(world->physics.last_broad_phase_fallback == 0U);
+	}
+}
+
+struct marble_machine_metrics {
+	picosystem_physics_fixed_t minimum_late_y[MARBLE_BODY_COUNT];
+	picosystem_physics_fixed_t maximum_late_y[MARBLE_BODY_COUNT];
+	uint32_t upward_sensor_entry_count;
+	uint32_t rejected_sensor_entry_count;
+	uint32_t midpoint_sensor_entry_count;
+	uint32_t upper_ramp_contact_count;
+	uint32_t lower_ramp_contact_count;
+	uint8_t returned_body_mask;
+	uint8_t late_returned_body_mask;
+	uint8_t upper_ramp_body_mask;
+	uint8_t lower_ramp_body_mask;
+	uint8_t late_upper_ramp_body_mask;
+	uint8_t late_lower_ramp_body_mask;
+	uint8_t upper_ramp_rightward_body_mask;
+	uint8_t late_upper_ramp_rightward_body_mask;
+	uint8_t lower_ramp_leftward_body_mask;
+	uint8_t late_lower_ramp_leftward_body_mask;
+};
+
+static void observe_marble_sensor_events(const struct picosystem_game_world *world,
+					 struct marble_machine_metrics *metrics, bool late)
+{
+	for (uint16_t event_index = 0U; event_index < world->physics.contact_event_count;
+	     ++event_index) {
+		const struct picosystem_physics_contact_event *const event =
+			picosystem_physics_world_contact_event_at(&world->physics, event_index);
+		assert(event != NULL);
+		if ((event->type != PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_BOX_SENSOR) ||
+		    (event->phase != PICOSYSTEM_PHYSICS_CONTACT_EVENT_BEGIN) ||
+		    (event->body_a_id < MARBLE_FIRST_BODY_ID) ||
+		    (event->body_a_id >= (MARBLE_FIRST_BODY_ID + MARBLE_BODY_COUNT))) {
+			continue;
+		}
+		const uint16_t body_index = (uint16_t)(event->body_a_id - MARBLE_FIRST_BODY_ID);
+		assert(world->physics.bodies[body_index].id == event->body_a_id);
+		if (world->physics.bodies[body_index].velocity_per_tick.y < 0) {
+			++metrics->upward_sensor_entry_count;
+			metrics->returned_body_mask |= (uint8_t)(UINT8_C(1) << body_index);
+			if (late) {
+				metrics->late_returned_body_mask |=
+					(uint8_t)(UINT8_C(1) << body_index);
+			}
+		} else {
+			++metrics->rejected_sensor_entry_count;
+		}
+	}
+}
+
+static void observe_marble_ramp_contacts(const struct picosystem_game_world *world,
+					 struct marble_machine_metrics *metrics, bool late)
+{
+	for (uint16_t contact_index = 0U; contact_index < world->physics.contact_count;
+	     ++contact_index) {
+		const struct picosystem_physics_contact *const contact =
+			&world->physics.contacts[contact_index];
+		if ((contact->type != PICOSYSTEM_PHYSICS_CONTACT_STATIC_SEGMENT) ||
+		    (contact->body_a_index >= MARBLE_BODY_COUNT)) {
+			continue;
+		}
+		const uint8_t body_mask = (uint8_t)(UINT8_C(1) << contact->body_a_index);
+		if (contact->segment_index == MARBLE_UPPER_RAMP_INDEX) {
+			++metrics->upper_ramp_contact_count;
+			metrics->upper_ramp_body_mask |= body_mask;
+			const picosystem_physics_fixed_t velocity_x =
+				world->physics.bodies[contact->body_a_index].velocity_per_tick.x;
+			if ((contact->point.x >= MARBLE_RAMP_MIDDLE_MIN_X) &&
+			    (contact->point.x <= MARBLE_RAMP_MIDDLE_MAX_X) && (velocity_x > 0)) {
+				metrics->upper_ramp_rightward_body_mask |= body_mask;
+				if (late) {
+					metrics->late_upper_ramp_rightward_body_mask |= body_mask;
+				}
+			}
+			if (late) {
+				metrics->late_upper_ramp_body_mask |= body_mask;
+			}
+		} else if (contact->segment_index == MARBLE_LOWER_RAMP_INDEX) {
+			++metrics->lower_ramp_contact_count;
+			metrics->lower_ramp_body_mask |= body_mask;
+			const picosystem_physics_fixed_t velocity_x =
+				world->physics.bodies[contact->body_a_index].velocity_per_tick.x;
+			if ((contact->point.x >= MARBLE_RAMP_MIDDLE_MIN_X) &&
+			    (contact->point.x <= MARBLE_RAMP_MIDDLE_MAX_X) && (velocity_x < 0)) {
+				metrics->lower_ramp_leftward_body_mask |= body_mask;
+				if (late) {
+					metrics->late_lower_ramp_leftward_body_mask |= body_mask;
+				}
+			}
+			if (late) {
+				metrics->late_lower_ramp_body_mask |= body_mask;
+			}
+		}
+	}
+}
+
+static void run_marble_machine_neutral(struct picosystem_game_world *world, uint32_t tick_count,
+				       struct marble_machine_metrics *metrics)
+{
+	const struct picosystem_game_input neutral = {0};
+	assert(metrics != NULL);
+	*metrics = (struct marble_machine_metrics){0};
+	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
+		assert(picosystem_game_world_step(world, &neutral) == 0);
+		assert_bodies_inside_arena(world);
+		assert(world->physics.last_broad_phase_fallback == 0U);
+		const bool late = (tick + 1U) >= (tick_count / 2U);
+		observe_marble_sensor_events(world, metrics, late);
+		observe_marble_ramp_contacts(world, metrics, late);
+		if ((tick + 1U) == (tick_count / 2U)) {
+			metrics->midpoint_sensor_entry_count = world->sensor_entry_count;
+		}
+		if ((tick + 1U) < (tick_count / 2U)) {
+			continue;
+		}
+		for (uint16_t body = 0U; body < MARBLE_BODY_COUNT; ++body) {
+			const picosystem_physics_fixed_t y = world->physics.bodies[body].center.y;
+			if ((tick + 1U) == (tick_count / 2U)) {
+				metrics->minimum_late_y[body] = y;
+				metrics->maximum_late_y[body] = y;
+			} else {
+				if (y < metrics->minimum_late_y[body]) {
+					metrics->minimum_late_y[body] = y;
+				}
+				if (y > metrics->maximum_late_y[body]) {
+					metrics->maximum_late_y[body] = y;
+				}
+			}
+		}
+	}
+}
+
+static void test_marble_machine_scene_is_bounded_and_deterministic(void)
+{
+	struct picosystem_game_world world;
+	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE) ==
+	       0);
+	assert(world.scene_id == PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE);
+	assert(world.physics.body_count == MARBLE_BODY_COUNT);
+	assert(world.physics.static_segment_count == 6U);
+	assert(world.physics.distance_joint_count == 0U);
+	assert(world.physics.revolute_joint_count == 0U);
+	assert(world.physics.prismatic_joint_count == 0U);
+	assert(world.physics.box_sensor_count == 1U);
+	assert(world.physics.rope_count == 0U);
+	assert(world.physics.bodies[7].id == 708U);
+	assert(world.physics.static_segments[2].surface_speed_per_tick > 0);
+	assert(world.physics.static_segments[5].surface_speed_per_tick > 0);
+	assert_hash("marble-machine-reset", picosystem_game_world_hash(&world),
+		    EXPECTED_MARBLE_RESET_HASH);
+
+	const struct picosystem_game_world initial = world;
+	assert(picosystem_game_world_apply_scene_action(&world,
+							PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == 0);
+	assert(world.physics.static_segments[2].surface_speed_per_tick < 0);
+	assert(world.physics.static_segments[5].surface_speed_per_tick < 0);
+	assert(picosystem_game_world_apply_scene_action(&world,
+							PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == 0);
+	assert_world_equal(&world, &initial);
+
+	run_marble_machine_sequence(&world, 2400U);
+	assert_hash("marble-machine-2400", picosystem_game_world_hash(&world),
+		    EXPECTED_MARBLE_2400_HASH);
+
+	struct picosystem_game_world replay;
+	assert(picosystem_game_world_reset_scene(&replay, PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE) ==
+	       0);
+	run_marble_machine_sequence(&replay, 2400U);
+	assert_world_equal(&world, &replay);
+
+	struct picosystem_game_world circulation;
+	struct marble_machine_metrics metrics;
+	assert(picosystem_game_world_reset_scene(&circulation,
+						 PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE) == 0);
+	run_marble_machine_neutral(&circulation, 6000U, &metrics);
+	fprintf(stderr,
+		"marble-machine neutral entries=%u (%u late), rejected=%u, "
+		"returned=%02x/%02x, ramps=%02x/%02x late=%02x/%02x "
+		"flow=%02x/%02x late=%02x/%02x (%u/%u contacts), hash=%08x\n",
+		circulation.sensor_entry_count,
+		circulation.sensor_entry_count - metrics.midpoint_sensor_entry_count,
+		metrics.rejected_sensor_entry_count, metrics.returned_body_mask,
+		metrics.late_returned_body_mask, metrics.upper_ramp_body_mask,
+		metrics.lower_ramp_body_mask, metrics.late_upper_ramp_body_mask,
+		metrics.late_lower_ramp_body_mask, metrics.upper_ramp_rightward_body_mask,
+		metrics.lower_ramp_leftward_body_mask, metrics.late_upper_ramp_rightward_body_mask,
+		metrics.late_lower_ramp_leftward_body_mask, metrics.upper_ramp_contact_count,
+		metrics.lower_ramp_contact_count, picosystem_game_world_hash(&circulation));
+	assert(metrics.upward_sensor_entry_count == circulation.sensor_entry_count);
+	assert(metrics.rejected_sensor_entry_count > 0U);
+	assert(metrics.returned_body_mask == MARBLE_ALL_BODY_MASK);
+	assert(metrics.late_returned_body_mask == MARBLE_ALL_BODY_MASK);
+	assert(metrics.upper_ramp_body_mask == MARBLE_ALL_BODY_MASK);
+	assert(metrics.lower_ramp_body_mask == MARBLE_ALL_BODY_MASK);
+	assert(metrics.late_upper_ramp_body_mask == MARBLE_ALL_BODY_MASK);
+	assert(metrics.late_lower_ramp_body_mask == MARBLE_ALL_BODY_MASK);
+	assert(metrics.upper_ramp_rightward_body_mask == MARBLE_ALL_BODY_MASK);
+	assert(metrics.late_upper_ramp_rightward_body_mask == MARBLE_ALL_BODY_MASK);
+	assert(metrics.lower_ramp_leftward_body_mask == MARBLE_ALL_BODY_MASK);
+	assert(metrics.late_lower_ramp_leftward_body_mask == MARBLE_ALL_BODY_MASK);
+	assert(circulation.sensor_entry_count >= 40U);
+	assert((circulation.sensor_entry_count - metrics.midpoint_sensor_entry_count) >= 20U);
+	for (uint16_t body = 0U; body < MARBLE_BODY_COUNT; ++body) {
+		assert((metrics.maximum_late_y[body] - metrics.minimum_late_y[body]) >=
+		       MARBLE_MINIMUM_LATE_TRAVEL);
+	}
+	assert_hash("marble-machine-neutral", picosystem_game_world_hash(&circulation),
+		    EXPECTED_MARBLE_NEUTRAL_HASH);
+
+	struct picosystem_game_world input_replay;
+	assert(picosystem_game_world_reset_scene(&input_replay,
+						 PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE) == 0);
+	const struct picosystem_game_input neutral = {0};
+	const struct picosystem_game_input right = {.horizontal = 1};
+	step_many(&input_replay, &neutral, 180U);
+	assert(picosystem_game_world_apply_scene_action(&input_replay,
+							PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == 0);
+	step_many(&input_replay, &right, 120U);
+	step_many(&input_replay, &neutral, 180U);
+	assert_hash("marble-machine-input", picosystem_game_world_hash(&input_replay),
+		    EXPECTED_MARBLE_INPUT_HASH);
+	fprintf(stderr, "marble-machine hash=%08x sensor entries=%u candidates=%u/%u contacts=%u\n",
+		picosystem_game_world_hash(&world), world.sensor_entry_count,
+		world.physics.last_candidate_pair_count, world.physics.last_possible_pair_count,
+		world.physics.contact_count);
 }
 
 static void test_bounded_motion_contacts_and_saturated_tick(void)
@@ -1280,13 +1549,19 @@ static void test_hourglass_scene_flow_flip_and_replay(void)
 	assert(world.granular.boundary_count == 6U);
 	assert(picosystem_game_world_focus_body(&world) != NULL);
 	assert(picosystem_game_world_hash(&world) != 0U);
-	assert(picosystem_game_world_flip(NULL) == -EINVAL);
-
 	const struct picosystem_game_world initial = world;
-	assert(picosystem_game_world_flip(&world) == 0);
+	assert(picosystem_game_world_apply_scene_action(
+		       NULL, PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == -EINVAL);
+	assert(picosystem_game_world_apply_scene_action(
+		       &world, PICOSYSTEM_GAME_SCENE_ACTION_COUNT) == -ERANGE);
+	assert(memcmp(&world, &initial, sizeof(world)) == 0);
+
+	assert(picosystem_game_world_apply_scene_action(&world,
+							PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == 0);
 	assert(picosystem_granular_world_lower_particle_count(&world.granular) ==
 	       EXPECTED_HOURGLASS_GRAIN_COUNT);
-	assert(picosystem_game_world_flip(&world) == 0);
+	assert(picosystem_game_world_apply_scene_action(&world,
+							PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == 0);
 	assert(picosystem_game_world_hash(&world) == picosystem_game_world_hash(&initial));
 
 	run_hourglass_neutral_with_unfiltered_reference(&world, 3000U);
@@ -1296,7 +1571,8 @@ static void test_hourglass_scene_flow_flip_and_replay(void)
 	assert(world.sensor_entry_count == world.granular.passage_count);
 	assert(world.sensor_entry_count >= first_lower_count);
 
-	assert(picosystem_game_world_flip(&world) == 0);
+	assert(picosystem_game_world_apply_scene_action(&world,
+							PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == 0);
 	assert(picosystem_granular_world_lower_particle_count(&world.granular) <= 10U);
 	run_hourglass_neutral(&world, 3000U);
 	const uint16_t second_lower_count =
@@ -1316,6 +1592,7 @@ int main(void)
 {
 	test_scene_catalog();
 	test_clockwork_scene_is_bounded_and_deterministic();
+	test_marble_machine_scene_is_bounded_and_deterministic();
 	test_hourglass_scene_flow_flip_and_replay();
 	test_bounded_motion_contacts_and_saturated_tick();
 	test_canonical_reset_and_golden_replay();

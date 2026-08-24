@@ -37,14 +37,24 @@ enum picosystem_game_scene_id {
 	PICOSYSTEM_GAME_SCENE_CLOCKWORK,
 	PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN,
 	PICOSYSTEM_GAME_SCENE_HOURGLASS,
+	PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE,
 	PICOSYSTEM_GAME_SCENE_COUNT,
+};
+
+enum picosystem_game_scene_action {
+	PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY,
+	PICOSYSTEM_GAME_SCENE_ACTION_COUNT,
 };
 
 /* Return the stable command-line name for a scene, or "unknown" for an invalid ID. */
 const char *picosystem_game_scene_name(enum picosystem_game_scene_id scene_id);
 
-/* Clockwork and Hourglass are the scenes exposed by the player-facing selector. */
+/* Report whether a scene is exposed by the player-facing selector. */
 bool picosystem_game_scene_is_selectable(enum picosystem_game_scene_id scene_id);
+
+/* Resolve one selectable scene's stable command-line name. */
+int picosystem_game_scene_find_selectable(const char *name,
+					  enum picosystem_game_scene_id *scene_id);
 
 /* Select the following player-facing scene, wrapping at the end of the list. */
 int picosystem_game_scene_next(enum picosystem_game_scene_id scene_id,
@@ -99,8 +109,9 @@ int picosystem_game_world_step_granular_profiled(struct picosystem_game_world *w
 						 const struct picosystem_physics_clock *clock,
 						 struct picosystem_granular_step_profile *profile);
 
-/* Rotate a scene-defined symmetric container and its contents by 180 degrees. */
-int picosystem_game_world_flip(struct picosystem_game_world *world);
+/* Apply one bounded scene-defined action to authoritative state. */
+int picosystem_game_world_apply_scene_action(struct picosystem_game_world *world,
+					     enum picosystem_game_scene_action action);
 
 /* Return the scene's first body, used by diagnostics and camera-independent controls. */
 const struct picosystem_physics_body *

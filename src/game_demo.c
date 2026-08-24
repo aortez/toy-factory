@@ -1238,12 +1238,13 @@ int picosystem_game_demo_reset(struct picosystem_game_demo_state *state)
 		state, (enum picosystem_game_scene_id)state->world.scene_id);
 }
 
-int picosystem_game_demo_flip(struct picosystem_game_demo_state *state)
+int picosystem_game_demo_apply_scene_action(struct picosystem_game_demo_state *state,
+					    enum picosystem_game_scene_action action)
 {
 	if ((state == NULL) || !state->ready) {
 		return -EINVAL;
 	}
-	const int err = picosystem_game_world_flip(&state->world);
+	const int err = picosystem_game_world_apply_scene_action(&state->world, action);
 	if (err != 0) {
 		return err;
 	}

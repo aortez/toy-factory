@@ -376,12 +376,13 @@ static int process_game_control_requests(struct game_runtime_control *control,
 				control->remote_input_enabled = true;
 			}
 			break;
-		case PICOSYSTEM_GAME_CONTROL_FLIP:
+		case PICOSYSTEM_GAME_CONTROL_APPLY_SCENE_ACTION:
 			if (!control->paused) {
 				result = -EBUSY;
 				break;
 			}
-			result = picosystem_game_demo_flip(game);
+			result =
+				picosystem_game_demo_apply_scene_action(game, request.scene_action);
 			break;
 		case PICOSYSTEM_GAME_CONTROL_STEP:
 			if (!control->paused) {
@@ -606,7 +607,7 @@ int main(void)
 	LOG_INF("PicoSystem %u Hz scene runtime and asynchronous renderer ready",
 		PICOSYSTEM_GAME_TICK_RATE_HZ);
 	LOG_INF("D-pad tilts gravity; tap Y to reset; hold Y to change scenes");
-	LOG_INF("X flips the Hourglass");
+	LOG_INF("X triggers the active scene's primary action");
 	LOG_INF("A queues a full redraw; B plays a short 440 Hz piezo tone");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 	LOG_INF("GP2 remains an input; the automatic red charge indicator is enabled");
@@ -740,15 +741,17 @@ int main(void)
 		}
 
 		if ((pressed & BIT(PICOSYSTEM_BUTTON_X)) != 0U) {
-			if (game_state.world.scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
-				err = picosystem_game_demo_flip(&game_state);
-				if (err != 0) {
-					LOG_ERR("Failed to flip Hourglass (%d)", err);
-					return err;
-				}
-				LOG_INF("Flipped Hourglass from X button");
-			} else {
+			err = picosystem_game_demo_apply_scene_action(
+				&game_state, PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY);
+			if (err == -ENOTSUP) {
 				LOG_INF("X has no scene action in %s",
+					picosystem_game_scene_name(game_state.world.scene_id));
+			} else if (err != 0) {
+				LOG_ERR("Failed to apply scene action in %s (%d)",
+					picosystem_game_scene_name(game_state.world.scene_id), err);
+				return err;
+			} else {
+				LOG_INF("Applied primary action in %s from X button",
 					picosystem_game_scene_name(game_state.world.scene_id));
 			}
 		}

@@ -19,10 +19,14 @@ path:
   and a bounded 40 x 48 uniform grid; the fixed engine capacity is 512 grains;
 - tracks grains crossing the neck, tilts gravity with the D-pad, and rotates the
   complete particle position and velocity state exactly 180 degrees with X;
-- exposes the Clockwork and Hourglass as switchable player-facing scenes while
-  retaining Machine Lab as a rigid-body profiling fixture; Clockwork includes a
+- exposes Clockwork, Hourglass, and Marble Machine as switchable player-facing
+  scenes while retaining Machine Lab as a rigid-body profiling fixture;
+  Clockwork includes a
   motorized gear pair, crank-slider, pendulum, spring bob, two-link mobile,
   sensor gate, and reciprocal rope;
+- sends eight marbles through an upper gravity chute, powered lower return,
+  recovery belt, and guided elevator in Marble Machine, with a
+  direction-qualified passage sensor;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -51,8 +55,8 @@ path:
 - exposes acknowledged scene selection, reset, pause, exact-step,
   injected-input, state-hash, and framebuffer-capture controls over USB;
 - runs declarative deterministic device sequences with state/framebuffer assertions;
-- resets the active scene on a short Y press and switches between Clockwork and
-  Hourglass when Y is held for 750 ms;
+- resets the active scene on a short Y press and cycles the three playable
+  scenes when Y is held for 750 ms;
 - plays a short, bounded piezo tone when B is pressed;
 - averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
 - classifies the GP2 VBUS and active-low GP24 charger-status inputs;
@@ -96,7 +100,8 @@ make container-shell  # enter the build container (`make shell` also works)
 make sim-pause  # pause at a tick boundary and print exact simulation state
 make sim-scene SCENE=clockwork  # select a scene at tick zero while paused
 make sim-reset  # restore the playable scene to tick zero while paused
-make sim-flip  # rotate the paused Hourglass contents by exactly 180 degrees
+make sim-action  # apply the paused scene's primary action
+make sim-flip  # compatibility alias for sim-action
 make sim-step STEPS=1  # advance a paused simulation by exact 1/60-second ticks
 make sim-test  # run the default deterministic hardware sequence
 make screenshot  # save the renderer-owned software framebuffer as a PNG
@@ -162,7 +167,8 @@ The physical gesture remains the recovery path for a blank or broken image:
 
 The PicoSystem reboots automatically when the copy completes into the
 `HOURGLASS 60HZ` scene. Tap Y to reset the active scene, or hold Y for 750 ms
-to switch between Hourglass and Clockwork. In Clockwork, the yellow motor wheel
+to cycle Hourglass, Marble Machine, and Clockwork. In Clockwork, the yellow
+motor wheel
 drives a magenta follower and a red connecting rod moves the white horizontal
 slider. A pendulum and spring bob move at upper right; a hinged mobile pulls a
 cyan rope across the lower half. The narrow sensor gate turns green while
@@ -174,7 +180,9 @@ them. Small moves become one rectangle; coalesced jumps do not transfer the
 empty swept area between distant footprints.
 The D-pad tilts the global acceleration field while neutral input retains
 downward gravity. Press A to queue a full-screen redraw for comparison and B to
-play a 440 Hz tone for 180 ms. X flips Hourglass and has no action in Clockwork.
+play a 440 Hz tone for 180 ms. X applies the active scene's primary action: it
+flips Hourglass, reverses Marble Machine's lower return and recovery belt, and
+has no action in Clockwork.
 In the conservative
 20 MHz build, a full transfer occupies the panel for roughly 80 ms, but it runs
 on the renderer thread: physics and input sampling continue at 60 Hz and newer
@@ -263,7 +271,8 @@ picosystem game stats
 picosystem game redraw
 picosystem game pause
 picosystem game reset
-picosystem game scene clockwork|hourglass
+picosystem game scene clockwork|hourglass|marble-machine
+picosystem game action
 picosystem game flip
 picosystem game step [count]
 picosystem game input physical|none|up|down|left|right|up-left|up-right|down-left|down-right
@@ -291,12 +300,15 @@ write, full-redraw count, and both stack high-water marks. `game redraw` only
 posts a coalesced request; the shell never touches the framebuffer or display.
 `game pause` is acknowledged only after the priority-0 simulation owner reaches
 a tick boundary. `game scene` is accepted only while paused; it selects
-Clockwork or Hourglass at tick zero with neutral remote input. `game reset`
+Clockwork, Hourglass, or Marble Machine at tick zero with neutral remote input.
+`game reset`
 restores whichever scene is active. Both publish a full-redraw snapshot without
 rewinding renderer sequence numbers.
-`game flip` is likewise accepted only while paused and rotates every grain's
-current and previous position exactly 180 degrees, preserving its velocity;
-the physical X button performs the same operation during play.
+`game action` is likewise accepted only while paused and applies the active
+scene's primary action. It rotates every Hourglass grain's current and previous
+position exactly 180 degrees while preserving velocity, or reverses Marble
+Machine's recovery-belt drive. `game flip` remains a compatibility alias.
+The physical X button applies the same action during play.
 While paused, `game step` executes 1-120 exact fixed-duration updates without
 advancing wall-clock scheduling. `game run` starts a fresh rational deadline
 sequence and performance-measurement epoch, so time and exact steps spent paused
@@ -394,7 +406,7 @@ and optional final assertions:
   "steps": [
     {"input": "right", "ticks": 60},
     {"input": "none", "ticks": 120},
-    {"action": "flip"},
+    {"action": "primary"},
     {"input": "left", "ticks": 60},
     {"input": "none", "ticks": 120}
   ],
@@ -423,8 +435,12 @@ make sim-test SEQUENCE=scripts/sequences/hourglass-neutral-smoke.json
 [`scripts/sequences/clockwork-smoke.json`](scripts/sequences/clockwork-smoke.json)
 selects Clockwork and verifies its established input-replay hash and framebuffer CRC.
 
+[`scripts/sequences/marble-machine-smoke.json`](scripts/sequences/marble-machine-smoke.json)
+selects Marble Machine, reverses its powered returns, and verifies its exact state
+hash and framebuffer CRC.
+
 The runner holds one exclusive USB connection, pauses and selects the declared
-scene at tick zero, applies each input or exact `flip` action, and checks the
+scene at tick zero, applies each input or exact primary action, and checks the
 returned scene and tick after every request. Segments longer than 120 ticks are automatically
 divided into bounded firmware requests. The complete file is limited to 256
 segments and 100,000 ticks; physical input is deliberately unavailable inside
@@ -494,7 +510,8 @@ the fixed-capacity Verlet grain simulation and its 40 x 48 grid live in
 [`src/granular_world.c`](src/granular_world.c). Flash-resident scene
 descriptions live in
 [`src/game_scene_hourglass.c`](src/game_scene_hourglass.c),
-[`src/game_scene_clockwork.c`](src/game_scene_clockwork.c) and
+[`src/game_scene_clockwork.c`](src/game_scene_clockwork.c),
+[`src/game_scene_marble_machine.c`](src/game_scene_marble_machine.c), and
 [`src/game_scene_machine_lab.c`](src/game_scene_machine_lab.c). The latter is
 retained as the stable profiling fixture. None of these modules has a Zephyr,
 scheduler, renderer, USB, or wall-clock dependency. The firmware and native
@@ -558,14 +575,16 @@ collision/capacity; bounded
 spring/conveyor response, exact capsule shape-pair coverage, reciprocal
 rope/body response, bounded rope-particle collision, exact sensor
 overlap/contact-lifecycle, 1,000-tick grid/brute-force
-oracle; 10,000-tick rigid and 6,000-tick Hourglass game-world replay/boundary;
+oracle; 10,000-tick rigid, 6,000-tick Hourglass, and 6,000-tick recirculating
+Marble Machine game-world replay/boundary;
 deadline-scheduler,
 serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
-uses the undefined-behavior sanitizer and treats the accepted reset, double-flip,
-full-drain, and retained Machine Lab replay hashes as native goldens.
+uses the undefined-behavior sanitizer and treats the accepted reset,
+double-action, full-drain, recirculation, and retained Machine Lab replay hashes
+as native goldens.
 The default image uses 221,820 bytes of its 255 KiB Zephyr RAM region (84.95%)
-and 230,352 bytes of flash. This includes the 115,200-byte framebuffer,
+and 234,860 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer, 22,636-byte fixed-capacity rigid physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
@@ -574,13 +593,13 @@ fixed-capacity 512-particle granular world with a 40 x 48 scratch grid,
 boundary masks, and sparse occupied-cell storage, a 33,360-byte serialized
 benchmark workspace, two 1,128-byte render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 251,836 bytes of
-that region (96.44%) and 236,080 bytes of flash. It keeps the rigid-physics and
+storage, and a 1,024-byte shell TX ring. The fast image uses 251,852 bytes of
+that region (96.45%) and 240,608 bytes of flash. It keeps the rigid-physics and
 renderer hot paths in SRAM while the granular solver remains in XIP flash, and
 both images route compiler integer division through the RP2040's interrupt-safe
 hardware-divider wrappers. Both images also reserve
 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 39,300 and 9,284
+core-1 mailbox and stack. The default and fast images retain 39,300 and 9,268
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
 
@@ -769,6 +788,22 @@ A clean 3,744-tick Clockwork device window sustained 60.0 Hz simulation and
 averaged 9.719 ms and peaked at 13.000 ms; complete updates averaged 10.243 ms
 and peaked at 13.644 ms. Core-1 full-scene rasterization was 10.913 ms with an
 11.437 ms observed maximum, followed by a 19.284 ms full-frame DMA transfer.
+
+The playable Marble Machine hashes to `0d775b8d` at reset. Its native
+2,400-tick reversal replay ends at `4fe37951`. A separate 6,000-tick neutral
+run records 43 upward returns and ends at `08f3a75a`: every one of the eight
+marble IDs reaches the upper gate, crosses the middle of the upper ramp moving
+right, and crosses the middle of the lower ramp moving left during the second
+half. Twenty-four returns occur in that late window, and every marble spans at
+least 140 vertical pixels. Four downward gate entries are deliberately
+rejected. The powered elevator is a declarative, flash-resident velocity zone;
+it approaches a bounded target velocity while the ordinary rigid solver
+continues to own stacking, walls, ramps, and discharge.
+
+The exact PIM559 input/action replay reaches tick 480 at hash `d834b324` and
+framebuffer CRC-32 `193762a8`. A clean 1,343-tick device window sustained
+60.0 Hz simulation and 29.7 fps presentation with zero skipped or over-budget
+updates; physics averaged 3.232 ms and peaked at 8.539 ms.
 
 The retained 60 Hz reciprocal-rope Machine Lab fixture hashes to `3fc3de22` at
 reset, `fff75d40` after 15 right ticks, and `1bc0f502` after a further eight up
