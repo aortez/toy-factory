@@ -27,11 +27,12 @@ LOG_MODULE_REGISTER(picosystem_game_demo, LOG_LEVEL_INF);
 
 #define JOINT_PIXEL_QUANTUM 4
 #define MAX_DIRTY_REGIONS                                                                          \
-	((PICOSYSTEM_PHYSICS_MAX_BODIES +                                                          \
-	  (PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS * PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT) + \
-	  PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS + PICOSYSTEM_PHYSICS_MAX_ROPES +                  \
-	  PICOSYSTEM_SCENE_MAX_BOX_SENSORS + 1U) *                                                 \
-	 2U)
+	((2U * (PICOSYSTEM_PHYSICS_MAX_BODIES +                                                    \
+		(PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS *                                          \
+		 PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT) +                                    \
+		PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS + PICOSYSTEM_PHYSICS_MAX_ROPES +            \
+		PICOSYSTEM_SCENE_MAX_BOX_SENSORS + 1U)) +                                          \
+	 PICOSYSTEM_SCENE_MAX_SEGMENTS)
 #define RENDER_THREAD_STACK_SIZE 5120U
 #if defined(CONFIG_TOY_FACTORY_CORE1_FULL_FRAME_RENDERER)
 #define RENDER_THREAD_PRIORITY -1
@@ -537,6 +538,17 @@ static size_t build_dirty_regions(const struct picosystem_scene_snapshot *snapsh
 		if (rigid->box_sensors[index].active !=
 		    presented_rigid->box_sensors[index].active) {
 			regions[count++] = rigid->box_sensors[index].bounds;
+		}
+	}
+	if ((snapshot->logic_tick_count % PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT) !=
+	    (presented->logic_tick_count % PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT)) {
+		const uint32_t conveyor_mask =
+			rigid->conveyor_forward_segment_mask | rigid->conveyor_reverse_segment_mask;
+		for (uint16_t index = 0U; index < snapshot->static_segment_count; ++index) {
+			if ((conveyor_mask & (UINT32_C(1) << index)) != 0U) {
+				regions[count++] = picosystem_scene_conveyor_bounds(
+					&rigid->static_segments[index]);
+			}
 		}
 	}
 	if (snapshot->sensor_entry_count != presented->sensor_entry_count) {

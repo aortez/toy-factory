@@ -12,8 +12,8 @@ contracts defined here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 251,852 bytes of the linker's 255 KiB Zephyr
-RAM region and 240,608 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 252,316 bytes of the linker's 255 KiB Zephyr
+RAM region and 242,888 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
 rigid physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, two
@@ -24,10 +24,10 @@ rigid and granular alternatives share
 one tagged game-world union. The serialized A/B
 workspace is 33,360 bytes, is inactive during normal play, and
 avoids placing a second world on a thread stack. The profile
-command uses a 5,120-byte shell stack and most recently reached 4,184 bytes. The
-1,128-byte render snapshot leaves measured main/render stack use at 4,024 and
-3,740 bytes; both stacks are bounded at 5,120 bytes. The linked image retains
-9,268 bytes of Zephyr RAM headroom. The fast build also places
+command uses a 5,120-byte shell stack and most recently reached 4,280 bytes. The
+1,128-byte render snapshot leaves measured main/render stack use at 4,240 and
+3,932 bytes; both stacks are bounded at 5,120 bytes. The linked image retains
+8,804 bytes of Zephyr RAM headroom. The fast build also places
 the rigid-physics hot path in SRAM and keeps the collision traversal in a separate,
 bounded stack frame; this avoids core-0/core-1 XIP contention while the second
 core rasterizes a full scene. Both builds route compiler integer division
@@ -574,28 +574,72 @@ physical D-pad.
 
 ## Playable Marble Machine
 
-Marble Machine reuses the rigid backend with eight five-pixel circles, six
-static segments, one box sensor, and one flash-resident velocity zone. The
-powered recovery floor feeds a narrow left shaft. Inside that shaft, the zone
+Marble Machine reuses the rigid backend with nine five-pixel circles, a
+spring-loaded capsule launcher, one motorized capsule rotor, one hinged
+accumulation capsule, eight static segments, two distance springs, three
+revolute joints, one box sensor, and one flash-resident velocity zone. The
+powered lower ramp ends at x=110 rather
+than x=50, so marbles land on a long recovery-floor runout instead of beside the
+lift. The elevator guide reaches down to y=218, leaving a passive one-marble
+throat above the y=234 floor, while its top and upper ramp are raised from y=100
+to y=70. Inside the shaft, the taller zone
 approaches `(0.25, -1.5)` pixels/tick with at most `0.5` pixel/tick of change per
 axis. This models cleats carrying marbles upward while ordinary rigid contacts
 continue to own stacking, the guide rail, chute landing, and all subsequent
 falls. The powered lower return starts at the outer wall, crosses the playfield,
 and leaves a deliberate opening before the elevator guide. The opening avoids a
 pinching corner as it returns marbles to the recovery floor. The vertical guide
-is also rendered as a powered surface so its direction is visible as chevrons.
-X reverses both return surfaces through the generic scene action machinery.
+is also a powered surface. Powered-surface markers advance from authoritative
+tick time; vertical powered segments render as pulley belts with moving cleats.
+The central launcher begins locked at its charged angle. A selected body's
+ordinary begin-contact event opens the revolute range; the distance spring then
+accelerates only the arm, and the marble receives energy through the normal
+contact solver. Once the arm passes its firing angle, a bounded revolute motor
+winds it back and the equal limit locks it. The three phases are represented by
+authoritative joint configuration, so no extra mutable scene-state allocation,
+direct marble impulse, or position script is required. The physics API changes
+motor state and angular bounds atomically and wakes connected bodies. Revolute
+motors use an angular-impulse bound distinct from the lower prismatic
+force-impulse bound, which lets the slow rewind motor work against a spring on
+a long lever without increasing its target speed. A separate world-anchored
+rotor sits in the descending flight path. X reverses both return surfaces
+through the generic scene action machinery.
+
+The upper-right accumulator is passive scene data rather than another state
+machine. A center revolute joint permits a bounded tip angle while a damped
+distance spring pulls an off-center tray anchor back toward its unloaded pose.
+Marble contact torque stretches the spring; at sufficient load the tray rotates
+through its spill angle, opens a wide throat above the lower ramp, and resets
+after the load leaves. A short outer guide holds marbles while the tray is near
+level, and a complete top segment contains trajectories made possible by the
+higher feed. The mechanism uses only ordinary contacts and joint impulses.
 
 The sensor surrounds the upper elevator gate and counts only selected bodies
 entering with negative vertical velocity as `Mxx`. Its body mask and direction
 are scene data rather than Marble Machine conditionals in the contact-event
 path. Native validation keeps every body inside the playfield through a
 2,400-tick action/reversal replay and a separate 6,000-tick neutral run. The
-neutral baseline records 43 upward returns at hash `08f3a75a`. After tick 3,000,
-all eight marble IDs return, cross the middle of the upper ramp moving right,
-and cross the middle of the lower ramp moving left. Twenty-four entries occur
-in that second half, and every marble traverses at least 140 vertical pixels
-there. Four downward re-entries are observed but deliberately excluded.
+neutral baseline ends at hash `fed080d5` with 131 upward returns, including 68
+after tick 3,000. All nine marble IDs return, cross the middle of the upper ramp
+moving right, cross the middle of the lower ramp moving left, contact the
+launcher, and traverse at least 140 vertical pixels during that second half.
+The launcher completes 97 contact-triggered releases, including 50 late. All
+nine marbles rise at least eight pixels after launcher departure and travel at
+least 20 horizontal pixels in the same airborne interval. The maximum observed
+rise and horizontal travel are 40.1 and 88.2 pixels, with a 2.84 pixel/tick
+maximum upward departure speed. Every marble contacts the accumulation tray in
+both halves of the run. It carries at least two marbles on 869 ticks and
+completes 39 full tip/reset excursions, including 20 after tick 3,000.
+
+The native observer treats a marble descending below y=222 and then rising
+through y=210 inside the shaft as one admission. The passive runout produces
+132 such admissions, including 66 late, and every marble enters in both halves
+of the run. Relative to the same launcher scene with the ramp ending beside the
+lift, mean lower-left occupancy is 0.781 rather than 3.580 marbles,
+three-or-more occupancy is 211 rather than 5,368 of the 6,000 ticks, and local
+marble-on-marble contact time is 189 rather than 3,117 ticks. The exact reset,
+2,400-tick reversal, and 480-tick input hashes are `b8ba5cef`, `a1fb5de3`, and
+`ee7a9565`.
 
 ## Validation scenarios
 

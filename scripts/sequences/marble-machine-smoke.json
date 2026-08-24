@@ -19,7 +19,7 @@
     }
   ],
   "expect": {
-    "hash": "d834b324",
-    "framebuffer_crc32": "193762a8"
+    "hash": "ee7a9565",
+    "framebuffer_crc32": "1d4595e2"
   }
 }

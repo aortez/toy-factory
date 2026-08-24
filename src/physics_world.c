@@ -45,10 +45,12 @@
 #define PHYSICS_INVERSE_MASS_MINIMUM              (PICOSYSTEM_PHYSICS_FIXED_ONE / 16)
 #define PHYSICS_INVERSE_MASS_MAXIMUM              (PICOSYSTEM_PHYSICS_FIXED_ONE * 4)
 #define PHYSICS_INVERSE_INERTIA_MAXIMUM           (PICOSYSTEM_PHYSICS_FIXED_ONE * 8)
-#define PHYSICS_ANGULAR_VELOCITY_LIMIT            (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
+#define PHYSICS_ANGULAR_VELOCITY_LIMIT            PICOSYSTEM_PHYSICS_MAX_ANGULAR_SPEED_PER_TICK
 #define PHYSICS_TAU_FIXED                         INT32_C(411775)
 #define PHYSICS_PI_FIXED                          (PHYSICS_TAU_FIXED / 2)
-#define PHYSICS_JOINT_MOTOR_IMPULSE_LIMIT         PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
+/* Angular impulse must cover a bounded spring impulse multiplied by its lever arm. */
+#define PHYSICS_REVOLUTE_MOTOR_IMPULSE_LIMIT      PICOSYSTEM_PHYSICS_MAX_REVOLUTE_MOTOR_IMPULSE_PER_TICK
+#define PHYSICS_PRISMATIC_MOTOR_IMPULSE_LIMIT     PICOSYSTEM_PHYSICS_FIXED_FROM_INT(8)
 #define PHYSICS_SPRING_FREQUENCY_MINIMUM          (PICOSYSTEM_PHYSICS_FIXED_ONE / 64)
 #define PHYSICS_SPRING_FREQUENCY_LIMIT            (PICOSYSTEM_PHYSICS_FIXED_ONE / 2)
 #define PHYSICS_SPRING_DAMPING_RATIO_LIMIT        (PICOSYSTEM_PHYSICS_FIXED_ONE * 2)
@@ -873,7 +875,8 @@ revolute_joint_config_is_valid(const struct picosystem_physics_revolute_joint_co
 		if (!fixed_is_bounded(config->motor_speed_per_tick,
 				      PHYSICS_ANGULAR_VELOCITY_LIMIT) ||
 		    (config->maximum_motor_impulse_per_tick <= 0) ||
-		    (config->maximum_motor_impulse_per_tick > PHYSICS_JOINT_MOTOR_IMPULSE_LIMIT)) {
+		    (config->maximum_motor_impulse_per_tick >
+		     PHYSICS_REVOLUTE_MOTOR_IMPULSE_LIMIT)) {
 			return false;
 		}
 	} else if ((config->motor_speed_per_tick != 0) ||
@@ -922,7 +925,8 @@ prismatic_joint_config_is_valid(const struct picosystem_physics_prismatic_joint_
 	if (config->motor_enabled != 0U) {
 		if (!fixed_is_bounded(config->motor_speed_per_tick, PHYSICS_VELOCITY_LIMIT) ||
 		    (config->maximum_motor_impulse_per_tick <= 0) ||
-		    (config->maximum_motor_impulse_per_tick > PHYSICS_JOINT_MOTOR_IMPULSE_LIMIT)) {
+		    (config->maximum_motor_impulse_per_tick >
+		     PHYSICS_PRISMATIC_MOTOR_IMPULSE_LIMIT)) {
 			return false;
 		}
 	} else if ((config->motor_speed_per_tick != 0) ||
@@ -6138,6 +6142,72 @@ int picosystem_physics_world_set_prismatic_motor_speed(
 		return -ENOTSUP;
 	}
 	joint->motor_speed_per_tick = motor_speed_per_tick;
+	uint16_t wake_mask = body_mask_for_index(joint->body_a_index);
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		wake_mask |= body_mask_for_index(joint->body_b_index);
+	}
+	(void)wake_sleeping_body_mask(world, wake_mask, false);
+	return 0;
+}
+
+int picosystem_physics_world_configure_revolute_motor(
+	struct picosystem_physics_world *world, size_t index, bool enabled,
+	picosystem_physics_fixed_t motor_speed_per_tick,
+	picosystem_physics_fixed_t maximum_motor_impulse_per_tick)
+{
+	if (world == NULL) {
+		return -EINVAL;
+	}
+	if (!world_is_valid(world)) {
+		return -ERANGE;
+	}
+	if (index >= world->revolute_joint_count) {
+		return -ENOENT;
+	}
+	struct picosystem_physics_revolute_joint candidate = world->revolute_joints[index];
+	candidate.motor_enabled = enabled ? 1U : 0U;
+	candidate.motor_speed_per_tick = motor_speed_per_tick;
+	candidate.maximum_motor_impulse_per_tick = maximum_motor_impulse_per_tick;
+	if (!revolute_joint_is_valid(&candidate, world)) {
+		return -ERANGE;
+	}
+	struct picosystem_physics_revolute_joint *const joint = &world->revolute_joints[index];
+	*joint = candidate;
+	joint->accumulated_motor_impulse = 0;
+	uint16_t wake_mask = body_mask_for_index(joint->body_a_index);
+	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
+		wake_mask |= body_mask_for_index(joint->body_b_index);
+	}
+	(void)wake_sleeping_body_mask(world, wake_mask, false);
+	return 0;
+}
+
+int picosystem_physics_world_set_revolute_limits(struct picosystem_physics_world *world,
+						 size_t index,
+						 picosystem_physics_fixed_t lower_angle_radians,
+						 picosystem_physics_fixed_t upper_angle_radians)
+{
+	if (world == NULL) {
+		return -EINVAL;
+	}
+	if (!world_is_valid(world)) {
+		return -ERANGE;
+	}
+	if (index >= world->revolute_joint_count) {
+		return -ENOENT;
+	}
+	struct picosystem_physics_revolute_joint candidate = world->revolute_joints[index];
+	if (candidate.limit_enabled == 0U) {
+		return -ENOTSUP;
+	}
+	candidate.lower_angle_radians = lower_angle_radians;
+	candidate.upper_angle_radians = upper_angle_radians;
+	if (!revolute_joint_is_valid(&candidate, world)) {
+		return -ERANGE;
+	}
+	struct picosystem_physics_revolute_joint *const joint = &world->revolute_joints[index];
+	*joint = candidate;
+	joint->accumulated_limit_impulse = 0;
 	uint16_t wake_mask = body_mask_for_index(joint->body_a_index);
 	if (joint->body_b_id != PICOSYSTEM_PHYSICS_WORLD_BODY_ID) {
 		wake_mask |= body_mask_for_index(joint->body_b_index);

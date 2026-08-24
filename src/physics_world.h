@@ -17,22 +17,25 @@
 #define PICOSYSTEM_PHYSICS_FIXED_RATIO(numerator, denominator)                                     \
 	((int32_t)(((int64_t)(numerator) * PICOSYSTEM_PHYSICS_FIXED_ONE) / (denominator)))
 
-#define PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT          4U
-#define PICOSYSTEM_PHYSICS_MAX_BODIES                12U
-#define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS       8U
-#define PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS       8U
-#define PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS       8U
-#define PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS      8U
-#define PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS           8U
-#define PICOSYSTEM_PHYSICS_MAX_ROPES                 2U
-#define PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES        12U
-#define PICOSYSTEM_PHYSICS_ROPE_SOLVER_ITERATIONS    6U
-#define PICOSYSTEM_PHYSICS_ROPE_COLLISION_ITERATIONS 3U
-#define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS       2U
-#define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN        UINT32_C(0x40000000)
-#define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS     16U
-#define PICOSYSTEM_PHYSICS_GRID_COLUMNS              16U
-#define PICOSYSTEM_PHYSICS_GRID_ROWS                 16U
+#define PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT           4U
+#define PICOSYSTEM_PHYSICS_MAX_BODIES                 12U
+#define PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS        8U
+#define PICOSYSTEM_PHYSICS_MAX_DISTANCE_JOINTS        8U
+#define PICOSYSTEM_PHYSICS_MAX_REVOLUTE_JOINTS        8U
+#define PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS       8U
+#define PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS            8U
+#define PICOSYSTEM_PHYSICS_MAX_ROPES                  2U
+#define PICOSYSTEM_PHYSICS_MAX_ROPE_PARTICLES         12U
+#define PICOSYSTEM_PHYSICS_ROPE_SOLVER_ITERATIONS     6U
+#define PICOSYSTEM_PHYSICS_ROPE_COLLISION_ITERATIONS  3U
+#define PICOSYSTEM_PHYSICS_MAX_MANIFOLD_POINTS        2U
+#define PICOSYSTEM_PHYSICS_ANGLE_QUARTER_TURN         UINT32_C(0x40000000)
+#define PICOSYSTEM_PHYSICS_MAX_ANGULAR_SPEED_PER_TICK PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 2)
+#define PICOSYSTEM_PHYSICS_MAX_REVOLUTE_MOTOR_IMPULSE_PER_TICK                                     \
+	PICOSYSTEM_PHYSICS_FIXED_FROM_INT(256)
+#define PICOSYSTEM_PHYSICS_GRID_CELL_SIZE_PIXELS 16U
+#define PICOSYSTEM_PHYSICS_GRID_COLUMNS          16U
+#define PICOSYSTEM_PHYSICS_GRID_ROWS             16U
 #define PICOSYSTEM_PHYSICS_GRID_CELL_COUNT                                                         \
 	(PICOSYSTEM_PHYSICS_GRID_COLUMNS * PICOSYSTEM_PHYSICS_GRID_ROWS)
 #define PICOSYSTEM_PHYSICS_MAX_CANDIDATE_PAIRS                                                     \
@@ -574,6 +577,18 @@ int picosystem_physics_world_add_revolute_joint(
 int picosystem_physics_world_add_prismatic_joint(
 	struct picosystem_physics_world *world,
 	const struct picosystem_physics_prismatic_joint_config *config);
+
+/* Atomically enable or disable one revolute motor and wake its dynamic participants. */
+int picosystem_physics_world_configure_revolute_motor(
+	struct picosystem_physics_world *world, size_t index, bool enabled,
+	picosystem_physics_fixed_t motor_speed_per_tick,
+	picosystem_physics_fixed_t maximum_motor_impulse_per_tick);
+
+/* Change the bounds of one enabled revolute limit and wake its dynamic participants. */
+int picosystem_physics_world_set_revolute_limits(struct picosystem_physics_world *world,
+						 size_t index,
+						 picosystem_physics_fixed_t lower_angle_radians,
+						 picosystem_physics_fixed_t upper_angle_radians);
 
 /* Change one enabled prismatic motor target without changing any other state. */
 int picosystem_physics_world_set_prismatic_motor_speed(

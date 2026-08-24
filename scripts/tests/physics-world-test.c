@@ -1458,7 +1458,7 @@ static void test_revolute_joint_boundaries_and_anchors(void)
 	invalid.motor_enabled = 1U;
 	invalid.motor_speed_per_tick = RATIO(1, 64);
 	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
-	invalid.maximum_motor_impulse_per_tick = FIXED(9);
+	invalid.maximum_motor_impulse_per_tick = FIXED(257);
 	assert(picosystem_physics_world_add_revolute_joint(&world, &invalid) == -ERANGE);
 	invalid.maximum_motor_impulse_per_tick = RATIO(1, 4);
 	invalid.motor_speed_per_tick = PICOSYSTEM_PHYSICS_FIXED_ONE;
@@ -1621,6 +1621,24 @@ static void test_revolute_joint_motor_and_limits(void)
 	drive.maximum_motor_impulse_per_tick = RATIO(1, 4);
 	drive.motor_enabled = 1U;
 	assert(picosystem_physics_world_add_revolute_joint(&motor, &drive) == 0);
+	assert(picosystem_physics_world_configure_revolute_motor(NULL, 0U, false, 0, 0) == -EINVAL);
+	assert(picosystem_physics_world_configure_revolute_motor(&motor, 1U, false, 0, 0) ==
+	       -ENOENT);
+	assert(picosystem_physics_world_configure_revolute_motor(
+		       &motor, 0U, false, drive.motor_speed_per_tick, 0) == -ERANGE);
+	assert(picosystem_physics_world_configure_revolute_motor(
+		       &motor, 0U, true, PICOSYSTEM_PHYSICS_FIXED_ONE,
+		       drive.maximum_motor_impulse_per_tick) == -ERANGE);
+	assert(picosystem_physics_world_configure_revolute_motor(
+		       &motor, 0U, true, drive.motor_speed_per_tick, FIXED(257)) == -ERANGE);
+	assert(picosystem_physics_world_configure_revolute_motor(&motor, 0U, false, 0, 0) == 0);
+	assert(motor.revolute_joints[0].motor_enabled == 0U);
+	assert(motor.revolute_joints[0].motor_speed_per_tick == 0);
+	assert(motor.revolute_joints[0].maximum_motor_impulse_per_tick == 0);
+	assert(picosystem_physics_world_configure_revolute_motor(
+		       &motor, 0U, true, drive.motor_speed_per_tick,
+		       drive.maximum_motor_impulse_per_tick) == 0);
+	assert(motor.revolute_joints[0].motor_enabled != 0U);
 	for (uint32_t step = 0U; step < 32U; ++step) {
 		assert(picosystem_physics_world_step(&motor, &no_acceleration) == 0);
 		assert(motor.last_work.revolute_motor_count == 1U);
@@ -1680,6 +1698,19 @@ static void test_revolute_joint_motor_and_limits(void)
 	drive.motor_enabled = 1U;
 	drive.limit_enabled = 1U;
 	assert(picosystem_physics_world_add_revolute_joint(&limited, &drive) == 0);
+	assert(picosystem_physics_world_set_revolute_limits(NULL, 0U, 0, 0) == -EINVAL);
+	assert(picosystem_physics_world_set_revolute_limits(&limited, 1U, 0, 0) == -ENOENT);
+	assert(picosystem_physics_world_set_revolute_limits(&motor, 0U, -RATIO(1, 2),
+							    RATIO(1, 2)) == -ENOTSUP);
+	assert(picosystem_physics_world_set_revolute_limits(&limited, 0U, RATIO(1, 2),
+							    -RATIO(1, 2)) == -ERANGE);
+	assert(picosystem_physics_world_set_revolute_limits(&limited, 0U, 0, 1) == -ERANGE);
+	assert(picosystem_physics_world_set_revolute_limits(&limited, 0U, -RATIO(1, 2),
+							    RATIO(1, 2)) == 0);
+	assert(limited.revolute_joints[0].lower_angle_radians == -RATIO(1, 2));
+	assert(limited.revolute_joints[0].upper_angle_radians == RATIO(1, 2));
+	assert(picosystem_physics_world_set_revolute_limits(&limited, 0U, drive.lower_angle_radians,
+							    drive.upper_angle_radians) == 0);
 	struct picosystem_physics_world reference = limited;
 	bool saw_active_limit = false;
 	for (uint32_t step = 0U; step < 1000U; ++step) {

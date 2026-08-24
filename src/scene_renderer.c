@@ -16,26 +16,32 @@
 #include "game_world.h"
 #include "render_placement.h"
 
-#define PLAYFIELD_LEFT             PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS
-#define PLAYFIELD_RIGHT            PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS
-#define PLAYFIELD_TOP              PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS
-#define PLAYFIELD_BOTTOM           PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS
-#define PLAYFIELD_WIDTH            (PLAYFIELD_RIGHT - PLAYFIELD_LEFT + 1U)
-#define PLAYFIELD_HEIGHT           (PLAYFIELD_BOTTOM - PLAYFIELD_TOP + 1U)
-#define BACKGROUND_TILE_SIZE       12U
-#define MACHINE_LAB_HEADER_TEXT    "MACHINE LAB 60HZ"
-#define CLOCKWORK_HEADER_TEXT      "CLOCKWORK 60HZ"
-#define HOURGLASS_HEADER_TEXT      "HOURGLASS 60HZ"
-#define MARBLE_MACHINE_HEADER_TEXT "MARBLE MACHINE 60HZ"
-#define MACHINE_LAB_HEADER_X       22
-#define CLOCKWORK_HEADER_X         34
-#define HOURGLASS_HEADER_X         34
-#define MARBLE_MACHINE_HEADER_X    44
-#define HEADER_TEXT_Y              7
-#define HEADER_TEXT_SCALE          2U
-#define SENSOR_COUNT_TEXT_X        2
-#define SENSOR_COUNT_TEXT_Y        10
-#define SENSOR_COUNT_SCALE         1U
+#define PLAYFIELD_LEFT              PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS
+#define PLAYFIELD_RIGHT             PICOSYSTEM_GAME_PLAYFIELD_RIGHT_PIXELS
+#define PLAYFIELD_TOP               PICOSYSTEM_GAME_PLAYFIELD_TOP_PIXELS
+#define PLAYFIELD_BOTTOM            PICOSYSTEM_GAME_PLAYFIELD_BOTTOM_PIXELS
+#define PLAYFIELD_WIDTH             (PLAYFIELD_RIGHT - PLAYFIELD_LEFT + 1U)
+#define PLAYFIELD_HEIGHT            (PLAYFIELD_BOTTOM - PLAYFIELD_TOP + 1U)
+#define BACKGROUND_TILE_SIZE        12U
+#define MACHINE_LAB_HEADER_TEXT     "MACHINE LAB 60HZ"
+#define CLOCKWORK_HEADER_TEXT       "CLOCKWORK 60HZ"
+#define HOURGLASS_HEADER_TEXT       "HOURGLASS 60HZ"
+#define MARBLE_MACHINE_HEADER_TEXT  "MARBLE MACHINE 60HZ"
+#define MACHINE_LAB_HEADER_X        22
+#define CLOCKWORK_HEADER_X          34
+#define HOURGLASS_HEADER_X          34
+#define MARBLE_MACHINE_HEADER_X     44
+#define HEADER_TEXT_Y               7
+#define HEADER_TEXT_SCALE           2U
+#define SENSOR_COUNT_TEXT_X         2
+#define SENSOR_COUNT_TEXT_Y         10
+#define SENSOR_COUNT_SCALE          1U
+#define CONVEYOR_MARKER_COUNT       4U
+#define CONVEYOR_MARKER_DENOMINATOR (CONVEYOR_MARKER_COUNT * PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT)
+#define CONVEYOR_RENDER_MARGIN      20U
+#define ELEVATOR_PULLEY_OFFSET      12
+#define ELEVATOR_PULLEY_RADIUS      6
+#define ELEVATOR_CLEAT_HALF_WIDTH   8
 
 static const picosystem_color_t body_colors[] = {
 	PICOSYSTEM_COLOR_YELLOW,  PICOSYSTEM_COLOR_CYAN, PICOSYSTEM_COLOR_GREEN,
@@ -328,6 +334,13 @@ picosystem_scene_segment_bounds(const struct picosystem_scene_segment *segment)
 }
 
 PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
+picosystem_scene_conveyor_bounds(const struct picosystem_scene_segment *segment)
+{
+	return line_bounds_with_margin(segment->start_x, segment->start_y, segment->end_x,
+				       segment->end_y, CONVEYOR_RENDER_MARGIN);
+}
+
+PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
 picosystem_scene_joint_bounds(const struct picosystem_scene_joint *joint)
 {
 	if (scene_joint_is_spring(joint)) {
@@ -563,7 +576,7 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_body(const struct picosystem_scene_b
 
 static PICOSYSTEM_RENDER_RAMFUNC void
 render_conveyor_chevrons(const struct picosystem_scene_segment *segment, int32_t direction,
-			 const struct picosystem_rect *clip)
+			 uint32_t logic_tick_count, const struct picosystem_rect *clip)
 {
 	const int32_t delta_x = (int32_t)segment->end_x - segment->start_x;
 	const int32_t delta_y = (int32_t)segment->end_y - segment->start_y;
@@ -576,9 +589,18 @@ render_conveyor_chevrons(const struct picosystem_scene_segment *segment, int32_t
 	const int32_t forward_y = (direction * delta_y * 3) / maximum_axis;
 	const int32_t side_x = (-delta_y * 2) / maximum_axis;
 	const int32_t side_y = (delta_x * 2) / maximum_axis;
-	for (int32_t marker = 1; marker <= 3; ++marker) {
-		const int32_t center_x = segment->start_x + ((delta_x * marker) / 4);
-		const int32_t center_y = segment->start_y + ((delta_y * marker) / 4);
+	const uint32_t tick_phase = logic_tick_count % PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT;
+	const uint32_t phase = (direction > 0)
+				       ? tick_phase
+				       : (PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT - tick_phase) %
+						 PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT;
+	for (uint32_t marker = 0U; marker < CONVEYOR_MARKER_COUNT; ++marker) {
+		const int32_t position =
+			(int32_t)((marker * PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT) + phase);
+		const int32_t center_x =
+			segment->start_x + ((delta_x * position) / CONVEYOR_MARKER_DENOMINATOR);
+		const int32_t center_y =
+			segment->start_y + ((delta_y * position) / CONVEYOR_MARKER_DENOMINATOR);
 		const int16_t tip_x = (int16_t)(center_x + forward_x);
 		const int16_t tip_y = (int16_t)(center_y + forward_y);
 		const int32_t base_x = center_x - (forward_x / 2);
@@ -590,6 +612,80 @@ render_conveyor_chevrons(const struct picosystem_scene_segment *segment, int32_t
 			clip, tip_x, tip_y, (int16_t)(base_x - side_x), (int16_t)(base_y - side_y),
 			PICOSYSTEM_COLOR_YELLOW);
 	}
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC void render_elevator_pulley(int16_t center_x, int16_t center_y,
+							     uint8_t phase,
+							     const struct picosystem_rect *clip)
+{
+	int16_t first_x = 0;
+	int16_t first_y = 0;
+	int16_t previous_x = 0;
+	int16_t previous_y = 0;
+	for (uint8_t point = 0U; point < 8U; ++point) {
+		int32_t direction_x;
+		int32_t direction_y;
+		gear_direction((uint8_t)(point * 8U), &direction_x, &direction_y);
+		const int16_t x = center_x + (int16_t)((direction_x * ELEVATOR_PULLEY_RADIUS) / 32);
+		const int16_t y = center_y + (int16_t)((direction_y * ELEVATOR_PULLEY_RADIUS) / 32);
+		if (point == 0U) {
+			first_x = x;
+			first_y = y;
+		} else {
+			picosystem_graphics_draw_line_clipped(clip, previous_x, previous_y, x, y,
+							      PICOSYSTEM_COLOR_GREEN);
+		}
+		previous_x = x;
+		previous_y = y;
+	}
+	picosystem_graphics_draw_line_clipped(clip, previous_x, previous_y, first_x, first_y,
+					      PICOSYSTEM_COLOR_GREEN);
+
+	int32_t spoke_x;
+	int32_t spoke_y;
+	gear_direction(phase, &spoke_x, &spoke_y);
+	picosystem_graphics_draw_line_clipped(
+		clip, center_x, center_y,
+		center_x + (int16_t)((spoke_x * (ELEVATOR_PULLEY_RADIUS - 2)) / 32),
+		center_y + (int16_t)((spoke_y * (ELEVATOR_PULLEY_RADIUS - 2)) / 32),
+		PICOSYSTEM_COLOR_YELLOW);
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC void
+render_elevator(const struct picosystem_scene_segment *segment, int32_t direction,
+		uint32_t logic_tick_count, const struct picosystem_rect *clip)
+{
+	const int16_t offset = (segment->start_x < (int16_t)(PICOSYSTEM_GRAPHICS_WIDTH / 2U))
+				       ? -ELEVATOR_PULLEY_OFFSET
+				       : ELEVATOR_PULLEY_OFFSET;
+	const int16_t pulley_x = segment->start_x + offset;
+	const int16_t belt_left = pulley_x - (ELEVATOR_PULLEY_RADIUS - 1);
+	const int16_t belt_right = pulley_x + (ELEVATOR_PULLEY_RADIUS - 1);
+	picosystem_graphics_draw_line_clipped(clip, belt_left, segment->start_y, belt_left,
+					      segment->end_y, PICOSYSTEM_COLOR_GREEN);
+	picosystem_graphics_draw_line_clipped(clip, belt_right, segment->start_y, belt_right,
+					      segment->end_y, PICOSYSTEM_COLOR_GREEN);
+
+	const uint32_t tick_phase = logic_tick_count % PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT;
+	const uint32_t phase = (direction > 0)
+				       ? tick_phase
+				       : (PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT - tick_phase) %
+						 PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT;
+	for (uint32_t marker = 0U; marker < CONVEYOR_MARKER_COUNT; ++marker) {
+		const int32_t position =
+			(int32_t)((marker * PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT) + phase);
+		const int16_t y =
+			segment->start_y +
+			(int16_t)(((int32_t)(segment->end_y - segment->start_y) * position) /
+				  CONVEYOR_MARKER_DENOMINATOR);
+		picosystem_graphics_draw_line_clipped(clip, pulley_x - ELEVATOR_CLEAT_HALF_WIDTH, y,
+						      pulley_x + ELEVATOR_CLEAT_HALF_WIDTH, y,
+						      PICOSYSTEM_COLOR_YELLOW);
+	}
+
+	const uint8_t pulley_phase = (uint8_t)((phase * 4U) & UINT32_C(0x3f));
+	render_elevator_pulley(pulley_x, segment->start_y, pulley_phase, clip);
+	render_elevator_pulley(pulley_x, segment->end_y, pulley_phase, clip);
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC int32_t
@@ -617,11 +713,8 @@ render_static_segments(const struct picosystem_scene_snapshot *snapshot,
 		const int32_t direction = hourglass ? 0 : conveyor_direction(snapshot, index);
 		if (clip != NULL) {
 			const struct picosystem_rect bounds =
-				(direction == 0)
-					? picosystem_scene_segment_bounds(segment)
-					: line_bounds_with_margin(segment->start_x,
-								  segment->start_y, segment->end_x,
-								  segment->end_y, 4U);
+				(direction == 0) ? picosystem_scene_segment_bounds(segment)
+						 : picosystem_scene_conveyor_bounds(segment);
 			if (!picosystem_scene_rectangles_intersect(&bounds, clip)) {
 				continue;
 			}
@@ -636,7 +729,13 @@ render_static_segments(const struct picosystem_scene_snapshot *snapshot,
 						      segment->end_x, segment->end_y,
 						      segment_color);
 		if (direction != 0) {
-			render_conveyor_chevrons(segment, direction, clip);
+			if (segment->start_x == segment->end_x) {
+				render_elevator(segment, direction, snapshot->logic_tick_count,
+						clip);
+			} else {
+				render_conveyor_chevrons(segment, direction,
+							 snapshot->logic_tick_count, clip);
+			}
 		}
 	}
 }

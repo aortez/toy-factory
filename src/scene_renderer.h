@@ -16,6 +16,7 @@
 
 #define PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT 3U
 #define PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS      3U
+#define PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT       16U
 #define PICOSYSTEM_SCENE_MAX_BOX_SENSORS            1U
 #define PICOSYSTEM_SCENE_JOINT_SPRING_FLAG          UINT16_C(0x8000)
 #define PICOSYSTEM_SCENE_JOINT_TARGET_RADIUS_MASK   UINT16_C(0x7fff)
@@ -155,6 +156,8 @@ bool picosystem_scene_rectangles_intersect(const struct picosystem_rect *left,
 struct picosystem_rect picosystem_scene_body_bounds(const struct picosystem_scene_body *body);
 struct picosystem_rect
 picosystem_scene_segment_bounds(const struct picosystem_scene_segment *segment);
+struct picosystem_rect
+picosystem_scene_conveyor_bounds(const struct picosystem_scene_segment *segment);
 struct picosystem_rect picosystem_scene_joint_bounds(const struct picosystem_scene_joint *joint);
 struct picosystem_rect
 picosystem_scene_revolute_joint_bounds(const struct picosystem_scene_joint *joint);

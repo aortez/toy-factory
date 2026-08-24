@@ -24,9 +24,10 @@ path:
   Clockwork includes a
   motorized gear pair, crank-slider, pendulum, spring bob, two-link mobile,
   sensor gate, and reciprocal rope;
-- sends eight marbles through an upper gravity chute, powered lower return,
-  recovery belt, and guided elevator in Marble Machine, with a
-  direction-qualified passage sensor;
+- sends nine marbles through a raised upper feed, contact-triggered spring
+  catapult, airborne transfer rotor, spring-loaded accumulation tray, powered
+  lower return, long recovery-floor runout, and animated guided elevator in
+  Marble Machine, with a direction-qualified passage sensor;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -584,7 +585,7 @@ uses the undefined-behavior sanitizer and treats the accepted reset,
 double-action, full-drain, recirculation, and retained Machine Lab replay hashes
 as native goldens.
 The default image uses 221,820 bytes of its 255 KiB Zephyr RAM region (84.95%)
-and 234,860 bytes of flash. This includes the 115,200-byte framebuffer,
+and 237,188 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer, 22,636-byte fixed-capacity rigid physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
@@ -593,13 +594,13 @@ fixed-capacity 512-particle granular world with a 40 x 48 scratch grid,
 boundary masks, and sparse occupied-cell storage, a 33,360-byte serialized
 benchmark workspace, two 1,128-byte render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 251,852 bytes of
-that region (96.45%) and 240,608 bytes of flash. It keeps the rigid-physics and
+storage, and a 1,024-byte shell TX ring. The fast image uses 252,316 bytes of
+that region (96.63%) and 242,888 bytes of flash. It keeps the rigid-physics and
 renderer hot paths in SRAM while the granular solver remains in XIP flash, and
 both images route compiler integer division through the RP2040's interrupt-safe
 hardware-divider wrappers. Both images also reserve
 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 39,300 and 9,268
+core-1 mailbox and stack. The default and fast images retain 39,300 and 8,804
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
 
@@ -789,21 +790,37 @@ averaged 9.719 ms and peaked at 13.000 ms; complete updates averaged 10.243 ms
 and peaked at 13.644 ms. Core-1 full-scene rasterization was 10.913 ms with an
 11.437 ms observed maximum, followed by a 19.284 ms full-frame DMA transfer.
 
-The playable Marble Machine hashes to `0d775b8d` at reset. Its native
-2,400-tick reversal replay ends at `4fe37951`. A separate 6,000-tick neutral
-run records 43 upward returns and ends at `08f3a75a`: every one of the eight
-marble IDs reaches the upper gate, crosses the middle of the upper ramp moving
-right, and crosses the middle of the lower ramp moving left during the second
-half. Twenty-four returns occur in that late window, and every marble spans at
-least 140 vertical pixels. Four downward gate entries are deliberately
-rejected. The powered elevator is a declarative, flash-resident velocity zone;
-it approaches a bounded target velocity while the ordinary rigid solver
-continues to own stacking, walls, ramps, and discharge.
+The playable Marble Machine hashes to `b8ba5cef` at reset. Its native
+2,400-tick reversal replay ends at `a1fb5de3`. A separate 6,000-tick neutral
+run ends at `fed080d5`: every one of the nine marble IDs returns through the
+upper gate and crosses both ramp middles in the intended direction during the
+second half. The run records 131 upward returns, including 68 late returns, and
+every marble spans at least 140 vertical pixels late in the run.
 
-The exact PIM559 input/action replay reaches tick 480 at hash `d834b324` and
-framebuffer CRC-32 `193762a8`. A clean 1,343-tick device window sustained
-60.0 Hz simulation and 29.7 fps presentation with zero skipped or over-budget
-updates; physics averaged 3.232 ms and peaked at 8.539 ms.
+The central capsule is a latched spring catapult. A marble contact unlocks its
+revolute limit, the distance spring accelerates the arm through ordinary joint
+and contact impulses, and a torque-limited motor winds it back to the charged
+angle. No marble receives a scripted impulse. The replay records 97 releases
+(50 late), an 8-pixel-or-higher ballistic rise and a combined 20-pixel
+horizontal flight from all nine marbles. The best measured flight rises 40.1
+pixels and travels 88.2 pixels horizontally. The airborne rotor remains a
+transfer element rather than a circulation gate. Below it, a world-pinned
+capsule tray gathers two or more marbles on 869 ticks and completes 39
+spring-loaded tip/reset cycles, including 20 late cycles. The powered elevator
+remains a declarative, flash-resident velocity zone; its discharge and upper
+ramp are raised from y=100 to y=70. The lower ramp still stops near mid-screen,
+giving marbles a long powered-floor runout before a passive one-marble lift
+throat. Average lower-left occupancy remains 0.781 marbles, with 211 congested
+ticks and 189 local marble-contact ticks. All nine marbles enter the lift in
+both halves of the replay.
+
+The exact PIM559 input/action replay reaches tick 480 at hash `ee7a9565` and
+framebuffer CRC-32 `1d4595e2`. A clean 3,462-tick neutral device window
+sustained 60.0 Hz simulation and 29.7 fps presentation with zero skipped or
+over-budget updates. Physics averaged 5.746 ms and peaked at 11.485 ms; complete
+updates averaged 6.153 ms with an 11.565 ms maximum. An isolated 1,000-tick
+grid/reference comparison matched at hash `42228152` and averaged 5.380/5.973
+ms per tick.
 
 The retained 60 Hz reciprocal-rope Machine Lab fixture hashes to `3fc3de22` at
 reset, `fff75d40` after 15 right ticks, and `1bc0f502` after a further eight up

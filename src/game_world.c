@@ -14,13 +14,14 @@
 
 #include "game_scene.h"
 
-#define GAME_MAX_SPEED_PER_TICK     PICOSYSTEM_PHYSICS_FIXED_FROM_INT(5)
-#define GAME_GRAVITY_PER_TICK       PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
-#define GAME_CONTROL_PER_TICK       PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 16)
-#define GAME_PRISMATIC_REVERSE_SLOP PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 32)
-#define GAME_WORLD_HASH_VERSION     UINT32_C(15)
-#define FNV1A_OFFSET_BASIS          UINT32_C(2166136261)
-#define FNV1A_PRIME                 UINT32_C(16777619)
+#define GAME_MAX_SPEED_PER_TICK      PICOSYSTEM_PHYSICS_FIXED_FROM_INT(5)
+#define GAME_GRAVITY_PER_TICK        PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 8)
+#define GAME_CONTROL_PER_TICK        PICOSYSTEM_PHYSICS_FIXED_RATIO(3, 16)
+#define GAME_PRISMATIC_REVERSE_SLOP  PICOSYSTEM_PHYSICS_FIXED_RATIO(1, 32)
+#define GAME_MAX_JOINT_ANGLE_RADIANS PICOSYSTEM_PHYSICS_FIXED_FROM_INT(3)
+#define GAME_WORLD_HASH_VERSION      UINT32_C(15)
+#define FNV1A_OFFSET_BASIS           UINT32_C(2166136261)
+#define FNV1A_PRIME                  UINT32_C(16777619)
 
 static const enum picosystem_game_scene_id selectable_scenes[] = {
 	PICOSYSTEM_GAME_SCENE_CLOCKWORK,
@@ -104,6 +105,20 @@ static const struct picosystem_game_scene_config *scene_config(uint8_t scene_id)
 	}
 }
 
+static uint16_t scene_body_id(const struct picosystem_game_body_config *body)
+{
+	switch (body->shape) {
+	case PICOSYSTEM_PHYSICS_SHAPE_CIRCLE:
+		return body->circle.id;
+	case PICOSYSTEM_PHYSICS_SHAPE_BOX:
+		return body->box.id;
+	case PICOSYSTEM_PHYSICS_SHAPE_CAPSULE:
+		return body->capsule.id;
+	default:
+		return 0U;
+	}
+}
+
 static int validate_scene_config(const struct picosystem_game_scene_config *scene)
 {
 	if (scene == NULL) {
@@ -118,7 +133,8 @@ static int validate_scene_config(const struct picosystem_game_scene_config *scen
 	    (scene->prismatic_joint_count > PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS) ||
 	    (scene->box_sensor_count > PICOSYSTEM_PHYSICS_MAX_BOX_SENSORS) ||
 	    (scene->rope_count > PICOSYSTEM_PHYSICS_MAX_ROPES) ||
-	    (scene->velocity_zone_count > PICOSYSTEM_GAME_MAX_VELOCITY_ZONES)) {
+	    (scene->velocity_zone_count > PICOSYSTEM_GAME_MAX_VELOCITY_ZONES) ||
+	    (scene->spring_launcher_count > PICOSYSTEM_GAME_MAX_SPRING_LAUNCHERS)) {
 		return -ERANGE;
 	}
 	const uint16_t valid_body_mask = (uint16_t)((UINT16_C(1) << scene->body_count) - 1U);
@@ -145,7 +161,8 @@ static int validate_scene_config(const struct picosystem_game_scene_config *scen
 	    ((scene->prismatic_joint_count != 0U) && (scene->prismatic_joints == NULL)) ||
 	    ((scene->box_sensor_count != 0U) && (scene->box_sensors == NULL)) ||
 	    ((scene->rope_count != 0U) && (scene->ropes == NULL)) ||
-	    ((scene->velocity_zone_count != 0U) && (scene->velocity_zones == NULL))) {
+	    ((scene->velocity_zone_count != 0U) && (scene->velocity_zones == NULL)) ||
+	    ((scene->spring_launcher_count != 0U) && (scene->spring_launchers == NULL))) {
 		return -EINVAL;
 	}
 	for (uint16_t index = 0U; index < scene->prismatic_joint_count; ++index) {
@@ -180,6 +197,40 @@ static int validate_scene_config(const struct picosystem_game_scene_config *scen
 		    ((zone->body_mask & (uint16_t)~valid_body_mask) != 0U) || invalid_extent ||
 		    invalid_target || (zone->maximum_velocity_change_per_tick <= 0) ||
 		    (zone->maximum_velocity_change_per_tick > GAME_MAX_SPEED_PER_TICK)) {
+			return -ERANGE;
+		}
+	}
+	for (uint16_t index = 0U; index < scene->spring_launcher_count; ++index) {
+		const struct picosystem_game_spring_launcher_config *const launcher =
+			&scene->spring_launchers[index];
+		if ((launcher->launcher_body_index >= scene->body_count) ||
+		    (launcher->revolute_joint_index >= scene->revolute_joint_count) ||
+		    (launcher->trigger_body_mask == 0U) ||
+		    ((launcher->trigger_body_mask & (uint16_t)~valid_body_mask) != 0U) ||
+		    ((launcher->trigger_body_mask &
+		      (UINT16_C(1) << launcher->launcher_body_index)) != 0U) ||
+		    (launcher->released_lower_angle_radians < -GAME_MAX_JOINT_ANGLE_RADIANS) ||
+		    (launcher->armed_angle_radians > GAME_MAX_JOINT_ANGLE_RADIANS) ||
+		    (launcher->released_lower_angle_radians >=
+		     launcher->rearm_start_angle_radians) ||
+		    (launcher->rearm_start_angle_radians >= launcher->rearm_stop_angle_radians) ||
+		    (launcher->rearm_stop_angle_radians > launcher->armed_angle_radians) ||
+		    (launcher->rearm_motor_speed_per_tick <= 0) ||
+		    (launcher->rearm_motor_speed_per_tick >
+		     PICOSYSTEM_PHYSICS_MAX_ANGULAR_SPEED_PER_TICK) ||
+		    (launcher->maximum_rearm_motor_impulse_per_tick <= 0) ||
+		    (launcher->maximum_rearm_motor_impulse_per_tick >
+		     PICOSYSTEM_PHYSICS_MAX_REVOLUTE_MOTOR_IMPULSE_PER_TICK)) {
+			return -ERANGE;
+		}
+		const struct picosystem_physics_revolute_joint_config *const joint =
+			&scene->revolute_joints[launcher->revolute_joint_index];
+		if ((joint->body_a_id !=
+		     scene_body_id(&scene->bodies[launcher->launcher_body_index])) ||
+		    (joint->motor_enabled != 0U) || (joint->motor_speed_per_tick != 0) ||
+		    (joint->maximum_motor_impulse_per_tick != 0) || (joint->limit_enabled == 0U) ||
+		    (joint->lower_angle_radians != launcher->armed_angle_radians) ||
+		    (joint->upper_angle_radians != launcher->armed_angle_radians)) {
 			return -ERANGE;
 		}
 	}
@@ -432,6 +483,112 @@ static int update_reversing_prismatic_drives(struct picosystem_game_world *world
 	return 0;
 }
 
+static bool
+spring_launcher_was_triggered(const struct picosystem_game_world *world,
+			      const struct picosystem_game_spring_launcher_config *launcher)
+{
+	const uint16_t launcher_id = world->physics.bodies[launcher->launcher_body_index].id;
+	for (uint16_t event_index = 0U; event_index < world->physics.contact_event_count;
+	     ++event_index) {
+		const struct picosystem_physics_contact_event *const event =
+			picosystem_physics_world_contact_event_at(&world->physics, event_index);
+		if ((event == NULL) ||
+		    (event->type != PICOSYSTEM_PHYSICS_CONTACT_EVENT_BODY_BODY) ||
+		    (event->phase != PICOSYSTEM_PHYSICS_CONTACT_EVENT_BEGIN)) {
+			continue;
+		}
+		const uint16_t other_id =
+			(event->body_a_id == launcher_id)
+				? event->body_b_id
+				: ((event->body_b_id == launcher_id) ? event->body_a_id : 0U);
+		if (other_id == 0U) {
+			continue;
+		}
+		for (uint16_t body_index = 0U; body_index < world->physics.body_count;
+		     ++body_index) {
+			if (((launcher->trigger_body_mask & (UINT16_C(1) << body_index)) != 0U) &&
+			    (world->physics.bodies[body_index].id == other_id)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+static int update_spring_launchers(struct picosystem_game_world *world)
+{
+	const struct picosystem_game_scene_config *const scene = scene_config(world->scene_id);
+	if (scene == NULL) {
+		return 0;
+	}
+	for (uint16_t index = 0U; index < scene->spring_launcher_count; ++index) {
+		const struct picosystem_game_spring_launcher_config *const launcher =
+			&scene->spring_launchers[index];
+		if ((launcher->launcher_body_index >= world->physics.body_count) ||
+		    (launcher->revolute_joint_index >= world->physics.revolute_joint_count)) {
+			return -ERANGE;
+		}
+		struct picosystem_physics_revolute_joint *const joint =
+			&world->physics.revolute_joints[launcher->revolute_joint_index];
+		picosystem_physics_fixed_t angle;
+		int err = picosystem_physics_world_revolute_joint_angle(
+			&world->physics, launcher->revolute_joint_index, &angle);
+		if (err != 0) {
+			return err;
+		}
+		if (joint->motor_enabled != 0U) {
+			if (angle < launcher->rearm_stop_angle_radians) {
+				continue;
+			}
+			err = picosystem_physics_world_set_revolute_limits(
+				&world->physics, launcher->revolute_joint_index,
+				launcher->armed_angle_radians, launcher->armed_angle_radians);
+			if (err == 0) {
+				err = picosystem_physics_world_configure_revolute_motor(
+					&world->physics, launcher->revolute_joint_index, false, 0,
+					0);
+			}
+			if (err != 0) {
+				return err;
+			}
+			continue;
+		}
+
+		const bool armed = (joint->lower_angle_radians == launcher->armed_angle_radians) &&
+				   (joint->upper_angle_radians == launcher->armed_angle_radians);
+		if (armed) {
+			if (!spring_launcher_was_triggered(world, launcher)) {
+				continue;
+			}
+			err = picosystem_physics_world_set_revolute_limits(
+				&world->physics, launcher->revolute_joint_index,
+				launcher->released_lower_angle_radians,
+				launcher->armed_angle_radians);
+			if (err != 0) {
+				return err;
+			}
+			continue;
+		}
+
+		const bool released =
+			(joint->lower_angle_radians == launcher->released_lower_angle_radians) &&
+			(joint->upper_angle_radians == launcher->armed_angle_radians);
+		if (!released) {
+			return -ERANGE;
+		}
+		if (angle <= launcher->rearm_start_angle_radians) {
+			err = picosystem_physics_world_configure_revolute_motor(
+				&world->physics, launcher->revolute_joint_index, true,
+				launcher->rearm_motor_speed_per_tick,
+				launcher->maximum_rearm_motor_impulse_per_tick);
+			if (err != 0) {
+				return err;
+			}
+		}
+	}
+	return 0;
+}
+
 static picosystem_physics_fixed_t approach_velocity(picosystem_physics_fixed_t current,
 						    picosystem_physics_fixed_t target,
 						    picosystem_physics_fixed_t maximum_change)
@@ -593,6 +750,10 @@ static int game_world_step(struct picosystem_game_world *world,
 		return step_granular_world(world, &acceleration, NULL, NULL);
 	}
 	int err = update_reversing_prismatic_drives(world);
+	if (err != 0) {
+		return err;
+	}
+	err = update_spring_launchers(world);
 	if (err != 0) {
 		return err;
 	}
