@@ -6,6 +6,8 @@
 
 #include "garden_world.h"
 
+#include "garden_agent.h"
+
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -466,23 +468,6 @@ static uint16_t find_next_tip(const struct picosystem_garden_world *world, uint8
 	return PICOSYSTEM_GARDEN_NODE_NONE;
 }
 
-static bool node_position_is_available(const struct picosystem_garden_world *world, uint8_t x,
-				       uint8_t y, enum picosystem_garden_node_kind kind)
-{
-	for (uint16_t index = 0U; index < world->node_count; ++index) {
-		const struct picosystem_garden_node *const node = &world->nodes[index];
-		if (node->kind != kind) {
-			continue;
-		}
-		const int16_t delta_x = (int16_t)x - node->x;
-		const int16_t delta_y = (int16_t)y - node->y;
-		if (((delta_x * delta_x) + (delta_y * delta_y)) < 9) {
-			return false;
-		}
-	}
-	return true;
-}
-
 static bool candidate_position(const struct picosystem_garden_node *parent, int8_t delta_x,
 			       int8_t delta_y, enum picosystem_garden_node_kind kind, uint8_t *x,
 			       uint8_t *y)
@@ -511,94 +496,235 @@ static bool candidate_position(const struct picosystem_garden_node *parent, int8
 	return true;
 }
 
-static int8_t shoot_step_score(const struct picosystem_garden_world *world,
-			       const struct picosystem_garden_plant *plant,
-			       const struct picosystem_garden_node *parent, uint8_t step_index)
+static void inspect_candidate_neighborhood(const struct picosystem_garden_world *world,
+					   uint8_t plant_index,
+					   enum picosystem_garden_node_kind kind,
+					   struct picosystem_garden_agent_candidate *candidate)
 {
-	uint8_t x;
-	uint8_t y;
-	if (!candidate_position(parent, shoot_steps[step_index][0], shoot_steps[step_index][1],
-				PICOSYSTEM_GARDEN_NODE_STEM, &x, &y)) {
-		return INT8_MIN;
+	uint32_t minimum_distance_squared = UINT32_MAX;
+	for (uint16_t index = 0U; index < world->node_count; ++index) {
+		const struct picosystem_garden_node *const node = &world->nodes[index];
+		if (node->kind != kind) {
+			continue;
+		}
+		const int16_t delta_x = (int16_t)candidate->x - node->x;
+		const int16_t delta_y = (int16_t)candidate->y - node->y;
+		const uint32_t distance_squared =
+			(uint32_t)((delta_x * delta_x) + (delta_y * delta_y));
+		if (distance_squared < minimum_distance_squared) {
+			minimum_distance_squared = distance_squared;
+		}
+		if (distance_squared >= 9U) {
+			continue;
+		}
+		candidate->flags |= (node->plant_index == plant_index)
+					    ? PICOSYSTEM_GARDEN_AGENT_CANDIDATE_OWN_NEAR
+					    : PICOSYSTEM_GARDEN_AGENT_CANDIDATE_FOREIGN_NEAR;
 	}
-	const uint8_t light = world->light[light_index(pixel_to_column(x), pixel_to_canopy_row(y))];
-	const int8_t centered_step = (int8_t)step_index - 2;
-	const int32_t absolute_step = (centered_step < 0) ? -(int32_t)centered_step : centered_step;
-	int32_t score = light / 8U;
-	score += (int32_t)centered_step * plant->lean;
-	score += absolute_step * species_configs[plant->species_id].horizontal_tendency;
-	if ((parent->flags & PICOSYSTEM_GARDEN_NODE_PRUNED) != 0U) {
-		score += absolute_step * 8;
+
+	if (minimum_distance_squared >= 9U) {
+		candidate->flags |= PICOSYSTEM_GARDEN_AGENT_CANDIDATE_AVAILABLE;
 	}
-	if (score < INT8_MIN) {
-		return INT8_MIN;
-	}
-	return (score > INT8_MAX) ? INT8_MAX : (int8_t)score;
+	candidate->clearance_squared = (minimum_distance_squared > UINT8_MAX)
+					       ? UINT8_MAX
+					       : (uint8_t)minimum_distance_squared;
 }
 
-static int grow_shoot(struct picosystem_garden_world *world, uint8_t plant_index)
+static void build_agent_observation(const struct picosystem_garden_world *world,
+				    uint8_t plant_index, uint16_t tip_index,
+				    uint32_t decision_nonce,
+				    struct picosystem_garden_agent_observation *observation)
 {
-	struct picosystem_garden_plant *const plant = &world->plants[plant_index];
+	const struct picosystem_garden_plant *const plant = &world->plants[plant_index];
 	const struct garden_species_config *const species = &species_configs[plant->species_id];
-	const uint16_t tip_index = find_next_tip(world, plant_index, PICOSYSTEM_GARDEN_NODE_STEM,
-						 plant->last_shoot_tip_index);
-	if (tip_index == PICOSYSTEM_GARDEN_NODE_NONE) {
+	const struct picosystem_garden_node *const tip = &world->nodes[tip_index];
+	*observation = (struct picosystem_garden_agent_observation){
+		.decision_nonce = decision_nonce,
+		.tip_index = tip_index,
+		.stored_energy = plant->stored_energy,
+		.stored_water = plant->stored_water,
+		.age_ecology_ticks = plant->age_ecology_ticks,
+		.plant_node_count = plant->node_count,
+		.version = PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION,
+		.plant_index = plant_index,
+		.species_id = plant->species_id,
+		.tissue_kind = tip->kind,
+		.depth = tip->depth,
+		.tip_x = tip->x,
+		.tip_y = tip->y,
+		.tip_light = (tip->kind == PICOSYSTEM_GARDEN_NODE_STEM)
+				     ? world->light[light_index(pixel_to_column(tip->x),
+								pixel_to_canopy_row(tip->y))]
+				     : 0U,
+		.tip_moisture = (tip->kind == PICOSYSTEM_GARDEN_NODE_ROOT)
+					? world->moisture[soil_index(pixel_to_column(tip->x),
+								     pixel_to_soil_row(tip->y))]
+					: 0U,
+		.base_x = column_center_x(plant->base_column),
+		.maximum_depth = (tip->kind == PICOSYSTEM_GARDEN_NODE_STEM)
+					 ? species->maximum_shoot_depth
+					 : species->maximum_root_depth,
+		.flower_depth = species->flower_depth,
+		.growth_phase = plant->growth_phase,
+		.growth_cooldown = plant->growth_cooldown,
+		.tip_flags = tip->flags,
+		.lean = plant->lean,
+		.vigor = plant->vigor,
+		.horizontal_tendency = species->horizontal_tendency,
+		.candidate_count = (tip->kind == PICOSYSTEM_GARDEN_NODE_STEM) ? 5U : 3U,
+	};
+
+	if (tip->parent_index != PICOSYSTEM_GARDEN_NODE_NONE) {
+		const struct picosystem_garden_node *const parent =
+			&world->nodes[tip->parent_index];
+		observation->parent_delta_x = (int16_t)tip->x - parent->x;
+		observation->parent_delta_y = (int16_t)tip->y - parent->y;
+	}
+
+	for (uint16_t index = 0U; index < world->node_count; ++index) {
+		const struct picosystem_garden_node *const node = &world->nodes[index];
+		if (node->plant_index != plant_index) {
+			continue;
+		}
+		if (node->kind == PICOSYSTEM_GARDEN_NODE_STEM) {
+			++observation->shoot_node_count;
+		} else {
+			++observation->root_node_count;
+		}
+		if ((node->flags & PICOSYSTEM_GARDEN_NODE_LEAF) != 0U) {
+			++observation->leaf_node_count;
+		}
+		if ((node->flags & PICOSYSTEM_GARDEN_NODE_TIP) != 0U) {
+			++observation->active_tip_count;
+		}
+	}
+
+	const int8_t(*steps)[2] =
+		(tip->kind == PICOSYSTEM_GARDEN_NODE_STEM) ? shoot_steps : root_steps;
+	for (uint8_t index = 0U; index < observation->candidate_count; ++index) {
+		struct picosystem_garden_agent_candidate *const candidate =
+			&observation->candidates[index];
+		candidate->delta_x = steps[index][0];
+		candidate->delta_y = steps[index][1];
+		if (!candidate_position(tip, candidate->delta_x, candidate->delta_y, tip->kind,
+					&candidate->x, &candidate->y)) {
+			continue;
+		}
+		candidate->flags = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_IN_BOUNDS;
+		if (tip->kind == PICOSYSTEM_GARDEN_NODE_STEM) {
+			candidate->light = world->light[light_index(
+				pixel_to_column(candidate->x), pixel_to_canopy_row(candidate->y))];
+		} else {
+			candidate->moisture = world->moisture[soil_index(
+				pixel_to_column(candidate->x), pixel_to_soil_row(candidate->y))];
+		}
+		inspect_candidate_neighborhood(world, plant_index, tip->kind, candidate);
+	}
+}
+
+int picosystem_garden_agent_observe_tip(const struct picosystem_garden_world *world,
+					uint8_t plant_index, uint16_t tip_index,
+					uint32_t decision_nonce,
+					struct picosystem_garden_agent_observation *observation)
+{
+	if (observation == NULL) {
+		return -EINVAL;
+	}
+	*observation = (struct picosystem_garden_agent_observation){0};
+	if (!world_is_valid(world)) {
+		return -EINVAL;
+	}
+	if ((plant_index >= world->plant_count) || (tip_index >= world->node_count)) {
+		return -ERANGE;
+	}
+	const struct picosystem_garden_node *const tip = &world->nodes[tip_index];
+	if ((tip->plant_index != plant_index) ||
+	    ((tip->flags & PICOSYSTEM_GARDEN_NODE_TIP) == 0U)) {
 		return -ENOENT;
 	}
-	struct picosystem_garden_node *const parent = &world->nodes[tip_index];
+
+	build_agent_observation(world, plant_index, tip_index, decision_nonce, observation);
+	return 0;
+}
+
+static bool proposal_is_valid(const struct picosystem_garden_agent_observation *observation,
+			      const struct picosystem_garden_agent_proposal *proposal)
+{
+	if ((proposal->tip_index != observation->tip_index) ||
+	    (proposal->action >= PICOSYSTEM_GARDEN_AGENT_ACTION_COUNT)) {
+		return false;
+	}
+	if (proposal->action != PICOSYSTEM_GARDEN_AGENT_ACTION_EXTEND) {
+		return proposal->candidate_count == 0U;
+	}
+	if (proposal->candidate_count != observation->candidate_count) {
+		return false;
+	}
+
+	uint8_t visited = 0U;
+	for (uint8_t index = 0U; index < proposal->candidate_count; ++index) {
+		const uint8_t candidate_index = proposal->candidate_order[index];
+		if ((candidate_index >= observation->candidate_count) ||
+		    ((visited & (uint8_t)(1U << candidate_index)) != 0U)) {
+			return false;
+		}
+		visited |= (uint8_t)(1U << candidate_index);
+	}
+	return true;
+}
+
+static int finish_tip(struct picosystem_garden_world *world, uint16_t tip_index)
+{
+	struct picosystem_garden_node *const tip = &world->nodes[tip_index];
+	tip->flags &= (uint8_t)~PICOSYSTEM_GARDEN_NODE_TIP;
+	const struct picosystem_garden_plant *const plant = &world->plants[tip->plant_index];
+	const struct garden_species_config *const species = &species_configs[plant->species_id];
+	if ((tip->kind == PICOSYSTEM_GARDEN_NODE_STEM) && (tip->depth >= species->flower_depth) &&
+	    ((tip->flags & PICOSYSTEM_GARDEN_NODE_FLOWER) == 0U)) {
+		tip->flags |= PICOSYSTEM_GARDEN_NODE_FLOWER;
+		++world->bloom_count;
+	}
+	return 0;
+}
+
+static int extend_tip(struct picosystem_garden_world *world, uint8_t plant_index,
+		      const struct picosystem_garden_agent_observation *observation,
+		      const struct picosystem_garden_agent_proposal *proposal)
+{
+	struct picosystem_garden_node *const parent = &world->nodes[observation->tip_index];
+	const struct garden_species_config *const species =
+		&species_configs[world->plants[plant_index].species_id];
 	const bool branch_pending = (parent->flags & PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING) != 0U;
-	plant->last_shoot_tip_index = tip_index;
-	if (parent->depth >= species->maximum_shoot_depth) {
-		parent->flags &= (uint8_t)~PICOSYSTEM_GARDEN_NODE_TIP;
-		if ((parent->depth >= species->flower_depth) &&
-		    ((parent->flags & PICOSYSTEM_GARDEN_NODE_FLOWER) == 0U)) {
-			parent->flags |= PICOSYSTEM_GARDEN_NODE_FLOWER;
-			++world->bloom_count;
-		}
-		return 0;
-	}
-
-	uint8_t preferred = 2U;
-	int8_t best_score = INT8_MIN;
-	const uint8_t random_offset = (uint8_t)(random_next(&plant->random_state) % 5U);
-	for (uint8_t offset = 0U; offset < 5U; ++offset) {
-		const uint8_t step = (uint8_t)((random_offset + offset) % 5U);
-		const int8_t score = shoot_step_score(world, plant, parent, step);
-		if (score > best_score) {
-			best_score = score;
-			preferred = step;
-		}
-	}
-	if (branch_pending) {
-		const uint8_t base_x = column_center_x(plant->base_column);
-		preferred = (parent->x <= base_x) ? 4U : 0U;
-	}
-
-	for (uint8_t attempt = 0U; attempt < 5U; ++attempt) {
-		const uint8_t step = (uint8_t)((preferred + attempt) % 5U);
-		uint8_t x;
-		uint8_t y;
-		if (!candidate_position(parent, shoot_steps[step][0], shoot_steps[step][1],
-					PICOSYSTEM_GARDEN_NODE_STEM, &x, &y) ||
-		    !node_position_is_available(world, x, y, PICOSYSTEM_GARDEN_NODE_STEM)) {
+	for (uint8_t attempt = 0U; attempt < proposal->candidate_count; ++attempt) {
+		const struct picosystem_garden_agent_candidate *const candidate =
+			&observation->candidates[proposal->candidate_order[attempt]];
+		if ((candidate->flags & PICOSYSTEM_GARDEN_AGENT_CANDIDATE_AVAILABLE) == 0U) {
 			continue;
 		}
 
-		uint8_t flags = PICOSYSTEM_GARDEN_NODE_TIP;
 		const uint8_t depth = (uint8_t)(parent->depth + 1U);
-		if ((depth % species->leaf_interval) == 0U) {
+		uint8_t flags = PICOSYSTEM_GARDEN_NODE_TIP;
+		if ((parent->kind == PICOSYSTEM_GARDEN_NODE_STEM) &&
+		    ((depth % species->leaf_interval) == 0U)) {
 			flags |= PICOSYSTEM_GARDEN_NODE_LEAF;
 		}
-		parent->flags &=
-			(uint8_t) ~(PICOSYSTEM_GARDEN_NODE_TIP | PICOSYSTEM_GARDEN_NODE_PRUNED |
-				    PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
-		const bool schedule_branch = !branch_pending && (species->branch_interval != 0U) &&
+		if (parent->kind == PICOSYSTEM_GARDEN_NODE_STEM) {
+			parent->flags &= (uint8_t) ~(PICOSYSTEM_GARDEN_NODE_TIP |
+						     PICOSYSTEM_GARDEN_NODE_PRUNED |
+						     PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
+		} else {
+			parent->flags &= (uint8_t)~PICOSYSTEM_GARDEN_NODE_TIP;
+		}
+
+		const bool schedule_branch = (parent->kind == PICOSYSTEM_GARDEN_NODE_STEM) &&
+					     !branch_pending && (species->branch_interval != 0U) &&
 					     (depth >= species->first_branch_depth) &&
 					     (((depth - species->first_branch_depth) %
 					       species->branch_interval) == 0U) &&
 					     (parent->child_count == 0U);
-		if (append_node(world, plant_index, tip_index, x, y, PICOSYSTEM_GARDEN_NODE_STEM,
-				depth, flags) == NULL) {
+		if (append_node(world, plant_index, observation->tip_index, candidate->x,
+				candidate->y, (enum picosystem_garden_node_kind)parent->kind, depth,
+				flags) == NULL) {
 			return -ENOSPC;
 		}
 		if (schedule_branch) {
@@ -607,64 +733,44 @@ static int grow_shoot(struct picosystem_garden_world *world, uint8_t plant_index
 		}
 		return 0;
 	}
+
 	parent->flags &= (uint8_t)~PICOSYSTEM_GARDEN_NODE_TIP;
 	return -ENOSPC;
 }
 
-static int grow_root(struct picosystem_garden_world *world, uint8_t plant_index)
+static int grow_tip(struct picosystem_garden_world *world, uint8_t plant_index,
+		    enum picosystem_garden_node_kind kind)
 {
 	struct picosystem_garden_plant *const plant = &world->plants[plant_index];
-	const struct garden_species_config *const species = &species_configs[plant->species_id];
-	const uint16_t tip_index = find_next_tip(world, plant_index, PICOSYSTEM_GARDEN_NODE_ROOT,
-						 plant->last_root_tip_index);
+	uint16_t *const previous_tip = (kind == PICOSYSTEM_GARDEN_NODE_STEM)
+					       ? &plant->last_shoot_tip_index
+					       : &plant->last_root_tip_index;
+	const uint16_t tip_index = find_next_tip(world, plant_index, kind, *previous_tip);
 	if (tip_index == PICOSYSTEM_GARDEN_NODE_NONE) {
 		return -ENOENT;
 	}
-	struct picosystem_garden_node *const parent = &world->nodes[tip_index];
-	plant->last_root_tip_index = tip_index;
-	if (parent->depth >= species->maximum_root_depth) {
-		parent->flags &= (uint8_t)~PICOSYSTEM_GARDEN_NODE_TIP;
-		return 0;
-	}
+	*previous_tip = tip_index;
 
-	uint8_t preferred = 1U;
-	uint8_t best_moisture = 0U;
-	const uint8_t random_offset = (uint8_t)(random_next(&plant->random_state) % 3U);
-	for (uint8_t offset = 0U; offset < 3U; ++offset) {
-		const uint8_t step = (uint8_t)((random_offset + offset) % 3U);
-		uint8_t x;
-		uint8_t y;
-		if (!candidate_position(parent, root_steps[step][0], root_steps[step][1],
-					PICOSYSTEM_GARDEN_NODE_ROOT, &x, &y)) {
-			continue;
-		}
-		const uint8_t moisture =
-			world->moisture[soil_index(pixel_to_column(x), pixel_to_soil_row(y))];
-		if (moisture >= best_moisture) {
-			best_moisture = moisture;
-			preferred = step;
-		}
+	struct picosystem_garden_agent_observation observation;
+	build_agent_observation(world, plant_index, tip_index, 0U, &observation);
+	if (observation.depth < observation.maximum_depth) {
+		observation.decision_nonce = random_next(&plant->random_state);
 	}
-
-	for (uint8_t attempt = 0U; attempt < 3U; ++attempt) {
-		const uint8_t step = (uint8_t)((preferred + attempt) % 3U);
-		uint8_t x;
-		uint8_t y;
-		if (!candidate_position(parent, root_steps[step][0], root_steps[step][1],
-					PICOSYSTEM_GARDEN_NODE_ROOT, &x, &y) ||
-		    !node_position_is_available(world, x, y, PICOSYSTEM_GARDEN_NODE_ROOT)) {
-			continue;
-		}
-		parent->flags &= (uint8_t)~PICOSYSTEM_GARDEN_NODE_TIP;
-		if (append_node(world, plant_index, tip_index, x, y, PICOSYSTEM_GARDEN_NODE_ROOT,
-				(uint8_t)(parent->depth + 1U),
-				PICOSYSTEM_GARDEN_NODE_TIP) == NULL) {
-			return -ENOSPC;
-		}
-		return 0;
+	struct picosystem_garden_agent_proposal proposal;
+	int err = picosystem_garden_agent_baseline_propose(&observation, &proposal);
+	if (err != 0) {
+		return err;
 	}
-	parent->flags &= (uint8_t)~PICOSYSTEM_GARDEN_NODE_TIP;
-	return -ENOSPC;
+	if (!proposal_is_valid(&observation, &proposal)) {
+		return -ERANGE;
+	}
+	if (proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT) {
+		return -EAGAIN;
+	}
+	if (proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP) {
+		return finish_tip(world, tip_index);
+	}
+	return extend_tip(world, plant_index, &observation, &proposal);
 }
 
 static void grow_plants(struct picosystem_garden_world *world)
@@ -687,11 +793,10 @@ static void grow_plants(struct picosystem_garden_world *world)
 		}
 
 		int err;
-		if ((plant->growth_phase & 1U) == 0U) {
-			err = grow_shoot(world, index);
-		} else {
-			err = grow_root(world, index);
-		}
+		const enum picosystem_garden_node_kind kind = ((plant->growth_phase & 1U) == 0U)
+								      ? PICOSYSTEM_GARDEN_NODE_STEM
+								      : PICOSYSTEM_GARDEN_NODE_ROOT;
+		err = grow_tip(world, index, kind);
 		++plant->growth_phase;
 		if ((err == 0) || (err == -ENOSPC)) {
 			plant->stored_energy = (uint16_t)(plant->stored_energy - energy_cost);

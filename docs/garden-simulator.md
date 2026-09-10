@@ -66,6 +66,23 @@ Pruning pinches a nearby live shoot tip rather than deleting graph storage. Its
 next segment turns outward, which redirects the visible form without requiring
 a free list or invalidating child indexes.
 
+## Agent boundary
+
+Growth decisions now cross a versioned, fixed-capacity observation/proposal
+boundary. An 88-byte observation describes one active tip, its parent-relative
+orientation, the plant's energy, water, age, and morphology totals, and up to
+five canonical growth candidates. Each candidate reports its endpoint, local
+light or moisture, bounded clearance, and nearby own/foreign tissue. A 12-byte
+proposal selects an action, supplies a priority for later arbitration, and
+ranks the candidate indexes without receiving mutable world access.
+
+The original hand-authored policy is the first consumer of this interface. The
+world still chooses the alternating root/shoot opportunity, validates the
+proposal, pays resource costs, and performs every mutation. Existing replay
+hashes therefore remain unchanged. This establishes a testable baseline before
+adding directional light, plant-level recurrent state, multiple-tip bidding,
+or a quantized learned policy.
+
 ## Auto-gardener
 
 The auto-gardener is an ordinary deterministic policy, not a privileged state

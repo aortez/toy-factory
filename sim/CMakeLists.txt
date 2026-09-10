@@ -15,6 +15,7 @@ set(toy_factory_root "${CMAKE_CURRENT_LIST_DIR}/..")
 set(toy_factory_sources
 	${toy_factory_root}/src/game_snapshot.c
 	${toy_factory_root}/src/garden_damage.c
+	${toy_factory_root}/src/garden_agent.c
 	${toy_factory_root}/src/garden_world.c
 	${toy_factory_root}/src/game_scene_clockwork.c
 	${toy_factory_root}/src/game_scene_hourglass.c

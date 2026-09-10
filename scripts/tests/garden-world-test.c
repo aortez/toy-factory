@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "garden_agent.h"
 #include "garden_world.h"
 
 static void test_reset_and_validation(void)
@@ -81,6 +82,149 @@ static void test_water_flow_and_light_competition(void)
 	assert(world.ecology_tick_count == 12U);
 	assert(world.moisture[PICOSYSTEM_GARDEN_GRID_COLUMNS + 10U] > 0U);
 	assert(world.moisture_total < initial_total);
+}
+
+static struct picosystem_garden_agent_observation
+baseline_observation(enum picosystem_garden_node_kind kind)
+{
+	struct picosystem_garden_agent_observation observation = {
+		.tip_index = 7U,
+		.version = PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION,
+		.plant_index = 0U,
+		.species_id = PICOSYSTEM_GARDEN_SPECIES_FLOWER,
+		.tissue_kind = (uint8_t)kind,
+		.depth = 2U,
+		.tip_x = 32U,
+		.base_x = 32U,
+		.maximum_depth = 10U,
+		.candidate_count = (kind == PICOSYSTEM_GARDEN_NODE_STEM) ? 5U : 3U,
+	};
+	for (uint8_t index = 0U; index < observation.candidate_count; ++index) {
+		observation.candidates[index].flags = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_IN_BOUNDS |
+						      PICOSYSTEM_GARDEN_AGENT_CANDIDATE_AVAILABLE;
+	}
+	return observation;
+}
+
+static void test_agent_observation_and_baseline_policy(void)
+{
+	struct picosystem_garden_world world;
+	struct picosystem_garden_agent_observation observation;
+	const struct picosystem_garden_agent_observation empty_observation = {0};
+	assert(picosystem_garden_agent_observe_tip(NULL, 0U, 0U, 0U, &observation) == -EINVAL);
+	assert(memcmp(&observation, &empty_observation, sizeof(observation)) == 0);
+	assert(picosystem_garden_world_reset(&world, UINT32_C(0x12345678)) == 0);
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 10U) ==
+	       0);
+	assert(picosystem_garden_agent_observe_tip(&world, 0U, 1U, UINT32_C(0x89abcdef), NULL) ==
+	       -EINVAL);
+	assert(picosystem_garden_agent_observe_tip(&world, 1U, 1U, 0U, &observation) == -ERANGE);
+	assert(picosystem_garden_agent_observe_tip(&world, 0U, 4U, 0U, &observation) == -ERANGE);
+	assert(picosystem_garden_agent_observe_tip(&world, 0U, 0U, 0U, &observation) == -ENOENT);
+	assert(memcmp(&observation, &empty_observation, sizeof(observation)) == 0);
+
+	assert(picosystem_garden_agent_observe_tip(&world, 0U, 1U, UINT32_C(0x89abcdef),
+						   &observation) == 0);
+	assert(observation.version == PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION);
+	assert(observation.decision_nonce == UINT32_C(0x89abcdef));
+	assert(observation.tip_index == 1U);
+	assert(observation.tissue_kind == PICOSYSTEM_GARDEN_NODE_STEM);
+	assert(observation.parent_delta_x == 0);
+	assert(observation.parent_delta_y == -6);
+	assert(observation.plant_node_count == 4U);
+	assert(observation.shoot_node_count == 2U);
+	assert(observation.root_node_count == 2U);
+	assert(observation.leaf_node_count == 1U);
+	assert(observation.active_tip_count == 3U);
+	assert(observation.candidate_count == 5U);
+	assert(observation.candidates[0].delta_x == -5);
+	assert(observation.candidates[0].delta_y == -5);
+	assert(observation.candidates[2].delta_x == 0);
+	assert(observation.candidates[2].delta_y == -7);
+	assert(observation.candidates[4].delta_x == 5);
+	assert(observation.candidates[4].delta_y == -5);
+	assert(observation.tip_light == UINT8_MAX);
+	assert(observation.tip_moisture == 0U);
+	assert(observation.candidates[2].light == UINT8_MAX);
+	assert((observation.candidates[2].flags & PICOSYSTEM_GARDEN_AGENT_CANDIDATE_AVAILABLE) !=
+	       0U);
+
+	assert(picosystem_garden_agent_observe_tip(&world, 0U, 2U, 1U, &observation) == 0);
+	assert(observation.tissue_kind == PICOSYSTEM_GARDEN_NODE_ROOT);
+	assert(observation.parent_delta_x == -3);
+	assert(observation.parent_delta_y == 5);
+	assert(observation.candidate_count == 3U);
+	assert(observation.tip_light == 0U);
+	assert(observation.tip_moisture == 0U);
+	assert(observation.candidates[1].delta_x == 0);
+	assert(observation.candidates[1].delta_y == 6);
+	assert(observation.candidates[1].moisture == 0U);
+
+	struct picosystem_garden_world crowded;
+	assert(picosystem_garden_world_reset(&crowded, 7U) == 0);
+	assert(picosystem_garden_world_plant_seed(&crowded, PICOSYSTEM_GARDEN_SPECIES_FLOWER,
+						  10U) == 0);
+	assert(picosystem_garden_world_plant_seed(&crowded, PICOSYSTEM_GARDEN_SPECIES_SHRUB, 14U) ==
+	       0);
+	crowded.nodes[5].x = crowded.nodes[1].x;
+	crowded.nodes[5].y = (uint8_t)(crowded.nodes[1].y - 7U);
+	assert(picosystem_garden_agent_observe_tip(&crowded, 0U, 1U, 0U, &observation) == 0);
+	assert(observation.candidates[2].clearance_squared == 0U);
+	assert((observation.candidates[2].flags & PICOSYSTEM_GARDEN_AGENT_CANDIDATE_FOREIGN_NEAR) !=
+	       0U);
+	assert((observation.candidates[2].flags & PICOSYSTEM_GARDEN_AGENT_CANDIDATE_AVAILABLE) ==
+	       0U);
+
+	assert(picosystem_garden_world_reset(&crowded, 8U) == 0);
+	assert(picosystem_garden_world_plant_seed(&crowded, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 0U) ==
+	       0);
+	assert(picosystem_garden_agent_observe_tip(&crowded, 0U, 1U, 0U, &observation) == 0);
+	assert(observation.candidates[0].flags == 0U);
+
+	struct picosystem_garden_agent_proposal proposal;
+	assert(picosystem_garden_agent_baseline_propose(&observation, NULL) == -EINVAL);
+	assert(picosystem_garden_agent_baseline_propose(NULL, &proposal) == -EINVAL);
+	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
+	assert(proposal.candidate_order[0] == PICOSYSTEM_GARDEN_AGENT_CANDIDATE_NONE);
+
+	observation = baseline_observation(PICOSYSTEM_GARDEN_NODE_STEM);
+	for (uint8_t index = 0U; index < observation.candidate_count; ++index) {
+		observation.candidates[index].light = (uint8_t)((index + 1U) * 8U);
+	}
+	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == 0);
+	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_EXTEND);
+	assert(proposal.priority == 5);
+	const uint8_t expected_shoot_order[] = {4U, 0U, 1U, 2U, 3U};
+	assert(memcmp(proposal.candidate_order, expected_shoot_order,
+		      sizeof(expected_shoot_order)) == 0);
+
+	observation.tip_flags = PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING;
+	observation.tip_x = (uint8_t)(observation.base_x + 1U);
+	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == 0);
+	assert(proposal.candidate_order[0] == 0U);
+	observation.depth = observation.maximum_depth;
+	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == 0);
+	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP);
+	assert(proposal.candidate_count == 0U);
+
+	observation = baseline_observation(PICOSYSTEM_GARDEN_NODE_ROOT);
+	observation.candidates[0].moisture = 10U;
+	observation.candidates[1].moisture = 20U;
+	observation.candidates[2].moisture = 20U;
+	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == 0);
+	assert(proposal.priority == 20);
+	const uint8_t expected_root_order[] = {2U, 0U, 1U};
+	assert(memcmp(proposal.candidate_order, expected_root_order, sizeof(expected_root_order)) ==
+	       0);
+
+	observation.candidates[0].flags = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_AVAILABLE;
+	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == -ERANGE);
+	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
+	observation.candidates[0].flags = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_IN_BOUNDS |
+					  PICOSYSTEM_GARDEN_AGENT_CANDIDATE_AVAILABLE |
+					  PICOSYSTEM_GARDEN_AGENT_CANDIDATE_OWN_NEAR;
+	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == -ERANGE);
+	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
 }
 
 static void water_all_plants(struct picosystem_garden_world *world)
@@ -226,6 +370,7 @@ int main(void)
 	test_reset_and_validation();
 	test_seed_spacing_capacity_and_access();
 	test_water_flow_and_light_competition();
+	test_agent_observation_and_baseline_policy();
 	test_growth_variety_and_determinism();
 	test_cursor_tools_and_pruning();
 	test_pruning_rejects_distant_tip();
