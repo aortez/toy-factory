@@ -31,8 +31,9 @@ path:
   lower return, long recovery-floor runout, and animated guided elevator in
   Marble Machine, with a direction-qualified passage sensor;
 - grows three deterministic plant archetypes through a compact 256-node graph in
-  Garden, with a 28 x 11 moisture field, canopy shading, planting, watering,
-  pruning, flowering, and a toggleable auto-gardener;
+  Garden, with a 28 x 11 moisture field, a moving day/night sun with directional
+  canopy shadows, planting, watering, pruning, flowering, and a toggleable
+  auto-gardener;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -648,7 +649,7 @@ uses the undefined-behavior sanitizer and treats the accepted reset,
 double-action, full-drain, recirculation, and retained Machine Lab replay hashes
 as native goldens.
 The default image uses 222,868 bytes of its 255 KiB Zephyr RAM region (85.35%)
-and 246,364 bytes of flash. This includes the 115,200-byte framebuffer,
+and 247,844 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer, 22,636-byte fixed-capacity rigid physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
@@ -658,13 +659,13 @@ boundary masks, and sparse occupied-cell storage, a 3,496-byte fixed-capacity
 garden world, a 33,360-byte serialized benchmark workspace, two 1,640-byte
 render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 254,860 bytes of
-that region (97.60%) and 252,020 bytes of flash. It keeps the rigid-physics and
+storage, and a 1,024-byte shell TX ring. The fast image uses 255,172 bytes of
+that region (97.72%) and 253,812 bytes of flash. It keeps the rigid-physics and
 renderer hot paths in SRAM while the granular solver remains in XIP flash, and
 both images route compiler integer division through the RP2040's interrupt-safe
 hardware-divider wrappers. Both images also reserve
 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 38,252 and 6,260
+core-1 mailbox and stack. The default and fast images retain 38,252 and 5,948
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
 

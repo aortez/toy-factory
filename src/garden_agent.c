@@ -6,6 +6,8 @@
 
 #include "garden_agent.h"
 
+#include "garden_light.h"
+
 #include <errno.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -26,7 +28,10 @@ static bool observation_is_valid(const struct picosystem_garden_agent_observatio
 	    (observation->tip_index >= PICOSYSTEM_GARDEN_MAX_NODES) ||
 	    (observation->species_id >= PICOSYSTEM_GARDEN_SPECIES_COUNT) ||
 	    (observation->tissue_kind >= PICOSYSTEM_GARDEN_NODE_KIND_COUNT) ||
-	    (observation->maximum_depth == 0U)) {
+	    (observation->maximum_depth == 0U) ||
+	    (observation->sun_strength < PICOSYSTEM_GARDEN_LIGHT_MINIMUM) ||
+	    (observation->sun_ray_step_x_q4 < -PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4) ||
+	    (observation->sun_ray_step_x_q4 > PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4)) {
 		return false;
 	}
 

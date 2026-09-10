@@ -158,7 +158,10 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 		    (garden->auto_target_column >= PICOSYSTEM_GARDEN_GRID_COLUMNS) ||
 		    (garden->auto_target_row >= PICOSYSTEM_GARDEN_CURSOR_ROWS) ||
 		    (garden->auto_target_tool >= PICOSYSTEM_GARDEN_TOOL_COUNT) ||
-		    (garden->auto_gardener_enabled > 1U) || (garden->auto_target_valid > 1U)) {
+		    (garden->auto_gardener_enabled > 1U) || (garden->auto_target_valid > 1U) ||
+		    (garden->sun_strength < PICOSYSTEM_GARDEN_LIGHT_MINIMUM) ||
+		    (garden->sun_ray_step_x_q4 < -PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4) ||
+		    (garden->sun_ray_step_x_q4 > PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4)) {
 			return -ERANGE;
 		}
 		for (uint16_t index = 0U; index < garden->node_count; ++index) {
@@ -255,6 +258,14 @@ render_playfield_background(const struct picosystem_scene_snapshot *snapshot,
 		picosystem_graphics_fill_rect_clipped(region, left,
 						      PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS - 1U,
 						      right - left, 2U, GARDEN_HORIZON_COLOR);
+		int16_t sun_x;
+		int16_t sun_y;
+		if (picosystem_garden_sun_visual_center(&snapshot->payload.garden, &sun_x,
+							&sun_y)) {
+			(void)picosystem_graphics_fill_circle_clipped(
+				region, sun_x, sun_y, PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS,
+				PICOSYSTEM_COLOR_YELLOW);
+		}
 		return;
 	}
 

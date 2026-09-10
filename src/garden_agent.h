@@ -11,7 +11,7 @@
 
 #include "garden_world.h"
 
-#define PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION 1U
+#define PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION 2U
 #define PICOSYSTEM_GARDEN_AGENT_MAX_CANDIDATES      5U
 #define PICOSYSTEM_GARDEN_AGENT_CANDIDATE_NONE      UINT8_MAX
 
@@ -80,6 +80,9 @@ struct picosystem_garden_agent_observation {
 	int8_t vigor;
 	int8_t horizontal_tendency;
 	uint8_t candidate_count;
+	uint8_t sun_phase;
+	uint8_t sun_strength;
+	int8_t sun_ray_step_x_q4;
 	struct picosystem_garden_agent_candidate candidates[PICOSYSTEM_GARDEN_AGENT_MAX_CANDIDATES];
 };
 

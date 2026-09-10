@@ -11,7 +11,13 @@
 #include <string.h>
 
 #include "garden_agent.h"
+#include "garden_light.h"
 #include "garden_world.h"
+
+static uint16_t test_light_index(uint8_t column, uint8_t row)
+{
+	return (uint16_t)(((uint16_t)row * PICOSYSTEM_GARDEN_GRID_COLUMNS) + column);
+}
 
 static void test_reset_and_validation(void)
 {
@@ -84,6 +90,78 @@ static void test_water_flow_and_light_competition(void)
 	assert(world.moisture_total < initial_total);
 }
 
+static void test_directional_light_solver(void)
+{
+	const struct picosystem_garden_sun noon = picosystem_garden_sun_at(0U);
+	assert(noon.phase == PICOSYSTEM_GARDEN_SUN_NOON_PHASE);
+	assert(noon.strength == UINT8_MAX);
+	assert(noon.ray_step_x_q4 == 0);
+
+	const struct picosystem_garden_sun sunset = picosystem_garden_sun_at(64U);
+	assert(sunset.phase == PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE);
+	assert(sunset.strength == PICOSYSTEM_GARDEN_LIGHT_MINIMUM);
+	assert(sunset.ray_step_x_q4 == -PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4);
+	const struct picosystem_garden_sun midnight = picosystem_garden_sun_at(128U);
+	assert(midnight.phase == 192U);
+	assert(midnight.strength == PICOSYSTEM_GARDEN_LIGHT_MINIMUM);
+	assert(midnight.ray_step_x_q4 == 0);
+	const struct picosystem_garden_sun sunrise = picosystem_garden_sun_at(192U);
+	assert(sunrise.phase == 0U);
+	assert(sunrise.strength == PICOSYSTEM_GARDEN_LIGHT_MINIMUM);
+	assert(sunrise.ray_step_x_q4 == PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4);
+	const struct picosystem_garden_sun morning = picosystem_garden_sun_at(224U);
+	assert(morning.phase == 32U);
+	assert(morning.strength == 140U);
+	assert(morning.ray_step_x_q4 == 6);
+	const struct picosystem_garden_sun repeated_noon = picosystem_garden_sun_at(256U);
+	assert(repeated_noon.phase == noon.phase);
+	assert(repeated_noon.strength == noon.strength);
+	assert(repeated_noon.ray_step_x_q4 == noon.ray_step_x_q4);
+
+	uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT] = {0};
+	uint8_t light[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT] = {0};
+	assert(picosystem_garden_light_solve(NULL, &noon, light) == -EINVAL);
+	assert(picosystem_garden_light_solve(shade, NULL, light) == -EINVAL);
+	assert(picosystem_garden_light_solve(shade, &noon, NULL) == -EINVAL);
+	assert(picosystem_garden_light_solve(light, &noon, light) == -EINVAL);
+	struct picosystem_garden_sun invalid = noon;
+	invalid.ray_step_x_q4 = PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4 + 1;
+	assert(picosystem_garden_light_solve(shade, &invalid, light) == -ERANGE);
+	invalid = noon;
+	invalid.strength = PICOSYSTEM_GARDEN_LIGHT_MINIMUM - 1U;
+	assert(picosystem_garden_light_solve(shade, &invalid, light) == -ERANGE);
+
+	assert(picosystem_garden_light_solve(shade, &noon, light) == 0);
+	for (uint16_t index = 0U; index < PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT; ++index) {
+		assert(light[index] == UINT8_MAX);
+	}
+
+	shade[test_light_index(5U, 1U)] = 100U;
+	assert(picosystem_garden_light_solve(shade, &noon, light) == 0);
+	assert(light[test_light_index(5U, 1U)] == UINT8_MAX);
+	assert(light[test_light_index(5U, 2U)] == 155U);
+	assert(light[test_light_index(5U, 3U)] == 155U);
+
+	struct picosystem_garden_sun angled = noon;
+	angled.ray_step_x_q4 = PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4;
+	assert(picosystem_garden_light_solve(shade, &angled, light) == 0);
+	assert(light[test_light_index(6U, 2U)] == 155U);
+	assert(light[test_light_index(7U, 3U)] == 155U);
+	assert(light[test_light_index(5U, 3U)] == UINT8_MAX);
+	angled.ray_step_x_q4 = -PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4;
+	assert(picosystem_garden_light_solve(shade, &angled, light) == 0);
+	assert(light[test_light_index(4U, 2U)] == 155U);
+	assert(light[test_light_index(3U, 3U)] == 155U);
+
+	shade[test_light_index(5U, 1U)] = 250U;
+	assert(picosystem_garden_light_solve(shade, &noon, light) == 0);
+	assert(light[test_light_index(5U, 2U)] == PICOSYSTEM_GARDEN_LIGHT_MINIMUM);
+	assert(picosystem_garden_light_solve(shade, &midnight, light) == 0);
+	for (uint16_t index = 0U; index < PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT; ++index) {
+		assert(light[index] == PICOSYSTEM_GARDEN_LIGHT_MINIMUM);
+	}
+}
+
 static struct picosystem_garden_agent_observation
 baseline_observation(enum picosystem_garden_node_kind kind)
 {
@@ -98,6 +176,8 @@ baseline_observation(enum picosystem_garden_node_kind kind)
 		.base_x = 32U,
 		.maximum_depth = 10U,
 		.candidate_count = (kind == PICOSYSTEM_GARDEN_NODE_STEM) ? 5U : 3U,
+		.sun_phase = PICOSYSTEM_GARDEN_SUN_NOON_PHASE,
+		.sun_strength = UINT8_MAX,
 	};
 	for (uint8_t index = 0U; index < observation.candidate_count; ++index) {
 		observation.candidates[index].flags = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_IN_BOUNDS |
@@ -137,6 +217,9 @@ static void test_agent_observation_and_baseline_policy(void)
 	assert(observation.leaf_node_count == 1U);
 	assert(observation.active_tip_count == 3U);
 	assert(observation.candidate_count == 5U);
+	assert(observation.sun_phase == PICOSYSTEM_GARDEN_SUN_NOON_PHASE);
+	assert(observation.sun_strength == UINT8_MAX);
+	assert(observation.sun_ray_step_x_q4 == 0);
 	assert(observation.candidates[0].delta_x == -5);
 	assert(observation.candidates[0].delta_y == -5);
 	assert(observation.candidates[2].delta_x == 0);
@@ -223,6 +306,11 @@ static void test_agent_observation_and_baseline_policy(void)
 	observation.candidates[0].flags = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_IN_BOUNDS |
 					  PICOSYSTEM_GARDEN_AGENT_CANDIDATE_AVAILABLE |
 					  PICOSYSTEM_GARDEN_AGENT_CANDIDATE_OWN_NEAR;
+	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == -ERANGE);
+	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
+	observation.candidates[0].flags = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_IN_BOUNDS |
+					  PICOSYSTEM_GARDEN_AGENT_CANDIDATE_AVAILABLE;
+	observation.sun_strength = PICOSYSTEM_GARDEN_LIGHT_MINIMUM - 1U;
 	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == -ERANGE);
 	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
 }
@@ -370,6 +458,7 @@ int main(void)
 	test_reset_and_validation();
 	test_seed_spacing_capacity_and_access();
 	test_water_flow_and_light_competition();
+	test_directional_light_solver();
 	test_agent_observation_and_baseline_policy();
 	test_growth_variety_and_determinism();
 	test_cursor_tools_and_pruning();

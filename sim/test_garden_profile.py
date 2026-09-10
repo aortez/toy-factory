@@ -10,9 +10,9 @@ import subprocess
 
 
 EXPECTED_CHECKPOINTS = {
-    "initial": (0, "902dea55", "e7987083"),
-    "growing": (930, "db601a36", "35a6e809"),
-    "mature": (3771, "1d376f84", "8261b674"),
+    "initial": (0, "4d2f4270", "c515c869"),
+    "growing": (930, "de69461d", "7cf1bee7"),
+    "mature": (3771, "f5df2b20", "0008203d"),
 }
 TIMING_NAMES = ("ordinary_step", "ecology_step", "snapshot", "raster")
 PRESENTATION_RATES = {30, 10, 4}

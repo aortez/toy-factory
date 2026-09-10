@@ -10,9 +10,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "garden_light.h"
 #include "scene_renderer.h"
 
 #define PICOSYSTEM_GARDEN_LEAF_VISIBLE_PROGRESS 96U
+#define PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS     4U
 
 enum picosystem_garden_moisture_band {
 	PICOSYSTEM_GARDEN_MOISTURE_DRY,
@@ -36,6 +38,49 @@ picosystem_garden_moisture_band_for_value(uint8_t moisture)
 		return PICOSYSTEM_GARDEN_MOISTURE_MOIST;
 	}
 	return (moisture >= 12U) ? PICOSYSTEM_GARDEN_MOISTURE_DAMP : PICOSYSTEM_GARDEN_MOISTURE_DRY;
+}
+
+/* Map the simulated daylight arc to a small background indicator. */
+static inline bool
+picosystem_garden_sun_visual_center(const struct picosystem_scene_garden_payload *garden,
+				    int16_t *center_x, int16_t *center_y)
+{
+	if ((garden->sun_strength <= PICOSYSTEM_GARDEN_LIGHT_MINIMUM) ||
+	    (garden->sun_phase > PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE)) {
+		return false;
+	}
+
+	const uint8_t height =
+		(garden->sun_phase <= PICOSYSTEM_GARDEN_SUN_NOON_PHASE)
+			? garden->sun_phase
+			: (uint8_t)(PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE - garden->sun_phase);
+	const uint16_t horizontal_range =
+		(PICOSYSTEM_GARDEN_GRID_COLUMNS * PICOSYSTEM_GARDEN_CELL_PIXELS) -
+		(2U * PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS) - 1U;
+	*center_x =
+		(int16_t)(PICOSYSTEM_GARDEN_ORIGIN_X_PIXELS + PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS +
+			  (((uint16_t)garden->sun_phase * horizontal_range) /
+			   PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE));
+	*center_y = (int16_t)(PICOSYSTEM_GARDEN_CANOPY_TOP_PIXELS + 20U - (height / 4U));
+	return true;
+}
+
+static inline bool
+picosystem_garden_sun_visual_bounds(const struct picosystem_scene_garden_payload *garden,
+				    struct picosystem_rect *bounds)
+{
+	int16_t center_x;
+	int16_t center_y;
+	if (!picosystem_garden_sun_visual_center(garden, &center_x, &center_y)) {
+		return false;
+	}
+	*bounds = (struct picosystem_rect){
+		.x = (uint16_t)(center_x - PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS),
+		.y = (uint16_t)(center_y - PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS),
+		.width = (2U * PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS) + 1U,
+		.height = (2U * PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS) + 1U,
+	};
+	return true;
 }
 
 /* Return conservative bounds covering every pixel this node can currently draw. */

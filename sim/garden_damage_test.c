@@ -11,6 +11,7 @@
 
 #include "game_world.h"
 #include "garden_damage.h"
+#include "garden_light.h"
 #include "graphics_raster.h"
 #include "portable_util.h"
 #include "simulator.h"
@@ -38,6 +39,8 @@ static struct picosystem_scene_snapshot empty_garden_snapshot(void)
 				.auto_target_column = 0U,
 				.auto_target_row = 0U,
 				.auto_target_tool = PICOSYSTEM_GARDEN_TOOL_FLOWER_SEED,
+				.sun_phase = PICOSYSTEM_GARDEN_SUN_NOON_PHASE,
+				.sun_strength = UINT8_MAX,
 			},
 	};
 }
@@ -191,7 +194,22 @@ int main(void)
 	CHECK(picosystem_garden_damage_iterator_init(&iterator) == 0);
 	CHECK(picosystem_garden_damage_next_region(&plan, &iterator, &region) == 0);
 
+	/* A moving sun damages the bounded old/new icon area and reconstructs exactly. */
+	current.payload.garden.sun_phase = PICOSYSTEM_GARDEN_SUN_NOON_PHASE + 1U;
+	current.payload.garden.sun_strength = 251U;
+	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == 0);
+	CHECK(plan.dirty_tile_count == 4U);
+	CHECK(picosystem_garden_damage_iterator_init(&iterator) == 0);
+	CHECK(expect_region(&iterator, &plan, 112U, 32U, 16U, 16U) == 0);
+	CHECK(picosystem_garden_damage_next_region(&plan, &iterator, &region) == 0);
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	current = empty_garden_snapshot();
+	current.payload.garden.sun_ray_step_x_q4 = PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4 + 1;
+	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == -ERANGE);
+	CHECK(plan.dirty_tile_count == 0U);
+
 	/* Raw diffusion within one rendered moisture band does not damage a tile. */
+	current = presented;
 	presented.payload.garden.moisture[0] = 12U;
 	current.payload.garden.moisture[0] = 47U;
 	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == 0);

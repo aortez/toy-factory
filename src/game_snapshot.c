@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "garden_light.h"
 #include "portable_util.h"
 
 #define JOINT_PIXEL_QUANTUM 4
@@ -171,6 +172,11 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 		garden->auto_target_tool = garden_world->auto_target_tool;
 		garden->auto_gardener_enabled = garden_world->auto_gardener_enabled ? 1U : 0U;
 		garden->auto_target_valid = garden_world->auto_target_valid ? 1U : 0U;
+		const struct picosystem_garden_sun sun =
+			picosystem_garden_sun_at(garden_world->ecology_tick_count);
+		garden->sun_phase = sun.phase;
+		garden->sun_strength = sun.strength;
+		garden->sun_ray_step_x_q4 = sun.ray_step_x_q4;
 		memcpy(garden->moisture, garden_world->moisture, sizeof(garden->moisture));
 		for (uint16_t index = 0U; index < garden->node_count; ++index) {
 			const struct picosystem_garden_node *const source =

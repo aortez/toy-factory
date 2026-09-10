@@ -7,6 +7,7 @@
 #include "garden_world.h"
 
 #include "garden_agent.h"
+#include "garden_light.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -15,7 +16,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define GARDEN_HASH_VERSION           UINT32_C(1)
+#define GARDEN_HASH_VERSION           UINT32_C(2)
 #define GARDEN_DEFAULT_RANDOM_SEED    UINT32_C(0x746f7921)
 #define GARDEN_FNV1A_OFFSET_BASIS     UINT32_C(2166136261)
 #define GARDEN_FNV1A_PRIME            UINT32_C(16777619)
@@ -28,7 +29,6 @@
 #define GARDEN_AUTO_MINIMUM_PLANTS    5U
 #define GARDEN_AUTO_WATER_THRESHOLD   24U
 #define GARDEN_AUTO_ACTION_ROW        PICOSYSTEM_GARDEN_CANOPY_ROWS
-#define GARDEN_LIGHT_MINIMUM          24U
 #define GARDEN_WATER_FLOW_LIMIT       12U
 #define GARDEN_WATER_DIFFUSION_LIMIT  4U
 #define GARDEN_PRUNE_DISTANCE_SQUARED 25U
@@ -368,7 +368,7 @@ static void update_moisture(struct picosystem_garden_world *world)
 	}
 }
 
-static void update_light(struct picosystem_garden_world *world)
+static int update_light(struct picosystem_garden_world *world)
 {
 	uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT] = {0};
 	for (uint16_t index = 0U; index < world->node_count; ++index) {
@@ -396,17 +396,9 @@ static void update_light(struct picosystem_garden_world *world)
 		}
 	}
 
-	for (uint8_t column = 0U; column < PICOSYSTEM_GARDEN_GRID_COLUMNS; ++column) {
-		uint8_t intensity = UINT8_MAX;
-		for (uint8_t row = 0U; row < PICOSYSTEM_GARDEN_CANOPY_ROWS; ++row) {
-			const uint16_t index = light_index(column, row);
-			world->light[index] = intensity;
-			const uint8_t reduction = shade[index];
-			intensity = (reduction >= (uint8_t)(intensity - GARDEN_LIGHT_MINIMUM))
-					    ? GARDEN_LIGHT_MINIMUM
-					    : (uint8_t)(intensity - reduction);
-		}
-	}
+	const struct picosystem_garden_sun sun =
+		picosystem_garden_sun_at(world->ecology_tick_count);
+	return picosystem_garden_light_solve(shade, &sun, world->light);
 }
 
 static void absorb_water_and_light(struct picosystem_garden_world *world)
@@ -538,6 +530,8 @@ static void build_agent_observation(const struct picosystem_garden_world *world,
 	const struct picosystem_garden_plant *const plant = &world->plants[plant_index];
 	const struct garden_species_config *const species = &species_configs[plant->species_id];
 	const struct picosystem_garden_node *const tip = &world->nodes[tip_index];
+	const struct picosystem_garden_sun sun =
+		picosystem_garden_sun_at(world->ecology_tick_count);
 	*observation = (struct picosystem_garden_agent_observation){
 		.decision_nonce = decision_nonce,
 		.tip_index = tip_index,
@@ -572,6 +566,9 @@ static void build_agent_observation(const struct picosystem_garden_world *world,
 		.vigor = plant->vigor,
 		.horizontal_tendency = species->horizontal_tendency,
 		.candidate_count = (tip->kind == PICOSYSTEM_GARDEN_NODE_STEM) ? 5U : 3U,
+		.sun_phase = sun.phase,
+		.sun_strength = sun.strength,
+		.sun_ray_step_x_q4 = sun.ray_step_x_q4,
 	};
 
 	if (tip->parent_index != PICOSYSTEM_GARDEN_NODE_NONE) {
@@ -1207,10 +1204,16 @@ int picosystem_garden_world_step_input(struct picosystem_garden_world *world, in
 
 	++world->ecology_tick_count;
 	update_moisture(world);
-	update_light(world);
+	int err = update_light(world);
+	if (err != 0) {
+		return err;
+	}
 	absorb_water_and_light(world);
 	grow_plants(world);
-	update_light(world);
+	err = update_light(world);
+	if (err != 0) {
+		return err;
+	}
 	update_moisture_total(world);
 	return 0;
 }

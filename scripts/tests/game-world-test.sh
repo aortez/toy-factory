@@ -7,7 +7,8 @@ trap 'rm -rf -- "$test_dir"' EXIT
 
 gcc -std=c11 -Wall -Wextra -Werror -Wconversion -Wsign-conversion \
 	-fsanitize=undefined -fno-sanitize-recover=undefined -Isrc \
-	src/physics_world.c src/granular_world.c src/garden_agent.c src/garden_world.c \
+	src/physics_world.c src/granular_world.c src/garden_agent.c src/garden_light.c \
+	src/garden_world.c \
 	src/game_world.c \
 	src/game_scene_clockwork.c \
 	src/game_scene_hourglass.c src/game_scene_marble_machine.c \

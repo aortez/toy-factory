@@ -46,7 +46,10 @@ static int validate_garden_snapshot(const struct picosystem_scene_snapshot *snap
 	    (garden->auto_target_column >= PICOSYSTEM_GARDEN_GRID_COLUMNS) ||
 	    (garden->auto_target_row >= PICOSYSTEM_GARDEN_CURSOR_ROWS) ||
 	    (garden->auto_target_tool >= PICOSYSTEM_GARDEN_TOOL_COUNT) ||
-	    (garden->auto_gardener_enabled > 1U) || (garden->auto_target_valid > 1U)) {
+	    (garden->auto_gardener_enabled > 1U) || (garden->auto_target_valid > 1U) ||
+	    (garden->sun_strength < PICOSYSTEM_GARDEN_LIGHT_MINIMUM) ||
+	    (garden->sun_ray_step_x_q4 < -PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4) ||
+	    (garden->sun_ray_step_x_q4 > PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4)) {
 		return -ERANGE;
 	}
 
@@ -175,6 +178,32 @@ static void mark_changed_nodes(struct picosystem_garden_damage_plan *plan,
 	}
 }
 
+static void mark_changed_sun(struct picosystem_garden_damage_plan *plan,
+			     const struct picosystem_scene_garden_payload *presented,
+			     const struct picosystem_scene_garden_payload *current)
+{
+	struct picosystem_rect presented_bounds;
+	struct picosystem_rect current_bounds;
+	const bool presented_visible =
+		picosystem_garden_sun_visual_bounds(presented, &presented_bounds);
+	const bool current_visible = picosystem_garden_sun_visual_bounds(current, &current_bounds);
+	if ((!presented_visible && !current_visible) ||
+	    (presented_visible && current_visible && (presented_bounds.x == current_bounds.x) &&
+	     (presented_bounds.y == current_bounds.y))) {
+		return;
+	}
+	if (presented_visible) {
+		mark_pixel_bounds(plan, presented_bounds.x, presented_bounds.y,
+				  presented_bounds.x + presented_bounds.width - 1U,
+				  presented_bounds.y + presented_bounds.height - 1U);
+	}
+	if (current_visible) {
+		mark_pixel_bounds(plan, current_bounds.x, current_bounds.y,
+				  current_bounds.x + current_bounds.width - 1U,
+				  current_bounds.y + current_bounds.height - 1U);
+	}
+}
+
 static void mark_changed_cursor(struct picosystem_garden_damage_plan *plan,
 				const struct picosystem_scene_garden_payload *presented,
 				const struct picosystem_scene_garden_payload *current)
@@ -223,6 +252,7 @@ int picosystem_garden_damage_plan_build(const struct picosystem_scene_snapshot *
 		&current->payload.garden;
 	mark_changed_moisture(plan, presented_garden, current_garden);
 	mark_changed_nodes(plan, presented_garden, current_garden);
+	mark_changed_sun(plan, presented_garden, current_garden);
 	mark_changed_cursor(plan, presented_garden, current_garden);
 
 	if ((presented->sensor_entry_count % 100U) != (current->sensor_entry_count % 100U)) {
