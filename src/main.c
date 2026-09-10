@@ -28,8 +28,6 @@
 
 LOG_MODULE_REGISTER(toy_factory, LOG_LEVEL_INF);
 
-#define PIEZO_TEST_FREQUENCY_HZ         440U
-#define PIEZO_TEST_DURATION_MS          180U
 #define DIAGNOSTIC_INTERVAL_MS          100
 #define STACK_SAMPLE_INTERVAL_MS        1000
 #define STATUS_LOG_INTERVAL_MS          30000
@@ -606,9 +604,9 @@ int main(void)
 
 	LOG_INF("PicoSystem %u Hz scene runtime and asynchronous renderer ready",
 		PICOSYSTEM_GAME_TICK_RATE_HZ);
-	LOG_INF("D-pad tilts gravity; tap Y to reset; hold Y to change scenes");
-	LOG_INF("X triggers the active scene's primary action");
-	LOG_INF("A queues a full redraw; B plays a short 440 Hz piezo tone");
+	LOG_INF("D-pad controls the active scene; tap Y to reset; hold Y to change scenes");
+	LOG_INF("X triggers the primary scene action; A uses and B cycles scene tools");
+	LOG_INF("Framebuffer redraw and piezo tests remain available through the USB shell");
 	LOG_INF("A=red, B=green, X=blue, Y=white on the RGB LED");
 	LOG_INF("GP2 remains an input; the automatic red charge indicator is enabled");
 	LOG_INF("USB diagnostics ready; enter 'picosystem -h'");
@@ -755,6 +753,34 @@ int main(void)
 					picosystem_game_scene_name(game_state.world.scene_id));
 			}
 		}
+		if ((pressed & BIT(PICOSYSTEM_BUTTON_A)) != 0U) {
+			err = picosystem_game_demo_apply_scene_action(
+				&game_state, PICOSYSTEM_GAME_SCENE_ACTION_USE_TOOL);
+			if (err == -ENOTSUP) {
+				LOG_INF("A has no scene action in %s",
+					picosystem_game_scene_name(game_state.world.scene_id));
+			} else if (err != 0) {
+				LOG_ERR("Failed to use scene tool in %s (%d)",
+					picosystem_game_scene_name(game_state.world.scene_id), err);
+			} else {
+				LOG_INF("Used the selected scene tool in %s from A button",
+					picosystem_game_scene_name(game_state.world.scene_id));
+			}
+		}
+		if ((pressed & BIT(PICOSYSTEM_BUTTON_B)) != 0U) {
+			err = picosystem_game_demo_apply_scene_action(
+				&game_state, PICOSYSTEM_GAME_SCENE_ACTION_CYCLE_TOOL);
+			if (err == -ENOTSUP) {
+				LOG_INF("B has no scene action in %s",
+					picosystem_game_scene_name(game_state.world.scene_id));
+			} else if (err != 0) {
+				LOG_ERR("Failed to cycle scene tools in %s (%d)",
+					picosystem_game_scene_name(game_state.world.scene_id), err);
+			} else {
+				LOG_INF("Selected the next scene tool in %s from B button",
+					picosystem_game_scene_name(game_state.world.scene_id));
+			}
+		}
 
 		const uint32_t due_ticks =
 			game_control.paused ? 0U
@@ -782,8 +808,7 @@ int main(void)
 			picosystem_fixed_rate_scheduler_advance(&game_scheduler, skipped_ticks);
 		}
 
-		const bool redraw_requested = ((pressed & BIT(PICOSYSTEM_BUTTON_A)) != 0U) ||
-					      picosystem_diagnostic_shell_take_redraw();
+		const bool redraw_requested = picosystem_diagnostic_shell_take_redraw();
 		if (redraw_requested) {
 			err = picosystem_game_demo_request_redraw(&game_state);
 			if (err != 0) {
@@ -791,15 +816,6 @@ int main(void)
 				return err;
 			}
 			LOG_INF("Queued asynchronous full framebuffer redraw");
-		}
-
-		if ((pressed & BIT(PICOSYSTEM_BUTTON_B)) != 0U) {
-			err = picosystem_piezo_play(PIEZO_TEST_FREQUENCY_HZ,
-						    PIEZO_TEST_DURATION_MS);
-			if (err != 0) {
-				LOG_ERR("Piezo tone test failed (%d)", err);
-				return err;
-			}
 		}
 
 		struct picosystem_tone_request tone_request;

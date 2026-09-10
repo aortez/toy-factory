@@ -12,22 +12,24 @@ contracts defined here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 252,316 bytes of the linker's 255 KiB Zephyr
-RAM region and 242,888 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 254,860 bytes of the linker's 255 KiB Zephyr
+RAM region and 252,020 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
 rigid physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, two
 12-particle ropes, and bounded pair-event storage. The independent 512-particle
 granular world is 16,480 bytes, including its 40 x 48 16-bit grid heads,
 per-cell boundary masks, particle links, and sparse occupied-cell list. The
-rigid and granular alternatives share
-one tagged game-world union. The serialized A/B
+garden world is 3,496 bytes, including eight plants, 256 graph nodes, moisture,
+and derived light fields. All three alternatives share one tagged game-world
+union. The serialized A/B
 workspace is 33,360 bytes, is inactive during normal play, and
 avoids placing a second world on a thread stack. The profile
-command uses a 5,120-byte shell stack and most recently reached 4,280 bytes. The
-1,128-byte render snapshot leaves measured main/render stack use at 4,240 and
-3,932 bytes; both stacks are bounded at 5,120 bytes. The linked image retains
-8,804 bytes of Zephyr RAM headroom. The fast build also places
+command and main/renderer threads use fixed 5,120-byte stacks. The 1,640-byte
+render snapshot leaves 6,260 bytes of linked Zephyr RAM headroom. Garden
+hardware validation measured main, renderer, and core-1 stack high-water marks
+of 4,256/5,120, 3,164/5,120, and 360/4,096 bytes. The fast
+build also places
 the rigid-physics hot path in SRAM and keeps the collision traversal in a separate,
 bounded stack frame; this avoids core-0/core-1 XIP contention while the second
 core rasterizes a full scene. Both builds route compiler integer division
@@ -103,8 +105,8 @@ platform-neutral layers are:
 
 ```text
                             +-> rigid physics world ---+
-game input -> game world ---|                          +-> immutable render snapshot
-                            +-> granular world --------+
+game input -> game world ---+-> granular world -------+-> immutable render snapshot
+                            +-> garden world ----------+
 ```
 
 The physics world owns fixed-capacity body, static-segment, box-sensor,
@@ -127,20 +129,22 @@ The granular world separately owns fixed-capacity particle, half-plane
 boundary, passage-mask, and work-counter arrays. Current and previous particle
 positions, immutable configuration, the last acceleration, and passage state
 are hashed field by field. Grid heads, links, and per-step work counters are
-scratch. A scene identity tags the active member of the game-world union and
-distinguishes equal-looking states produced by different builders. Immutable
-renderer snapshots use the same scene-tagged union, so inactive granular and
-rigid payloads do not consume duplicate snapshot RAM.
+scratch. The garden world owns fixed plant and node pools, moisture and derived
+light fields, tools, and its deterministic auto-gardener policy. A scene
+identity tags the active member of the game-world union and distinguishes
+equal-looking states produced by different builders. Immutable renderer
+snapshots use the same scene-tagged union, so inactive rigid, granular, and
+garden payloads do not consume duplicate snapshot RAM.
 
 Bodies and shapes receive stable numeric identifiers. Array order is never
 derived from addresses, hash tables, allocation order, or unstable sorting.
 Remote pause, reset, input injection, exact stepping, framebuffer capture, and
 state hashing continue to cross the acknowledged main-thread request queue.
-Scene-owned primary actions cross that same queue: Hourglass maps the action to
-its exact 180-degree transform, while rigid scenes may declaratively identify
-motorized prismatic joints and powered static-segment surfaces whose direction
-should reverse. Input and shell layers therefore do not encode scene-specific
-physics behavior.
+Scene-owned actions cross that same queue: Hourglass maps its primary action to
+an exact 180-degree transform, rigid scenes may identify powered mechanisms to
+reverse, and Garden maps primary/use-tool/cycle-tool to its ordinary control
+API. Input and shell layers therefore do not encode scene-specific simulation
+behavior.
 Real-time play publishes immutable snapshots at a deterministic 30 Hz cadence
 while authoritative simulation remains at 60 Hz. Pause, reset, redraw, and
 exact stepping force a current snapshot, so remote state and framebuffer checks

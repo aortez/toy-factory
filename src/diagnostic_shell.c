@@ -382,6 +382,24 @@ static void print_granular_stats(const struct shell *shell,
 #endif
 }
 
+static void print_garden_stats(const struct shell *shell,
+			       const struct picosystem_game_demo_stats *game)
+{
+	if (game->scene_id != PICOSYSTEM_GAME_SCENE_GARDEN) {
+		return;
+	}
+	shell_print(shell,
+		    "garden: plants=%u, nodes=%u/%u, blooms=%u, moisture=%u, ecology=%u, "
+		    "tool=%s, auto=%s (%u actions/%u decisions), manual=%u actions",
+		    game->garden_plant_count, game->garden_node_count, PICOSYSTEM_GARDEN_MAX_NODES,
+		    game->garden_bloom_count, game->garden_moisture_total,
+		    game->garden_ecology_tick_count,
+		    picosystem_garden_tool_name(game->garden_selected_tool),
+		    game->garden_auto_gardener_enabled ? "on" : "off",
+		    game->garden_auto_action_count, game->garden_auto_decision_count,
+		    game->garden_manual_action_count);
+}
+
 static void print_game_runtime_stats(const struct shell *shell,
 				     const struct picosystem_diagnostic_snapshot *snapshot)
 {
@@ -519,6 +537,7 @@ static int cmd_status(const struct shell *shell, size_t argc, char **argv)
 		    snapshot.game.conveyor_solver_changed_count);
 	print_rope_stats(shell, &snapshot.game);
 	print_granular_stats(shell, &snapshot.game);
+	print_garden_stats(shell, &snapshot.game);
 	shell_print(shell,
 		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
 		    "sensor entries=%u",
@@ -676,6 +695,7 @@ static int cmd_display_stats(const struct shell *shell, size_t argc, char **argv
 		    game->conveyor_solver_visit_count, game->conveyor_solver_changed_count);
 	print_rope_stats(shell, game);
 	print_granular_stats(shell, game);
+	print_garden_stats(shell, game);
 	shell_print(shell,
 		    "events: active=%u, sensor overlaps=%u, emitted=%u (%u begin/%u stay/%u end), "
 		    "sensor entries=%u",
@@ -712,6 +732,7 @@ static int cmd_game_stats(const struct shell *shell, size_t argc, char **argv)
 
 	print_game_runtime_stats(shell, &snapshot);
 	print_granular_stats(shell, &snapshot.game);
+	print_garden_stats(shell, &snapshot.game);
 	shell_print(shell, "main stack high-water: %u/%u bytes",
 		    snapshot.runtime.main_stack_used_bytes, snapshot.runtime.main_stack_size_bytes);
 	shell_print(shell, "render stack high-water: %u/%u bytes",
@@ -897,7 +918,7 @@ static int submit_game_control(const struct shell *shell,
 	}
 	if ((err == -ENOTSUP) &&
 	    (request->operation == PICOSYSTEM_GAME_CONTROL_APPLY_SCENE_ACTION)) {
-		shell_error(shell, "The active scene has no primary action");
+		shell_error(shell, "The active scene does not support the requested action");
 		return err;
 	}
 	if (err != 0) {
@@ -962,12 +983,23 @@ static int cmd_game_scene(const struct shell *shell, size_t argc, char **argv)
 
 static int cmd_game_action(const struct shell *shell, size_t argc, char **argv)
 {
-	ARG_UNUSED(argc);
-	ARG_UNUSED(argv);
+	enum picosystem_game_scene_action action = PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY;
+	if (argc == 2U) {
+		if (strcmp(argv[1], "primary") == 0) {
+			action = PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY;
+		} else if (strcmp(argv[1], "use-tool") == 0) {
+			action = PICOSYSTEM_GAME_SCENE_ACTION_USE_TOOL;
+		} else if (strcmp(argv[1], "cycle-tool") == 0) {
+			action = PICOSYSTEM_GAME_SCENE_ACTION_CYCLE_TOOL;
+		} else {
+			shell_error(shell, "Unknown scene action '%s'", argv[1]);
+			return -EINVAL;
+		}
+	}
 
 	const struct picosystem_game_control_request request = {
 		.operation = PICOSYSTEM_GAME_CONTROL_APPLY_SCENE_ACTION,
-		.scene_action = PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY,
+		.scene_action = action,
 	};
 	return submit_game_control(shell, &request);
 }
@@ -1503,8 +1535,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	game_commands,
-	SHELL_CMD_ARG(action, NULL, "Apply the paused scene's primary action.", cmd_game_action, 1,
-		      0),
+	SHELL_CMD_ARG(action, NULL,
+		      SHELL_HELP("Apply a paused scene action.",
+				 "[primary|use-tool|cycle-tool] (default primary)"),
+		      cmd_game_action, 1, 1),
 	SHELL_CMD_ARG(flip, NULL, "Compatibility alias for 'game action'.", cmd_game_action, 1, 0),
 	SHELL_CMD_ARG(input, NULL,
 		      SHELL_HELP("Select physical or injected input.",
@@ -1516,7 +1550,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      cmd_game_reset, 1, 0),
 	SHELL_CMD_ARG(scene, NULL,
 		      SHELL_HELP("Select a scene at tick zero while paused.",
-				 "<clockwork|hourglass|marble-machine>"),
+				 "<clockwork|hourglass|marble-machine|garden>"),
 		      cmd_game_scene, 2, 0),
 	SHELL_CMD_ARG(stats, NULL, "Show simulation, snapshot, and renderer metrics.",
 		      cmd_game_stats, 1, 0),

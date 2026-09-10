@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "garden_world.h"
 #include "granular_world.h"
 #include "physics_world.h"
 
@@ -38,11 +39,14 @@ enum picosystem_game_scene_id {
 	PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN,
 	PICOSYSTEM_GAME_SCENE_HOURGLASS,
 	PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE,
+	PICOSYSTEM_GAME_SCENE_GARDEN,
 	PICOSYSTEM_GAME_SCENE_COUNT,
 };
 
 enum picosystem_game_scene_action {
 	PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY,
+	PICOSYSTEM_GAME_SCENE_ACTION_USE_TOOL,
+	PICOSYSTEM_GAME_SCENE_ACTION_CYCLE_TOOL,
 	PICOSYSTEM_GAME_SCENE_ACTION_COUNT,
 };
 
@@ -77,6 +81,7 @@ struct picosystem_game_world {
 	union {
 		struct picosystem_physics_world physics;
 		struct picosystem_granular_world granular;
+		struct picosystem_garden_world garden;
 	};
 	/* Derived diagnostic proxy used when the active scene has no rigid bodies. */
 	struct picosystem_physics_body focus_proxy;

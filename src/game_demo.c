@@ -75,6 +75,22 @@ struct game_dirty_render_stats {
 	bool raster_on_core1;
 };
 
+/* Only rigid scenes use damage tracking. Do not retain the larger garden/grain
+ * payloads in the renderer's previous-frame history.
+ */
+struct game_damage_history {
+	struct picosystem_scene_rigid_payload rigid;
+	uint32_t logic_tick_count;
+	uint32_t sensor_entry_count;
+	uint8_t scene_id;
+	uint8_t body_count;
+	uint8_t static_segment_count;
+	uint8_t distance_joint_count;
+	uint8_t revolute_joint_count;
+	uint8_t box_sensor_count;
+	uint8_t rope_count;
+};
+
 struct game_renderer_context {
 	struct k_spinlock lock;
 	struct k_sem snapshot_ready;
@@ -99,8 +115,9 @@ BUILD_ASSERT(RENDER_THREAD_PRIORITY < CONFIG_SHELL_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_MAIN_THREAD_PRIORITY);
 BUILD_ASSERT(RENDER_THREAD_PRIORITY > CONFIG_SHELL_THREAD_PRIORITY);
 #endif
-/* Keep two snapshots and the auxiliary-core mailbox bounded after adding packed grains. */
-BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 1152U);
+/* Keep two snapshots and the auxiliary-core mailbox bounded after adding packed garden nodes. */
+BUILD_ASSERT(sizeof(struct picosystem_scene_snapshot) <= 1664U);
+BUILD_ASSERT(sizeof(struct game_damage_history) <= 896U);
 BUILD_ASSERT(PICOSYSTEM_GRANULAR_MAX_PARTICLES <= UINT16_MAX);
 BUILD_ASSERT((PICOSYSTEM_GAME_TICK_RATE_HZ % PICOSYSTEM_GAME_REALTIME_SNAPSHOT_RATE_HZ) == 0U);
 BUILD_ASSERT(PICOSYSTEM_GAME_BOX_SENSOR_COUNT <= PICOSYSTEM_SCENE_MAX_BOX_SENSORS);
@@ -204,37 +221,24 @@ static struct picosystem_rect union_rectangles(const struct picosystem_rect *lef
 }
 
 static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
-				   const struct picosystem_scene_snapshot *right)
+				   const struct game_damage_history *right)
 {
 	if ((left->body_count != right->body_count) || (left->scene_id != right->scene_id) ||
 	    (left->static_segment_count != right->static_segment_count) ||
 	    (left->distance_joint_count != right->distance_joint_count) ||
 	    (left->revolute_joint_count != right->revolute_joint_count) ||
 	    (left->box_sensor_count != right->box_sensor_count) ||
-	    (left->rope_count != right->rope_count) ||
-	    (left->granular_particle_count != right->granular_particle_count) ||
-	    (left->granular_particle_radius != right->granular_particle_radius)) {
+	    (left->rope_count != right->rope_count)) {
 		return false;
 	}
 
-	if (left->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
-		for (uint16_t index = 0U; index < left->static_segment_count; ++index) {
-			const struct picosystem_scene_segment *const left_segment =
-				&left->payload.granular.boundaries[index];
-			const struct picosystem_scene_segment *const right_segment =
-				&right->payload.granular.boundaries[index];
-			if ((left_segment->start_x != right_segment->start_x) ||
-			    (left_segment->start_y != right_segment->start_y) ||
-			    (left_segment->end_x != right_segment->end_x) ||
-			    (left_segment->end_y != right_segment->end_y)) {
-				return false;
-			}
-		}
-		return true;
+	if ((left->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) ||
+	    (left->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN)) {
+		return false;
 	}
 
 	const struct picosystem_scene_rigid_payload *const left_rigid = &left->payload.rigid;
-	const struct picosystem_scene_rigid_payload *const right_rigid = &right->payload.rigid;
+	const struct picosystem_scene_rigid_payload *const right_rigid = &right->rigid;
 	if ((left_rigid->conveyor_forward_segment_mask !=
 	     right_rigid->conveyor_forward_segment_mask) ||
 	    (left_rigid->conveyor_reverse_segment_mask !=
@@ -313,7 +317,25 @@ static bool snapshot_scene_matches(const struct picosystem_scene_snapshot *left,
 
 static bool snapshot_requires_full_redraw(const struct picosystem_scene_snapshot *snapshot)
 {
-	return snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS;
+	return (snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) ||
+	       (snapshot->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN);
+}
+
+static void remember_presented_snapshot(const struct picosystem_scene_snapshot *snapshot,
+					struct game_damage_history *history)
+{
+	history->logic_tick_count = snapshot->logic_tick_count;
+	history->sensor_entry_count = snapshot->sensor_entry_count;
+	history->scene_id = snapshot->scene_id;
+	history->body_count = snapshot->body_count;
+	history->static_segment_count = snapshot->static_segment_count;
+	history->distance_joint_count = snapshot->distance_joint_count;
+	history->revolute_joint_count = snapshot->revolute_joint_count;
+	history->box_sensor_count = snapshot->box_sensor_count;
+	history->rope_count = snapshot->rope_count;
+	if (!snapshot_requires_full_redraw(snapshot)) {
+		history->rigid = snapshot->payload.rigid;
+	}
 }
 
 static size_t merge_dirty_regions(struct picosystem_rect *regions, size_t count,
@@ -479,12 +501,11 @@ static int append_prismatic_guides(const struct picosystem_game_demo_state *stat
 }
 
 static size_t build_dirty_regions(const struct picosystem_scene_snapshot *snapshot,
-				  const struct picosystem_scene_snapshot *presented,
+				  const struct game_damage_history *presented,
 				  struct picosystem_rect *regions)
 {
 	const struct picosystem_scene_rigid_payload *const rigid = &snapshot->payload.rigid;
-	const struct picosystem_scene_rigid_payload *const presented_rigid =
-		&presented->payload.rigid;
+	const struct picosystem_scene_rigid_payload *const presented_rigid = &presented->rigid;
 	size_t count = 0U;
 	for (uint16_t index = 0U; index < snapshot->body_count; ++index) {
 		if (body_render_state_matches(&rigid->bodies[index],
@@ -562,9 +583,11 @@ static size_t build_dirty_regions(const struct picosystem_scene_snapshot *snapsh
 	return merge_dirty_regions(regions, count, true);
 }
 
-static int render_dirty_scene(const struct picosystem_scene_snapshot *snapshot,
-			      const struct picosystem_scene_snapshot *presented,
-			      struct game_dirty_render_stats *stats)
+/* Keep the damage-region array out of the full-frame driver's stack path. */
+static __attribute__((noinline)) int
+render_dirty_scene(const struct picosystem_scene_snapshot *snapshot,
+		   const struct game_damage_history *presented,
+		   struct game_dirty_render_stats *stats)
 {
 	struct picosystem_rect regions[MAX_DIRTY_REGIONS];
 	const size_t region_count = build_dirty_regions(snapshot, presented, regions);
@@ -634,6 +657,71 @@ static int snapshot_from_state(const struct picosystem_game_demo_state *state, u
 			granular->grains[index] = (struct picosystem_scene_grain){
 				.x = (uint8_t)particle_x,
 				.y = (uint8_t)particle_y,
+			};
+		}
+		return 0;
+	}
+	if (state->world.scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		const struct picosystem_garden_world *const garden_world = &state->world.garden;
+		struct picosystem_scene_garden_payload *const garden = &snapshot->payload.garden;
+		if ((garden_world->node_count > ARRAY_SIZE(garden->nodes)) ||
+		    (garden_world->plant_count > PICOSYSTEM_GARDEN_MAX_PLANTS)) {
+			return -ENOSPC;
+		}
+		garden->node_count = garden_world->node_count;
+		garden->moisture_total = garden_world->moisture_total;
+		garden->plant_count = garden_world->plant_count;
+		garden->cursor_column = garden_world->cursor_column;
+		garden->cursor_row = garden_world->cursor_row;
+		garden->selected_tool = garden_world->selected_tool;
+		garden->auto_target_column = garden_world->auto_target_column;
+		garden->auto_target_row = garden_world->auto_target_row;
+		garden->auto_target_tool = garden_world->auto_target_tool;
+		garden->auto_gardener_enabled = garden_world->auto_gardener_enabled ? 1U : 0U;
+		garden->auto_target_valid = garden_world->auto_target_valid ? 1U : 0U;
+		memcpy(garden->moisture, garden_world->moisture, sizeof(garden->moisture));
+		for (uint16_t index = 0U; index < garden->node_count; ++index) {
+			const struct picosystem_garden_node *const source =
+				&garden_world->nodes[index];
+			if ((source->plant_index >= garden_world->plant_count) ||
+			    (garden_world->plants[source->plant_index].species_id >=
+			     PICOSYSTEM_GARDEN_SPECIES_COUNT)) {
+				return -ERANGE;
+			}
+			uint8_t parent_distance = 0U;
+			if (source->parent_index != PICOSYSTEM_GARDEN_NODE_NONE) {
+				if (source->parent_index >= index) {
+					return -ERANGE;
+				}
+				const uint16_t distance = (uint16_t)(index - source->parent_index);
+				if (distance > UINT8_MAX) {
+					return -ERANGE;
+				}
+				parent_distance = (uint8_t)distance;
+			}
+			uint8_t style = garden_world->plants[source->plant_index].species_id &
+					PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK;
+			if (source->kind == PICOSYSTEM_GARDEN_NODE_ROOT) {
+				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_ROOT;
+			}
+			if ((source->flags & PICOSYSTEM_GARDEN_NODE_LEAF) != 0U) {
+				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_LEAF;
+			}
+			if ((source->flags & PICOSYSTEM_GARDEN_NODE_FLOWER) != 0U) {
+				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_FLOWER;
+			}
+			if ((source->flags & PICOSYSTEM_GARDEN_NODE_PRUNED) != 0U) {
+				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_PRUNED;
+			}
+			if ((source->flags & PICOSYSTEM_GARDEN_NODE_TIP) != 0U) {
+				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_TIP;
+			}
+			garden->nodes[index] = (struct picosystem_scene_garden_node){
+				.x = source->x,
+				.y = source->y,
+				.parent_distance = parent_distance,
+				.growth_progress = source->growth_progress,
+				.style = style,
 			};
 		}
 		return 0;
@@ -893,7 +981,7 @@ static int raster_full_scene(const struct picosystem_scene_snapshot *snapshot,
 }
 
 static int present_snapshot(const struct picosystem_scene_snapshot *snapshot, bool full_redraw,
-			    const struct picosystem_scene_snapshot *presented,
+			    const struct game_damage_history *presented,
 			    struct game_dirty_render_stats *dirty_stats)
 {
 	*dirty_stats = (struct game_dirty_render_stats){0};
@@ -973,6 +1061,17 @@ static void record_presented_snapshot(const struct picosystem_scene_snapshot *sn
 			(uint16_t)snapshot->payload.granular.grains[0].x;
 		renderer.metrics.presented_focus_y =
 			(uint16_t)snapshot->payload.granular.grains[0].y;
+	} else if (snapshot->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		renderer.metrics.presented_focus_x =
+			(uint16_t)(PICOSYSTEM_GARDEN_ORIGIN_X_PIXELS +
+				   (snapshot->payload.garden.cursor_column *
+				    PICOSYSTEM_GARDEN_CELL_PIXELS) +
+				   (PICOSYSTEM_GARDEN_CELL_PIXELS / 2U));
+		renderer.metrics.presented_focus_y =
+			(uint16_t)(PICOSYSTEM_GARDEN_CANOPY_TOP_PIXELS +
+				   (snapshot->payload.garden.cursor_row *
+				    PICOSYSTEM_GARDEN_CELL_PIXELS) +
+				   (PICOSYSTEM_GARDEN_CELL_PIXELS / 2U));
 	}
 	k_spin_unlock(&renderer.lock, key);
 	k_sem_give(&renderer.frame_presented);
@@ -986,16 +1085,17 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 
 	uint32_t consumed_sequence;
 	uint32_t consumed_redraw_sequence;
-	struct picosystem_scene_snapshot presented;
+	struct game_damage_history presented;
 	struct picosystem_scene_snapshot snapshot;
 	{
 		const k_spinlock_key_t key = k_spin_lock(&renderer.lock);
-		presented = renderer.snapshots[renderer.published_index];
-		consumed_sequence = presented.sequence;
-		consumed_redraw_sequence = presented.redraw_request_sequence;
+		snapshot = renderer.snapshots[renderer.published_index];
+		consumed_sequence = snapshot.sequence;
+		consumed_redraw_sequence = snapshot.redraw_request_sequence;
 		renderer.metrics.render_thread_running = true;
 		k_spin_unlock(&renderer.lock, key);
 	}
+	remember_presented_snapshot(&snapshot, &presented);
 
 	while (true) {
 		const int wait_err = k_sem_take(&renderer.snapshot_ready, K_FOREVER);
@@ -1067,7 +1167,7 @@ static void render_thread_entry(void *argument1, void *argument2, void *argument
 		const uint32_t render_time_us = cycles_to_us(k_cycle_get_32() - start_cycles);
 		consumed_sequence = snapshot.sequence;
 		consumed_redraw_sequence = snapshot.redraw_request_sequence;
-		presented = snapshot;
+		remember_presented_snapshot(&snapshot, &presented);
 		record_presented_snapshot(&snapshot, full_redraw, superseded_count, render_time_us,
 					  &dirty_stats);
 		k_mutex_unlock(&renderer.framebuffer_mutex);
@@ -1458,6 +1558,20 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		stats->granular_lower_particle_count =
 			picosystem_granular_world_lower_particle_count(granular);
 		stats->granular_boundary_count = granular->boundary_count;
+		return 0;
+	}
+	if (state->world.scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		const struct picosystem_garden_world *const garden = &state->world.garden;
+		stats->garden_ecology_tick_count = garden->ecology_tick_count;
+		stats->garden_manual_action_count = garden->manual_action_count;
+		stats->garden_auto_decision_count = garden->auto_decision_count;
+		stats->garden_auto_action_count = garden->auto_action_count;
+		stats->garden_bloom_count = garden->bloom_count;
+		stats->garden_node_count = garden->node_count;
+		stats->garden_moisture_total = garden->moisture_total;
+		stats->garden_plant_count = garden->plant_count;
+		stats->garden_selected_tool = garden->selected_tool;
+		stats->garden_auto_gardener_enabled = garden->auto_gardener_enabled;
 		return 0;
 	}
 
