@@ -16,6 +16,8 @@ EXPECTED_CHECKPOINTS = {
 }
 TIMING_NAMES = ("ordinary_step", "ecology_step", "snapshot", "raster")
 PRESENTATION_RATES = {30, 10, 4}
+TICKS_PER_FRAME = {30: 2, 10: 6, 4: 15}
+DELTA_FRAME_COUNT = 60
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -36,6 +38,8 @@ def validate_timing(name: str, timing: object) -> None:
     minimum, p50, _mean, p95, maximum = values
     if not minimum <= p50 <= p95 <= maximum:
         raise RuntimeError(f"{name} timing percentiles are not ordered")
+    if not minimum <= _mean <= maximum:
+        raise RuntimeError(f"{name} timing mean is outside its range")
 
 
 def validate_counts(name: str, counts: object) -> None:
@@ -47,6 +51,8 @@ def validate_counts(name: str, counts: object) -> None:
     minimum, p50, _mean, p95, maximum = values
     if not minimum <= p50 <= p95 <= maximum:
         raise RuntimeError(f"{name} count percentiles are not ordered")
+    if not minimum <= _mean <= maximum:
+        raise RuntimeError(f"{name} count mean is outside its range")
 
 
 def validate_profile(profile: object) -> None:
@@ -90,15 +96,55 @@ def validate_profile(profile: object) -> None:
         if rates != PRESENTATION_RATES:
             raise RuntimeError(f"{name} has unexpected frame-delta cadences")
         for delta in frame_deltas:
+            rate = delta["presentation_hz"]
+            if delta.get("ticks_per_frame") != TICKS_PER_FRAME[rate]:
+                raise RuntimeError(f"{name}.{rate}Hz has an unexpected tick cadence")
+            if delta.get("frames") != DELTA_FRAME_COUNT:
+                raise RuntimeError(f"{name}.{rate}Hz has an unexpected frame count")
+            zero_change_frames = delta.get("zero_change_frames")
+            if not isinstance(zero_change_frames, int) or not (
+                0 <= zero_change_frames <= DELTA_FRAME_COUNT
+            ):
+                raise RuntimeError(f"{name}.{rate}Hz has an invalid unchanged-frame count")
             for count_name in (
                 "changed_pixels",
                 "changed_tiles_8x8",
                 "bounding_box_pixels",
             ):
                 validate_counts(
-                    f"{name}.{delta['presentation_hz']}Hz.{count_name}",
+                    f"{name}.{rate}Hz.{count_name}",
                     delta.get(count_name),
                 )
+
+            damage = delta.get("damage_reconstruction")
+            if not isinstance(damage, dict):
+                raise RuntimeError(f"{name}.{rate}Hz has no damage reconstruction")
+            if damage.get("verified_frames") != DELTA_FRAME_COUNT:
+                raise RuntimeError(f"{name}.{rate}Hz did not verify every partial frame")
+            empty_plan_frames = damage.get("empty_plan_frames")
+            if not isinstance(empty_plan_frames, int) or not (
+                0 <= empty_plan_frames <= zero_change_frames
+            ):
+                raise RuntimeError(f"{name}.{rate}Hz has an invalid empty-plan count")
+            validate_timing(f"{name}.{rate}Hz.damage.plan", damage.get("plan_timing_ns"))
+            validate_timing(
+                f"{name}.{rate}Hz.damage.raster", damage.get("raster_timing_ns")
+            )
+            for count_name in (
+                "tiles_8x8",
+                "regions",
+                "transfer_pixels",
+                "raster_pixel_writes",
+            ):
+                validate_counts(
+                    f"{name}.{rate}Hz.damage.{count_name}", damage.get(count_name)
+                )
+            if damage["tiles_8x8"]["max"] > 900:
+                raise RuntimeError(f"{name}.{rate}Hz damages too many tiles")
+            if damage["regions"]["max"] > 450:
+                raise RuntimeError(f"{name}.{rate}Hz emits too many regions")
+            if damage["transfer_pixels"]["max"] > 57_600:
+                raise RuntimeError(f"{name}.{rate}Hz transfers too many pixels")
 
 
 def main() -> int:

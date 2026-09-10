@@ -67,7 +67,12 @@ mixed manual/automatic garden at tick 930, and the full 256-node garden at tick
 snapshot and full-raster timing, state size, raster primitive calls, and logical
 framebuffer pixel writes. It also advances sixty consecutive presentation
 intervals at 30, 10, and 4 Hz and counts changed pixels, changed 8 x 8 tiles,
-and the enclosing bounding-box area.
+and the enclosing bounding-box area. For every one of those frames it builds
+semantic Garden damage from the last-presented and current snapshots, patches
+a retained framebuffer through the production clipped renderer, and requires
+the result to match a canonical full render byte for byte. The report includes
+damage tiles, coalesced regions, transfer coverage, partial-raster writes, and
+planner/raster timing.
 
 The Release build and repetition count are isolated from the sanitizer build.
 Override the sample count and output path when needed:

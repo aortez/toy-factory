@@ -15,6 +15,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "garden_damage.h"
 #include "game_snapshot.h"
 #include "graphics_raster.h"
 #include "portable_util.h"
@@ -70,9 +71,17 @@ struct garden_profile_delta_cadence {
 	uint32_t presentation_hz;
 	uint32_t ticks_per_frame;
 	uint32_t zero_change_frame_count;
+	uint32_t empty_damage_frame_count;
+	uint32_t reconstruction_verified_frame_count;
 	struct count_summary changed_pixels;
 	struct count_summary changed_tiles;
 	struct count_summary bounding_box_pixels;
+	struct count_summary damage_tiles;
+	struct count_summary damage_regions;
+	struct count_summary damage_pixels;
+	struct count_summary damage_pixel_writes;
+	struct timing_summary damage_plan;
+	struct timing_summary damage_raster;
 };
 
 struct garden_profile_result {
@@ -299,13 +308,56 @@ static int summarize_counts(uint32_t *values, size_t count, struct count_summary
 	return 0;
 }
 
-static int render_world(const struct picosystem_game_world *world, uint32_t sequence)
+static int build_snapshot(const struct picosystem_game_world *world, uint32_t sequence,
+			  struct picosystem_scene_snapshot *snapshot)
 {
-	struct picosystem_scene_snapshot snapshot;
-	int err = picosystem_game_snapshot_build(world, sequence, 0U, world->logic_tick_count,
-						 &snapshot);
+	return picosystem_game_snapshot_build(world, sequence, 0U, world->logic_tick_count,
+					      snapshot);
+}
+
+static int render_garden_damage(const struct picosystem_scene_snapshot *snapshot,
+				const struct picosystem_garden_damage_plan *plan,
+				uint32_t *region_count, uint32_t *pixel_count,
+				uint32_t *pixel_write_count)
+{
+	if ((snapshot == NULL) || (plan == NULL) || (region_count == NULL) ||
+	    (pixel_count == NULL) || (pixel_write_count == NULL)) {
+		return -EINVAL;
+	}
+	*region_count = 0U;
+	*pixel_count = 0U;
+	*pixel_write_count = 0U;
+
+	struct picosystem_garden_damage_iterator iterator;
+	int err = picosystem_garden_damage_iterator_init(&iterator);
+	struct picosystem_graphics_raster_work work;
+	picosystem_graphics_raster_work_begin();
+	while (err == 0) {
+		struct picosystem_rect region;
+		const int next = picosystem_garden_damage_next_region(plan, &iterator, &region);
+		if (next < 0) {
+			err = next;
+			break;
+		}
+		if (next == 0) {
+			break;
+		}
+		err = picosystem_scene_render_region(snapshot, &region);
+		if (err == 0) {
+			++*region_count;
+			*pixel_count += (uint32_t)region.width * region.height;
+		}
+	}
+
+	const int work_err = picosystem_graphics_raster_work_end(&work);
 	if (err == 0) {
-		err = picosystem_scene_render_full(&snapshot);
+		err = work_err;
+	}
+	if ((err == 0) && (work.pixel_write_count > UINT32_MAX)) {
+		err = -ERANGE;
+	}
+	if (err == 0) {
+		*pixel_write_count = (uint32_t)work.pixel_write_count;
 	}
 	return err;
 }
@@ -368,10 +420,20 @@ static int profile_frame_deltas(const struct picosystem_game_world *baseline,
 		uint32_t changed_pixels[GARDEN_PROFILE_DELTA_FRAME_COUNT];
 		uint32_t changed_tiles[GARDEN_PROFILE_DELTA_FRAME_COUNT];
 		uint32_t bounding_boxes[GARDEN_PROFILE_DELTA_FRAME_COUNT];
+		uint32_t damage_tiles[GARDEN_PROFILE_DELTA_FRAME_COUNT];
+		uint32_t damage_regions[GARDEN_PROFILE_DELTA_FRAME_COUNT];
+		uint32_t damage_pixels[GARDEN_PROFILE_DELTA_FRAME_COUNT];
+		uint32_t damage_pixel_writes[GARDEN_PROFILE_DELTA_FRAME_COUNT];
+		uint64_t damage_plan_timing[GARDEN_PROFILE_DELTA_FRAME_COUNT];
+		uint64_t damage_raster_timing[GARDEN_PROFILE_DELTA_FRAME_COUNT];
 		struct garden_profile_delta_cadence *const result = &results[cadence_index];
 		*result = delta_cadences[cadence_index];
 
-		int err = render_world(&world, 1U);
+		struct picosystem_scene_snapshot presented_snapshot;
+		int err = build_snapshot(&world, 1U, &presented_snapshot);
+		if (err == 0) {
+			err = picosystem_scene_render_full(&presented_snapshot);
+		}
 		if (err != 0) {
 			return err;
 		}
@@ -385,10 +447,46 @@ static int profile_frame_deltas(const struct picosystem_game_world *baseline,
 					return err;
 				}
 			}
-			err = render_world(&world, frame + 2U);
+			struct picosystem_scene_snapshot current_snapshot;
+			err = build_snapshot(&world, frame + 2U, &current_snapshot);
 			if (err != 0) {
 				return err;
 			}
+			struct picosystem_garden_damage_plan damage_plan;
+			uint64_t start_ns;
+			uint64_t end_ns;
+			err = monotonic_time_ns(&start_ns);
+			if (err != 0) {
+				return err;
+			}
+			err = picosystem_garden_damage_plan_build(&presented_snapshot,
+								  &current_snapshot, &damage_plan);
+			if (err != 0) {
+				return err;
+			}
+			err = monotonic_time_ns(&end_ns);
+			if (err != 0) {
+				return err;
+			}
+			damage_plan_timing[frame] = end_ns - start_ns;
+			damage_tiles[frame] = damage_plan.dirty_tile_count;
+			if (damage_plan.dirty_tile_count == 0U) {
+				++result->empty_damage_frame_count;
+			}
+			err = monotonic_time_ns(&start_ns);
+			if (err == 0) {
+				err = render_garden_damage(
+					&current_snapshot, &damage_plan, &damage_regions[frame],
+					&damage_pixels[frame], &damage_pixel_writes[frame]);
+			}
+			if (err == 0) {
+				err = monotonic_time_ns(&end_ns);
+			}
+			if (err != 0) {
+				return err;
+			}
+			damage_raster_timing[frame] = end_ns - start_ns;
+			const uint32_t damage_crc32 = picosystem_graphics_raster_crc32();
 			measure_frame_delta(workspace.previous_frame,
 					    picosystem_graphics_raster_pixels(),
 					    &changed_pixels[frame], &changed_tiles[frame],
@@ -398,6 +496,63 @@ static int profile_frame_deltas(const struct picosystem_game_world *baseline,
 			}
 			memcpy(workspace.previous_frame, picosystem_graphics_raster_pixels(),
 			       sizeof(workspace.previous_frame));
+
+			err = picosystem_scene_render_full(&current_snapshot);
+			if (err != 0) {
+				return err;
+			}
+			const uint32_t full_crc32 = picosystem_graphics_raster_crc32();
+			if (memcmp(workspace.previous_frame, picosystem_graphics_raster_pixels(),
+				   sizeof(workspace.previous_frame)) != 0) {
+				uint32_t missed_pixels;
+				uint32_t missed_tiles;
+				uint32_t missed_bounds;
+				uint32_t first_missed_x = 0U;
+				uint32_t first_missed_y = 0U;
+				uint16_t first_partial_pixel = 0U;
+				uint16_t first_full_pixel = 0U;
+				measure_frame_delta(workspace.previous_frame,
+						    picosystem_graphics_raster_pixels(),
+						    &missed_pixels, &missed_tiles, &missed_bounds);
+				for (size_t pixel = 0U;
+				     pixel < TOY_FACTORY_ARRAY_SIZE(workspace.previous_frame);
+				     ++pixel) {
+					if (workspace.previous_frame[pixel] !=
+					    picosystem_graphics_raster_pixels()[pixel]) {
+						first_missed_x =
+							(uint32_t)(pixel %
+								   PICOSYSTEM_GRAPHICS_WIDTH);
+						first_missed_y =
+							(uint32_t)(pixel /
+								   PICOSYSTEM_GRAPHICS_WIDTH);
+						first_partial_pixel =
+							workspace.previous_frame[pixel];
+						first_full_pixel =
+							picosystem_graphics_raster_pixels()[pixel];
+						break;
+					}
+				}
+				fprintf(stderr,
+					"damage mismatch: cadence=%" PRIu32 " frame=%" PRIu32
+					" tick=%" PRIu32 " tiles=%u partial=%08" PRIx32
+					" full=%08" PRIx32 " missed=%" PRIu32 "/%" PRIu32
+					" bounds=%" PRIu32 " first=%" PRIu32 ",%" PRIu32
+					" marked=%u pixels=%04x/%04x\n",
+					result->presentation_hz, frame, world.logic_tick_count,
+					damage_plan.dirty_tile_count, damage_crc32, full_crc32,
+					missed_pixels, missed_tiles, missed_bounds, first_missed_x,
+					first_missed_y,
+					(damage_plan
+						 .row_masks[first_missed_y /
+							    PICOSYSTEM_GARDEN_DAMAGE_TILE_PIXELS] &
+					 (UINT32_C(1) << (first_missed_x /
+							  PICOSYSTEM_GARDEN_DAMAGE_TILE_PIXELS))) !=
+						0U,
+					first_partial_pixel, first_full_pixel);
+				return -EILSEQ;
+			}
+			++result->reconstruction_verified_frame_count;
+			presented_snapshot = current_snapshot;
 		}
 
 		err = summarize_counts(changed_pixels, TOY_FACTORY_ARRAY_SIZE(changed_pixels),
@@ -410,6 +565,40 @@ static int profile_frame_deltas(const struct picosystem_game_world *baseline,
 			err = summarize_counts(bounding_boxes,
 					       TOY_FACTORY_ARRAY_SIZE(bounding_boxes),
 					       &result->bounding_box_pixels);
+		}
+		if (err == 0) {
+			err = summarize_counts(damage_tiles, TOY_FACTORY_ARRAY_SIZE(damage_tiles),
+					       &result->damage_tiles);
+		}
+		if (err == 0) {
+			err = summarize_counts(damage_regions,
+					       TOY_FACTORY_ARRAY_SIZE(damage_regions),
+					       &result->damage_regions);
+		}
+		if (err == 0) {
+			err = summarize_counts(damage_pixels, TOY_FACTORY_ARRAY_SIZE(damage_pixels),
+					       &result->damage_pixels);
+		}
+		if (err == 0) {
+			err = summarize_counts(damage_pixel_writes,
+					       TOY_FACTORY_ARRAY_SIZE(damage_pixel_writes),
+					       &result->damage_pixel_writes);
+		}
+		struct timing_samples damage_plan_samples = {
+			.values = damage_plan_timing,
+			.capacity = TOY_FACTORY_ARRAY_SIZE(damage_plan_timing),
+			.count = TOY_FACTORY_ARRAY_SIZE(damage_plan_timing),
+		};
+		struct timing_samples damage_raster_samples = {
+			.values = damage_raster_timing,
+			.capacity = TOY_FACTORY_ARRAY_SIZE(damage_raster_timing),
+			.count = TOY_FACTORY_ARRAY_SIZE(damage_raster_timing),
+		};
+		if (err == 0) {
+			err = summarize_timing(&damage_plan_samples, &result->damage_plan);
+		}
+		if (err == 0) {
+			err = summarize_timing(&damage_raster_samples, &result->damage_raster);
 		}
 		if (err != 0) {
 			return err;
@@ -637,6 +826,14 @@ static void print_count_summary(const char *name, const struct count_summary *su
 	       trailing_comma ? "," : "");
 }
 
+static void print_damage_timing_summary(const char *name, const struct timing_summary *summary)
+{
+	printf("            \"%s\": {\"samples\": %zu, \"mean\": %" PRIu64 ", \"min\": %" PRIu64
+	       ", \"p50\": %" PRIu64 ", \"p95\": %" PRIu64 ", \"max\": %" PRIu64 "},\n",
+	       name, summary->sample_count, summary->mean_ns, summary->minimum_ns, summary->p50_ns,
+	       summary->p95_ns, summary->maximum_ns);
+}
+
 static void print_frame_deltas(const struct garden_profile_result *result)
 {
 	printf("      \"frame_deltas\": [\n");
@@ -651,7 +848,19 @@ static void print_frame_deltas(const struct garden_profile_result *result)
 		       cadence->zero_change_frame_count);
 		print_count_summary("changed_pixels", &cadence->changed_pixels, true);
 		print_count_summary("changed_tiles_8x8", &cadence->changed_tiles, true);
-		print_count_summary("bounding_box_pixels", &cadence->bounding_box_pixels, false);
+		print_count_summary("bounding_box_pixels", &cadence->bounding_box_pixels, true);
+		printf("          \"damage_reconstruction\": {\n");
+		printf("            \"verified_frames\": %" PRIu32 ",\n",
+		       cadence->reconstruction_verified_frame_count);
+		printf("            \"empty_plan_frames\": %" PRIu32 ",\n",
+		       cadence->empty_damage_frame_count);
+		print_damage_timing_summary("plan_timing_ns", &cadence->damage_plan);
+		print_damage_timing_summary("raster_timing_ns", &cadence->damage_raster);
+		print_count_summary("tiles_8x8", &cadence->damage_tiles, true);
+		print_count_summary("regions", &cadence->damage_regions, true);
+		print_count_summary("transfer_pixels", &cadence->damage_pixels, true);
+		print_count_summary("raster_pixel_writes", &cadence->damage_pixel_writes, false);
+		printf("          }\n");
 		printf("        }%s\n",
 		       (index + 1U) < TOY_FACTORY_ARRAY_SIZE(result->frame_deltas) ? "," : "");
 	}

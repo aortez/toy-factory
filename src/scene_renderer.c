@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "game_world.h"
+#include "garden_visual.h"
 #include "portable_util.h"
 #include "render_placement.h"
 
@@ -251,11 +252,9 @@ render_playfield_background(const struct picosystem_scene_snapshot *snapshot,
 			picosystem_graphics_fill_rect(left, soil_top, right - left,
 						      bottom - soil_top, GARDEN_DRY_SOIL_COLOR);
 		}
-		if ((top <= PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS) &&
-		    (bottom > PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS)) {
-			picosystem_graphics_fill_rect(left, PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS - 1U,
+		picosystem_graphics_fill_rect_clipped(region, left,
+						      PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS - 1U,
 						      right - left, 2U, GARDEN_HORIZON_COLOR);
-		}
 		return;
 	}
 
@@ -887,16 +886,19 @@ render_box_sensors(const struct picosystem_scene_snapshot *snapshot,
 
 static PICOSYSTEM_RENDER_RAMFUNC picosystem_color_t garden_moisture_color(uint8_t moisture)
 {
-	if (moisture >= 192U) {
+	switch (picosystem_garden_moisture_band_for_value(moisture)) {
+	case PICOSYSTEM_GARDEN_MOISTURE_SATURATED:
 		return GARDEN_SATURATED_SOIL_COLOR;
-	}
-	if (moisture >= 112U) {
+	case PICOSYSTEM_GARDEN_MOISTURE_WET:
 		return GARDEN_WET_SOIL_COLOR;
-	}
-	if (moisture >= 48U) {
+	case PICOSYSTEM_GARDEN_MOISTURE_MOIST:
 		return GARDEN_MOIST_SOIL_COLOR;
+	case PICOSYSTEM_GARDEN_MOISTURE_DAMP:
+		return GARDEN_DAMP_SOIL_COLOR;
+	case PICOSYSTEM_GARDEN_MOISTURE_DRY:
+	default:
+		return GARDEN_DRY_SOIL_COLOR;
 	}
-	return (moisture >= 12U) ? GARDEN_DAMP_SOIL_COLOR : GARDEN_DRY_SOIL_COLOR;
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC int16_t garden_interpolate(uint8_t start, uint8_t end,
@@ -910,7 +912,7 @@ render_garden_leaf(const struct picosystem_scene_garden_node *node, uint8_t spec
 		   int16_t y, const struct picosystem_rect *clip)
 {
 	if (((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_LEAF) == 0U) ||
-	    (node->growth_progress < 96U)) {
+	    (node->growth_progress < PICOSYSTEM_GARDEN_LEAF_VISIBLE_PROGRESS)) {
 		return 0;
 	}
 	const uint16_t radius = (species == PICOSYSTEM_GARDEN_SPECIES_SHRUB) ? 3U : 2U;
@@ -1028,6 +1030,13 @@ render_garden(const struct picosystem_scene_snapshot *snapshot, const struct pic
 
 	for (uint16_t index = 0U; index < garden->node_count; ++index) {
 		const struct picosystem_scene_garden_node *const node = &garden->nodes[index];
+		if (clip != NULL) {
+			struct picosystem_rect bounds;
+			if (!picosystem_garden_node_visual_bounds(garden, index, &bounds) ||
+			    !picosystem_scene_rectangles_intersect(&bounds, clip)) {
+				continue;
+			}
+		}
 		const uint8_t species = node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK;
 		int16_t rendered_x = node->x;
 		int16_t rendered_y = node->y;

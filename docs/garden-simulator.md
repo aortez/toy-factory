@@ -87,6 +87,19 @@ immutable snapshot is 1,640 bytes. Soil moisture is copied directly; derived
 light is not duplicated. Garden uses the established 30 Hz full-frame path while
 ecology and input remain authoritative at 60 Hz.
 
+The host prototype now treats that framebuffer as a pixel cache. A bounded
+semantic planner compares the last-presented and current Garden snapshots,
+marks conservative 8 x 8 damage tiles for visible moisture bands, cursor and
+automation state, header text, and old/new plant geometry, then coalesces equal
+horizontal runs across rows. The planner itself needs only a 30-row bit mask
+plus iterator state; it does not allocate a second framebuffer. Firmware
+integration will also need a last-presented Garden history, whose placement
+must be chosen against the renderer's measured stack and shared-memory budget.
+Across initial, growing, and mature checkpoints at 30, 10, and 4 Hz, 540
+reconstructed frames match full renders exactly. Firmware still uses
+full-frame presentation until device measurements establish an adaptive
+partial/full cutoff.
+
 The strict-warning/UBSan native suites currently cover invalid inputs, spacing,
 plant and node capacity, downward water travel, evaporation, cursor repeat,
 tool cycling, pruning, distinct species growth, exact paired replays, and a
@@ -112,9 +125,10 @@ At the full 256-node capacity, a 2,467-tick device window maintained 60.0 Hz
 simulation and 29.6 fps presentation without skipped or over-budget updates.
 Complete updates averaged 0.616 ms and peaked at 3.623 ms. Mature-scene
 rasterization took 12.7-13.0 ms and the final DMA transfer took 18.387 ms, so
-full-screen presentation—not ecology—is the limiting path. The fast image uses
-254,860 bytes of Zephyr RAM and 252,020 bytes of flash, leaving 6,260 bytes of
-linked RAM plus the separately reserved 8 KiB core-1 area.
+full-screen presentation—not ecology—is the limiting path. With the shared
+clipped Garden renderer, the fast image uses 255,076 bytes of Zephyr RAM and
+252,436 bytes of flash, leaving 6,044 bytes of linked RAM plus the separately
+reserved 8 KiB core-1 area.
 
 Physical playtesting confirmed that manual planting, watering, pruning, tool
 selection, reset, and the visible auto-gardener behave smoothly on the PIM559.
@@ -133,5 +147,5 @@ visibly coarse field. Tool identity is communicated primarily by cursor color,
 with no plant inspection or resource overlay. These are presentation and
 progression follow-ups rather than determinism or performance failures. The
 host profiler now reconstructs initial, growing, and mature Gardens and measures
-model, snapshot, raster, primitive-work, and framebuffer-delta behavior without
-requiring the PicoSystem.
+model, snapshot, raster, primitive-work, framebuffer-delta, and exact semantic
+damage behavior without requiring the PicoSystem.
