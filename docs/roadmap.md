@@ -110,3 +110,13 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add acknowledged runtime scene selection and a short/long Y-button gesture.
 - [x] Build and physically verify the Marble Machine chute and return loop.
 - [x] Build and physically verify the deterministic Garden and auto-gardener.
+
+## 8. Host simulation
+
+- [x] Extract the production snapshot builder and software rasterizer from Zephyr.
+- [x] Add a C11 headless runner around the production deterministic game world.
+- [x] Replay all committed device sequences with state-hash and framebuffer goldens.
+- [x] Capture host-rendered RGB565 frames as PNG diagnostics.
+- [x] Add a Docker-built SDL3 player with real-time, pause, and exact-step controls.
+- [ ] Add browser/Wasm presentation over the same portable simulation boundary.
+- [ ] Add scene inspection and resource overlays without mutating authoritative state.

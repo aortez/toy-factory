@@ -1,4 +1,6 @@
 /build/
+/build-host/
+/build-host-player/
 /build-pio/
 /build-pio-dma/
 /build-pl022-dma/

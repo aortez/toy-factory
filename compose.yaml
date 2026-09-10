@@ -13,5 +13,15 @@ services:
       - .:/workspace/app
     command: ./scripts/container/build.sh
 
+  host-player:
+    image: toy-factory-host-builder:local
+    build:
+      context: .
+      dockerfile: docker/Host.Dockerfile
+    working_dir: /workspace/app
+    volumes:
+      - .:/workspace/app
+    command: ./scripts/container/host-player-build.sh
+
 volumes:
   zephyr-workspace:

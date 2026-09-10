@@ -24,6 +24,7 @@ target_sources(app PRIVATE
 	src/fixed_rate_scheduler.c
 	src/game_control.c
 	src/game_demo.c
+	src/game_snapshot.c
 	src/garden_world.c
 	src/game_scene_clockwork.c
 	src/game_scene_hourglass.c
@@ -33,6 +34,7 @@ target_sources(app PRIVATE
 	src/game_world.c
 	src/granular_world.c
 	src/graphics.c
+	src/graphics_raster.c
 	src/main.c
 	src/physics_chain_fixture.c
 	src/physics_world.c
