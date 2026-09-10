@@ -11,6 +11,7 @@ SERIAL_PORT_HELPER := ./scripts/find-serial-port.sh
 STEPS ?= 1
 INPUT ?= none
 SCENE ?= hourglass
+ACTION ?= primary
 OUT ?= artifacts/screenshot.png
 SEQUENCE ?= scripts/sequences/deterministic-smoke.json
 FAIL_SCREENSHOT ?= artifacts/sequence-failure.png
@@ -47,7 +48,8 @@ help: ## Show this list of targets
 	@printf 'Toy Factory\n\n'
 	@printf 'Usage:\n  make <target> [PORT=/dev/ttyACM0] [UF2_MOUNT=/path/to/RPI-RP2]\n'
 	@printf '                    [STEPS=1] [INPUT=none] [OUT=artifacts/screenshot.png]\n'
-	@printf '                    [SCENE=clockwork|hourglass|marble-machine]\n'
+	@printf '                    [SCENE=clockwork|hourglass|marble-machine|garden]\n'
+	@printf '                    [ACTION=primary|use-tool|cycle-tool]\n'
 	@printf '                    [SEQUENCE=path.json] [FAIL_SCREENSHOT=artifacts/failure.png]\n'
 	@printf '                    [PROFILE_TICKS=1000] [PROFILE_OUT=artifacts/physics-profile.json]\n'
 	@printf '                    [GRANULAR_PROFILE_TICKS=120]\n'
@@ -253,7 +255,7 @@ sim-reset: image ## Restore the playable scene to tick zero while paused
 			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
 				picosystem game reset
 
-sim-scene: image ## Select SCENE=clockwork|hourglass|marble-machine while paused
+sim-scene: image ## Select SCENE=clockwork|hourglass|marble-machine|garden while paused
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
@@ -262,15 +264,16 @@ sim-scene: image ## Select SCENE=clockwork|hourglass|marble-machine while paused
 			python3 ./scripts/container/serial-command.py --require-prefix "scene=" "$$port" \
 				picosystem game scene "$(SCENE)"
 
-sim-action: image ## Apply the paused scene's primary action
+sim-action: image ## Apply ACTION=primary|use-tool|cycle-tool while paused
 	@port="$$($(SERIAL_PORT_HELPER) "$(PORT)")" || exit $$?; \
 		$(DOCKER) run --rm --user 0:0 \
 			--device "$$port:$$port" \
 			--volume "$(CURDIR):/workspace/app:ro" \
 			"$(FIRMWARE_IMAGE)" \
 			python3 ./scripts/container/serial-command.py --require-prefix "mode=" "$$port" \
-				picosystem game action
+				picosystem game action "$(ACTION)"
 
+sim-flip: ACTION = primary
 sim-flip: sim-action ## Compatibility alias for sim-action
 
 sim-step: image ## Advance a paused simulation by STEPS=<1-120> exact ticks

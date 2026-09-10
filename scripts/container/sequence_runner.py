@@ -31,9 +31,11 @@ VALID_INPUTS = {
 ACTION_COMMANDS = {
     "flip": "picosystem game flip",
     "primary": "picosystem game action",
+    "use-tool": "picosystem game action use-tool",
+    "cycle-tool": "picosystem game action cycle-tool",
 }
 VALID_ACTIONS = set(ACTION_COMMANDS)
-VALID_SCENES = {"clockwork", "hourglass", "marble-machine"}
+VALID_SCENES = {"clockwork", "hourglass", "marble-machine", "garden"}
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 HEX32_PATTERN = re.compile(r"^[0-9a-fA-F]{8}$")
 GAME_STATE_PATTERN = re.compile(
@@ -43,7 +45,7 @@ INPUT_STATE_PATTERN = re.compile(
     r"^input_source=(physical|remote) input_x=(-?\d+) input_y=(-?\d+)$"
 )
 SCENE_STATE_PATTERN = re.compile(
-    r"^scene=(clockwork|hourglass|marble-machine) scene_id=(\d+)$"
+    r"^scene=(clockwork|hourglass|marble-machine|garden) scene_id=(\d+)$"
 )
 CHECKSUM_PATTERN = re.compile(
     r"^width=(\d+) height=(\d+) format=([a-z0-9]+) bytes=(\d+) "

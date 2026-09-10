@@ -4,6 +4,8 @@ Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
 ![Toy Factory Hourglass running on the PicoSystem](docs/images/hourglass.png)
 
+![Toy Factory Garden running on the PicoSystem](docs/images/garden.png)
+
 The current baseline exercises the complete board and a game-oriented graphics
 path:
 
@@ -19,8 +21,8 @@ path:
   and a bounded 40 x 48 uniform grid; the fixed engine capacity is 512 grains;
 - tracks grains crossing the neck, tilts gravity with the D-pad, and rotates the
   complete particle position and velocity state exactly 180 degrees with X;
-- exposes Clockwork, Hourglass, and Marble Machine as switchable player-facing
-  scenes while retaining Machine Lab as a rigid-body profiling fixture;
+- exposes Clockwork, Hourglass, Marble Machine, and Garden as switchable
+  player-facing scenes while retaining Machine Lab as a rigid-body profiling fixture;
   Clockwork includes a
   motorized gear pair, crank-slider, pendulum, spring bob, two-link mobile,
   sensor gate, and reciprocal rope;
@@ -28,6 +30,9 @@ path:
   catapult, airborne transfer rotor, spring-loaded accumulation tray, powered
   lower return, long recovery-floor runout, and animated guided elevator in
   Marble Machine, with a direction-qualified passage sensor;
+- grows three deterministic plant archetypes through a compact 256-node graph in
+  Garden, with a 28 x 11 moisture field, canopy shading, planting, watering,
+  pruning, flowering, and a toggleable auto-gardener;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -56,9 +61,9 @@ path:
 - exposes acknowledged scene selection, reset, pause, exact-step,
   injected-input, state-hash, and framebuffer-capture controls over USB;
 - runs declarative deterministic device sequences with state/framebuffer assertions;
-- resets the active scene on a short Y press and cycles the three playable
+- resets the active scene on a short Y press and cycles the four playable
   scenes when Y is held for 750 ms;
-- plays a short, bounded piezo tone when B is pressed;
+- retains bounded piezo and redraw diagnostics through the USB shell;
 - averages and reports the GP26 battery-voltage ADC at startup and every 30 seconds;
 - classifies the GP2 VBUS and active-low GP24 charger-status inputs;
 - emits a 30-second log heartbeat and a faster visual heartbeat on the blue LED.
@@ -168,7 +173,7 @@ The physical gesture remains the recovery path for a blank or broken image:
 
 The PicoSystem reboots automatically when the copy completes into the
 `HOURGLASS 60HZ` scene. Tap Y to reset the active scene, or hold Y for 750 ms
-to cycle Hourglass, Marble Machine, and Clockwork. In Clockwork, the yellow
+to cycle Hourglass, Marble Machine, Garden, and Clockwork. In Clockwork, the yellow
 motor wheel
 drives a magenta follower and a red connecting rod moves the white horizontal
 slider. A pendulum and spring bob move at upper right; a hinged mobile pulls a
@@ -179,11 +184,13 @@ presentation restores each
 moved body's old and new footprints and merges touching regions before sending
 them. Small moves become one rectangle; coalesced jumps do not transfer the
 empty swept area between distant footprints.
-The D-pad tilts the global acceleration field while neutral input retains
-downward gravity. Press A to queue a full-screen redraw for comparison and B to
-play a 440 Hz tone for 180 ms. X applies the active scene's primary action: it
-flips Hourglass, reverses Marble Machine's lower return and recovery belt, and
-has no action in Clockwork.
+The D-pad tilts the global acceleration field in physical scenes while neutral
+input retains downward gravity. In Garden it moves the visible cursor: A uses
+the selected tool, B cycles seed/water/prune tools, and X toggles the
+auto-gardener. In the other scenes X applies the primary action: it flips
+Hourglass, reverses Marble Machine's lower return and recovery belt, and has no
+action in Clockwork. Full-redraw and 440 Hz piezo checks remain available as
+`picosystem game redraw` and `picosystem tone 440 180`.
 In the conservative
 20 MHz build, a full transfer occupies the panel for roughly 80 ms, but it runs
 on the renderer thread: physics and input sampling continue at 60 Hz and newer
@@ -272,8 +279,8 @@ picosystem game stats
 picosystem game redraw
 picosystem game pause
 picosystem game reset
-picosystem game scene clockwork|hourglass|marble-machine
-picosystem game action
+picosystem game scene clockwork|hourglass|marble-machine|garden
+picosystem game action [primary|use-tool|cycle-tool]
 picosystem game flip
 picosystem game step [count]
 picosystem game input physical|none|up|down|left|right|up-left|up-right|down-left|down-right
@@ -301,15 +308,16 @@ write, full-redraw count, and both stack high-water marks. `game redraw` only
 posts a coalesced request; the shell never touches the framebuffer or display.
 `game pause` is acknowledged only after the priority-0 simulation owner reaches
 a tick boundary. `game scene` is accepted only while paused; it selects
-Clockwork, Hourglass, or Marble Machine at tick zero with neutral remote input.
+Clockwork, Hourglass, Marble Machine, or Garden at tick zero with neutral remote input.
 `game reset`
 restores whichever scene is active. Both publish a full-redraw snapshot without
 rewinding renderer sequence numbers.
-`game action` is likewise accepted only while paused and applies the active
-scene's primary action. It rotates every Hourglass grain's current and previous
-position exactly 180 degrees while preserving velocity, or reverses Marble
-Machine's recovery-belt drive. `game flip` remains a compatibility alias.
-The physical X button applies the same action during play.
+`game action` is likewise accepted only while paused. `primary` rotates every
+Hourglass grain exactly 180 degrees, reverses Marble Machine's powered return,
+or toggles the Garden auto-gardener. Garden also accepts `use-tool` and
+`cycle-tool`; these are the remote equivalents of A and B. `game flip` remains
+a compatibility alias for the primary action. Physical X applies the primary
+action during play.
 While paused, `game step` executes 1-120 exact fixed-duration updates without
 advancing wall-clock scheduling. `game run` starts a fresh rational deadline
 sequence and performance-measurement epoch, so time and exact steps spent paused
@@ -440,8 +448,13 @@ selects Clockwork and verifies its established input-replay hash and framebuffer
 selects Marble Machine, reverses its powered returns, and verifies its exact state
 hash and framebuffer CRC.
 
+[`scripts/sequences/garden-smoke.json`](scripts/sequences/garden-smoke.json)
+waters the initial plot, selects and plants another seed, enables the
+auto-gardener, and advances the same deterministic mixed manual/automatic replay
+used by the native game-world suite.
+
 The runner holds one exclusive USB connection, pauses and selects the declared
-scene at tick zero, applies each input or exact primary action, and checks the
+scene at tick zero, applies each input or exact scene action, and checks the
 returned scene and tick after every request. Segments longer than 120 ticks are automatically
 divided into bounded firmware requests. The complete file is limited to 256
 segments and 100,000 ticks; physical input is deliberately unavailable inside
@@ -508,7 +521,9 @@ stable field-by-field hash live in
 [`src/physics_world.c`](src/physics_world.c). Scene-independent reset, input,
 ticks, and the outer hash live in [`src/game_world.c`](src/game_world.c);
 the fixed-capacity Verlet grain simulation and its 40 x 48 grid live in
-[`src/granular_world.c`](src/granular_world.c). Flash-resident scene
+[`src/granular_world.c`](src/granular_world.c). The independent Garden ecology,
+plant graph, moisture/light fields, tools, and auto-gardener live in
+[`src/garden_world.c`](src/garden_world.c). Flash-resident rigid scene
 descriptions live in
 [`src/game_scene_hourglass.c`](src/game_scene_hourglass.c),
 [`src/game_scene_clockwork.c`](src/game_scene_clockwork.c),
@@ -525,7 +540,7 @@ The priority-1 USB shell runs only while higher-priority work is blocked; once
 two or more simulation deadlines are due, the main loop reserves a
 one-millisecond recovery window so diagnostics and the bootloader command cannot
 remain starved. An isolated late tick may catch up and reach its normal sleep
-without paying that extra delay. The main thread publishes a 1,128-byte immutable
+without paying that extra delay. The main thread publishes a 1,640-byte immutable
 render snapshot at a deterministic 30 Hz cadence into one of two slots under a
 short spin lock. Pause, reset, redraw, and exact remote stepping force a current
 snapshot. A saturated semaphore wakes the renderer, which coalesces obsolete
@@ -568,7 +583,8 @@ framebuffer is allocated.
 ## Current validation boundary
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
-generation and also runs native granular-world configuration, 512-grain
+generation and also runs native garden-world moisture/light, capacity, growth,
+tool, pruning, auto-gardener soak, and replay tests; granular-world configuration, 512-grain
 capacity and wide-index handling, conservative contact-length approximation,
 containment, flip, work-bound, and deterministic replay
 tests; rigid-body
@@ -576,33 +592,40 @@ collision/capacity; bounded
 spring/conveyor response, exact capsule shape-pair coverage, reciprocal
 rope/body response, bounded rope-particle collision, exact sensor
 overlap/contact-lifecycle, 1,000-tick grid/brute-force
-oracle; 10,000-tick rigid, 6,000-tick Hourglass, and 6,000-tick recirculating
-Marble Machine game-world replay/boundary;
+oracle; 10,000-tick rigid, 6,000-tick Hourglass, 6,000-tick recirculating
+Marble Machine, and long manual/automatic Garden game-world replays;
 deadline-scheduler,
 serial-shell, framebuffer protocol, RGB565 conversion, PNG-structure,
 physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted reset,
 double-action, full-drain, recirculation, and retained Machine Lab replay hashes
 as native goldens.
-The default image uses 221,820 bytes of its 255 KiB Zephyr RAM region (84.95%)
-and 237,188 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 222,868 bytes of its 255 KiB Zephyr RAM region (85.35%)
+and 246,364 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer, 22,636-byte fixed-capacity rigid physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
 contact/event storage and per-step deterministic counters, a 16,480-byte
 fixed-capacity 512-particle granular world with a 40 x 48 scratch grid,
-boundary masks, and sparse occupied-cell storage, a 33,360-byte serialized
-benchmark workspace, two 1,128-byte render snapshots, 5,120-byte main
+boundary masks, and sparse occupied-cell storage, a 3,496-byte fixed-capacity
+garden world, a 33,360-byte serialized benchmark workspace, two 1,640-byte
+render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 252,316 bytes of
-that region (96.63%) and 242,888 bytes of flash. It keeps the rigid-physics and
+storage, and a 1,024-byte shell TX ring. The fast image uses 254,860 bytes of
+that region (97.60%) and 252,020 bytes of flash. It keeps the rigid-physics and
 renderer hot paths in SRAM while the granular solver remains in XIP flash, and
 both images route compiler integer division through the RP2040's interrupt-safe
 hardware-divider wrappers. Both images also reserve
 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 39,300 and 8,804
+core-1 mailbox and stack. The default and fast images retain 38,252 and 6,260
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
+
+Damage tracking retains an 836-byte rigid-only history instead of a second
+complete scene snapshot. Its 1,040-byte scratch call frame is isolated from the
+full-frame path. The compiler reports a 2,552-byte renderer entry frame and
+rejects individual game-demo frames larger than 3,072 bytes; hardware stack
+high-water measurements still cover the nested driver and interrupt costs.
 
 On the tested PIM559, the normal 320-grain image completed a 1,000-tick
 isolated replay in 12.568 ms mean and 13.118 ms maximum, with no 60 Hz deadline

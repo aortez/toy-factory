@@ -6,6 +6,11 @@ list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(toy_factory)
 
+# Snapshot growth must leave room for transitive renderer and driver calls on
+# the 5 KiB stacks. Emit per-function usage for inspection as well as a build gate.
+set_source_files_properties(src/game_demo.c PROPERTIES
+	COMPILE_OPTIONS "-fstack-usage;-Werror=frame-larger-than=3072")
+
 if(CONFIG_TOY_FACTORY_CORE1_RUNTIME)
 	zephyr_linker_sources(SECTIONS src/core1_ram.ld)
 endif()
@@ -19,6 +24,7 @@ target_sources(app PRIVATE
 	src/fixed_rate_scheduler.c
 	src/game_control.c
 	src/game_demo.c
+	src/garden_world.c
 	src/game_scene_clockwork.c
 	src/game_scene_hourglass.c
 	src/game_scene_marble_machine.c

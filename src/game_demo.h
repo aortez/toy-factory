@@ -123,6 +123,11 @@ struct picosystem_game_demo_stats {
 	uint32_t granular_occupied_grid_cell_count;
 	uint32_t granular_maximum_grid_cell_occupancy;
 	uint32_t granular_passage_count;
+	uint32_t garden_ecology_tick_count;
+	uint32_t garden_manual_action_count;
+	uint32_t garden_auto_decision_count;
+	uint32_t garden_auto_action_count;
+	uint32_t garden_bloom_count;
 	uint32_t focus_angle_turns;
 	int32_t focus_angular_velocity_milliradians_per_second;
 	uint16_t body_count;
@@ -138,6 +143,8 @@ struct picosystem_game_demo_stats {
 	uint16_t granular_particle_count;
 	uint16_t granular_lower_particle_count;
 	uint16_t granular_boundary_count;
+	uint16_t garden_node_count;
+	uint16_t garden_moisture_total;
 	uint16_t focus_body_id;
 	uint16_t focus_x;
 	uint16_t focus_y;
@@ -147,7 +154,10 @@ struct picosystem_game_demo_stats {
 	int16_t focus_velocity_y_pixels_per_second;
 	uint8_t focus_shape;
 	uint8_t solver_iteration_count;
+	uint8_t garden_plant_count;
+	uint8_t garden_selected_tool;
 	uint8_t scene_id;
+	bool garden_auto_gardener_enabled;
 	bool focus_sleeping;
 	bool broad_phase_fallback;
 	int64_t start_uptime_ms;

@@ -27,6 +27,7 @@ static const enum picosystem_game_scene_id selectable_scenes[] = {
 	PICOSYSTEM_GAME_SCENE_CLOCKWORK,
 	PICOSYSTEM_GAME_SCENE_HOURGLASS,
 	PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE,
+	PICOSYSTEM_GAME_SCENE_GARDEN,
 };
 
 const char *picosystem_game_scene_name(enum picosystem_game_scene_id scene_id)
@@ -42,6 +43,8 @@ const char *picosystem_game_scene_name(enum picosystem_game_scene_id scene_id)
 		return "hourglass";
 	case PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE:
 		return "marble-machine";
+	case PICOSYSTEM_GAME_SCENE_GARDEN:
+		return "garden";
 	default:
 		return "unknown";
 	}
@@ -356,6 +359,58 @@ static int reset_hourglass(struct picosystem_game_world *world)
 	return 0;
 }
 
+static void update_garden_focus_proxy(struct picosystem_game_world *world)
+{
+	const uint16_t x =
+		(uint16_t)(PICOSYSTEM_GARDEN_ORIGIN_X_PIXELS +
+			   (world->garden.cursor_column * PICOSYSTEM_GARDEN_CELL_PIXELS) +
+			   (PICOSYSTEM_GARDEN_CELL_PIXELS / 2U));
+	const uint16_t y = (uint16_t)(PICOSYSTEM_GARDEN_CANOPY_TOP_PIXELS +
+				      (world->garden.cursor_row * PICOSYSTEM_GARDEN_CELL_PIXELS) +
+				      (PICOSYSTEM_GARDEN_CELL_PIXELS / 2U));
+	world->focus_proxy = (struct picosystem_physics_body){
+		.center =
+			{
+				.x = PICOSYSTEM_PHYSICS_FIXED_FROM_INT(x),
+				.y = PICOSYSTEM_PHYSICS_FIXED_FROM_INT(y),
+			},
+		.radius = PICOSYSTEM_PHYSICS_FIXED_FROM_INT(2),
+		.id = 2001U,
+		.shape = PICOSYSTEM_PHYSICS_SHAPE_CIRCLE,
+	};
+}
+
+static int reset_garden(struct picosystem_game_world *world)
+{
+	memset(world, 0, sizeof(*world));
+	int err = picosystem_garden_world_reset(&world->garden, UINT32_C(0x67617264));
+	if (err == 0) {
+		err = picosystem_garden_world_plant_seed(&world->garden,
+							 PICOSYSTEM_GARDEN_SPECIES_FLOWER, 4U);
+	}
+	if (err == 0) {
+		err = picosystem_garden_world_plant_seed(&world->garden,
+							 PICOSYSTEM_GARDEN_SPECIES_SHRUB, 13U);
+	}
+	if (err == 0) {
+		err = picosystem_garden_world_plant_seed(
+			&world->garden, PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER, 22U);
+	}
+	for (uint8_t index = 0U; (err == 0) && (index < world->garden.plant_count); ++index) {
+		err = picosystem_garden_world_water(&world->garden,
+						    world->garden.plants[index].base_column, 128U);
+	}
+	if (err != 0) {
+		return err;
+	}
+	world->garden.selected_tool = PICOSYSTEM_GARDEN_TOOL_WATER;
+	world->logic_tick_count = 0U;
+	world->sensor_entry_count = 0U;
+	world->scene_id = PICOSYSTEM_GAME_SCENE_GARDEN;
+	update_garden_focus_proxy(world);
+	return 0;
+}
+
 int picosystem_game_world_reset_scene(struct picosystem_game_world *world,
 				      enum picosystem_game_scene_id scene_id)
 {
@@ -367,6 +422,9 @@ int picosystem_game_world_reset_scene(struct picosystem_game_world *world,
 	}
 	if (scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
 		return reset_hourglass(world);
+	}
+	if (scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		return reset_garden(world);
 	}
 	const struct picosystem_game_scene_config *const scene = scene_config((uint8_t)scene_id);
 	int err = validate_scene_config(scene);
@@ -749,6 +807,21 @@ static int game_world_step(struct picosystem_game_world *world,
 		}
 		return step_granular_world(world, &acceleration, NULL, NULL);
 	}
+	if (world->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		if ((mode != PICOSYSTEM_PHYSICS_STEP_MODE_GRID) || (clock != NULL) ||
+		    (profile != NULL)) {
+			return -ENOTSUP;
+		}
+		const int err = picosystem_garden_world_step_input(
+			&world->garden, input->horizontal, input->vertical);
+		if (err != 0) {
+			return err;
+		}
+		world->logic_tick_count = world->garden.logic_tick_count;
+		world->sensor_entry_count = world->garden.bloom_count;
+		update_garden_focus_proxy(world);
+		return 0;
+	}
 	int err = update_reversing_prismatic_drives(world);
 	if (err != 0) {
 		return err;
@@ -784,6 +857,28 @@ int picosystem_game_world_apply_scene_action(struct picosystem_game_world *world
 	}
 	if ((unsigned int)action >= PICOSYSTEM_GAME_SCENE_ACTION_COUNT) {
 		return -ERANGE;
+	}
+	if (world->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		int err;
+		switch (action) {
+		case PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY:
+			err = picosystem_garden_world_set_auto_gardener(
+				&world->garden, !world->garden.auto_gardener_enabled);
+			break;
+		case PICOSYSTEM_GAME_SCENE_ACTION_USE_TOOL:
+			err = picosystem_garden_world_use_tool(&world->garden);
+			break;
+		case PICOSYSTEM_GAME_SCENE_ACTION_CYCLE_TOOL:
+			err = picosystem_garden_world_cycle_tool(&world->garden);
+			break;
+		default:
+			return -ENOTSUP;
+		}
+		if (err == 0) {
+			world->sensor_entry_count = world->garden.bloom_count;
+			update_garden_focus_proxy(world);
+		}
+		return err;
 	}
 	if (action != PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) {
 		return -ENOTSUP;
@@ -843,6 +938,9 @@ picosystem_game_world_focus_body(const struct picosystem_game_world *world)
 	if (world == NULL) {
 		return NULL;
 	}
+	if (world->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		return &world->focus_proxy;
+	}
 	if (world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
 		return (world->granular.particle_count != 0U) ? &world->focus_proxy : NULL;
 	}
@@ -853,6 +951,7 @@ enum picosystem_game_body_render_style
 picosystem_game_world_body_render_style(const struct picosystem_game_world *world, size_t index)
 {
 	if ((world == NULL) || (world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) ||
+	    (world->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) ||
 	    (index >= world->physics.body_count) || (index >= 16U)) {
 		return PICOSYSTEM_GAME_BODY_RENDER_STYLE_DEFAULT;
 	}
@@ -876,6 +975,10 @@ uint32_t picosystem_game_world_hash(const struct picosystem_game_world *world)
 	if (world->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
 		const uint32_t granular_hash = picosystem_granular_world_hash(&world->granular);
 		return (granular_hash != 0U) ? fnv1a_u32(hash, granular_hash) : 0U;
+	}
+	if (world->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		const uint32_t garden_hash = picosystem_garden_world_hash(&world->garden);
+		return (garden_hash != 0U) ? fnv1a_u32(hash, garden_hash) : 0U;
 	}
 	if ((world->physics.body_count > PICOSYSTEM_PHYSICS_MAX_BODIES) ||
 	    (world->physics.static_segment_count > PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS) ||

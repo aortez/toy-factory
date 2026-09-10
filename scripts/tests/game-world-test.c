@@ -323,6 +323,7 @@ static void test_scene_catalog(void)
 	       0);
 	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE),
 		      "marble-machine") == 0);
+	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_GARDEN), "garden") == 0);
 	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_MACHINE_LAB),
 		      "machine-lab") == 0);
 	assert(strcmp(picosystem_game_scene_name(PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN),
@@ -332,6 +333,7 @@ static void test_scene_catalog(void)
 	assert(picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_CLOCKWORK));
 	assert(picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_HOURGLASS));
 	assert(picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE));
+	assert(picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_GARDEN));
 	assert(!picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_MACHINE_LAB));
 	assert(!picosystem_game_scene_is_selectable(PICOSYSTEM_GAME_SCENE_DIAGNOSTIC_CHAIN));
 
@@ -342,6 +344,8 @@ static void test_scene_catalog(void)
 	assert(next_scene_id == PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE);
 	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_MARBLE_MACHINE, &next_scene_id) ==
 	       0);
+	assert(next_scene_id == PICOSYSTEM_GAME_SCENE_GARDEN);
+	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_GARDEN, &next_scene_id) == 0);
 	assert(next_scene_id == PICOSYSTEM_GAME_SCENE_CLOCKWORK);
 	next_scene_id = PICOSYSTEM_GAME_SCENE_HOURGLASS;
 	assert(picosystem_game_scene_next(PICOSYSTEM_GAME_SCENE_MACHINE_LAB, &next_scene_id) ==
@@ -2037,12 +2041,104 @@ static void test_hourglass_scene_flow_flip_and_replay(void)
 		world.granular.last_work.contact_count);
 }
 
+static void test_garden_scene_tools_auto_and_replay(void)
+{
+	struct picosystem_game_world world;
+	struct picosystem_game_world replay;
+	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_GARDEN) == 0);
+	assert(picosystem_game_world_reset_scene(&replay, PICOSYSTEM_GAME_SCENE_GARDEN) == 0);
+	assert(world.scene_id == PICOSYSTEM_GAME_SCENE_GARDEN);
+	assert(world.garden.plant_count == 3U);
+	assert(world.garden.node_count == 12U);
+	assert(world.garden.selected_tool == PICOSYSTEM_GARDEN_TOOL_WATER);
+	assert(world.garden.moisture_total > 0U);
+	assert(picosystem_game_world_focus_body(&world) != NULL);
+	assert(picosystem_game_world_hash(&world) == picosystem_game_world_hash(&replay));
+
+	assert(picosystem_game_world_apply_scene_action(
+		       &world, PICOSYSTEM_GAME_SCENE_ACTION_USE_TOOL) == 0);
+	assert(picosystem_game_world_apply_scene_action(
+		       &replay, PICOSYSTEM_GAME_SCENE_ACTION_USE_TOOL) == 0);
+	assert(world.garden.manual_action_count == 1U);
+	assert(picosystem_game_world_apply_scene_action(
+		       &world, PICOSYSTEM_GAME_SCENE_ACTION_CYCLE_TOOL) == 0);
+	assert(picosystem_game_world_apply_scene_action(
+		       &replay, PICOSYSTEM_GAME_SCENE_ACTION_CYCLE_TOOL) == 0);
+	assert(world.garden.selected_tool == PICOSYSTEM_GARDEN_TOOL_PRUNE);
+	assert(picosystem_game_world_apply_scene_action(&world,
+							PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == 0);
+	assert(picosystem_game_world_apply_scene_action(&replay,
+							PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == 0);
+	assert(world.garden.auto_gardener_enabled);
+
+	const struct picosystem_game_input neutral = {0};
+	for (uint32_t tick = 0U; tick < 9000U; ++tick) {
+		assert(picosystem_game_world_step(&world, &neutral) == 0);
+		assert(picosystem_game_world_step(&replay, &neutral) == 0);
+		if ((tick % 120U) == 0U) {
+			assert(picosystem_game_world_hash(&world) ==
+			       picosystem_game_world_hash(&replay));
+		}
+	}
+	assert(world.logic_tick_count == world.garden.logic_tick_count);
+	assert(world.sensor_entry_count == world.garden.bloom_count);
+	assert(world.garden.plant_count >= 5U);
+	assert(world.garden.node_count > 100U);
+	assert(world.garden.auto_action_count > 20U);
+	assert(world.garden.bloom_count > 0U);
+	assert(picosystem_game_world_hash(&world) == picosystem_game_world_hash(&replay));
+	fprintf(stderr, "garden scene hash=%08x plants=%u nodes=%u blooms=%u actions=%u\n",
+		picosystem_game_world_hash(&world), world.garden.plant_count,
+		world.garden.node_count, (unsigned int)world.garden.bloom_count,
+		(unsigned int)world.garden.auto_action_count);
+}
+
+static void apply_garden_smoke_sequence(struct picosystem_game_world *world)
+{
+	const struct picosystem_game_input left = {.horizontal = -1};
+	const struct picosystem_game_input neutral = {0};
+	assert(picosystem_game_world_apply_scene_action(
+		       world, PICOSYSTEM_GAME_SCENE_ACTION_USE_TOOL) == 0);
+	assert(picosystem_game_world_apply_scene_action(
+		       world, PICOSYSTEM_GAME_SCENE_ACTION_CYCLE_TOOL) == 0);
+	assert(picosystem_game_world_apply_scene_action(
+		       world, PICOSYSTEM_GAME_SCENE_ACTION_CYCLE_TOOL) == 0);
+	step_many(world, &left, 30U);
+	assert(world->garden.cursor_column == 9U);
+	assert(picosystem_game_world_apply_scene_action(
+		       world, PICOSYSTEM_GAME_SCENE_ACTION_USE_TOOL) == 0);
+	assert(world->garden.plant_count == 4U);
+	assert(picosystem_game_world_apply_scene_action(world,
+							PICOSYSTEM_GAME_SCENE_ACTION_PRIMARY) == 0);
+	step_many(world, &neutral, 900U);
+}
+
+static void test_garden_smoke_sequence(void)
+{
+	struct picosystem_game_world world;
+	struct picosystem_game_world replay;
+	assert(picosystem_game_world_reset_scene(&world, PICOSYSTEM_GAME_SCENE_GARDEN) == 0);
+	assert(picosystem_game_world_reset_scene(&replay, PICOSYSTEM_GAME_SCENE_GARDEN) == 0);
+	apply_garden_smoke_sequence(&world);
+	apply_garden_smoke_sequence(&replay);
+	assert(picosystem_game_world_hash(&world) == picosystem_game_world_hash(&replay));
+	assert(world.logic_tick_count == 930U);
+	assert(world.garden.auto_gardener_enabled);
+	assert(world.garden.plant_count >= 5U);
+	fprintf(stderr, "garden smoke hash=%08x plants=%u nodes=%u blooms=%u cursor=%u,%u\n",
+		picosystem_game_world_hash(&world), world.garden.plant_count,
+		world.garden.node_count, (unsigned int)world.garden.bloom_count,
+		world.garden.cursor_column, world.garden.cursor_row);
+}
+
 int main(void)
 {
 	test_scene_catalog();
 	test_clockwork_scene_is_bounded_and_deterministic();
 	test_marble_machine_scene_is_bounded_and_deterministic();
 	test_hourglass_scene_flow_flip_and_replay();
+	test_garden_scene_tools_auto_and_replay();
+	test_garden_smoke_sequence();
 	test_bounded_motion_contacts_and_saturated_tick();
 	test_canonical_reset_and_golden_replay();
 	test_validation_preserves_state();

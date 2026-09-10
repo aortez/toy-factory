@@ -11,6 +11,7 @@ bash -n scripts/*.sh scripts/container/*.sh scripts/tests/*.sh
 ./scripts/tests/game-scene-selector-test.sh
 ./scripts/tests/physics-world-test.sh
 ./scripts/tests/granular-world-test.sh
+./scripts/tests/garden-world-test.sh
 ./scripts/tests/game-world-test.sh
 ./scripts/tests/mount-uf2-volume-test.sh
 python3 - <<'PY'

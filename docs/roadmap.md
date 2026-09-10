@@ -109,3 +109,4 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Build and physically verify the Hourglass granular-material scene.
 - [x] Add acknowledged runtime scene selection and a short/long Y-button gesture.
 - [x] Build and physically verify the Marble Machine chute and return loop.
+- [x] Build and physically verify the deterministic Garden and auto-gardener.

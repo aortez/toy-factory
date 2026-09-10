@@ -66,21 +66,42 @@ one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
 updates crossed the 16.667 ms budget. The 320-grain population remains normal
 to preserve headroom for additional gameplay.
 
-The image uses 252,316 bytes of the 255 KiB Zephyr RAM region and 242,888 bytes
-of flash, leaving 8,804 bytes of linker RAM plus the separately reserved 8 KiB
-core-1 mailbox/stack area. The conservative image uses 221,820 bytes of Zephyr
-RAM and 237,188 bytes of flash. The fixed granular capacity is 512 particles,
-the immutable render snapshot is 1,128 bytes, and the tagged game-world and
-snapshot unions avoid allocating inactive scene alternatives. Full results are
-in the [Hourglass report](../benchmarks/hourglass/README.md).
+The current image, including Garden, uses 254,860 bytes of the 255 KiB Zephyr
+RAM region and 252,020 bytes of flash, leaving 6,260 bytes of linker RAM plus
+the separately reserved 8 KiB core-1 mailbox/stack area. The conservative image
+uses 222,868 bytes of Zephyr RAM and 246,364 bytes of flash. The fixed granular
+capacity is 512 particles, the fixed Garden capacity is eight plants and 256
+nodes, the immutable render snapshot is 1,640 bytes, and the tagged game-world
+and snapshot unions avoid allocating inactive scene alternatives. Full
+Hourglass results are in the
+[Hourglass report](../benchmarks/hourglass/README.md).
 
 Native tests retain exact replay and complete-drain checks for the 96-, 192-,
-320-, and 384-grain packings. Physical D-pad gravity tilt, X flip, Y reset, A
-redraw, and B tone behavior were also exercised on the PIM559.
+320-, and 384-grain packings. Physical D-pad gravity tilt, X flip, and Y reset
+were exercised on the PIM559. Redraw and tone diagnostics remain available
+through the USB shell; A and B are reserved for scene tools.
 
 Exact USB-controlled replay reproduced tick 360 at hash `a0919f8b` and
 framebuffer CRC-32 `41e4cdd1` after a directional/flip sequence. A 600-tick
 neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
+
+## Current Garden validation
+
+The mixed manual/automatic device sequence reaches tick 930 at the native
+state hash `db601a36` and framebuffer CRC-32 `35a6e809`. Continuing the exact
+replay to a mature 256-node garden reaches tick 3,771 at hash `1d376f84` and
+CRC-32 `8261b674`. Core 0 and core 1 independently reproduce the latter pixels
+and restore the framebuffer after the comparison.
+
+A 2,467-tick full-capacity window held 60.0 Hz simulation and 29.6 fps
+full-frame presentation with backlog one and no skipped or over-budget updates.
+Complete updates averaged 0.616 ms and peaked at 3.623 ms; ecology/model work
+averaged 0.218 ms and peaked at 3.103 ms. Coalescing adjacent equal-color soil
+cells and bypassing interpolation for mature nodes reduced observed raster time
+from 13.2-14.6 ms to 12.7-13.0 ms without changing either device golden. The
+last complete render occupied 31.981 ms, including an 18.387 ms full-frame DMA
+transfer. Main, renderer, and core-1 stack high-water marks were 4,256/5,120,
+3,164/5,120, and 360/4,096 bytes.
 
 ## Current Marble Machine validation
 
@@ -183,12 +204,12 @@ absolute accuracy.
 
 Pimoroni's native implementation drives the GP11 piezo with active-high PWM and
 uses a short positive pulse to limit transducer deflection, with 100 us as its
-maximum-volume pulse. The initial Zephyr test is intentionally quieter: B plays
-440 Hz for 180 ms using a 25 us pulse. A delayed system-work item silences the
-channel independently of the display loop, and initialization explicitly sets
-the pulse width to zero. On the tested PIM559, startup and idle remained silent,
-the tone was clearly audible, and rapid presses safely extended playback only
-until 180 ms after the final press.
+maximum-volume pulse. The Zephyr diagnostic is intentionally quieter:
+`picosystem tone 440 180` plays 440 Hz for 180 ms using a 25 us pulse. A delayed
+system-work item silences the channel independently of the display loop, and
+initialization explicitly sets the pulse width to zero. On the tested PIM559,
+startup and idle remained silent, the tone was clearly audible, and rapid
+requests safely extended playback only until 180 ms after the final request.
 
 ## LCD tearing-effect synchronization
 
@@ -235,12 +256,14 @@ three updates and 10,000 ticks for 60 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation uses Q16.16 positions and publishes a 1,128-byte immutable snapshot
-of up to 12 circle, oriented-box, or capsule bodies, eight physical static
-segments, 16 render-only guide segments, two ropes with up to 12 particles
-each, eight render records each for distance and revolute joints, and one
-canonical box sensor at a deterministic 30 Hz real-time cadence. Physics remains
-at 60 Hz; pause, reset, redraw, and exact-step controls force a current snapshot.
+Simulation publishes a 1,640-byte scene-tagged immutable snapshot. Its rigid
+payload covers up to 12 circle, oriented-box, or capsule bodies, eight physical
+static segments, 16 render-only guide segments, two ropes with up to 12
+particles each, eight render records each for distance and revolute joints, and
+one canonical box sensor. Alternative granular and Garden payloads occupy the
+same union storage. Presentation runs at a deterministic 30 Hz real-time
+cadence while authoritative updates remain at 60 Hz; pause, reset, redraw, and
+exact-step controls force a current snapshot.
 Two slots and a short spin-lock-protected copy prevent the renderer from
 observing partially updated state. A saturated semaphore is only a wake-up
 hint: if two or more simulation states arrive during a panel period, the

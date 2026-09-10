@@ -27,10 +27,12 @@
 #define CLOCKWORK_HEADER_TEXT       "CLOCKWORK 60HZ"
 #define HOURGLASS_HEADER_TEXT       "HOURGLASS 60HZ"
 #define MARBLE_MACHINE_HEADER_TEXT  "MARBLE MACHINE 60HZ"
+#define GARDEN_HEADER_TEXT          "GARDEN 60HZ"
 #define MACHINE_LAB_HEADER_X        22
 #define CLOCKWORK_HEADER_X          34
 #define HOURGLASS_HEADER_X          34
 #define MARBLE_MACHINE_HEADER_X     44
+#define GARDEN_HEADER_X             54
 #define HEADER_TEXT_Y               7
 #define HEADER_TEXT_SCALE           2U
 #define SENSOR_COUNT_TEXT_X         2
@@ -42,10 +44,38 @@
 #define ELEVATOR_PULLEY_OFFSET      12
 #define ELEVATOR_PULLEY_RADIUS      6
 #define ELEVATOR_CLEAT_HALF_WIDTH   8
+#define GARDEN_AUTO_TEXT_X          208
+#define GARDEN_AUTO_TEXT_Y          10
+#define GARDEN_SKY_COLOR            UINT16_C(0x4d3f)
+#define GARDEN_DRY_SOIL_COLOR       UINT16_C(0x51e4)
+#define GARDEN_DAMP_SOIL_COLOR      UINT16_C(0x41e5)
+#define GARDEN_MOIST_SOIL_COLOR     UINT16_C(0x3267)
+#define GARDEN_WET_SOIL_COLOR       UINT16_C(0x22aa)
+#define GARDEN_SATURATED_SOIL_COLOR UINT16_C(0x1aed)
+#define GARDEN_ROOT_COLOR           UINT16_C(0xc3a8)
+#define GARDEN_HORIZON_COLOR        UINT16_C(0x5e48)
 
 static const picosystem_color_t body_colors[] = {
 	PICOSYSTEM_COLOR_YELLOW,  PICOSYSTEM_COLOR_CYAN, PICOSYSTEM_COLOR_GREEN,
 	PICOSYSTEM_COLOR_MAGENTA, PICOSYSTEM_COLOR_RED,  PICOSYSTEM_COLOR_WHITE,
+};
+
+static const picosystem_color_t garden_stem_colors[PICOSYSTEM_GARDEN_SPECIES_COUNT] = {
+	[PICOSYSTEM_GARDEN_SPECIES_FLOWER] = UINT16_C(0x4e69),
+	[PICOSYSTEM_GARDEN_SPECIES_SHRUB] = UINT16_C(0x2d86),
+	[PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER] = UINT16_C(0x7e68),
+};
+
+static const picosystem_color_t garden_leaf_colors[PICOSYSTEM_GARDEN_SPECIES_COUNT] = {
+	[PICOSYSTEM_GARDEN_SPECIES_FLOWER] = UINT16_C(0x57e8),
+	[PICOSYSTEM_GARDEN_SPECIES_SHRUB] = UINT16_C(0x2626),
+	[PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER] = UINT16_C(0x87e0),
+};
+
+static const picosystem_color_t garden_flower_colors[PICOSYSTEM_GARDEN_SPECIES_COUNT] = {
+	[PICOSYSTEM_GARDEN_SPECIES_FLOWER] = PICOSYSTEM_COLOR_MAGENTA,
+	[PICOSYSTEM_GARDEN_SPECIES_SHRUB] = PICOSYSTEM_COLOR_YELLOW,
+	[PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER] = PICOSYSTEM_COLOR_CYAN,
 };
 
 /* One turn is quantized into 64 render phases and interpolated across this 16-way table. */
@@ -113,6 +143,39 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 		}
 		return 0;
 	}
+	if (snapshot->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		const struct picosystem_scene_garden_payload *const garden =
+			&snapshot->payload.garden;
+		if ((snapshot->body_count != 0U) || (snapshot->static_segment_count != 0U) ||
+		    (snapshot->distance_joint_count != 0U) ||
+		    (snapshot->revolute_joint_count != 0U) || (snapshot->box_sensor_count != 0U) ||
+		    (snapshot->rope_count != 0U) || (snapshot->granular_particle_count != 0U) ||
+		    (garden->node_count > PICOSYSTEM_GARDEN_MAX_NODES) ||
+		    (garden->plant_count > PICOSYSTEM_GARDEN_MAX_PLANTS) ||
+		    (garden->cursor_column >= PICOSYSTEM_GARDEN_GRID_COLUMNS) ||
+		    (garden->cursor_row >= PICOSYSTEM_GARDEN_CURSOR_ROWS) ||
+		    (garden->selected_tool >= PICOSYSTEM_GARDEN_TOOL_COUNT) ||
+		    (garden->auto_target_column >= PICOSYSTEM_GARDEN_GRID_COLUMNS) ||
+		    (garden->auto_target_row >= PICOSYSTEM_GARDEN_CURSOR_ROWS) ||
+		    (garden->auto_target_tool >= PICOSYSTEM_GARDEN_TOOL_COUNT) ||
+		    (garden->auto_gardener_enabled > 1U) || (garden->auto_target_valid > 1U)) {
+			return -ERANGE;
+		}
+		for (uint16_t index = 0U; index < garden->node_count; ++index) {
+			const struct picosystem_scene_garden_node *const node =
+				&garden->nodes[index];
+			if (((node->style & (uint8_t)~PICOSYSTEM_SCENE_GARDEN_STYLE_VALID_MASK) !=
+			     0U) ||
+			    ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK) >=
+			     PICOSYSTEM_GARDEN_SPECIES_COUNT) ||
+			    (node->x >= PICOSYSTEM_GRAPHICS_WIDTH) ||
+			    (node->y >= PICOSYSTEM_GRAPHICS_HEIGHT) ||
+			    ((node->parent_distance != 0U) && (node->parent_distance > index))) {
+				return -ERANGE;
+			}
+		}
+		return 0;
+	}
 
 	const struct picosystem_scene_rigid_payload *const rigid = &snapshot->payload.rigid;
 	const uint32_t valid_segment_mask =
@@ -175,6 +238,24 @@ render_playfield_background(const struct picosystem_scene_snapshot *snapshot,
 	if (snapshot->scene_id == PICOSYSTEM_GAME_SCENE_HOURGLASS) {
 		picosystem_graphics_fill_rect(left, top, right - left, bottom - top,
 					      PICOSYSTEM_COLOR_NAVY);
+		return;
+	}
+	if (snapshot->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		const uint16_t sky_bottom = MIN(bottom, PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS);
+		if (top < sky_bottom) {
+			picosystem_graphics_fill_rect(left, top, right - left, sky_bottom - top,
+						      GARDEN_SKY_COLOR);
+		}
+		const uint16_t soil_top = MAX(top, PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS);
+		if (soil_top < bottom) {
+			picosystem_graphics_fill_rect(left, soil_top, right - left,
+						      bottom - soil_top, GARDEN_DRY_SOIL_COLOR);
+		}
+		if ((top <= PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS) &&
+		    (bottom > PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS)) {
+			picosystem_graphics_fill_rect(left, PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS - 1U,
+						      right - left, 2U, GARDEN_HORIZON_COLOR);
+		}
 		return;
 	}
 
@@ -791,6 +872,191 @@ render_box_sensors(const struct picosystem_scene_snapshot *snapshot,
 	}
 }
 
+static PICOSYSTEM_RENDER_RAMFUNC picosystem_color_t garden_moisture_color(uint8_t moisture)
+{
+	if (moisture >= 192U) {
+		return GARDEN_SATURATED_SOIL_COLOR;
+	}
+	if (moisture >= 112U) {
+		return GARDEN_WET_SOIL_COLOR;
+	}
+	if (moisture >= 48U) {
+		return GARDEN_MOIST_SOIL_COLOR;
+	}
+	return (moisture >= 12U) ? GARDEN_DAMP_SOIL_COLOR : GARDEN_DRY_SOIL_COLOR;
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC int16_t garden_interpolate(uint8_t start, uint8_t end,
+							    uint8_t progress)
+{
+	return (int16_t)((int32_t)start + (((int32_t)end - start) * progress) / UINT8_MAX);
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC int
+render_garden_leaf(const struct picosystem_scene_garden_node *node, uint8_t species, int16_t x,
+		   int16_t y, const struct picosystem_rect *clip)
+{
+	if (((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_LEAF) == 0U) ||
+	    (node->growth_progress < 96U)) {
+		return 0;
+	}
+	const uint16_t radius = (species == PICOSYSTEM_GARDEN_SPECIES_SHRUB) ? 3U : 2U;
+	return picosystem_graphics_fill_circle_clipped(clip, x, y, radius,
+						       garden_leaf_colors[species]);
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC int
+render_garden_flower(const struct picosystem_scene_garden_node *node, uint8_t species, int16_t x,
+		     int16_t y, const struct picosystem_rect *clip)
+{
+	if ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_FLOWER) == 0U) {
+		return 0;
+	}
+	int err = picosystem_graphics_fill_circle_clipped(clip, x, y, 3U,
+							  garden_flower_colors[species]);
+	if (err == 0) {
+		err = picosystem_graphics_fill_circle_clipped(clip, x, y, 1U,
+							      PICOSYSTEM_COLOR_YELLOW);
+	}
+	return err;
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC picosystem_color_t garden_tool_color(uint8_t tool)
+{
+	switch (tool) {
+	case PICOSYSTEM_GARDEN_TOOL_FLOWER_SEED:
+		return garden_flower_colors[PICOSYSTEM_GARDEN_SPECIES_FLOWER];
+	case PICOSYSTEM_GARDEN_TOOL_SHRUB_SEED:
+		return garden_flower_colors[PICOSYSTEM_GARDEN_SPECIES_SHRUB];
+	case PICOSYSTEM_GARDEN_TOOL_GROUND_COVER_SEED:
+		return garden_flower_colors[PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER];
+	case PICOSYSTEM_GARDEN_TOOL_WATER:
+		return PICOSYSTEM_COLOR_CYAN;
+	case PICOSYSTEM_GARDEN_TOOL_PRUNE:
+		return PICOSYSTEM_COLOR_RED;
+	default:
+		return PICOSYSTEM_COLOR_WHITE;
+	}
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC void
+render_garden_cursor(const struct picosystem_scene_garden_payload *garden,
+		     const struct picosystem_rect *clip)
+{
+	const int16_t left = (int16_t)(PICOSYSTEM_GARDEN_ORIGIN_X_PIXELS +
+				       (garden->cursor_column * PICOSYSTEM_GARDEN_CELL_PIXELS));
+	const int16_t top = (int16_t)(PICOSYSTEM_GARDEN_CANOPY_TOP_PIXELS +
+				      (garden->cursor_row * PICOSYSTEM_GARDEN_CELL_PIXELS));
+	const int16_t right = left + PICOSYSTEM_GARDEN_CELL_PIXELS - 1;
+	const int16_t bottom = top + PICOSYSTEM_GARDEN_CELL_PIXELS - 1;
+	const picosystem_color_t color = garden_tool_color(garden->selected_tool);
+	picosystem_graphics_draw_line_clipped(clip, left, top, right, top, color);
+	picosystem_graphics_draw_line_clipped(clip, right, top, right, bottom, color);
+	picosystem_graphics_draw_line_clipped(clip, right, bottom, left, bottom, color);
+	picosystem_graphics_draw_line_clipped(clip, left, bottom, left, top, color);
+	picosystem_graphics_fill_rect_clipped(clip, left + 3, top + 3, 2U, 2U, color);
+
+	if (garden->auto_target_valid == 0U) {
+		return;
+	}
+	const int16_t target_x =
+		(int16_t)(PICOSYSTEM_GARDEN_ORIGIN_X_PIXELS +
+			  (garden->auto_target_column * PICOSYSTEM_GARDEN_CELL_PIXELS) +
+			  (PICOSYSTEM_GARDEN_CELL_PIXELS / 2U));
+	const int16_t target_y =
+		(int16_t)(PICOSYSTEM_GARDEN_CANOPY_TOP_PIXELS +
+			  (garden->auto_target_row * PICOSYSTEM_GARDEN_CELL_PIXELS) +
+			  (PICOSYSTEM_GARDEN_CELL_PIXELS / 2U));
+	picosystem_graphics_draw_line_clipped(clip, target_x - 2, target_y, target_x + 2, target_y,
+					      PICOSYSTEM_COLOR_MAGENTA);
+	picosystem_graphics_draw_line_clipped(clip, target_x, target_y - 2, target_x, target_y + 2,
+					      PICOSYSTEM_COLOR_MAGENTA);
+}
+
+static PICOSYSTEM_RENDER_RAMFUNC int
+render_garden(const struct picosystem_scene_snapshot *snapshot, const struct picosystem_rect *clip,
+	      struct picosystem_scene_render_progress *progress)
+{
+	if (snapshot->scene_id != PICOSYSTEM_GAME_SCENE_GARDEN) {
+		return 0;
+	}
+	const struct picosystem_scene_garden_payload *const garden = &snapshot->payload.garden;
+	for (uint8_t row = 0U; row < PICOSYSTEM_GARDEN_SOIL_ROWS; ++row) {
+		const int16_t top = (int16_t)(PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS +
+					      (row * PICOSYSTEM_GARDEN_CELL_PIXELS));
+		if ((clip != NULL) && ((top >= (int32_t)clip->y + clip->height) ||
+				       ((top + PICOSYSTEM_GARDEN_CELL_PIXELS) <= clip->y))) {
+			continue;
+		}
+		for (uint8_t column = 0U; column < PICOSYSTEM_GARDEN_GRID_COLUMNS;) {
+			const uint16_t index =
+				(uint16_t)(((uint16_t)row * PICOSYSTEM_GARDEN_GRID_COLUMNS) +
+					   column);
+			const picosystem_color_t color =
+				garden_moisture_color(garden->moisture[index]);
+			uint8_t end_column = (uint8_t)(column + 1U);
+			while ((end_column < PICOSYSTEM_GARDEN_GRID_COLUMNS) &&
+			       (garden_moisture_color(
+					garden->moisture[index + end_column - column]) == color)) {
+				++end_column;
+			}
+			update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GARDEN, index,
+					PICOSYSTEM_SCENE_RENDER_PRIMITIVE_FILL_0);
+			picosystem_graphics_fill_rect_clipped(
+				clip,
+				(int16_t)(PICOSYSTEM_GARDEN_ORIGIN_X_PIXELS +
+					  (column * PICOSYSTEM_GARDEN_CELL_PIXELS)),
+				top,
+				(uint16_t)((end_column - column) * PICOSYSTEM_GARDEN_CELL_PIXELS),
+				PICOSYSTEM_GARDEN_CELL_PIXELS, color);
+			column = end_column;
+		}
+	}
+
+	for (uint16_t index = 0U; index < garden->node_count; ++index) {
+		const struct picosystem_scene_garden_node *const node = &garden->nodes[index];
+		const uint8_t species = node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK;
+		int16_t rendered_x = node->x;
+		int16_t rendered_y = node->y;
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GARDEN, index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_OUTLINE);
+		if (node->parent_distance != 0U) {
+			const struct picosystem_scene_garden_node *const parent =
+				&garden->nodes[index - node->parent_distance];
+			if (node->growth_progress != UINT8_MAX) {
+				rendered_x = garden_interpolate(parent->x, node->x,
+								node->growth_progress);
+				rendered_y = garden_interpolate(parent->y, node->y,
+								node->growth_progress);
+			}
+			const picosystem_color_t segment_color =
+				((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_ROOT) != 0U)
+					? GARDEN_ROOT_COLOR
+					: garden_stem_colors[species];
+			picosystem_graphics_draw_line_clipped(
+				clip, parent->x, parent->y, rendered_x, rendered_y, segment_color);
+		}
+
+		int err = render_garden_leaf(node, species, rendered_x, rendered_y, clip);
+		if (err == 0) {
+			err = render_garden_flower(node, species, rendered_x, rendered_y, clip);
+		}
+		if (err != 0) {
+			return err;
+		}
+		if ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_PRUNED) != 0U) {
+			picosystem_graphics_draw_line_clipped(clip, rendered_x - 2, rendered_y - 2,
+							      rendered_x + 2, rendered_y + 2,
+							      PICOSYSTEM_COLOR_RED);
+			picosystem_graphics_draw_line_clipped(clip, rendered_x + 2, rendered_y - 2,
+							      rendered_x - 2, rendered_y + 2,
+							      PICOSYSTEM_COLOR_RED);
+		}
+	}
+	render_garden_cursor(garden, clip);
+	return 0;
+}
+
 static PICOSYSTEM_RENDER_RAMFUNC int render_header(const struct picosystem_scene_snapshot *snapshot,
 						   const struct picosystem_rect *clip)
 {
@@ -811,6 +1077,11 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_header(const struct picosystem_scene
 		header_text = MARBLE_MACHINE_HEADER_TEXT;
 		header_x = MARBLE_MACHINE_HEADER_X;
 		counter_prefix = 'M';
+		break;
+	case PICOSYSTEM_GAME_SCENE_GARDEN:
+		header_text = GARDEN_HEADER_TEXT;
+		header_x = GARDEN_HEADER_X;
+		counter_prefix = 'F';
 		break;
 	default:
 		break;
@@ -839,13 +1110,25 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_header(const struct picosystem_scene
 		'\0',
 	};
 	if (clip == NULL) {
-		return picosystem_graphics_draw_text(
+		err = picosystem_graphics_draw_text(
 			SENSOR_COUNT_TEXT_X, SENSOR_COUNT_TEXT_Y, count_text, SENSOR_COUNT_SCALE,
 			hourglass ? PICOSYSTEM_COLOR_YELLOW : PICOSYSTEM_COLOR_GREEN);
+	} else {
+		err = picosystem_graphics_draw_text_clipped(
+			clip, SENSOR_COUNT_TEXT_X, SENSOR_COUNT_TEXT_Y, count_text,
+			SENSOR_COUNT_SCALE,
+			hourglass ? PICOSYSTEM_COLOR_YELLOW : PICOSYSTEM_COLOR_GREEN);
 	}
-	return picosystem_graphics_draw_text_clipped(
-		clip, SENSOR_COUNT_TEXT_X, SENSOR_COUNT_TEXT_Y, count_text, SENSOR_COUNT_SCALE,
-		hourglass ? PICOSYSTEM_COLOR_YELLOW : PICOSYSTEM_COLOR_GREEN);
+	if ((err != 0) || (snapshot->scene_id != PICOSYSTEM_GAME_SCENE_GARDEN) ||
+	    (snapshot->payload.garden.auto_gardener_enabled == 0U)) {
+		return err;
+	}
+	if (clip == NULL) {
+		return picosystem_graphics_draw_text(GARDEN_AUTO_TEXT_X, GARDEN_AUTO_TEXT_Y, "AUTO",
+						     1U, PICOSYSTEM_COLOR_CYAN);
+	}
+	return picosystem_graphics_draw_text_clipped(clip, GARDEN_AUTO_TEXT_X, GARDEN_AUTO_TEXT_Y,
+						     "AUTO", 1U, PICOSYSTEM_COLOR_CYAN);
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC void
@@ -1075,9 +1358,15 @@ picosystem_scene_render_full_observed(const struct picosystem_scene_snapshot *sn
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	render_playfield_background(snapshot, &playfield);
+	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GARDEN, 0U,
+			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
+	int err = render_garden(snapshot, NULL, progress);
+	if (err != 0) {
+		return err;
+	}
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GRANULES, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
-	int err = render_granules(snapshot, NULL, progress);
+	err = render_granules(snapshot, NULL, progress);
 	if (err != 0) {
 		return err;
 	}
@@ -1142,9 +1431,15 @@ picosystem_scene_render_region_observed(const struct picosystem_scene_snapshot *
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
 	render_playfield_background(snapshot, region);
+	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GARDEN, 0U,
+			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
+	int err = render_garden(snapshot, region, progress);
+	if (err != 0) {
+		return err;
+	}
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GRANULES, 0U,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_NONE);
-	int err = render_granules(snapshot, region, progress);
+	err = render_granules(snapshot, region, progress);
 	if (err != 0) {
 		return err;
 	}
@@ -1198,6 +1493,8 @@ const char *picosystem_scene_render_stage_name(enum picosystem_scene_render_stag
 		return "clear";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_BACKGROUND:
 		return "background";
+	case PICOSYSTEM_SCENE_RENDER_STAGE_GARDEN:
+		return "garden";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_GRANULES:
 		return "granules";
 	case PICOSYSTEM_SCENE_RENDER_STAGE_BOX_SENSORS:
