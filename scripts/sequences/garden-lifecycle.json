@@ -1,5 +1,5 @@
 {
-  "name": "garden-established-lifecycle",
+  "name": "garden-death-decomposition-reclamation",
   "scene": "garden",
   "steps": [
     {"action": "use-tool"},
@@ -7,11 +7,10 @@
     {"action": "cycle-tool"},
     {"input": "left", "ticks": 30},
     {"action": "use-tool"},
-    {"action": "primary"},
-    {"input": "none", "ticks": 3741}
+    {"input": "none", "ticks": 3300}
   ],
   "expect": {
-    "hash": "9e3bb3f8",
-    "framebuffer_crc32": "09272e48"
+    "hash": "7febdb8c",
+    "framebuffer_crc32": "818cee96"
   }
 }

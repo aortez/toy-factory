@@ -128,6 +128,9 @@ struct picosystem_game_demo_stats {
 	uint32_t garden_auto_decision_count;
 	uint32_t garden_auto_action_count;
 	uint32_t garden_bloom_count;
+	uint32_t garden_death_count;
+	uint32_t garden_reclaimed_plant_count;
+	uint32_t garden_reclaimed_node_count;
 	uint32_t focus_angle_turns;
 	int32_t focus_angular_velocity_milliradians_per_second;
 	uint16_t body_count;
@@ -155,6 +158,8 @@ struct picosystem_game_demo_stats {
 	uint8_t focus_shape;
 	uint8_t solver_iteration_count;
 	uint8_t garden_plant_count;
+	uint8_t garden_living_plant_count;
+	uint8_t garden_dead_plant_count;
 	uint8_t garden_selected_tool;
 	uint8_t scene_id;
 	bool garden_auto_gardener_enabled;

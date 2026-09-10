@@ -13,8 +13,7 @@
 #include "garden_light.h"
 #include "scene_renderer.h"
 
-#define PICOSYSTEM_GARDEN_LEAF_VISIBLE_PROGRESS 96U
-#define PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS     4U
+#define PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS 4U
 
 enum picosystem_garden_moisture_band {
 	PICOSYSTEM_GARDEN_MOISTURE_DRY,
@@ -89,6 +88,10 @@ picosystem_garden_node_visual_bounds(const struct picosystem_scene_garden_payloa
 				     uint16_t index, struct picosystem_rect *bounds)
 {
 	const struct picosystem_scene_garden_node *const node = &garden->nodes[index];
+	const bool dead = (node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD) != 0U;
+	if (dead && (node->growth_progress == 0U)) {
+		return false;
+	}
 	int32_t left = node->x;
 	int32_t right = node->x;
 	int32_t top = node->y;
@@ -107,10 +110,11 @@ picosystem_garden_node_visual_bounds(const struct picosystem_scene_garden_payloa
 
 	int32_t margin = 0;
 	if (((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_LEAF) != 0U) &&
-	    (node->growth_progress >= PICOSYSTEM_GARDEN_LEAF_VISIBLE_PROGRESS)) {
+	    (node->growth_progress >= (dead ? 1U : PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS))) {
 		margin = 3;
 	}
-	if ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_FLOWER) != 0U) {
+	if (((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_FLOWER) != 0U) &&
+	    (node->growth_progress >= (dead ? 1U : PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS))) {
 		margin = 3;
 	}
 	if ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_PRUNED) != 0U) {

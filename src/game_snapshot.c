@@ -197,8 +197,10 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 				}
 				parent_distance = (uint8_t)distance;
 			}
-			uint8_t style = garden_world->plants[source->plant_index].species_id &
-					PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK;
+			const struct picosystem_garden_plant *const plant =
+				&garden_world->plants[source->plant_index];
+			uint8_t style =
+				plant->species_id & PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK;
 			if (source->kind == PICOSYSTEM_GARDEN_NODE_ROOT) {
 				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_ROOT;
 			}
@@ -211,8 +213,11 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 			if ((source->flags & PICOSYSTEM_GARDEN_NODE_PRUNED) != 0U) {
 				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_PRUNED;
 			}
-			if ((source->flags & PICOSYSTEM_GARDEN_NODE_TIP) != 0U) {
-				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_TIP;
+			if (plant->stress > 0U) {
+				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_STRESSED;
+			}
+			if ((plant->flags & PICOSYSTEM_GARDEN_PLANT_DEAD) != 0U) {
+				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD;
 			}
 			garden->nodes[index] = (struct picosystem_scene_garden_node){
 				.x = source->x,

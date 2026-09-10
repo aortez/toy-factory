@@ -30,6 +30,9 @@
 #define PICOSYSTEM_GARDEN_NODE_NONE                 UINT16_MAX
 #define PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR      15U
 #define PICOSYSTEM_GARDEN_NODE_GROWTH_TICKS         12U
+#define PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS      96U
+#define PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR  4U
+#define PICOSYSTEM_GARDEN_STRESS_DEATH_THRESHOLD    8U
 #define PICOSYSTEM_GARDEN_AUTO_CURSOR_TICK_DIVISOR  4U
 #define PICOSYSTEM_GARDEN_CURSOR_REPEAT_DELAY_TICKS 10U
 #define PICOSYSTEM_GARDEN_CURSOR_REPEAT_RATE_TICKS  4U
@@ -54,6 +57,21 @@ enum picosystem_garden_node_flag {
 	PICOSYSTEM_GARDEN_NODE_PRUNED = 1U << 3,
 	PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING = 1U << 4,
 };
+
+#define PICOSYSTEM_GARDEN_NODE_VALID_FLAGS                                                         \
+	(PICOSYSTEM_GARDEN_NODE_TIP | PICOSYSTEM_GARDEN_NODE_LEAF |                                \
+	 PICOSYSTEM_GARDEN_NODE_FLOWER | PICOSYSTEM_GARDEN_NODE_PRUNED |                           \
+	 PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING)
+
+enum picosystem_garden_plant_flag {
+	PICOSYSTEM_GARDEN_PLANT_DEAD = 1U << 0,
+	PICOSYSTEM_GARDEN_PLANT_ENERGY_SHORTAGE = 1U << 1,
+	PICOSYSTEM_GARDEN_PLANT_WATER_SHORTAGE = 1U << 2,
+};
+
+#define PICOSYSTEM_GARDEN_PLANT_VALID_FLAGS                                                        \
+	(PICOSYSTEM_GARDEN_PLANT_DEAD | PICOSYSTEM_GARDEN_PLANT_ENERGY_SHORTAGE |                  \
+	 PICOSYSTEM_GARDEN_PLANT_WATER_SHORTAGE)
 
 enum picosystem_garden_tool {
 	PICOSYSTEM_GARDEN_TOOL_FLOWER_SEED,
@@ -91,6 +109,10 @@ struct picosystem_garden_plant {
 	uint8_t species_id;
 	int8_t lean;
 	int8_t vigor;
+	uint8_t stress;
+	uint8_t flags;
+	uint8_t last_energy_income;
+	uint8_t last_water_income;
 };
 
 /* Caller-owned fixed-capacity state; no garden operation allocates memory. */
@@ -106,6 +128,9 @@ struct picosystem_garden_world {
 	uint32_t auto_decision_count;
 	uint32_t auto_action_count;
 	uint32_t bloom_count;
+	uint32_t death_count;
+	uint32_t reclaimed_plant_count;
+	uint32_t reclaimed_node_count;
 	uint16_t node_count;
 	uint16_t moisture_total;
 	uint8_t plant_count;
@@ -163,6 +188,9 @@ picosystem_garden_world_node_at(const struct picosystem_garden_world *world, siz
 
 const struct picosystem_garden_plant *
 picosystem_garden_world_plant_at(const struct picosystem_garden_world *world, size_t index);
+
+uint8_t picosystem_garden_world_living_plant_count(const struct picosystem_garden_world *world);
+uint8_t picosystem_garden_world_dead_plant_count(const struct picosystem_garden_world *world);
 
 /* Hash persistent and presentation-visible state without structure padding. */
 uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *world);

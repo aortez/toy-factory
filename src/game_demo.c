@@ -1198,9 +1198,15 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		stats->garden_auto_decision_count = garden->auto_decision_count;
 		stats->garden_auto_action_count = garden->auto_action_count;
 		stats->garden_bloom_count = garden->bloom_count;
+		stats->garden_death_count = garden->death_count;
+		stats->garden_reclaimed_plant_count = garden->reclaimed_plant_count;
+		stats->garden_reclaimed_node_count = garden->reclaimed_node_count;
 		stats->garden_node_count = garden->node_count;
 		stats->garden_moisture_total = garden->moisture_total;
 		stats->garden_plant_count = garden->plant_count;
+		stats->garden_living_plant_count =
+			picosystem_garden_world_living_plant_count(garden);
+		stats->garden_dead_plant_count = picosystem_garden_world_dead_plant_count(garden);
 		stats->garden_selected_tool = garden->selected_tool;
 		stats->garden_auto_gardener_enabled = garden->auto_gardener_enabled;
 		return 0;

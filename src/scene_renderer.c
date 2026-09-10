@@ -54,6 +54,13 @@
 #define GARDEN_SATURATED_SOIL_COLOR UINT16_C(0x1aed)
 #define GARDEN_ROOT_COLOR           UINT16_C(0xc3a8)
 #define GARDEN_HORIZON_COLOR        UINT16_C(0x5e48)
+#define GARDEN_STRESSED_STEM_COLOR  UINT16_C(0x9c66)
+#define GARDEN_STRESSED_LEAF_COLOR  UINT16_C(0xb5a4)
+#define GARDEN_STRESSED_ROOT_COLOR  UINT16_C(0xa366)
+#define GARDEN_DEAD_STEM_COLOR      UINT16_C(0x6a65)
+#define GARDEN_DEAD_LEAF_COLOR      UINT16_C(0x7ae7)
+#define GARDEN_DEAD_ROOT_COLOR      UINT16_C(0x6245)
+#define GARDEN_DEAD_FLOWER_COLOR    UINT16_C(0x8b28)
 
 static const picosystem_color_t body_colors[] = {
 	PICOSYSTEM_COLOR_YELLOW,  PICOSYSTEM_COLOR_CYAN, PICOSYSTEM_COLOR_GREEN,
@@ -922,25 +929,35 @@ static PICOSYSTEM_RENDER_RAMFUNC int
 render_garden_leaf(const struct picosystem_scene_garden_node *node, uint8_t species, int16_t x,
 		   int16_t y, const struct picosystem_rect *clip)
 {
+	const bool dead = (node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD) != 0U;
+	const uint8_t visible_progress = dead ? 1U : PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS;
 	if (((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_LEAF) == 0U) ||
-	    (node->growth_progress < PICOSYSTEM_GARDEN_LEAF_VISIBLE_PROGRESS)) {
+	    (node->growth_progress < visible_progress)) {
 		return 0;
 	}
 	const uint16_t radius = (species == PICOSYSTEM_GARDEN_SPECIES_SHRUB) ? 3U : 2U;
-	return picosystem_graphics_fill_circle_clipped(clip, x, y, radius,
-						       garden_leaf_colors[species]);
+	const picosystem_color_t color =
+		dead ? GARDEN_DEAD_LEAF_COLOR
+		     : (((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_STRESSED) != 0U)
+				? GARDEN_STRESSED_LEAF_COLOR
+				: garden_leaf_colors[species]);
+	return picosystem_graphics_fill_circle_clipped(clip, x, y, radius, color);
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC int
 render_garden_flower(const struct picosystem_scene_garden_node *node, uint8_t species, int16_t x,
 		     int16_t y, const struct picosystem_rect *clip)
 {
-	if ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_FLOWER) == 0U) {
+	const bool dead = (node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD) != 0U;
+	const uint8_t visible_progress = dead ? 1U : PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS;
+	if (((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_FLOWER) == 0U) ||
+	    (node->growth_progress < visible_progress)) {
 		return 0;
 	}
-	int err = picosystem_graphics_fill_circle_clipped(clip, x, y, 3U,
-							  garden_flower_colors[species]);
-	if (err == 0) {
+	const picosystem_color_t color =
+		dead ? GARDEN_DEAD_FLOWER_COLOR : garden_flower_colors[species];
+	int err = picosystem_graphics_fill_circle_clipped(clip, x, y, 3U, color);
+	if ((err == 0) && !dead) {
 		err = picosystem_graphics_fill_circle_clipped(clip, x, y, 1U,
 							      PICOSYSTEM_COLOR_YELLOW);
 	}
@@ -1041,6 +1058,10 @@ render_garden(const struct picosystem_scene_snapshot *snapshot, const struct pic
 
 	for (uint16_t index = 0U; index < garden->node_count; ++index) {
 		const struct picosystem_scene_garden_node *const node = &garden->nodes[index];
+		const bool dead = (node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD) != 0U;
+		if (dead && (node->growth_progress == 0U)) {
+			continue;
+		}
 		if (clip != NULL) {
 			struct picosystem_rect bounds;
 			if (!picosystem_garden_node_visual_bounds(garden, index, &bounds) ||
@@ -1056,16 +1077,22 @@ render_garden(const struct picosystem_scene_snapshot *snapshot, const struct pic
 		if (node->parent_distance != 0U) {
 			const struct picosystem_scene_garden_node *const parent =
 				&garden->nodes[index - node->parent_distance];
-			if (node->growth_progress != UINT8_MAX) {
+			if (!dead && (node->growth_progress != UINT8_MAX)) {
 				rendered_x = garden_interpolate(parent->x, node->x,
 								node->growth_progress);
 				rendered_y = garden_interpolate(parent->y, node->y,
 								node->growth_progress);
 			}
-			const picosystem_color_t segment_color =
-				((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_ROOT) != 0U)
-					? GARDEN_ROOT_COLOR
-					: garden_stem_colors[species];
+			const bool root = (node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_ROOT) != 0U;
+			picosystem_color_t segment_color =
+				root ? GARDEN_ROOT_COLOR : garden_stem_colors[species];
+			if (dead) {
+				segment_color =
+					root ? GARDEN_DEAD_ROOT_COLOR : GARDEN_DEAD_STEM_COLOR;
+			} else if ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_STRESSED) != 0U) {
+				segment_color = root ? GARDEN_STRESSED_ROOT_COLOR
+						     : GARDEN_STRESSED_STEM_COLOR;
+			}
 			picosystem_graphics_draw_line_clipped(
 				clip, parent->x, parent->y, rendered_x, rendered_y, segment_color);
 		}
@@ -1077,7 +1104,7 @@ render_garden(const struct picosystem_scene_snapshot *snapshot, const struct pic
 		if (err != 0) {
 			return err;
 		}
-		if ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_PRUNED) != 0U) {
+		if (!dead && ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_PRUNED) != 0U)) {
 			picosystem_graphics_draw_line_clipped(clip, rendered_x - 2, rendered_y - 2,
 							      rendered_x + 2, rendered_y + 2,
 							      PICOSYSTEM_COLOR_RED);

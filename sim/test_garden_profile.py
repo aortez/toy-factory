@@ -10,9 +10,44 @@ import subprocess
 
 
 EXPECTED_CHECKPOINTS = {
-    "initial": (0, "4d2f4270", "c515c869"),
-    "growing": (930, "de69461d", "7cf1bee7"),
-    "mature": (3771, "f5df2b20", "0008203d"),
+    "initial": (0, "41a06084", "c515c869"),
+    "growing": (930, "f089ee50", "e732b744"),
+    "mature": (3771, "9e3bb3f8", "09272e48"),
+}
+EXPECTED_STATE = {
+    "initial": {
+        "plants": 3,
+        "living": 3,
+        "dead": 0,
+        "nodes": 12,
+        "blooms": 0,
+        "deaths": 0,
+        "reclaimed_plants": 0,
+        "reclaimed_nodes": 0,
+        "moisture": 1536,
+    },
+    "growing": {
+        "plants": 5,
+        "living": 5,
+        "dead": 0,
+        "nodes": 147,
+        "blooms": 3,
+        "deaths": 0,
+        "reclaimed_plants": 0,
+        "reclaimed_nodes": 0,
+        "moisture": 3991,
+    },
+    "mature": {
+        "plants": 5,
+        "living": 5,
+        "dead": 0,
+        "nodes": 190,
+        "blooms": 11,
+        "deaths": 1,
+        "reclaimed_plants": 1,
+        "reclaimed_nodes": 34,
+        "moisture": 3856,
+    },
 }
 TIMING_NAMES = ("ordinary_step", "ecology_step", "snapshot", "raster")
 PRESENTATION_RATES = {30, 10, 4}
@@ -76,6 +111,27 @@ def validate_profile(profile: object) -> None:
             raise RuntimeError(f"{name} state hash changed")
         if scenario.get("framebuffer_crc32") != framebuffer_crc:
             raise RuntimeError(f"{name} framebuffer CRC changed")
+
+        state = scenario.get("state")
+        if not isinstance(state, dict):
+            raise RuntimeError(f"{name} has no state counts")
+        for count_name in (
+            "plants",
+            "living",
+            "dead",
+            "nodes",
+            "blooms",
+            "deaths",
+            "reclaimed_plants",
+            "reclaimed_nodes",
+            "moisture",
+        ):
+            if not isinstance(state.get(count_name), int) or state[count_name] < 0:
+                raise RuntimeError(f"{name} has invalid {count_name} state count")
+        if state["plants"] != state["living"] + state["dead"]:
+            raise RuntimeError(f"{name} plant lifecycle counts do not add up")
+        if state != EXPECTED_STATE[name]:
+            raise RuntimeError(f"{name} state counts changed")
 
         timings = scenario.get("timing_ns")
         if not isinstance(timings, dict):

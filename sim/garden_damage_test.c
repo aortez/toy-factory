@@ -258,6 +258,24 @@ int main(void)
 	CHECK(picosystem_garden_damage_iterator_init(&iterator) == 0);
 	CHECK(expect_region(&iterator, &plan, 8U, 40U, 16U, 8U) == 0);
 	CHECK(picosystem_garden_damage_next_region(&plan, &iterator, &region) == 0);
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+
+	/* Stress, death, and tissue removal all reconstruct from bounded damage. */
+	presented = current;
+	current.payload.garden.nodes[1].growth_progress = UINT8_MAX;
+	current.payload.garden.nodes[1].style |= PICOSYSTEM_SCENE_GARDEN_STYLE_LEAF;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	presented = current;
+	current.payload.garden.nodes[1].style |= PICOSYSTEM_SCENE_GARDEN_STYLE_STRESSED;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	presented = current;
+	current.payload.garden.nodes[1].style &= (uint8_t)~PICOSYSTEM_SCENE_GARDEN_STYLE_STRESSED;
+	current.payload.garden.nodes[1].style |= PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD;
+	current.payload.garden.nodes[1].growth_progress = 48U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	presented = current;
+	current.payload.garden.nodes[1].growth_progress = 0U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
 
 	current.payload.garden.nodes[1].parent_distance = 2U;
 	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == -ERANGE);

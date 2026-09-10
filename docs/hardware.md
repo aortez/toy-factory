@@ -66,10 +66,10 @@ one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
 updates crossed the 16.667 ms budget. The 320-grain population remains normal
 to preserve headroom for additional gameplay.
 
-The current image, including Garden, uses 255,172 bytes of the 255 KiB Zephyr
-RAM region and 253,812 bytes of flash, leaving 5,948 bytes of linker RAM plus
+The current image, including Garden, uses 255,372 bytes of the 255 KiB Zephyr
+RAM region and 255,852 bytes of flash, leaving 5,748 bytes of linker RAM plus
 the separately reserved 8 KiB core-1 mailbox/stack area. The conservative image
-uses 222,868 bytes of Zephyr RAM and 247,844 bytes of flash. The fixed granular
+uses 222,884 bytes of Zephyr RAM and 249,952 bytes of flash. The fixed granular
 capacity is 512 particles, the fixed Garden capacity is eight plants and 256
 nodes, the immutable render snapshot is 1,640 bytes, and the tagged game-world
 and snapshot unions avoid allocating inactive scene alternatives. Full
@@ -87,16 +87,20 @@ neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
 
 ## Current Garden validation
 
-With moving directional light, the native mixed manual/automatic sequence
-reaches tick 930 at state hash `de69461d` and framebuffer CRC-32 `7cf1bee7`.
-Continuing the exact replay to a mature 225-node garden reaches tick 3,771 at
-hash `f5df2b20` and CRC-32 `0008203d`. Host full and damage-region rendering
-reproduce those pixels exactly, and the PIM559 reproduces both revised
-checkpoints exactly over USB.
+With resource maintenance and moving directional light, the mixed
+manual/automatic sequence reaches tick 930 at state hash `f089ee50` and
+framebuffer CRC-32 `e732b744`. Continuing the exact replay to tick 3,771 reaches
+190 nodes after one death and 34-node reclamation, at hash `9e3bb3f8` and CRC-32
+`09272e48`. An unattended lifecycle replay reaches tick 3,330 with two living
+plants, one visibly decomposing plant, and one reclaimed 33-node plant at hash
+`7febdb8c` and CRC-32 `818cee96`. Host full/damage rendering and the PIM559
+reproduce all three checkpoints exactly.
 
-An ensuing 5,698-tick real-time device window with 236 nodes held 60.0 Hz with
-no skipped or over-budget updates. Complete updates averaged 0.686 ms and
-peaked at 5.923 ms; world/model work averaged 0.305 ms and peaked at 5.154 ms.
+A live device window after the lifecycle replay held 60.0 Hz with no skipped or
+over-budget updates. Complete updates averaged 0.653 ms and peaked at 6.277 ms;
+world/model work averaged 0.258 ms and peaked at 5.838 ms. Main, renderer, and
+core-1 stack high-water marks were 3,764/5,120, 3,172/5,120, and 296/4,096
+bytes after reclamation ran.
 
 The preceding vertical-light firmware was also replayed exactly on both cores.
 Its 2,467-tick full-capacity window held 60.0 Hz simulation and 29.6 fps

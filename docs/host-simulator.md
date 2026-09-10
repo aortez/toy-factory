@@ -44,14 +44,17 @@ make host-cli ARGS="--scene hourglass --step right 60 \
 ```
 
 The runner emits one JSON object containing scene, tick, authoritative-state
-hash, and framebuffer CRC-32. `--expect-hash` and `--expect-crc` turn those
-values into assertions; `--output` writes RGB PPM and `--framebuffer` writes
-the native RGB565 big-endian bytes. Run `make host-cli ARGS="--help"` for the
-complete syntax.
+hash, and framebuffer CRC-32. Garden results also include current living/dead
+plant and node totals plus cumulative death/reclamation counters.
+`--expect-hash` and `--expect-crc` turn the deterministic values into
+assertions; `--output` writes RGB PPM and `--framebuffer` writes the native
+RGB565 big-endian bytes. Run `make host-cli ARGS="--help"` for the complete
+syntax.
 
 The current Clockwork, directional Hourglass, neutral Hourglass, Marble
-Machine, growing Garden, and mature 256-node Garden fixtures all match their
-hardware-established hashes and framebuffer CRCs exactly.
+Machine, growing Garden, established Garden, and unattended Garden lifecycle
+fixtures all match their hardware-established hashes and framebuffer CRCs
+exactly.
 
 ## Garden profiling
 
@@ -62,9 +65,10 @@ make host-profile-garden
 ```
 
 It reconstructs three exact checkpoints: the initial three seedlings, the
-mixed manual/automatic garden at tick 930, and the full 256-node garden at tick
-3,771. For each checkpoint it reports ordinary and 4 Hz ecology-step timing,
-snapshot and full-raster timing, state size, raster primitive calls, and logical
+mixed manual/automatic garden at tick 930, and an established garden at tick
+3,771 after a complete death/reclamation cycle. For each checkpoint it reports
+ordinary and 4 Hz ecology-step timing, snapshot and full-raster timing, state
+and lifecycle counts, memory size, raster primitive calls, and logical
 framebuffer pixel writes. It also advances sixty consecutive presentation
 intervals at 30, 10, and 4 Hz and counts changed pixels, changed 8 x 8 tiles,
 and the enclosing bounding-box area. For every one of those frames it builds

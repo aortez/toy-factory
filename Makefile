@@ -135,7 +135,7 @@ host-cli: host-build ## Run the native simulator directly with ARGS="..."
 host-profile-build: ## Build the optimized Garden profiler in Docker
 	$(COMPOSE) run --rm firmware ./scripts/container/host-profile-build.sh
 
-host-profile-garden: host-profile-build ## Profile initial, growing, and mature Garden checkpoints
+host-profile-garden: host-profile-build ## Profile initial, growing, and established Garden checkpoints
 	@mkdir -p "$(dir $(GARDEN_PROFILE_OUT))"
 	@$(COMPOSE) run --rm firmware "$(HOST_GARDEN_PROFILE)" \
 		--repetitions "$(GARDEN_PROFILE_REPETITIONS)" > "$(GARDEN_PROFILE_OUT)"

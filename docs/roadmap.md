@@ -112,7 +112,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Build and physically verify the deterministic Garden and auto-gardener.
 - [x] Route baseline growth through a bounded Garden observation/proposal contract.
 - [x] Add deterministic moving directional light over the canopy grid.
-- [ ] Add resource maintenance, mortality, decomposition, and node reclamation.
+- [x] Add resource maintenance, mortality, decomposition, and node reclamation.
 - [ ] Add reproduction and a replaceable recurrent plant policy.
 
 ## 8. Host simulation

@@ -178,6 +178,8 @@ baseline_observation(enum picosystem_garden_node_kind kind)
 		.candidate_count = (kind == PICOSYSTEM_GARDEN_NODE_STEM) ? 5U : 3U,
 		.sun_phase = PICOSYSTEM_GARDEN_SUN_NOON_PHASE,
 		.sun_strength = UINT8_MAX,
+		.maintenance_energy_cost = 1U,
+		.maintenance_water_cost = 1U,
 	};
 	for (uint8_t index = 0U; index < observation.candidate_count; ++index) {
 		observation.candidates[index].flags = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_IN_BOUNDS |
@@ -220,6 +222,13 @@ static void test_agent_observation_and_baseline_policy(void)
 	assert(observation.sun_phase == PICOSYSTEM_GARDEN_SUN_NOON_PHASE);
 	assert(observation.sun_strength == UINT8_MAX);
 	assert(observation.sun_ray_step_x_q4 == 0);
+	assert(observation.stress == 0U);
+	assert(observation.maintenance_energy_cost == 1U);
+	assert(observation.maintenance_water_cost == 1U);
+	assert(observation.maintenance_phase == 0U);
+	assert(observation.last_energy_income == 0U);
+	assert(observation.last_water_income == 0U);
+	assert(observation.plant_flags == 0U);
 	assert(observation.candidates[0].delta_x == -5);
 	assert(observation.candidates[0].delta_y == -5);
 	assert(observation.candidates[2].delta_x == 0);
@@ -313,6 +322,10 @@ static void test_agent_observation_and_baseline_policy(void)
 	observation.sun_strength = PICOSYSTEM_GARDEN_LIGHT_MINIMUM - 1U;
 	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == -ERANGE);
 	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
+	observation.sun_strength = UINT8_MAX;
+	observation.stress = PICOSYSTEM_GARDEN_STRESS_DEATH_THRESHOLD;
+	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == -ERANGE);
+	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
 }
 
 static void water_all_plants(struct picosystem_garden_world *world)
@@ -321,6 +334,128 @@ static void water_all_plants(struct picosystem_garden_world *world)
 		assert(picosystem_garden_world_water(world, world->plants[index].base_column,
 						     96U) == 0);
 	}
+}
+
+static void step_garden(struct picosystem_garden_world *world, uint32_t tick_count)
+{
+	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
+		assert(picosystem_garden_world_step(world) == 0);
+	}
+}
+
+static void test_survival_stress_decomposition_and_reclamation(void)
+{
+	struct picosystem_garden_world world;
+	assert(picosystem_garden_world_reset(&world, UINT32_C(0x5a17c0de)) == 0);
+	assert(picosystem_garden_world_living_plant_count(NULL) == 0U);
+	assert(picosystem_garden_world_dead_plant_count(NULL) == 0U);
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 14U) ==
+	       0);
+	assert(picosystem_garden_world_water(&world, 14U, UINT8_MAX) == 0);
+	step_garden(&world, 3U * PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE *
+				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR / 2U);
+	assert(world.ecology_tick_count == 192U);
+	assert(picosystem_garden_world_living_plant_count(&world) == 1U);
+	assert(picosystem_garden_world_dead_plant_count(&world) == 0U);
+	assert(world.death_count == 0U);
+
+	/* A plant without photosynthetic tissue becomes stressed, then recovers. */
+	assert(picosystem_garden_world_reset(&world, UINT32_C(0x1eed1e55)) == 0);
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 14U) ==
+	       0);
+	for (uint16_t index = 0U; index < world.node_count; ++index) {
+		world.nodes[index].flags &= (uint8_t)~PICOSYSTEM_GARDEN_NODE_LEAF;
+	}
+	world.plants[0].stored_energy = 0U;
+	world.plants[0].stored_water = 512U;
+	step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.plants[0].stress == 1U);
+	assert((world.plants[0].flags & PICOSYSTEM_GARDEN_PLANT_ENERGY_SHORTAGE) != 0U);
+	assert((world.plants[0].flags & PICOSYSTEM_GARDEN_PLANT_WATER_SHORTAGE) == 0U);
+	world.plants[0].stored_energy = 64U;
+	step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.plants[0].stress == 0U);
+	assert((world.plants[0].flags & (PICOSYSTEM_GARDEN_PLANT_ENERGY_SHORTAGE |
+					 PICOSYSTEM_GARDEN_PLANT_WATER_SHORTAGE)) == 0U);
+	assert(world.death_count == 0U);
+
+	assert(picosystem_garden_world_reset(&world, UINT32_C(0x12344321)) == 0);
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 4U) ==
+	       0);
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_SHRUB, 16U) ==
+	       0);
+	world.plants[0].stored_energy = 0U;
+	world.plants[0].stored_water = 0U;
+	world.plants[0].stress = PICOSYSTEM_GARDEN_STRESS_DEATH_THRESHOLD - 1U;
+	step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.death_count == 1U);
+	assert(picosystem_garden_world_living_plant_count(&world) == 1U);
+	assert(picosystem_garden_world_dead_plant_count(&world) == 1U);
+	assert((world.plants[0].flags & PICOSYSTEM_GARDEN_PLANT_DEAD) != 0U);
+	assert((world.plants[0].flags & PICOSYSTEM_GARDEN_PLANT_WATER_SHORTAGE) != 0U);
+	assert(world.plants[0].last_shoot_tip_index == PICOSYSTEM_GARDEN_NODE_NONE);
+	assert(world.plants[0].last_root_tip_index == PICOSYSTEM_GARDEN_NODE_NONE);
+	for (uint16_t index = 0U; index < world.node_count; ++index) {
+		if (world.nodes[index].plant_index == 0U) {
+			assert((world.nodes[index].flags & PICOSYSTEM_GARDEN_NODE_TIP) == 0U);
+		}
+	}
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 4U) ==
+	       -EEXIST);
+
+	for (uint32_t tick = 0U; (tick < (PICOSYSTEM_GARDEN_SUN_CYCLE_TICKS *
+					  PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR)) &&
+				 (world.reclaimed_plant_count == 0U);
+	     ++tick) {
+		if ((tick % 120U) == 0U) {
+			assert(picosystem_garden_world_water(&world, 16U, 96U) == 0);
+		}
+		assert(picosystem_garden_world_step(&world) == 0);
+	}
+	assert(world.reclaimed_plant_count == 1U);
+	assert(world.reclaimed_node_count == 4U);
+	assert(world.plant_count == 1U);
+	assert(world.plants[0].species_id == PICOSYSTEM_GARDEN_SPECIES_SHRUB);
+	assert(world.plants[0].base_column == 16U);
+	assert(world.plants[0].base_node_index == 0U);
+	assert(picosystem_garden_world_living_plant_count(&world) == 1U);
+	assert(picosystem_garden_world_dead_plant_count(&world) == 0U);
+	for (uint16_t index = 0U; index < world.node_count; ++index) {
+		assert(world.nodes[index].plant_index == 0U);
+		assert((world.nodes[index].parent_index == PICOSYSTEM_GARDEN_NODE_NONE) ||
+		       (world.nodes[index].parent_index < index));
+	}
+	assert(picosystem_garden_world_hash(&world) != 0U);
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 4U) ==
+	       0);
+
+	struct picosystem_garden_world churn;
+	assert(picosystem_garden_world_reset(&churn, UINT32_C(0xabcdef12)) == 0);
+	for (uint8_t cycle = 0U; cycle < 12U; ++cycle) {
+		assert(picosystem_garden_world_plant_seed(
+			       &churn, PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER, 10U) == 0);
+		churn.plants[0].stored_energy = 0U;
+		churn.plants[0].stored_water = 0U;
+		churn.plants[0].stress = PICOSYSTEM_GARDEN_STRESS_DEATH_THRESHOLD - 1U;
+		step_garden(&churn, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+					    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+		assert(picosystem_garden_world_dead_plant_count(&churn) == 1U);
+		for (uint32_t tick = 0U; (tick < (PICOSYSTEM_GARDEN_SUN_CYCLE_TICKS *
+						  PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR)) &&
+					 (churn.plant_count > 0U);
+		     ++tick) {
+			assert(picosystem_garden_world_step(&churn) == 0);
+		}
+		assert(churn.plant_count == 0U);
+		assert(churn.node_count == 0U);
+		assert(picosystem_garden_world_hash(&churn) != 0U);
+	}
+	assert(churn.death_count == 12U);
+	assert(churn.reclaimed_plant_count == 12U);
+	assert(churn.reclaimed_node_count == 48U);
 }
 
 static void test_growth_variety_and_determinism(void)
@@ -347,6 +482,7 @@ static void test_growth_variety_and_determinism(void)
 	}
 	assert(left.node_count > 40U);
 	assert(left.bloom_count > 0U);
+	assert(left.death_count == 0U);
 	assert(left.plants[PICOSYSTEM_GARDEN_SPECIES_FLOWER].node_count !=
 	       left.plants[PICOSYSTEM_GARDEN_SPECIES_SHRUB].node_count);
 	assert(left.plants[PICOSYSTEM_GARDEN_SPECIES_SHRUB].node_count !=
@@ -424,6 +560,7 @@ static void test_auto_gardener_long_soak(void)
 		}
 	}
 	assert(left.plant_count >= 5U);
+	assert(picosystem_garden_world_living_plant_count(&left) >= 5U);
 	assert(left.node_count <= PICOSYSTEM_GARDEN_MAX_NODES);
 	assert(left.auto_action_count > 20U);
 	assert(left.auto_decision_count > left.auto_action_count);
@@ -460,6 +597,7 @@ int main(void)
 	test_water_flow_and_light_competition();
 	test_directional_light_solver();
 	test_agent_observation_and_baseline_policy();
+	test_survival_stress_decomposition_and_reclamation();
 	test_growth_variety_and_determinism();
 	test_cursor_tools_and_pruning();
 	test_pruning_rejects_distant_tip();

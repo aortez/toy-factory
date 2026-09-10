@@ -32,7 +32,8 @@ path:
   Marble Machine, with a direction-qualified passage sensor;
 - grows three deterministic plant archetypes through a compact 256-node graph in
   Garden, with a 28 x 11 moisture field, a moving day/night sun with directional
-  canopy shadows, planting, watering, pruning, flowering, and a toggleable
+  canopy shadows, planting, watering, pruning, flowering, resource maintenance,
+  reversible stress, death/decomposition, node reclamation, and a toggleable
   auto-gardener;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
@@ -122,7 +123,7 @@ make profile-sleep  # profile the canonical world settling under neutral input
 make profile-chain  # benchmark deterministic 4/6/8-link chain scaling
 make host-check  # replay every committed device sequence on the host
 make host-run SEQUENCE=scripts/sequences/garden-smoke.json  # write a host PNG
-make host-profile-garden  # benchmark initial, growing, and mature Gardens
+make host-profile-garden  # benchmark initial, growing, and established Gardens
 make host-play ARGS="--scene garden --paused"  # launch the interactive player
 ```
 
@@ -462,6 +463,10 @@ waters the initial plot, selects and plants another seed, enables the
 auto-gardener, and advances the same deterministic mixed manual/automatic replay
 used by the native game-world suite.
 
+[`scripts/sequences/garden-lifecycle.json`](scripts/sequences/garden-lifecycle.json)
+leaves that mixed plot unattended long enough to verify visible death,
+decomposition, and reclaimed graph storage on both the host and device.
+
 The runner holds one exclusive USB connection, pauses and selects the declared
 scene at tick zero, applies each input or exact scene action, and checks the
 returned scene and tick after every request. Segments longer than 120 ticks are automatically
@@ -495,10 +500,12 @@ make host-profile-garden
 `make host-check` runs every committed device sequence under UBSan and asserts
 the same final state hash and framebuffer CRC. `make host-run` also converts
 the final native RGB565 framebuffer into a PNG. `make host-profile-garden`
-uses a separate optimized build to compare initial, growing, and mature Garden
-checkpoints. It writes JSON timing, memory, raster-work, and 30/10/4 Hz
+uses a separate optimized build to compare initial, growing, and established
+Garden checkpoints. It writes JSON timing, memory, raster-work, and 30/10/4 Hz
 frame-delta data to `artifacts/garden-host-profile.json`. Host time is useful
-for relative A/B measurements; device measurements remain authoritative.
+for relative A/B measurements; device measurements remain authoritative. For a
+Garden scene, `make host-cli` also reports living/dead plants and cumulative
+death/reclamation counters in its result JSON.
 
 For interactive work on Linux, `make host-play` builds pinned SDL3 sources in a
 separate Docker image, then launches the resulting self-contained player on the
@@ -632,7 +639,8 @@ framebuffer is allocated.
 
 `make check` verifies configuration, device tree, compilation, linking, and UF2
 generation and also runs native garden-world moisture/light, capacity, growth,
-tool, pruning, auto-gardener soak, and replay tests; granular-world configuration, 512-grain
+tool, pruning, maintenance, stress recovery, mortality, reclamation,
+auto-gardener soak, and replay tests; granular-world configuration, 512-grain
 capacity and wide-index handling, conservative contact-length approximation,
 containment, flip, work-bound, and deterministic replay
 tests; rigid-body
@@ -648,24 +656,24 @@ physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted reset,
 double-action, full-drain, recirculation, and retained Machine Lab replay hashes
 as native goldens.
-The default image uses 222,868 bytes of its 255 KiB Zephyr RAM region (85.35%)
-and 247,844 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 222,884 bytes of its 255 KiB Zephyr RAM region (85.36%)
+and 249,952 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer, 22,636-byte fixed-capacity rigid physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
 contact/event storage and per-step deterministic counters, a 16,480-byte
 fixed-capacity 512-particle granular world with a 40 x 48 scratch grid,
-boundary masks, and sparse occupied-cell storage, a 3,496-byte fixed-capacity
+boundary masks, and sparse occupied-cell storage, a 3,540-byte fixed-capacity
 garden world, a 33,360-byte serialized benchmark workspace, two 1,640-byte
 render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 255,172 bytes of
-that region (97.72%) and 253,812 bytes of flash. It keeps the rigid-physics and
+storage, and a 1,024-byte shell TX ring. The fast image uses 255,372 bytes of
+that region (97.80%) and 255,852 bytes of flash. It keeps the rigid-physics and
 renderer hot paths in SRAM while the granular solver remains in XIP flash, and
 both images route compiler integer division through the RP2040's interrupt-safe
 hardware-divider wrappers. Both images also reserve
 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 38,252 and 5,948
+core-1 mailbox and stack. The default and fast images retain 38,236 and 5,748
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
 

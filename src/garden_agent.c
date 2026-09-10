@@ -13,7 +13,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-_Static_assert(sizeof(struct picosystem_garden_agent_observation) == 88U,
+/* The 32-second night plus an eight-payment margin for shaded dawn/dusk. */
+#define GARDEN_BASELINE_NIGHT_RESERVE_PERIODS 40U
+
+_Static_assert(sizeof(struct picosystem_garden_agent_observation) == 96U,
 	       "Garden agent observation layout changed");
 _Static_assert(sizeof(struct picosystem_garden_agent_proposal) == 12U,
 	       "Garden agent proposal layout changed");
@@ -31,7 +34,13 @@ static bool observation_is_valid(const struct picosystem_garden_agent_observatio
 	    (observation->maximum_depth == 0U) ||
 	    (observation->sun_strength < PICOSYSTEM_GARDEN_LIGHT_MINIMUM) ||
 	    (observation->sun_ray_step_x_q4 < -PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4) ||
-	    (observation->sun_ray_step_x_q4 > PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4)) {
+	    (observation->sun_ray_step_x_q4 > PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4) ||
+	    (observation->stress >= PICOSYSTEM_GARDEN_STRESS_DEATH_THRESHOLD) ||
+	    (observation->maintenance_energy_cost == 0U) ||
+	    (observation->maintenance_water_cost == 0U) ||
+	    (observation->maintenance_phase >= PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR) ||
+	    ((observation->plant_flags & (uint8_t)~PICOSYSTEM_GARDEN_PLANT_VALID_FLAGS) != 0U) ||
+	    ((observation->plant_flags & PICOSYSTEM_GARDEN_PLANT_DEAD) != 0U)) {
 		return false;
 	}
 
@@ -159,6 +168,16 @@ int picosystem_garden_agent_baseline_propose(
 	if (observation->depth >= observation->maximum_depth) {
 		proposal->action = PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP;
 		return 0;
+	}
+	if (observation->sun_strength == PICOSYSTEM_GARDEN_LIGHT_MINIMUM) {
+		const uint16_t energy_reserve = (uint16_t)observation->maintenance_energy_cost *
+						GARDEN_BASELINE_NIGHT_RESERVE_PERIODS;
+		const uint16_t water_reserve = (uint16_t)observation->maintenance_water_cost *
+					       GARDEN_BASELINE_NIGHT_RESERVE_PERIODS;
+		if ((observation->stored_energy <= energy_reserve) ||
+		    (observation->stored_water <= water_reserve)) {
+			return 0;
+		}
 	}
 
 	uint8_t preferred;

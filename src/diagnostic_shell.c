@@ -389,11 +389,14 @@ static void print_garden_stats(const struct shell *shell,
 		return;
 	}
 	shell_print(shell,
-		    "garden: plants=%u, nodes=%u/%u, blooms=%u, moisture=%u, ecology=%u, "
+		    "garden: plants=%u (%u living/%u dead), nodes=%u/%u, blooms=%u, "
+		    "deaths=%u, reclaimed=%u plants/%u nodes, moisture=%u, ecology=%u, "
 		    "tool=%s, auto=%s (%u actions/%u decisions), manual=%u actions",
-		    game->garden_plant_count, game->garden_node_count, PICOSYSTEM_GARDEN_MAX_NODES,
-		    game->garden_bloom_count, game->garden_moisture_total,
-		    game->garden_ecology_tick_count,
+		    game->garden_plant_count, game->garden_living_plant_count,
+		    game->garden_dead_plant_count, game->garden_node_count,
+		    PICOSYSTEM_GARDEN_MAX_NODES, game->garden_bloom_count, game->garden_death_count,
+		    game->garden_reclaimed_plant_count, game->garden_reclaimed_node_count,
+		    game->garden_moisture_total, game->garden_ecology_tick_count,
 		    picosystem_garden_tool_name(game->garden_selected_tool),
 		    game->garden_auto_gardener_enabled ? "on" : "off",
 		    game->garden_auto_action_count, game->garden_auto_decision_count,

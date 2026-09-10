@@ -313,9 +313,20 @@ int main(int argc, char **argv)
 	const uint32_t state_hash = toy_factory_simulator_state_hash(&simulator);
 	const uint32_t framebuffer_crc = toy_factory_simulator_framebuffer_crc32(&simulator);
 	printf("{\"scene\":\"%s\",\"tick\":%" PRIu32 ",\"hash\":\"%08" PRIx32
-	       "\",\"framebuffer_crc32\":\"%08" PRIx32 "\"}\n",
+	       "\",\"framebuffer_crc32\":\"%08" PRIx32 "\"",
 	       picosystem_game_scene_name((enum picosystem_game_scene_id)simulator.world.scene_id),
 	       simulator.world.logic_tick_count, state_hash, framebuffer_crc);
+	if (simulator.world.scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		const struct picosystem_garden_world *const garden = &simulator.world.garden;
+		printf(",\"garden\":{\"plants\":%u,\"living\":%u,\"dead\":%u,\"nodes\":%u,"
+		       "\"blooms\":%" PRIu32 ",\"deaths\":%" PRIu32 ",\"reclaimed_plants\":%" PRIu32
+		       ",\"reclaimed_nodes\":%" PRIu32 ",\"moisture\":%u}",
+		       garden->plant_count, picosystem_garden_world_living_plant_count(garden),
+		       picosystem_garden_world_dead_plant_count(garden), garden->node_count,
+		       garden->bloom_count, garden->death_count, garden->reclaimed_plant_count,
+		       garden->reclaimed_node_count, garden->moisture_total);
+	}
+	puts("}");
 
 	if (output_path != NULL) {
 		err = write_ppm(output_path);
