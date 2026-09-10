@@ -1,5 +1,6 @@
 /build/
 /build-host/
+/build-host-profile/
 /build-host-player/
 /build-pio/
 /build-pio-dma/

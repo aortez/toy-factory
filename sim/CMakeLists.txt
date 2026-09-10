@@ -5,6 +5,7 @@ project(toy_factory_simulator C)
 
 option(TOY_FACTORY_SIMULATOR_SANITIZERS "Enable host undefined-behavior checks" ON)
 option(TOY_FACTORY_SIMULATOR_PLAYER "Build the interactive SDL3 player" OFF)
+option(TOY_FACTORY_SIMULATOR_PROFILING "Build host profiling tools" OFF)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -49,6 +50,21 @@ target_compile_options(toy-factory-sim PRIVATE
 	-Wsign-conversion
 )
 
+if(TOY_FACTORY_SIMULATOR_PROFILING)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC
+		TOY_FACTORY_RASTER_WORK_COUNTERS=1
+	)
+	add_executable(toy-factory-garden-profile garden_profile.c)
+	target_link_libraries(toy-factory-garden-profile PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-profile PRIVATE
+		-Wall
+		-Wextra
+		-Werror
+		-Wconversion
+		-Wsign-conversion
+	)
+endif()
+
 if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 	target_compile_options(toy_factory_simulator_core PRIVATE
 		-fsanitize=undefined
@@ -58,6 +74,12 @@ if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 		-fsanitize=undefined
 		-fno-sanitize-recover=undefined
 	)
+	if(TOY_FACTORY_SIMULATOR_PROFILING)
+		target_link_options(toy-factory-garden-profile PRIVATE
+			-fsanitize=undefined
+			-fno-sanitize-recover=undefined
+		)
+	endif()
 endif()
 
 if(TOY_FACTORY_SIMULATOR_PLAYER)
@@ -120,6 +142,7 @@ foreach(sequence IN ITEMS
 	clockwork-smoke.json
 	deterministic-smoke.json
 	garden-smoke.json
+	garden-mature.json
 	hourglass-neutral-smoke.json
 	marble-machine-smoke.json
 )
@@ -131,6 +154,14 @@ foreach(sequence IN ITEMS
 			--sequence ${toy_factory_root}/scripts/sequences/${sequence}
 	)
 endforeach()
+
+if(TOY_FACTORY_SIMULATOR_PROFILING)
+	add_test(
+		NAME garden-profile-smoke
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_profile.py
+			--binary $<TARGET_FILE:toy-factory-garden-profile>
+	)
+endif()
 
 if(TOY_FACTORY_SIMULATOR_PLAYER)
 	add_test(NAME player-smoke COMMAND toy-factory-player --frames 1 --paused)

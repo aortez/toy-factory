@@ -50,8 +50,37 @@ the native RGB565 big-endian bytes. Run `make host-cli ARGS="--help"` for the
 complete syntax.
 
 The current Clockwork, directional Hourglass, neutral Hourglass, Marble
-Machine, and Garden fixtures all match their hardware-established hashes and
-framebuffer CRCs exactly.
+Machine, growing Garden, and mature 256-node Garden fixtures all match their
+hardware-established hashes and framebuffer CRCs exactly.
+
+## Garden profiling
+
+Run the optimized Garden profiler with:
+
+```sh
+make host-profile-garden
+```
+
+It reconstructs three exact checkpoints: the initial three seedlings, the
+mixed manual/automatic garden at tick 930, and the full 256-node garden at tick
+3,771. For each checkpoint it reports ordinary and 4 Hz ecology-step timing,
+snapshot and full-raster timing, state size, raster primitive calls, and logical
+framebuffer pixel writes. It also advances sixty consecutive presentation
+intervals at 30, 10, and 4 Hz and counts changed pixels, changed 8 x 8 tiles,
+and the enclosing bounding-box area.
+
+The Release build and repetition count are isolated from the sanitizer build.
+Override the sample count and output path when needed:
+
+```sh
+make host-profile-garden GARDEN_PROFILE_REPETITIONS=64 \
+  GARDEN_PROFILE_OUT=artifacts/garden-profile-64.json
+```
+
+Timing results depend on the host, container load, compiler, and CPU frequency,
+so CI validates the schema and deterministic checkpoints but never imposes a
+timing threshold. Work counts and framebuffer deltas are deterministic. Use
+PicoSystem profiles for final RP2040 cycle, transfer, stack, and RAM decisions.
 
 ## Interactive SDL3 player
 

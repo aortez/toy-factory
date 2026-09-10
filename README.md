@@ -121,6 +121,7 @@ make profile-sleep  # profile the canonical world settling under neutral input
 make profile-chain  # benchmark deterministic 4/6/8-link chain scaling
 make host-check  # replay every committed device sequence on the host
 make host-run SEQUENCE=scripts/sequences/garden-smoke.json  # write a host PNG
+make host-profile-garden  # benchmark initial, growing, and mature Gardens
 make host-play ARGS="--scene garden --paused"  # launch the interactive player
 ```
 
@@ -487,11 +488,16 @@ make host-check
 make host-run SEQUENCE=scripts/sequences/garden-smoke.json \
   HOST_OUT=artifacts/host-garden.png
 make host-cli ARGS="--scene hourglass --step none 600"
+make host-profile-garden
 ```
 
 `make host-check` runs every committed device sequence under UBSan and asserts
 the same final state hash and framebuffer CRC. `make host-run` also converts
-the final native RGB565 framebuffer into a PNG.
+the final native RGB565 framebuffer into a PNG. `make host-profile-garden`
+uses a separate optimized build to compare initial, growing, and mature Garden
+checkpoints. It writes JSON timing, memory, raster-work, and 30/10/4 Hz
+frame-delta data to `artifacts/garden-host-profile.json`. Host time is useful
+for relative A/B measurements; device measurements remain authoritative.
 
 For interactive work on Linux, `make host-play` builds pinned SDL3 sources in a
 separate Docker image, then launches the resulting self-contained player on the

@@ -131,6 +131,7 @@ ends further growth until reset. Branches use a small set of integer steps,
 nearby leaves can merge into dense circular clusters, and soil moisture is a
 visibly coarse field. Tool identity is communicated primarily by cursor color,
 with no plant inspection or resource overlay. These are presentation and
-progression follow-ups rather than determinism or performance failures, and the
-planned host framebuffer simulator will make their iteration and regression
-testing substantially faster.
+progression follow-ups rather than determinism or performance failures. The
+host profiler now reconstructs initial, growing, and mature Gardens and measures
+model, snapshot, raster, primitive-work, and framebuffer-delta behavior without
+requiring the PicoSystem.

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 readonly app_dir=/workspace/app
-readonly build_dir="$app_dir/build-host"
+readonly build_dir="$app_dir/build-host-profile"
 
 cd "$app_dir"
 
@@ -15,6 +15,7 @@ elif [[ $# -ne 0 ]]; then
 fi
 
 cmake -S sim -B "$build_dir" -G Ninja \
-	-DTOY_FACTORY_SIMULATOR_SANITIZERS=ON \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DTOY_FACTORY_SIMULATOR_SANITIZERS=OFF \
 	-DTOY_FACTORY_SIMULATOR_PROFILING=ON
-cmake --build "$build_dir"
+cmake --build "$build_dir" --target toy-factory-garden-profile

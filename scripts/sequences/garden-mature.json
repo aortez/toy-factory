@@ -1,0 +1,17 @@
+{
+  "name": "garden-mature-capacity",
+  "scene": "garden",
+  "steps": [
+    {"action": "use-tool"},
+    {"action": "cycle-tool"},
+    {"action": "cycle-tool"},
+    {"input": "left", "ticks": 30},
+    {"action": "use-tool"},
+    {"action": "primary"},
+    {"input": "none", "ticks": 3741}
+  ],
+  "expect": {
+    "hash": "1d376f84",
+    "framebuffer_crc32": "8261b674"
+  }
+}
