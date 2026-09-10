@@ -5,7 +5,7 @@ set -euo pipefail
 readonly app_dir=/workspace/app
 
 cd "$app_dir"
-clang-format --dry-run --Werror src/*.c src/*.h scripts/tests/*.c
+clang-format --dry-run --Werror src/*.c src/*.h sim/*.c sim/*.h scripts/tests/*.c
 bash -n scripts/*.sh scripts/container/*.sh scripts/tests/*.sh
 ./scripts/tests/fixed-rate-scheduler-test.sh
 ./scripts/tests/game-scene-selector-test.sh
@@ -17,7 +17,8 @@ bash -n scripts/*.sh scripts/container/*.sh scripts/tests/*.sh
 python3 - <<'PY'
 from pathlib import Path
 
-for path in sorted(Path("scripts/container").glob("*.py")):
+paths = list(Path("scripts/container").glob("*.py")) + list(Path("sim").glob("*.py"))
+for path in sorted(paths):
     compile(path.read_text(), str(path), "exec")
 PY
 for profile in benchmarks/physics-profile/*.json; do
@@ -32,4 +33,6 @@ python3 scripts/tests/render-profile-test.py
 python3 scripts/tests/sequence-runner-test.py
 python3 scripts/tests/serial-command-test.py
 git diff --check
+./scripts/container/host-build.sh --pristine
+ctest --test-dir build-host --output-on-failure
 ./scripts/container/build.sh --pristine

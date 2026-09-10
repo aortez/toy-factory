@@ -38,6 +38,9 @@ jobs:
       - name: Run native tests and build default firmware
         run: make check
 
+      - name: Build and smoke-test interactive host player
+        run: make host-player-check
+
       - name: Build PIO firmware variant
         run: make build-pio
 

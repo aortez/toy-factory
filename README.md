@@ -61,6 +61,10 @@ path:
 - exposes acknowledged scene selection, reset, pause, exact-step,
   injected-input, state-hash, and framebuffer-capture controls over USB;
 - runs declarative deterministic device sequences with state/framebuffer assertions;
+- replays those same sequences in a dependency-free native simulator using the
+  production world, snapshot, renderer, and raster code;
+- provides an optional Docker-built SDL3 player with pause, exact single-step,
+  scene selection, and PicoSystem-equivalent keyboard controls;
 - resets the active scene on a short Y press and cycles the four playable
   scenes when Y is held for 750 ms;
 - retains bounded piezo and redraw diagnostics through the USB shell;
@@ -115,6 +119,9 @@ make profile-ab  # compare the moving canonical world through grid/reference pat
 make profile-granular GRANULAR_PROFILE_TICKS=1000  # profile a paused Hourglass by stage
 make profile-sleep  # profile the canonical world settling under neutral input
 make profile-chain  # benchmark deterministic 4/6/8-link chain scaling
+make host-check  # replay every committed device sequence on the host
+make host-run SEQUENCE=scripts/sequences/garden-smoke.json  # write a host PNG
+make host-play ARGS="--scene garden --paused"  # launch the interactive player
 ```
 
 `make build` retains the conservative 20 MHz polling-display configuration.
@@ -469,6 +476,32 @@ nonzero status. Override that path with
 `FAIL_SCREENSHOT=artifacts/another-name.png`. Close `make console` before running
 a sequence because the test owns the serial port for its entire duration.
 
+### Native simulator
+
+The dependency-free native runner compiles the production game world, snapshot
+builder, scene renderer, and RGB565 rasterizer as ordinary C11. It can replay
+the same declarative sequences without a connected PicoSystem:
+
+```sh
+make host-check
+make host-run SEQUENCE=scripts/sequences/garden-smoke.json \
+  HOST_OUT=artifacts/host-garden.png
+make host-cli ARGS="--scene hourglass --step none 600"
+```
+
+`make host-check` runs every committed device sequence under UBSan and asserts
+the same final state hash and framebuffer CRC. `make host-run` also converts
+the final native RGB565 framebuffer into a PNG.
+
+For interactive work on Linux, `make host-play` builds pinned SDL3 sources in a
+separate Docker image, then launches the resulting self-contained player on the
+host. Arrow keys act as the D-pad; A, B, X, and Y match the labeled face
+buttons; Space pauses; N or `.` advances one exact tick while paused; Tab
+selects the next scene; and 1-4 select a scene directly. No SDL development
+package is installed on the host. See the
+[host simulator guide](docs/host-simulator.md) for the complete command and
+determinism contract.
+
 Expected messages include button press/release events and a periodic line like:
 
 ```text
@@ -501,6 +534,7 @@ docker/                      Pinned Zephyr build image
 docs/                        Hardware notes and staged bring-up plan
 scripts/container/           Dependency, build, and validation automation
 scripts/sequences/           Declarative deterministic device tests
+sim/                         Headless C11 runner and optional SDL3 player
 src/                         Firmware application
 benchmarks/                  Reproducible device measurements and build variants
 compose.yaml                 Isolated workspace and persistent dependencies
@@ -533,6 +567,13 @@ retained as the stable profiling fixture. None of these modules has a Zephyr,
 scheduler, renderer, USB, or wall-clock dependency. The firmware and native
 test suites compile these same C sources, so host replay tests exercise the
 implementation that runs on the RP2040 rather than a second simulation model.
+[`src/game_snapshot.c`](src/game_snapshot.c) performs the production
+world-to-snapshot conversion for both platforms, and
+[`src/graphics_raster.c`](src/graphics_raster.c) owns the shared software
+framebuffer and drawing primitives. The Zephyr-only display setup and transfer
+code remains in [`src/graphics.c`](src/graphics.c). This boundary lets the
+headless runner and SDL player render byte-identical frames without pretending
+to emulate display transport or dual-core timing.
 
 Core 0 runs Zephyr and owns every driver. Its priority-0 main thread owns all
 authoritative game state, samples input, and advances one fixed 60 Hz tick.

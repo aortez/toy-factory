@@ -11,9 +11,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <zephyr/sys/util.h>
-
 #include "game_world.h"
+#include "portable_util.h"
 #include "render_placement.h"
 
 #define PLAYFIELD_LEFT              PICOSYSTEM_GAME_PLAYFIELD_LEFT_PIXELS
@@ -227,10 +226,10 @@ render_playfield_background(const struct picosystem_scene_snapshot *snapshot,
 	picosystem_graphics_fill_rect(region->x, region->y, region->width, region->height,
 				      PICOSYSTEM_COLOR_BLACK);
 
-	const uint16_t left = MAX(region->x, PLAYFIELD_LEFT);
-	const uint16_t top = MAX(region->y, PLAYFIELD_TOP);
-	const uint16_t right = MIN(region->x + region->width, PLAYFIELD_RIGHT + 1U);
-	const uint16_t bottom = MIN(region->y + region->height, PLAYFIELD_BOTTOM + 1U);
+	const uint16_t left = TOY_FACTORY_MAX(region->x, PLAYFIELD_LEFT);
+	const uint16_t top = TOY_FACTORY_MAX(region->y, PLAYFIELD_TOP);
+	const uint16_t right = TOY_FACTORY_MIN(region->x + region->width, PLAYFIELD_RIGHT + 1U);
+	const uint16_t bottom = TOY_FACTORY_MIN(region->y + region->height, PLAYFIELD_BOTTOM + 1U);
 
 	if ((left >= right) || (top >= bottom)) {
 		return;
@@ -241,12 +240,13 @@ render_playfield_background(const struct picosystem_scene_snapshot *snapshot,
 		return;
 	}
 	if (snapshot->scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
-		const uint16_t sky_bottom = MIN(bottom, PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS);
+		const uint16_t sky_bottom =
+			TOY_FACTORY_MIN(bottom, PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS);
 		if (top < sky_bottom) {
 			picosystem_graphics_fill_rect(left, top, right - left, sky_bottom - top,
 						      GARDEN_SKY_COLOR);
 		}
-		const uint16_t soil_top = MAX(top, PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS);
+		const uint16_t soil_top = TOY_FACTORY_MAX(top, PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS);
 		if (soil_top < bottom) {
 			picosystem_graphics_fill_rect(left, soil_top, right - left,
 						      bottom - soil_top, GARDEN_DRY_SOIL_COLOR);
@@ -264,12 +264,14 @@ render_playfield_background(const struct picosystem_scene_snapshot *snapshot,
 	const uint16_t first_tile_y = top / BACKGROUND_TILE_SIZE;
 	const uint16_t final_tile_y = (bottom - 1U) / BACKGROUND_TILE_SIZE;
 	for (uint16_t tile_y = first_tile_y; tile_y <= final_tile_y; ++tile_y) {
-		const uint16_t tile_top = MAX(tile_y * BACKGROUND_TILE_SIZE, top);
-		const uint16_t tile_bottom = MIN((tile_y + 1U) * BACKGROUND_TILE_SIZE, bottom);
+		const uint16_t tile_top = TOY_FACTORY_MAX(tile_y * BACKGROUND_TILE_SIZE, top);
+		const uint16_t tile_bottom =
+			TOY_FACTORY_MIN((tile_y + 1U) * BACKGROUND_TILE_SIZE, bottom);
 		for (uint16_t tile_x = first_tile_x; tile_x <= final_tile_x; ++tile_x) {
-			const uint16_t tile_left = MAX(tile_x * BACKGROUND_TILE_SIZE, left);
+			const uint16_t tile_left =
+				TOY_FACTORY_MAX(tile_x * BACKGROUND_TILE_SIZE, left);
 			const uint16_t tile_right =
-				MIN((tile_x + 1U) * BACKGROUND_TILE_SIZE, right);
+				TOY_FACTORY_MIN((tile_x + 1U) * BACKGROUND_TILE_SIZE, right);
 			const picosystem_color_t color = (((tile_x + tile_y) & 1U) == 0U)
 								 ? PICOSYSTEM_COLOR_NAVY
 								 : PICOSYSTEM_COLOR_DARK_BLUE;
@@ -299,12 +301,16 @@ picosystem_scene_body_bounds(const struct picosystem_scene_body *body)
 			((int32_t)body->geometry.vertices[1].x + body->geometry.vertices[2].x) / 2;
 		const int32_t end_y =
 			((int32_t)body->geometry.vertices[1].y + body->geometry.vertices[2].y) / 2;
-		const int32_t left = MAX(MIN(start_x, end_x) - body->radius, 0);
-		const int32_t top = MAX(MIN(start_y, end_y) - body->radius, 0);
+		const int32_t left =
+			TOY_FACTORY_MAX(TOY_FACTORY_MIN(start_x, end_x) - body->radius, 0);
+		const int32_t top =
+			TOY_FACTORY_MAX(TOY_FACTORY_MIN(start_y, end_y) - body->radius, 0);
 		const int32_t right =
-			MIN(MAX(start_x, end_x) + body->radius + 1, PICOSYSTEM_GRAPHICS_WIDTH);
+			TOY_FACTORY_MIN(TOY_FACTORY_MAX(start_x, end_x) + body->radius + 1,
+					PICOSYSTEM_GRAPHICS_WIDTH);
 		const int32_t bottom =
-			MIN(MAX(start_y, end_y) + body->radius + 1, PICOSYSTEM_GRAPHICS_HEIGHT);
+			TOY_FACTORY_MIN(TOY_FACTORY_MAX(start_y, end_y) + body->radius + 1,
+					PICOSYSTEM_GRAPHICS_HEIGHT);
 		return (struct picosystem_rect){
 			.x = (uint16_t)left,
 			.y = (uint16_t)top,
@@ -318,16 +324,18 @@ picosystem_scene_body_bounds(const struct picosystem_scene_body *body)
 		int16_t right = left;
 		int16_t bottom = top;
 		for (size_t index = 1U; index < PICOSYSTEM_PHYSICS_BOX_VERTEX_COUNT; ++index) {
-			left = MIN(left, body->geometry.vertices[index].x);
-			top = MIN(top, body->geometry.vertices[index].y);
-			right = MAX(right, body->geometry.vertices[index].x);
-			bottom = MAX(bottom, body->geometry.vertices[index].y);
+			left = TOY_FACTORY_MIN(left, body->geometry.vertices[index].x);
+			top = TOY_FACTORY_MIN(top, body->geometry.vertices[index].y);
+			right = TOY_FACTORY_MAX(right, body->geometry.vertices[index].x);
+			bottom = TOY_FACTORY_MAX(bottom, body->geometry.vertices[index].y);
 		}
 
-		const int32_t clipped_left = MAX((int32_t)left, 0);
-		const int32_t clipped_top = MAX((int32_t)top, 0);
-		const int32_t clipped_right = MIN((int32_t)right + 1, PICOSYSTEM_GRAPHICS_WIDTH);
-		const int32_t clipped_bottom = MIN((int32_t)bottom + 1, PICOSYSTEM_GRAPHICS_HEIGHT);
+		const int32_t clipped_left = TOY_FACTORY_MAX((int32_t)left, 0);
+		const int32_t clipped_top = TOY_FACTORY_MAX((int32_t)top, 0);
+		const int32_t clipped_right =
+			TOY_FACTORY_MIN((int32_t)right + 1, PICOSYSTEM_GRAPHICS_WIDTH);
+		const int32_t clipped_bottom =
+			TOY_FACTORY_MIN((int32_t)bottom + 1, PICOSYSTEM_GRAPHICS_HEIGHT);
 		return (struct picosystem_rect){
 			.x = (uint16_t)clipped_left,
 			.y = (uint16_t)clipped_top,
@@ -339,12 +347,12 @@ picosystem_scene_body_bounds(const struct picosystem_scene_body *body)
 	const uint16_t margin =
 		(body->geometry.circle.render_style == PICOSYSTEM_GAME_BODY_RENDER_STYLE_GEAR) ? 2U
 											       : 0U;
-	const int32_t left = MAX((int32_t)body->center_x - body->radius - margin, 0);
-	const int32_t top = MAX((int32_t)body->center_y - body->radius - margin, 0);
-	const int32_t right =
-		MIN((int32_t)body->center_x + body->radius + margin + 1, PICOSYSTEM_GRAPHICS_WIDTH);
-	const int32_t bottom = MIN((int32_t)body->center_y + body->radius + margin + 1,
-				   PICOSYSTEM_GRAPHICS_HEIGHT);
+	const int32_t left = TOY_FACTORY_MAX((int32_t)body->center_x - body->radius - margin, 0);
+	const int32_t top = TOY_FACTORY_MAX((int32_t)body->center_y - body->radius - margin, 0);
+	const int32_t right = TOY_FACTORY_MIN((int32_t)body->center_x + body->radius + margin + 1,
+					      PICOSYSTEM_GRAPHICS_WIDTH);
+	const int32_t bottom = TOY_FACTORY_MIN((int32_t)body->center_y + body->radius + margin + 1,
+					       PICOSYSTEM_GRAPHICS_HEIGHT);
 
 	return (struct picosystem_rect){
 		.x = (uint16_t)left,
@@ -358,12 +366,12 @@ static PICOSYSTEM_RENDER_RAMFUNC struct picosystem_rect
 line_bounds_with_margin(int16_t start_x, int16_t start_y, int16_t end_x, int16_t end_y,
 			uint16_t margin)
 {
-	const int32_t left = MAX((int32_t)MIN(start_x, end_x) - margin, 0);
-	const int32_t top = MAX((int32_t)MIN(start_y, end_y) - margin, 0);
-	const int32_t right =
-		MIN((int32_t)MAX(start_x, end_x) + margin, PICOSYSTEM_GRAPHICS_WIDTH - 1);
-	const int32_t bottom =
-		MIN((int32_t)MAX(start_y, end_y) + margin, PICOSYSTEM_GRAPHICS_HEIGHT - 1);
+	const int32_t left = TOY_FACTORY_MAX((int32_t)TOY_FACTORY_MIN(start_x, end_x) - margin, 0);
+	const int32_t top = TOY_FACTORY_MAX((int32_t)TOY_FACTORY_MIN(start_y, end_y) - margin, 0);
+	const int32_t right = TOY_FACTORY_MIN((int32_t)TOY_FACTORY_MAX(start_x, end_x) + margin,
+					      PICOSYSTEM_GRAPHICS_WIDTH - 1);
+	const int32_t bottom = TOY_FACTORY_MIN((int32_t)TOY_FACTORY_MAX(start_y, end_y) + margin,
+					       PICOSYSTEM_GRAPHICS_HEIGHT - 1);
 	if ((right < left) || (bottom < top)) {
 		return (struct picosystem_rect){0};
 	}
@@ -394,10 +402,10 @@ picosystem_scene_rope_bounds(const struct picosystem_scene_rope *rope)
 	int16_t right = left;
 	int16_t bottom = top;
 	for (uint8_t index = 1U; index < rope->particle_count; ++index) {
-		left = MIN(left, rope->particles[index].x);
-		top = MIN(top, rope->particles[index].y);
-		right = MAX(right, rope->particles[index].x);
-		bottom = MAX(bottom, rope->particles[index].y);
+		left = TOY_FACTORY_MIN(left, rope->particles[index].x);
+		top = TOY_FACTORY_MIN(top, rope->particles[index].y);
+		right = TOY_FACTORY_MAX(right, rope->particles[index].x);
+		bottom = TOY_FACTORY_MAX(bottom, rope->particles[index].y);
 	}
 	return line_bounds_with_margin(left, top, right, bottom, 1U);
 }
@@ -448,20 +456,24 @@ picosystem_scene_revolute_joint_bounds(const struct picosystem_scene_joint *join
 {
 	const int32_t center_x = ((int32_t)joint->anchor_a_x + joint->anchor_b_x) / 2;
 	const int32_t center_y = ((int32_t)joint->anchor_a_y + joint->anchor_b_y) / 2;
-	const int32_t left = MAX(MIN(MIN((int32_t)joint->anchor_a_x, joint->anchor_b_x),
-				     center_x - PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS),
-				 0);
-	const int32_t top = MAX(MIN(MIN((int32_t)joint->anchor_a_y, joint->anchor_b_y),
-				    center_y - PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS),
-				0);
-	const int32_t right = MIN(MAX(MAX((int32_t)joint->anchor_a_x, joint->anchor_b_x),
-				      center_x + PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS) +
-					  1,
-				  PICOSYSTEM_GRAPHICS_WIDTH);
-	const int32_t bottom = MIN(MAX(MAX((int32_t)joint->anchor_a_y, joint->anchor_b_y),
-				       center_y + PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS) +
-					   1,
-				   PICOSYSTEM_GRAPHICS_HEIGHT);
+	const int32_t left = TOY_FACTORY_MAX(
+		TOY_FACTORY_MIN(TOY_FACTORY_MIN((int32_t)joint->anchor_a_x, joint->anchor_b_x),
+				center_x - PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS),
+		0);
+	const int32_t top = TOY_FACTORY_MAX(
+		TOY_FACTORY_MIN(TOY_FACTORY_MIN((int32_t)joint->anchor_a_y, joint->anchor_b_y),
+				center_y - PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS),
+		0);
+	const int32_t right = TOY_FACTORY_MIN(
+		TOY_FACTORY_MAX(TOY_FACTORY_MAX((int32_t)joint->anchor_a_x, joint->anchor_b_x),
+				center_x + PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS) +
+			1,
+		PICOSYSTEM_GRAPHICS_WIDTH);
+	const int32_t bottom = TOY_FACTORY_MIN(
+		TOY_FACTORY_MAX(TOY_FACTORY_MAX((int32_t)joint->anchor_a_y, joint->anchor_b_y),
+				center_y + PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS) +
+			1,
+		PICOSYSTEM_GRAPHICS_HEIGHT);
 	if ((right <= left) || (bottom <= top)) {
 		return (struct picosystem_rect){0};
 	}
@@ -553,8 +565,9 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_body(const struct picosystem_scene_b
 						 struct picosystem_scene_render_progress *progress)
 {
 	const picosystem_color_t color =
-		(body->sleeping != 0U) ? PICOSYSTEM_COLOR_BLUE
-				       : body_colors[(body->id - 1U) % ARRAY_SIZE(body_colors)];
+		(body->sleeping != 0U)
+			? PICOSYSTEM_COLOR_BLUE
+			: body_colors[(body->id - 1U) % TOY_FACTORY_ARRAY_SIZE(body_colors)];
 	const picosystem_color_t detail_color =
 		(body->sleeping != 0U) ? PICOSYSTEM_COLOR_WHITE : PICOSYSTEM_COLOR_BLACK;
 	if (body->shape == PICOSYSTEM_PHYSICS_SHAPE_BOX) {
@@ -645,7 +658,7 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_body(const struct picosystem_scene_b
 		return render_gear_details(body, clip, color, detail_color, body_index, progress);
 	}
 
-	const uint16_t highlight_radius = MAX(body->radius / 4U, 1U);
+	const uint16_t highlight_radius = TOY_FACTORY_MAX(body->radius / 4U, 1U);
 	update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_BODIES, body_index,
 			PICOSYSTEM_SCENE_RENDER_PRIMITIVE_HIGHLIGHT);
 	err = picosystem_graphics_fill_circle_clipped(clip,
@@ -661,7 +674,7 @@ render_conveyor_chevrons(const struct picosystem_scene_segment *segment, int32_t
 {
 	const int32_t delta_x = (int32_t)segment->end_x - segment->start_x;
 	const int32_t delta_y = (int32_t)segment->end_y - segment->start_y;
-	const int32_t maximum_axis = MAX(absolute_i32(delta_x), absolute_i32(delta_y));
+	const int32_t maximum_axis = TOY_FACTORY_MAX(absolute_i32(delta_x), absolute_i32(delta_y));
 	if (maximum_axis == 0) {
 		return;
 	}
@@ -1182,7 +1195,7 @@ static PICOSYSTEM_RENDER_RAMFUNC void render_spring(const struct picosystem_scen
 {
 	const int32_t delta_x = (int32_t)joint->anchor_b_x - joint->anchor_a_x;
 	const int32_t delta_y = (int32_t)joint->anchor_b_y - joint->anchor_a_y;
-	const int32_t maximum_axis = MAX(absolute_i32(delta_x), absolute_i32(delta_y));
+	const int32_t maximum_axis = TOY_FACTORY_MAX(absolute_i32(delta_x), absolute_i32(delta_y));
 	if (maximum_axis == 0) {
 		picosystem_graphics_draw_pixel_clipped(clip, joint->anchor_a_x, joint->anchor_a_y,
 						       PICOSYSTEM_COLOR_YELLOW);

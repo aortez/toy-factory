@@ -24,6 +24,9 @@ CHAIN_LINKS ?= 4,6,8
 CHAIN_PROFILE_OUT ?= artifacts/physics-chain-profile.json
 RENDER_PROFILE_SAMPLES ?= 16
 RENDER_PROFILE_OUT ?= artifacts/render-profile.json
+HOST_SIMULATOR ?= build-host/toy-factory-sim
+HOST_PLAYER ?= build-host-player/toy-factory-player
+HOST_OUT ?= artifacts/host-screenshot.png
 DISPLAY_TRANSPORT ?= pio-dma
 DISPLAY_HZ ?= 20000000
 CORE1_CHALLENGE ?= 0x01234567
@@ -33,6 +36,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 
 .PHONY: help image setup build build-fast build-pio build-pio-dma build-pl022-dma \
 	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
+	host-build host-check host-run host-cli host-image host-player-build host-player-check host-play \
 	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
 	bootloader console status game-stats \
 	game-redraw core1-status core1-ping core1-raster core1-scene \
@@ -58,6 +62,7 @@ help: ## Show this list of targets
 	@printf '                    [CHAIN_PROFILE_OUT=artifacts/physics-chain-profile.json]\n'
 	@printf '                    [RENDER_PROFILE_SAMPLES=16] [RENDER_PROFILE_OUT=artifacts/render-profile.json]\n'
 	@printf '                    [DISPLAY_TRANSPORT=pio-dma] [DISPLAY_HZ=20000000]\n'
+	@printf '                    [HOST_OUT=artifacts/host-screenshot.png] [ARGS="..."]\n'
 	@awk 'BEGIN { FS = ":.*## " } \
 		/^##@ / { printf "\n%s:\n", substr($$0, 5); next } \
 		/^[a-zA-Z0-9_-]+:.*## / { printf "  %-24s %s\n", $$1, $$2 }' \
@@ -91,8 +96,8 @@ build-render-profile: ## Build DISPLAY_TRANSPORT=<default|pio|pio-dma|pl022-dma>
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh \
 		--variant "$(DISPLAY_TRANSPORT)" --display-frequency "$(DISPLAY_HZ)"
 
-format: ## Format application and native-test C source
-	$(COMPOSE) run --rm firmware clang-format -i src/*.c src/*.h scripts/tests/*.c
+format: ## Format application, simulator, and native-test C source
+	$(COMPOSE) run --rm firmware clang-format -i src/*.c src/*.h sim/*.c sim/*.h scripts/tests/*.c
 
 check: ## Run checks and a pristine firmware build
 	$(COMPOSE) run --rm firmware ./scripts/container/check.sh
@@ -106,6 +111,33 @@ check-pl022-dma: ## Pristine-build the hardware SPI0/PL022 plus DMA benchmark
 check-render-profile: ## Pristine-build the selected display transport/frequency image
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --pristine \
 		--variant "$(DISPLAY_TRANSPORT)" --display-frequency "$(DISPLAY_HZ)"
+
+host-build: ## Build the deterministic native simulator in Docker
+	$(COMPOSE) run --rm firmware ./scripts/container/host-build.sh
+
+host-check: ## Pristine-build and test the native simulator against device goldens
+	$(COMPOSE) run --rm firmware ./scripts/container/host-build.sh --pristine
+	$(COMPOSE) run --rm firmware ctest --test-dir build-host --output-on-failure
+
+host-run: host-build ## Run SEQUENCE locally and write its final PNG to HOST_OUT
+	$(COMPOSE) run --rm firmware python3 sim/run_sequence.py \
+		--binary "$(HOST_SIMULATOR)" --sequence "$(SEQUENCE)" --output "$(HOST_OUT)"
+
+host-cli: host-build ## Run the native simulator directly with ARGS="..."
+	$(COMPOSE) run --rm firmware "$(HOST_SIMULATOR)" $(ARGS)
+
+host-image: ## Build or refresh the pinned SDL host-player image
+	$(COMPOSE) build host-player
+
+host-player-build: host-image ## Build the interactive native player without host dependencies
+	$(COMPOSE) run --rm host-player
+
+host-player-check: host-player-build ## Smoke-test the SDL player using its off-screen driver
+	$(COMPOSE) run --rm --env SDL_VIDEODRIVER=dummy host-player \
+		ctest --test-dir build-host-player --output-on-failure -R player-smoke
+
+host-play: host-player-build ## Launch the interactive player on the host; pass ARGS="..."
+	"$(HOST_PLAYER)" $(ARGS)
 
 container-shell: ## Open a shell in the builder container
 	$(COMPOSE) run --rm firmware bash
