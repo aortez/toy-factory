@@ -1,5 +1,5 @@
 {
-  "name": "garden-manual-auto-smoke",
+  "name": "garden-mature-capacity",
   "scene": "garden",
   "steps": [
     {"action": "use-tool"},
@@ -8,10 +8,10 @@
     {"input": "left", "ticks": 30},
     {"action": "use-tool"},
     {"action": "primary"},
-    {"input": "none", "ticks": 900}
+    {"input": "none", "ticks": 3741}
   ],
   "expect": {
-    "hash": "de69461d",
-    "framebuffer_crc32": "7cf1bee7"
+    "hash": "f5df2b20",
+    "framebuffer_crc32": "0008203d"
   }
 }

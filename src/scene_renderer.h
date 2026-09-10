@@ -126,6 +126,9 @@ struct picosystem_scene_garden_payload {
 	uint8_t auto_target_tool;
 	uint8_t auto_gardener_enabled;
 	uint8_t auto_target_valid;
+	uint8_t sun_phase;
+	uint8_t sun_strength;
+	int8_t sun_ray_step_x_q4;
 };
 
 /* Immutable, self-contained input copied to the auxiliary core before rasterization. */

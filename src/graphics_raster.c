@@ -30,6 +30,27 @@ union graphics_framebuffer_storage {
 
 static union graphics_framebuffer_storage framebuffer __attribute__((aligned(4)));
 
+#if defined(TOY_FACTORY_RASTER_WORK_COUNTERS)
+static struct picosystem_graphics_raster_work raster_work;
+static bool raster_work_enabled;
+
+#define RECORD_RASTER_CALL(field)                                                                  \
+	do {                                                                                       \
+		if (raster_work_enabled) {                                                         \
+			++raster_work.field;                                                       \
+		}                                                                                  \
+	} while (false)
+#define RECORD_PIXEL_WRITES(count)                                                                 \
+	do {                                                                                       \
+		if (raster_work_enabled) {                                                         \
+			raster_work.pixel_write_count += (count);                                  \
+		}                                                                                  \
+	} while (false)
+#else
+#define RECORD_RASTER_CALL(field)  ((void)0)
+#define RECORD_PIXEL_WRITES(count) ((void)0)
+#endif
+
 static const uint8_t digit_glyphs[10][FONT_HEIGHT] = {
 	{0x7U, 0x5U, 0x5U, 0x5U, 0x7U}, {0x2U, 0x6U, 0x2U, 0x2U, 0x7U},
 	{0x7U, 0x1U, 0x7U, 0x4U, 0x7U}, {0x7U, 0x1U, 0x7U, 0x1U, 0x7U},
@@ -127,12 +148,14 @@ static PICOSYSTEM_RENDER_RAMFUNC const uint8_t *glyph_for_character(char charact
 
 PICOSYSTEM_RENDER_RAMFUNC void picosystem_graphics_clear(picosystem_color_t color)
 {
+	RECORD_RASTER_CALL(clear_call_count);
 	const uint16_t converted = native_color(color);
 	const uint32_t pair = ((uint32_t)converted << 16U) | converted;
 
 	for (size_t i = 0U; i < TOY_FACTORY_ARRAY_SIZE(framebuffer.pairs); ++i) {
 		framebuffer.pairs[i] = pair;
 	}
+	RECORD_PIXEL_WRITES(TOY_FACTORY_ARRAY_SIZE(framebuffer.pixels));
 }
 
 static PICOSYSTEM_RENDER_RAMFUNC void draw_native_pixel(const struct picosystem_rect *clip,
@@ -148,6 +171,7 @@ static PICOSYSTEM_RENDER_RAMFUNC void draw_native_pixel(const struct picosystem_
 	}
 
 	framebuffer.pixels[((size_t)y * PICOSYSTEM_GRAPHICS_WIDTH) + (size_t)x] = converted;
+	RECORD_PIXEL_WRITES(1U);
 }
 
 PICOSYSTEM_RENDER_RAMFUNC void picosystem_graphics_draw_pixel(int16_t x, int16_t y,
@@ -160,6 +184,7 @@ PICOSYSTEM_RENDER_RAMFUNC void
 picosystem_graphics_draw_pixel_clipped(const struct picosystem_rect *clip, int16_t x, int16_t y,
 				       picosystem_color_t color)
 {
+	RECORD_RASTER_CALL(draw_pixel_call_count);
 	draw_native_pixel(clip, x, y, native_color(color));
 }
 
@@ -174,6 +199,7 @@ PICOSYSTEM_RENDER_RAMFUNC void
 picosystem_graphics_fill_rect_clipped(const struct picosystem_rect *clip, int16_t x, int16_t y,
 				      uint16_t width, uint16_t height, picosystem_color_t color)
 {
+	RECORD_RASTER_CALL(fill_rect_call_count);
 	int32_t left = TOY_FACTORY_MAX((int32_t)x, 0);
 	int32_t top = TOY_FACTORY_MAX((int32_t)y, 0);
 	int32_t right = TOY_FACTORY_MIN((int32_t)x + width, PICOSYSTEM_GRAPHICS_WIDTH);
@@ -196,12 +222,14 @@ picosystem_graphics_fill_rect_clipped(const struct picosystem_rect *clip, int16_
 			framebuffer.pixels[row_start + (size_t)column] = converted;
 		}
 	}
+	RECORD_PIXEL_WRITES((uint64_t)(right - left) * (uint64_t)(bottom - top));
 }
 
 PICOSYSTEM_RENDER_RAMFUNC void picosystem_graphics_draw_rect(int16_t x, int16_t y, uint16_t width,
 							     uint16_t height,
 							     picosystem_color_t color)
 {
+	RECORD_RASTER_CALL(draw_rect_call_count);
 	if ((width == 0U) || (height == 0U)) {
 		return;
 	}
@@ -230,6 +258,7 @@ picosystem_graphics_draw_line_clipped(const struct picosystem_rect *clip, int16_
 				      int16_t start_y, int16_t end_x, int16_t end_y,
 				      picosystem_color_t color)
 {
+	RECORD_RASTER_CALL(draw_line_call_count);
 	int32_t x = start_x;
 	int32_t y = start_y;
 	const int32_t delta_x = (end_x >= start_x) ? end_x - start_x : start_x - end_x;
@@ -313,6 +342,7 @@ static PICOSYSTEM_RENDER_RAMFUNC void fill_triangle_fast(int16_t x0, int16_t y0,
 			if (positive ? ((edge_0 >= 0) && (edge_1 >= 0) && (edge_2 >= 0))
 				     : ((edge_0 <= 0) && (edge_1 <= 0) && (edge_2 <= 0))) {
 				framebuffer.pixels[row_start + (size_t)x] = converted;
+				RECORD_PIXEL_WRITES(1U);
 			}
 			edge_0 += x_step_0;
 			edge_1 += x_step_1;
@@ -353,6 +383,7 @@ static PICOSYSTEM_RENDER_RAMFUNC void fill_triangle_wide(int16_t x0, int16_t y0,
 			if (positive ? ((edge_0 >= 0) && (edge_1 >= 0) && (edge_2 >= 0))
 				     : ((edge_0 <= 0) && (edge_1 <= 0) && (edge_2 <= 0))) {
 				framebuffer.pixels[row_start + (size_t)x] = converted;
+				RECORD_PIXEL_WRITES(1U);
 			}
 			edge_0 += x_step_0;
 			edge_1 += x_step_1;
@@ -376,6 +407,7 @@ picosystem_graphics_fill_triangle_clipped(const struct picosystem_rect *clip, in
 					  int16_t y0, int16_t x1, int16_t y1, int16_t x2,
 					  int16_t y2, picosystem_color_t color)
 {
+	RECORD_RASTER_CALL(fill_triangle_call_count);
 	int32_t left = TOY_FACTORY_MAX(TOY_FACTORY_MIN(x0, TOY_FACTORY_MIN(x1, x2)), 0);
 	int32_t top = TOY_FACTORY_MAX(TOY_FACTORY_MIN(y0, TOY_FACTORY_MIN(y1, y2)), 0);
 	int32_t right = TOY_FACTORY_MIN(TOY_FACTORY_MAX(x0, TOY_FACTORY_MAX(x1, x2)),
@@ -426,6 +458,7 @@ PICOSYSTEM_RENDER_RAMFUNC int
 picosystem_graphics_fill_circle_clipped(const struct picosystem_rect *clip, int16_t center_x,
 					int16_t center_y, uint16_t radius, picosystem_color_t color)
 {
+	RECORD_RASTER_CALL(fill_circle_call_count);
 	if (radius > TOY_FACTORY_MAX(PICOSYSTEM_GRAPHICS_WIDTH, PICOSYSTEM_GRAPHICS_HEIGHT)) {
 		return -ERANGE;
 	}
@@ -503,9 +536,28 @@ uint32_t picosystem_graphics_raster_crc32(void)
 	return ~crc;
 }
 
+#if defined(TOY_FACTORY_RASTER_WORK_COUNTERS)
+void picosystem_graphics_raster_work_begin(void)
+{
+	raster_work = (struct picosystem_graphics_raster_work){0};
+	raster_work_enabled = true;
+}
+
+int picosystem_graphics_raster_work_end(struct picosystem_graphics_raster_work *work)
+{
+	raster_work_enabled = false;
+	if (work == NULL) {
+		return -EINVAL;
+	}
+	*work = raster_work;
+	return 0;
+}
+#endif
+
 PICOSYSTEM_RENDER_RAMFUNC int picosystem_graphics_draw_mono_sprite(
 	int16_t x, int16_t y, const struct picosystem_mono_sprite *sprite, picosystem_color_t color)
 {
+	RECORD_RASTER_CALL(draw_mono_sprite_call_count);
 	if ((sprite == NULL) || (sprite->data == NULL) || (sprite->width == 0U) ||
 	    (sprite->height == 0U) ||
 	    (sprite->stride_bytes < TOY_FACTORY_DIV_ROUND_UP(sprite->width, 8U))) {
@@ -541,6 +593,7 @@ PICOSYSTEM_RENDER_RAMFUNC int
 picosystem_graphics_draw_text_clipped(const struct picosystem_rect *clip, int16_t x, int16_t y,
 				      const char *text, uint8_t scale, picosystem_color_t color)
 {
+	RECORD_RASTER_CALL(draw_text_call_count);
 	if ((text == NULL) || (scale == 0U) || (scale > FONT_MAX_SCALE)) {
 		return -EINVAL;
 	}

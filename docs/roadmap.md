@@ -110,6 +110,10 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add acknowledged runtime scene selection and a short/long Y-button gesture.
 - [x] Build and physically verify the Marble Machine chute and return loop.
 - [x] Build and physically verify the deterministic Garden and auto-gardener.
+- [x] Route baseline growth through a bounded Garden observation/proposal contract.
+- [x] Add deterministic moving directional light over the canopy grid.
+- [ ] Add resource maintenance, mortality, decomposition, and node reclamation.
+- [ ] Add reproduction and a replaceable recurrent plant policy.
 
 ## 8. Host simulation
 
@@ -118,5 +122,9 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Replay all committed device sequences with state-hash and framebuffer goldens.
 - [x] Capture host-rendered RGB565 frames as PNG diagnostics.
 - [x] Add a Docker-built SDL3 player with real-time, pause, and exact-step controls.
+- [x] Add deterministic Garden checkpoints, raster work counts, and frame-delta profiling.
+- [x] Prove bounded semantic Garden damage against exact full renders on the host.
+- [ ] Measure adaptive Garden partial/full presentation on the PIM559.
+- [ ] Evaluate overlapping core-1 strip rasterization with display DMA.
 - [ ] Add browser/Wasm presentation over the same portable simulation boundary.
 - [ ] Add scene inspection and resource overlays without mutating authoritative state.

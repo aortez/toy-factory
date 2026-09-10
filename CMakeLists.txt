@@ -25,6 +25,8 @@ target_sources(app PRIVATE
 	src/game_control.c
 	src/game_demo.c
 	src/game_snapshot.c
+	src/garden_agent.c
+	src/garden_light.c
 	src/garden_world.c
 	src/game_scene_clockwork.c
 	src/game_scene_hourglass.c
