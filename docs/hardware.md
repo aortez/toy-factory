@@ -66,14 +66,15 @@ one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
 updates crossed the 16.667 ms budget. The 320-grain population remains normal
 to preserve headroom for additional gameplay.
 
-The current image, including the adaptive Garden policy, uses 255,580 bytes of
-the 255 KiB Zephyr RAM region and 260,964 bytes of flash, leaving 5,540 bytes of
+The current image, including the adaptive Garden policy, uses 255,612 bytes of
+the 255 KiB Zephyr RAM region and 261,588 bytes of flash, leaving 5,508 bytes of
 linker RAM plus the separately reserved 8 KiB core-1 mailbox/stack area. The
-conservative image uses 222,956 bytes of Zephyr RAM and 255,188 bytes of flash.
+conservative image uses 222,988 bytes of Zephyr RAM and 255,812 bytes of flash.
 The fixed granular capacity is 512 particles, the fixed Garden capacity is
-eight plants, 256 nodes, and eight dormant seeds, the immutable render snapshot
-is 1,664 bytes, and the tagged game-world and snapshot unions avoid allocating
-inactive scene alternatives. Full Hourglass results are in the
+eight plants, 256 nodes, and eight dormant seeds, and the 4,340-byte Garden
+world includes bounded per-plant and cumulative policy telemetry. The immutable
+render snapshot is 1,664 bytes, and the tagged game-world and snapshot unions
+avoid allocating inactive scene alternatives. Full Hourglass results are in the
 [Hourglass report](../benchmarks/hourglass/README.md).
 
 Native tests retain exact replay and complete-drain checks for the 96-, 192-,

@@ -30,16 +30,17 @@ decomposition are part of the authoritative simulation.
 ## Fixed-capacity state
 
 [`garden_world.c`](../src/garden_world.c) has no Zephyr, renderer, allocation,
-or wall-clock dependency. Its caller-owned state is 3,980 bytes and contains:
+or wall-clock dependency. Its caller-owned state is 4,340 bytes and contains:
 
-- eight plant records, including eight bytes of lifetime policy memory each,
-  and a shared pool of 256 ten-byte plant nodes;
+- eight plant records, including eight bytes of lifetime policy memory and 40
+  bytes of derived decision telemetry each, and a shared pool of 256 ten-byte
+  plant nodes;
 - a dense eight-entry dormant-seed bank with compact genomes and lineage IDs;
 - a 28 x 11 byte soil-moisture field covering eight-pixel cells;
 - a derived 28 x 14 byte canopy-light field; the sun itself is derived from
   the ecology tick and consumes no persistent world storage;
 - cursor, selected-tool, automatic-policy, deterministic-random, cadence,
-  lifecycle state, and bounded diagnostic counters.
+  lifecycle state, and bounded cumulative diagnostic counters.
 
 Every node refers only to an earlier parent. Stems and roots share the pool;
 leaf, flower, active-tip, pending-branch, and pruning state are flags on a node.
@@ -158,6 +159,27 @@ remains the sole authority for resource costs and graph mutation, so this same
 path can later host a quantized learned policy without creating a second
 simulation.
 
+Every accepted selected decision increments saturating per-plant and cumulative
+telemetry: extend/wait/finish, root/shoot arbitration wins, root/shoot extend
+choices, and the most recent tip, action, and priority. Invalid callback output
+does not leak into either telemetry or policy state. Per-plant counters disappear
+when that plant is reclaimed, while the world aggregate survives reclamation.
+These diagnostics are deliberately excluded from the authoritative hash, so
+observability does not redefine simulation identity.
+
+A fixed-capacity host evaluator runs the original baseline and normal adaptive
+policies against identical seeds in unassisted, irrigated, and crowded plots.
+It reports survival as the first gate, established reproduction as the second,
+then descendant plant-time, generation depth, resources, memory, and decision
+measurements rather than imposing one fitness function. Persistent lineage IDs
+let the host partition those results by species and initial founder even after
+dead plants and their nodes have been compacted out of the live world. Death
+causes and sampled seed-germination blockers expose why a candidate failed, not
+just its final population.
+`make host-evaluate-garden` prints the comparison and stores the full trial report in
+`artifacts/garden-evaluation.json`; see the [host simulator guide](host-simulator.md)
+for its exact experiment contract.
+
 ## Auto-gardener
 
 The auto-gardener is an ordinary deterministic policy, not a privileged state
@@ -249,8 +271,8 @@ window maintained 60.0 Hz simulation and 29.6 fps presentation without skipped
 or over-budget updates. Complete updates averaged 0.616 ms and peaked at 3.623
 ms. Mature-scene rasterization took 12.7-13.0 ms and the final DMA transfer took
 18.387 ms, so full-screen presentation—not ecology—is the limiting path. With
-the shared clipped Garden renderer, the fast adaptive-policy image uses 255,580
-bytes of Zephyr RAM and 260,964 bytes of flash, leaving 5,540 bytes of linked
+the shared clipped Garden renderer, the fast adaptive-policy image uses 255,612
+bytes of Zephyr RAM and 261,588 bytes of flash, leaving 5,508 bytes of linked
 RAM plus the separately reserved 8 KiB core-1 area.
 
 Physical playtesting confirmed that manual planting, watering, pruning, tool

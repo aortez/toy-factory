@@ -36,7 +36,8 @@ path:
   reversible stress, death/decomposition, node reclamation, compact heritable
   genomes, dormant seeds, natural germination, eight-byte lifetime agent memory,
   a replaceable pure growth-policy boundary, an adaptive recurrent policy with
-  plant-level all-tip arbitration, and a toggleable auto-gardener;
+  plant-level all-tip arbitration, bounded decision telemetry, a deterministic
+  host-side policy evaluator, and a toggleable auto-gardener;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -126,6 +127,7 @@ make profile-chain  # benchmark deterministic 4/6/8-link chain scaling
 make host-check  # replay every committed device sequence on the host
 make host-run SEQUENCE=scripts/sequences/garden-smoke.json  # write a host PNG
 make host-profile-garden  # benchmark initial, growing, and established Gardens
+make host-evaluate-garden  # compare Garden policies over matched deterministic trials
 make host-play ARGS="--scene garden --paused"  # launch the interactive player
 ```
 
@@ -503,6 +505,7 @@ make host-run SEQUENCE=scripts/sequences/garden-smoke.json \
   HOST_OUT=artifacts/host-garden.png
 make host-cli ARGS="--scene hourglass --step none 600"
 make host-profile-garden
+make host-evaluate-garden
 ```
 
 `make host-check` runs every committed device sequence under UBSan and asserts
@@ -511,10 +514,18 @@ the final native RGB565 framebuffer into a PNG. `make host-profile-garden`
 uses a separate optimized build to compare initial, growing, and established
 Garden checkpoints. It writes JSON timing, memory, raster-work, and 30/10/4 Hz
 frame-delta data to `artifacts/garden-host-profile.json`. Host time is useful
-for relative A/B measurements; device measurements remain authoritative. For a
-Garden scene, `make host-cli` also reports living/dead plants, dormant seeds,
-lifecycle and reproduction counters, maximum generation, and current lineage
-records—including each plant's genome and lifetime agent memory—in its result
+for relative A/B measurements; device measurements remain authoritative.
+`make host-evaluate-garden` runs the baseline and adaptive policies with matched
+seeds through unassisted, irrigated, and crowded scenarios. It prints a compact
+comparison and preserves raw counts and resource integrals in
+`artifacts/garden-evaluation.json`. Survival and extinction are reported before
+reproductive success; established offspring must survive a maintenance period
+with an active leaf and no stress. Descendant plant-time, death causes,
+germination blockers, and per-species/per-founder lineage results remain
+separate instead of being collapsed into a subjective fitness score. For a Garden scene,
+`make host-cli` also reports living/dead plants, dormant seeds, lifecycle and
+reproduction counters, maximum generation, and current lineage records—including
+each plant's genome, lifetime agent memory, and decision telemetry—in its result
 JSON.
 
 For interactive work on Linux, `make host-play` builds pinned SDL3 sources in a
@@ -652,7 +663,8 @@ generation and also runs native garden-world moisture/light, capacity, growth,
 tool, pruning, maintenance, stress recovery, mortality, reclamation,
 seed production, mutation, dormancy, germination, expiration, lineage,
 adaptive resource allocation, recurrent-memory saturation, transactional
-all-tip arbitration, auto-gardener soak, and replay tests; granular-world
+all-tip arbitration, decision-telemetry accounting, matched-seed policy
+evaluation, auto-gardener soak, and replay tests; granular-world
 configuration, 512-grain
 capacity and wide-index handling, conservative contact-length approximation,
 containment, flip, work-bound, and deterministic replay
@@ -669,25 +681,26 @@ physics-profile protocol, and deterministic-sequence tests. The game-world test
 uses the undefined-behavior sanitizer and treats the accepted reset,
 double-action, full-drain, recirculation, and retained Machine Lab replay hashes
 as native goldens.
-The default image uses 222,956 bytes of its 255 KiB Zephyr RAM region (85.38%)
-and 255,188 bytes of flash. This includes the 115,200-byte framebuffer,
+The default image uses 222,988 bytes of its 255 KiB Zephyr RAM region (85.40%)
+and 255,812 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer, 22,636-byte fixed-capacity rigid physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
 contact/event storage and per-step deterministic counters, a 16,480-byte
 fixed-capacity 512-particle granular world with a 40 x 48 scratch grid,
-boundary masks, and sparse occupied-cell storage, a 3,980-byte fixed-capacity
-garden world with eight dormant-seed slots, a 33,360-byte serialized benchmark
+boundary masks, and sparse occupied-cell storage, a 4,340-byte fixed-capacity
+garden world with per-plant and cumulative policy telemetry and eight
+dormant-seed slots, a 33,360-byte serialized benchmark
 workspace, two 1,664-byte
 render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
-storage, and a 1,024-byte shell TX ring. The fast image uses 255,580 bytes of
-that region (97.88%) and 260,964 bytes of flash. It keeps the rigid-physics and
+storage, and a 1,024-byte shell TX ring. The fast image uses 255,612 bytes of
+that region (97.89%) and 261,588 bytes of flash. It keeps the rigid-physics and
 renderer hot paths in SRAM while the granular solver remains in XIP flash, and
 both images route compiler integer division through the RP2040's interrupt-safe
 hardware-divider wrappers. Both images also reserve
 8 KiB outside Zephyr's region for the
-core-1 mailbox and stack. The default and fast images retain 38,164 and 5,540
+core-1 mailbox and stack. The default and fast images retain 38,132 and 5,508
 bytes of Zephyr RAM headroom respectively. Full frames bypass the staging buffer
 with one contiguous write.
 

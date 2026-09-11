@@ -30,7 +30,15 @@ static void test_reset_and_validation(void)
 	assert(world.cursor_column == PICOSYSTEM_GARDEN_GRID_COLUMNS / 2U);
 	assert(world.cursor_row == PICOSYSTEM_GARDEN_CANOPY_ROWS);
 	assert(world.light[0] == UINT8_MAX);
-	assert(picosystem_garden_world_hash(&world) != 0U);
+	const uint32_t initial_hash = picosystem_garden_world_hash(&world);
+	assert(initial_hash != 0U);
+	struct picosystem_garden_world diagnostics_only = world;
+	diagnostics_only.agent_telemetry.decision_count = 1U;
+	diagnostics_only.agent_telemetry.extend_count = 1U;
+	diagnostics_only.agent_telemetry.shoot_decision_count = 1U;
+	diagnostics_only.agent_telemetry.shoot_extend_count = 1U;
+	diagnostics_only.agent_telemetry.last_action = PICOSYSTEM_GARDEN_AGENT_ACTION_EXTEND;
+	assert(picosystem_garden_world_hash(&diagnostics_only) == initial_hash);
 	assert(picosystem_garden_species_name(PICOSYSTEM_GARDEN_SPECIES_SHRUB) != NULL);
 	assert(strcmp(picosystem_garden_species_name(PICOSYSTEM_GARDEN_SPECIES_COUNT), "unknown") ==
 	       0);
@@ -49,6 +57,13 @@ static void test_seed_spacing_capacity_and_access(void)
 	       0);
 	assert(world.plant_count == 1U);
 	assert(world.node_count == 4U);
+	const uint32_t planted_hash = picosystem_garden_world_hash(&world);
+	struct picosystem_garden_world plant_diagnostics_only = world;
+	plant_diagnostics_only.plants[0].agent_telemetry.decision_count = 1U;
+	plant_diagnostics_only.plants[0].agent_telemetry.wait_count = 1U;
+	plant_diagnostics_only.plants[0].agent_telemetry.last_action =
+		PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT;
+	assert(picosystem_garden_world_hash(&plant_diagnostics_only) == planted_hash);
 	const struct picosystem_garden_world unchanged = world;
 	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_SHRUB, 4U) ==
 	       -EEXIST);
@@ -591,6 +606,8 @@ static void test_injected_agent_policy_memory_and_rejection(void)
 			       &baseline, picosystem_garden_agent_baseline_policy()) == 0);
 	}
 	assert(left.plants[0].agent_memory.hidden[0] == memory_increment);
+	assert(left.plants[0].agent_telemetry.decision_count == 1U);
+	assert(left.agent_telemetry.decision_count == 1U);
 	assert(memcmp(&left.plants[0].agent_memory, &right.plants[0].agent_memory,
 		      sizeof(left.plants[0].agent_memory)) == 0);
 	assert(picosystem_garden_world_hash(&left) == picosystem_garden_world_hash(&right));
@@ -643,6 +660,21 @@ static void test_all_tip_arbitration_and_rejection(void)
 	assert(world.plants[0].last_root_tip_index == 3U);
 	assert(world.plants[0].agent_memory.hidden[0] == 3);
 	assert(world.plants[0].agent_memory.hidden[1] == 0);
+	assert(world.plants[0].agent_telemetry.decision_count == 1U);
+	assert(world.plants[0].agent_telemetry.extend_count == 1U);
+	assert(world.plants[0].agent_telemetry.root_decision_count == 1U);
+	assert(world.plants[0].agent_telemetry.shoot_decision_count == 0U);
+	assert(world.plants[0].agent_telemetry.root_extend_count == 1U);
+	assert(world.plants[0].agent_telemetry.shoot_extend_count == 0U);
+	assert(world.plants[0].agent_telemetry.last_priority == 3);
+	assert(world.plants[0].agent_telemetry.last_tip_x == world.nodes[3].x);
+	assert(world.plants[0].agent_telemetry.last_tip_y == world.nodes[3].y);
+	assert(world.plants[0].agent_telemetry.last_tip_depth == world.nodes[3].depth);
+	assert(world.plants[0].agent_telemetry.last_tissue_kind == PICOSYSTEM_GARDEN_NODE_ROOT);
+	assert(world.plants[0].agent_telemetry.last_action ==
+	       PICOSYSTEM_GARDEN_AGENT_ACTION_EXTEND);
+	assert(memcmp(&world.plants[0].agent_telemetry, &world.agent_telemetry,
+		      sizeof(world.agent_telemetry)) == 0);
 	assert(world.plants[0].random_state == test_random_next(random_state));
 	assert(world.plants[0].growth_phase == 1U);
 
@@ -664,6 +696,10 @@ static void test_all_tip_arbitration_and_rejection(void)
 	const uint16_t rejected_node_count = world.node_count;
 	const uint8_t rejected_growth_phase = world.plants[0].growth_phase;
 	const struct picosystem_garden_agent_memory rejected_memory = world.plants[0].agent_memory;
+	const struct picosystem_garden_agent_telemetry rejected_plant_telemetry =
+		world.plants[0].agent_telemetry;
+	const struct picosystem_garden_agent_telemetry rejected_world_telemetry =
+		world.agent_telemetry;
 	assert(picosystem_garden_world_step_with_policy(&world, &rejecting_policy) == -ERANGE);
 	assert(world.plants[0].random_state == rejected_random_state);
 	assert(world.plants[0].last_shoot_tip_index == rejected_shoot_tip);
@@ -672,6 +708,10 @@ static void test_all_tip_arbitration_and_rejection(void)
 	assert(world.node_count == rejected_node_count);
 	assert(memcmp(&world.plants[0].agent_memory, &rejected_memory, sizeof(rejected_memory)) ==
 	       0);
+	assert(memcmp(&world.plants[0].agent_telemetry, &rejected_plant_telemetry,
+		      sizeof(rejected_plant_telemetry)) == 0);
+	assert(memcmp(&world.agent_telemetry, &rejected_world_telemetry,
+		      sizeof(rejected_world_telemetry)) == 0);
 
 	const struct picosystem_garden_world unchanged = world;
 	const struct picosystem_garden_agent_policy invalid_arbitration = {
@@ -865,6 +905,53 @@ static void test_reproduction_germination_and_seed_expiration(void)
 	       world.mutation_count);
 	assert(picosystem_garden_world_seed_at(&world, 0U) != NULL);
 	assert(picosystem_garden_world_seed_at(&world, 1U) == NULL);
+	uint8_t blockers = 0U;
+	assert(picosystem_garden_world_seed_germination_blockers(NULL, 0U, &blockers) == -EINVAL);
+	assert(picosystem_garden_world_seed_germination_blockers(&world, 0U, NULL) == -EINVAL);
+	assert(picosystem_garden_world_seed_germination_blockers(&world, 1U, &blockers) == -ERANGE);
+	assert(picosystem_garden_world_seed_germination_blockers(&world, 0U, &blockers) == 0);
+	assert((blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_DORMANT) != 0U);
+	assert((blockers & (uint8_t)~PICOSYSTEM_GARDEN_SEED_VALID_BLOCKERS) == 0U);
+
+	struct picosystem_garden_world environmental_block = world;
+	environmental_block.seeds[0].age_ecology_ticks = PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS;
+	memset(environmental_block.moisture, 0, sizeof(environmental_block.moisture));
+	memset(environmental_block.light, 0, sizeof(environmental_block.light));
+	environmental_block.seeds[0].column = environmental_block.plants[0].base_column;
+	assert(picosystem_garden_world_seed_germination_blockers(&environmental_block, 0U,
+								 &blockers) == 0);
+	assert((blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_DORMANT) == 0U);
+	assert((blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_MOISTURE) != 0U);
+	assert((blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_LIGHT) != 0U);
+	assert((blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_SPACING) != 0U);
+
+	struct picosystem_garden_world capacity_block = world;
+	static const uint8_t extra_columns[] = {0U, 3U, 6U, 9U, 18U, 21U, 24U};
+	for (size_t index = 0U; index < (sizeof(extra_columns) / sizeof(extra_columns[0]));
+	     ++index) {
+		assert(picosystem_garden_world_plant_seed(&capacity_block,
+							  PICOSYSTEM_GARDEN_SPECIES_FLOWER,
+							  extra_columns[index]) == 0);
+	}
+	assert(capacity_block.plant_count == PICOSYSTEM_GARDEN_MAX_PLANTS);
+	assert(picosystem_garden_world_seed_germination_blockers(&capacity_block, 0U, &blockers) ==
+	       0);
+	assert((blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_PLANT_CAPACITY) != 0U);
+	const uint16_t target_node_count = PICOSYSTEM_GARDEN_MAX_NODES - 3U;
+	const uint16_t appended_node_count = target_node_count - capacity_block.node_count;
+	for (uint16_t index = capacity_block.node_count; index < target_node_count; ++index) {
+		capacity_block.nodes[index] = (struct picosystem_garden_node){
+			.parent_index = capacity_block.plants[0].base_node_index,
+			.plant_index = 0U,
+			.kind = PICOSYSTEM_GARDEN_NODE_STEM,
+		};
+	}
+	capacity_block.node_count = target_node_count;
+	capacity_block.plants[0].node_count =
+		(uint16_t)(capacity_block.plants[0].node_count + appended_node_count);
+	assert(picosystem_garden_world_seed_germination_blockers(&capacity_block, 0U, &blockers) ==
+	       0);
+	assert((blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_NODE_CAPACITY) != 0U);
 
 	for (uint16_t age = 0U; age < PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS; ++age) {
 		assert(picosystem_garden_world_water(&world, seed.column, UINT8_MAX) == 0);

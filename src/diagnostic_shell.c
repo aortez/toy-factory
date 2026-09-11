@@ -408,6 +408,13 @@ static void print_garden_stats(const struct shell *shell,
 		    game->garden_seed_creation_count, game->garden_germination_count,
 		    game->garden_seed_expiration_count, game->garden_mutation_count,
 		    game->garden_maximum_generation);
+	shell_print(shell,
+		    "garden agent: decisions=%u (%u extend/%u wait/%u finish), "
+		    "winners=%u root/%u shoot, extensions=%u root/%u shoot",
+		    game->garden_agent_decision_count, game->garden_agent_extend_count,
+		    game->garden_agent_wait_count, game->garden_agent_finish_count,
+		    game->garden_agent_root_count, game->garden_agent_shoot_count,
+		    game->garden_agent_root_extend_count, game->garden_agent_shoot_extend_count);
 }
 
 static void print_game_runtime_stats(const struct shell *shell,

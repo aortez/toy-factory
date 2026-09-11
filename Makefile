@@ -28,8 +28,13 @@ HOST_SIMULATOR ?= build-host/toy-factory-sim
 HOST_PLAYER ?= build-host-player/toy-factory-player
 HOST_OUT ?= artifacts/host-screenshot.png
 HOST_GARDEN_PROFILE ?= build-host-profile/toy-factory-garden-profile
+HOST_GARDEN_EVALUATOR ?= build-host/toy-factory-garden-eval
 GARDEN_PROFILE_REPETITIONS ?= 32
 GARDEN_PROFILE_OUT ?= artifacts/garden-host-profile.json
+GARDEN_EVAL_TRIALS ?= 8
+GARDEN_EVAL_TICKS ?= 7680
+GARDEN_EVAL_SEED ?= 0x6576616c
+GARDEN_EVAL_OUT ?= artifacts/garden-evaluation.json
 DISPLAY_TRANSPORT ?= pio-dma
 DISPLAY_HZ ?= 20000000
 CORE1_CHALLENGE ?= 0x01234567
@@ -40,6 +45,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 .PHONY: help image setup build build-fast build-pio build-pio-dma build-pl022-dma \
 	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
 	host-build host-check host-run host-cli host-profile-build host-profile-garden \
+	host-evaluate-garden \
 	host-image host-player-build host-player-check host-play \
 	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
 	bootloader console status game-stats \
@@ -69,6 +75,9 @@ help: ## Show this list of targets
 	@printf '                    [HOST_OUT=artifacts/host-screenshot.png] [ARGS="..."]\n'
 	@printf '                    [GARDEN_PROFILE_REPETITIONS=32]\n'
 	@printf '                    [GARDEN_PROFILE_OUT=artifacts/garden-host-profile.json]\n'
+	@printf '                    [GARDEN_EVAL_TRIALS=8] [GARDEN_EVAL_TICKS=7680]\n'
+	@printf '                    [GARDEN_EVAL_SEED=0x6576616c]\n'
+	@printf '                    [GARDEN_EVAL_OUT=artifacts/garden-evaluation.json]\n'
 	@awk 'BEGIN { FS = ":.*## " } \
 		/^##@ / { printf "\n%s:\n", substr($$0, 5); next } \
 		/^[a-zA-Z0-9_-]+:.*## / { printf "  %-24s %s\n", $$1, $$2 }' \
@@ -140,6 +149,15 @@ host-profile-garden: host-profile-build ## Profile initial, growing, and establi
 	@$(COMPOSE) run --rm firmware "$(HOST_GARDEN_PROFILE)" \
 		--repetitions "$(GARDEN_PROFILE_REPETITIONS)" > "$(GARDEN_PROFILE_OUT)"
 	@$(COMPOSE) run --rm firmware python3 -m json.tool "$(GARDEN_PROFILE_OUT)"
+
+host-evaluate-garden: host-build ## Compare Garden policies over deterministic scenario batches
+	@mkdir -p "$(dir $(GARDEN_EVAL_OUT))"
+	@$(COMPOSE) run --rm firmware "$(HOST_GARDEN_EVALUATOR)" \
+		--trials "$(GARDEN_EVAL_TRIALS)" --ticks "$(GARDEN_EVAL_TICKS)" \
+		--seed "$(GARDEN_EVAL_SEED)" > "$(GARDEN_EVAL_OUT)"
+	@$(COMPOSE) run --rm firmware python3 -m json.tool "$(GARDEN_EVAL_OUT)" >/dev/null
+	@$(COMPOSE) run --rm firmware python3 sim/summarize_garden_experiment.py \
+		"$(GARDEN_EVAL_OUT)"
 
 host-image: ## Build or refresh the pinned SDL host-player image
 	$(COMPOSE) build host-player

@@ -135,6 +135,14 @@ struct picosystem_game_demo_stats {
 	uint32_t garden_germination_count;
 	uint32_t garden_seed_expiration_count;
 	uint32_t garden_mutation_count;
+	uint32_t garden_agent_decision_count;
+	uint32_t garden_agent_extend_count;
+	uint32_t garden_agent_wait_count;
+	uint32_t garden_agent_finish_count;
+	uint32_t garden_agent_root_count;
+	uint32_t garden_agent_shoot_count;
+	uint32_t garden_agent_root_extend_count;
+	uint32_t garden_agent_shoot_extend_count;
 	uint32_t focus_angle_turns;
 	int32_t focus_angular_velocity_milliradians_per_second;
 	uint16_t body_count;

@@ -82,6 +82,20 @@ enum picosystem_garden_plant_flag {
 	(PICOSYSTEM_GARDEN_PLANT_DEAD | PICOSYSTEM_GARDEN_PLANT_ENERGY_SHORTAGE |                  \
 	 PICOSYSTEM_GARDEN_PLANT_WATER_SHORTAGE)
 
+enum picosystem_garden_seed_germination_blocker {
+	PICOSYSTEM_GARDEN_SEED_BLOCKED_DORMANT = 1U << 0,
+	PICOSYSTEM_GARDEN_SEED_BLOCKED_MOISTURE = 1U << 1,
+	PICOSYSTEM_GARDEN_SEED_BLOCKED_LIGHT = 1U << 2,
+	PICOSYSTEM_GARDEN_SEED_BLOCKED_PLANT_CAPACITY = 1U << 3,
+	PICOSYSTEM_GARDEN_SEED_BLOCKED_NODE_CAPACITY = 1U << 4,
+	PICOSYSTEM_GARDEN_SEED_BLOCKED_SPACING = 1U << 5,
+};
+
+#define PICOSYSTEM_GARDEN_SEED_VALID_BLOCKERS                                                      \
+	(PICOSYSTEM_GARDEN_SEED_BLOCKED_DORMANT | PICOSYSTEM_GARDEN_SEED_BLOCKED_MOISTURE |        \
+	 PICOSYSTEM_GARDEN_SEED_BLOCKED_LIGHT | PICOSYSTEM_GARDEN_SEED_BLOCKED_PLANT_CAPACITY |    \
+	 PICOSYSTEM_GARDEN_SEED_BLOCKED_NODE_CAPACITY | PICOSYSTEM_GARDEN_SEED_BLOCKED_SPACING)
+
 enum picosystem_garden_tool {
 	PICOSYSTEM_GARDEN_TOOL_FLOWER_SEED,
 	PICOSYSTEM_GARDEN_TOOL_SHRUB_SEED,
@@ -120,6 +134,25 @@ struct picosystem_garden_agent_memory {
 	int8_t hidden[PICOSYSTEM_GARDEN_AGENT_MEMORY_WIDTH];
 };
 
+/* Derived policy diagnostics; deliberately excluded from the authoritative hash. */
+struct picosystem_garden_agent_telemetry {
+	uint32_t decision_count;
+	uint32_t extend_count;
+	uint32_t wait_count;
+	uint32_t finish_count;
+	uint32_t root_decision_count;
+	uint32_t shoot_decision_count;
+	uint32_t root_extend_count;
+	uint32_t shoot_extend_count;
+	int16_t last_priority;
+	uint8_t last_tip_x;
+	uint8_t last_tip_y;
+	uint8_t last_tip_depth;
+	uint8_t last_tissue_kind;
+	uint8_t last_action;
+	uint8_t reserved;
+};
+
 struct picosystem_garden_plant {
 	uint32_t random_state;
 	uint32_t lineage_id;
@@ -135,6 +168,7 @@ struct picosystem_garden_plant {
 	uint16_t generation;
 	struct picosystem_garden_genome genome;
 	struct picosystem_garden_agent_memory agent_memory;
+	struct picosystem_garden_agent_telemetry agent_telemetry;
 	uint8_t base_column;
 	uint8_t growth_cooldown;
 	uint8_t reproduction_cooldown;
@@ -166,6 +200,8 @@ struct picosystem_garden_world {
 	struct picosystem_garden_node nodes[PICOSYSTEM_GARDEN_MAX_NODES];
 	struct picosystem_garden_plant plants[PICOSYSTEM_GARDEN_MAX_PLANTS];
 	struct picosystem_garden_seed seeds[PICOSYSTEM_GARDEN_MAX_SEEDS];
+	/* Aggregate telemetry survives individual plant reclamation. */
+	struct picosystem_garden_agent_telemetry agent_telemetry;
 	uint8_t moisture[PICOSYSTEM_GARDEN_SOIL_CELL_COUNT];
 	uint8_t light[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT];
 	uint32_t random_state;
@@ -254,6 +290,10 @@ picosystem_garden_world_plant_at(const struct picosystem_garden_world *world, si
 
 const struct picosystem_garden_seed *
 picosystem_garden_world_seed_at(const struct picosystem_garden_world *world, size_t index);
+
+/* Report every current reason a seed cannot germinate without mutating the world. */
+int picosystem_garden_world_seed_germination_blockers(const struct picosystem_garden_world *world,
+						      size_t seed_index, uint8_t *blockers);
 
 uint8_t picosystem_garden_world_living_plant_count(const struct picosystem_garden_world *world);
 uint8_t picosystem_garden_world_dead_plant_count(const struct picosystem_garden_world *world);

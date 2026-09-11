@@ -48,8 +48,10 @@ hash, and framebuffer CRC-32. Garden results also include current living/dead
 plant and node totals, dormant seeds, cumulative lifecycle/reproduction
 counters, maximum generation, and a record for every current lineage. Each
 lineage record exposes its ID, parent, generation, offspring count, species,
-eight-trait genome, and eight signed lifetime-memory values. The default policy
-leaves those memory values at zero; injected policies can use them without
+eight-trait genome, eight signed lifetime-memory values, selected-action counts,
+root/shoot arbitration counts, and its latest accepted decision. The aggregate
+Garden record retains equivalent counters across reclaimed plants. The default
+policy leaves the memory values at zero; injected policies can use them without
 forking the simulation implementation.
 `--expect-hash` and `--expect-crc` turn the deterministic values into
 assertions; `--output` writes RGB PPM and `--framebuffer` writes the native
@@ -61,6 +63,64 @@ Machine, growing Garden, established Garden, unattended Garden lifecycle, and
 Garden generation fixtures all match their committed hashes and framebuffer
 CRCs exactly on the host. The generation fixture explicitly reaches two living
 generation-1 offspring through the ordinary seed bank and germination path.
+
+## Garden policy evaluation
+
+Compare the baseline and adaptive policies over a deterministic batch with:
+
+```sh
+make host-evaluate-garden
+```
+
+The default run gives both policies the same eight derived seeds in each of
+three scenarios: an unassisted three-plant plot, that plot with periodic
+irrigation, and a periodically irrigated crowded five-plant plot. Irrigation
+uses a fixed whole-plot pattern independent of current plants and seeds, so both
+policies receive exactly the same external water while generational success
+remains observable. Each trial advances 7,680 ticks, or two complete Garden
+day/night cycles.
+
+The command prints a compact comparison and writes the complete report to
+`artifacts/garden-evaluation.json`. Raw results include state hashes,
+living-plant-time and sampled resource integrals, final and peak population and
+node counts, stress, deaths, reclamation, seeds, germination, mutation,
+generation, recurrent-memory use, and decision telemetry. The evaluator also
+tracks every observed lineage back to its initial founder and partitions
+survival, descendant plant-time, established offspring, mortality, maximum
+generation, and extinction by both founder and species.
+
+The report treats evaluation as ordered gates rather than one weighted score:
+
+1. survival, including the first tick at which no living plant or banked seed
+   remains;
+2. reproduction that produces an established descendant, defined as an
+   offspring old enough to have crossed a maintenance boundary while unstressed
+   and carrying an active leaf;
+3. descendant plant-time and generation depth, which distinguish a persistent
+   lineage from a last-tick population spike; and
+4. efficiency diagnostics such as resources, decisions, and growth choices.
+
+Deaths are classified by the energy/water shortage flags present at death.
+Seed-blocker counters sample seeds left in the bank after each ecology step.
+Dormant samples are separated from mature blocked samples; moisture, light,
+plant capacity, node capacity, and spacing reasons may overlap. Those are sample
+counts, not unique seed counts. There is intentionally no composite fitness
+score: future experiments can choose an objective without discarding the
+underlying measurements. Trial count, duration, seed, and output path are
+overridable:
+
+```sh
+make host-evaluate-garden GARDEN_EVAL_TRIALS=32 GARDEN_EVAL_TICKS=15360 \
+  GARDEN_EVAL_SEED=0x12345678 GARDEN_EVAL_OUT=artifacts/garden-long.json
+```
+
+The simulation and experiment workspaces are fixed-capacity and do not call heap
+allocation. Host-only lineage bookkeeping retains 4,096 lineage IDs and rejects
+an experiment that exceeds that explicit bound. The maximum accepted 100,000-tick
+batch is exercised as a long-run capacity check. The evaluator test executes the
+same batch twice under UBSan, requires byte-equivalent JSON, validates global,
+species, and founder accounting invariants, rejects invalid limits, and verifies
+that matched policies receive identical trial seeds.
 
 ## Garden profiling
 

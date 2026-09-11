@@ -126,6 +126,8 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add a Docker-built SDL3 player with real-time, pause, and exact-step controls.
 - [x] Add deterministic Garden checkpoints, raster work counts, and frame-delta profiling.
 - [x] Prove bounded semantic Garden damage against exact full renders on the host.
+- [x] Add matched-seed Garden policy evaluation, gated lineage outcomes, and bounded decision
+      telemetry.
 - [ ] Measure adaptive Garden partial/full presentation on the PIM559.
 - [ ] Evaluate overlapping core-1 strip rasterization with display DMA.
 - [ ] Add browser/Wasm presentation over the same portable simulation boundary.

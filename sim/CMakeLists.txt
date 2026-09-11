@@ -53,6 +53,16 @@ target_compile_options(toy-factory-sim PRIVATE
 	-Wsign-conversion
 )
 
+add_executable(toy-factory-garden-eval garden_experiment.c)
+target_link_libraries(toy-factory-garden-eval PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-eval PRIVATE
+	-Wall
+	-Wextra
+	-Werror
+	-Wconversion
+	-Wsign-conversion
+)
+
 add_executable(toy-factory-garden-damage-test garden_damage_test.c)
 target_link_libraries(toy-factory-garden-damage-test PRIVATE toy_factory_simulator_core)
 target_compile_options(toy-factory-garden-damage-test PRIVATE
@@ -84,6 +94,14 @@ if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 		-fno-sanitize-recover=undefined
 	)
 	target_link_options(toy-factory-sim PRIVATE
+		-fsanitize=undefined
+		-fno-sanitize-recover=undefined
+	)
+	target_compile_options(toy-factory-garden-eval PRIVATE
+		-fsanitize=undefined
+		-fno-sanitize-recover=undefined
+	)
+	target_link_options(toy-factory-garden-eval PRIVATE
 		-fsanitize=undefined
 		-fno-sanitize-recover=undefined
 	)
@@ -164,6 +182,12 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 enable_testing()
 
 add_test(NAME garden-damage-unit COMMAND toy-factory-garden-damage-test)
+add_test(
+	NAME garden-experiment-smoke
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_experiment.py
+		--binary $<TARGET_FILE:toy-factory-garden-eval>
+		--summary ${CMAKE_CURRENT_LIST_DIR}/summarize_garden_experiment.py
+)
 
 foreach(sequence IN ITEMS
 	clockwork-smoke.json

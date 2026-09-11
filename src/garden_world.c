@@ -152,6 +152,8 @@ _Static_assert(PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS <= UINT16_MAX,
 	       "seed lifetime must fit its age counter");
 _Static_assert(sizeof(struct picosystem_garden_genome) == GARDEN_GENOME_TRAIT_COUNT,
 	       "garden genome must remain densely packed");
+_Static_assert(sizeof(struct picosystem_garden_agent_telemetry) == 40U,
+	       "garden agent telemetry layout changed");
 
 static uint8_t saturating_add_u8(uint8_t value, uint8_t increment)
 {
@@ -1197,6 +1199,48 @@ static int execute_agent_decision(struct picosystem_garden_world *world, uint8_t
 	return extend_tip(world, plant_index, observation, &decision->proposal);
 }
 
+static void update_agent_telemetry(struct picosystem_garden_agent_telemetry *telemetry,
+				   const struct picosystem_garden_agent_observation *observation,
+				   const struct picosystem_garden_agent_decision *decision)
+{
+	telemetry->decision_count = saturating_add_u32(telemetry->decision_count, 1U);
+	if (decision->proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_EXTEND) {
+		telemetry->extend_count = saturating_add_u32(telemetry->extend_count, 1U);
+		if (observation->tissue_kind == PICOSYSTEM_GARDEN_NODE_ROOT) {
+			telemetry->root_extend_count =
+				saturating_add_u32(telemetry->root_extend_count, 1U);
+		} else {
+			telemetry->shoot_extend_count =
+				saturating_add_u32(telemetry->shoot_extend_count, 1U);
+		}
+	} else if (decision->proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT) {
+		telemetry->wait_count = saturating_add_u32(telemetry->wait_count, 1U);
+	} else {
+		telemetry->finish_count = saturating_add_u32(telemetry->finish_count, 1U);
+	}
+	if (observation->tissue_kind == PICOSYSTEM_GARDEN_NODE_ROOT) {
+		telemetry->root_decision_count =
+			saturating_add_u32(telemetry->root_decision_count, 1U);
+	} else {
+		telemetry->shoot_decision_count =
+			saturating_add_u32(telemetry->shoot_decision_count, 1U);
+	}
+	telemetry->last_priority = decision->proposal.priority;
+	telemetry->last_tip_x = observation->tip_x;
+	telemetry->last_tip_y = observation->tip_y;
+	telemetry->last_tip_depth = observation->depth;
+	telemetry->last_tissue_kind = observation->tissue_kind;
+	telemetry->last_action = decision->proposal.action;
+}
+
+static void record_agent_decision(struct picosystem_garden_world *world, uint8_t plant_index,
+				  const struct picosystem_garden_agent_observation *observation,
+				  const struct picosystem_garden_agent_decision *decision)
+{
+	update_agent_telemetry(&world->plants[plant_index].agent_telemetry, observation, decision);
+	update_agent_telemetry(&world->agent_telemetry, observation, decision);
+}
+
 static int grow_phased_tip(struct picosystem_garden_world *world, uint8_t plant_index,
 			   enum picosystem_garden_node_kind kind,
 			   const struct picosystem_garden_agent_policy *policy, bool *advance_phase)
@@ -1233,6 +1277,7 @@ static int grow_phased_tip(struct picosystem_garden_world *world, uint8_t plant_
 	*previous_tip = tip_index;
 	plant->random_state = next_random_state;
 	plant->agent_memory = decision.next_memory;
+	record_agent_decision(world, plant_index, &observation, &decision);
 	return execute_agent_decision(world, plant_index, &observation, &decision);
 }
 
@@ -1295,6 +1340,7 @@ static int grow_best_tip(struct picosystem_garden_world *world, uint8_t plant_in
 	}
 	plant->random_state = next_random_state;
 	plant->agent_memory = best_decision.next_memory;
+	record_agent_decision(world, plant_index, &best_observation, &best_decision);
 	return execute_agent_decision(world, plant_index, &best_observation, &best_decision);
 }
 
@@ -1552,16 +1598,36 @@ static void record_parent_offspring(struct picosystem_garden_world *world,
 	}
 }
 
+static uint8_t seed_germination_blockers(const struct picosystem_garden_world *world,
+					 const struct picosystem_garden_seed *seed)
+{
+	uint8_t blockers = 0U;
+	if (seed->age_ecology_ticks < PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS) {
+		blockers |= PICOSYSTEM_GARDEN_SEED_BLOCKED_DORMANT;
+	}
+	if (world->moisture[soil_index(seed->column, 0U)] < GARDEN_SEED_MINIMUM_MOISTURE) {
+		blockers |= PICOSYSTEM_GARDEN_SEED_BLOCKED_MOISTURE;
+	}
+	if (world->light[light_index(seed->column, PICOSYSTEM_GARDEN_CANOPY_ROWS - 1U)] <
+	    GARDEN_SEED_MINIMUM_LIGHT) {
+		blockers |= PICOSYSTEM_GARDEN_SEED_BLOCKED_LIGHT;
+	}
+	if (world->plant_count >= PICOSYSTEM_GARDEN_MAX_PLANTS) {
+		blockers |= PICOSYSTEM_GARDEN_SEED_BLOCKED_PLANT_CAPACITY;
+	}
+	if ((world->node_count + GARDEN_SEED_NODE_COUNT) > PICOSYSTEM_GARDEN_MAX_NODES) {
+		blockers |= PICOSYSTEM_GARDEN_SEED_BLOCKED_NODE_CAPACITY;
+	}
+	if (!plant_spacing_is_available(world, seed->column)) {
+		blockers |= PICOSYSTEM_GARDEN_SEED_BLOCKED_SPACING;
+	}
+	return blockers;
+}
+
 static bool seed_can_germinate(const struct picosystem_garden_world *world,
 			       const struct picosystem_garden_seed *seed)
 {
-	return (seed->age_ecology_ticks >= PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS) &&
-	       (world->moisture[soil_index(seed->column, 0U)] >= GARDEN_SEED_MINIMUM_MOISTURE) &&
-	       (world->light[light_index(seed->column, PICOSYSTEM_GARDEN_CANOPY_ROWS - 1U)] >=
-		GARDEN_SEED_MINIMUM_LIGHT) &&
-	       (world->plant_count < PICOSYSTEM_GARDEN_MAX_PLANTS) &&
-	       ((world->node_count + GARDEN_SEED_NODE_COUNT) <= PICOSYSTEM_GARDEN_MAX_NODES) &&
-	       plant_spacing_is_available(world, seed->column);
+	return seed_germination_blockers(world, seed) == 0U;
 }
 
 static int update_seed_bank(struct picosystem_garden_world *world)
@@ -2035,6 +2101,19 @@ const struct picosystem_garden_seed *
 picosystem_garden_world_seed_at(const struct picosystem_garden_world *world, size_t index)
 {
 	return ((world != NULL) && (index < world->seed_count)) ? &world->seeds[index] : NULL;
+}
+
+int picosystem_garden_world_seed_germination_blockers(const struct picosystem_garden_world *world,
+						      size_t seed_index, uint8_t *blockers)
+{
+	if ((blockers == NULL) || !world_is_valid(world)) {
+		return -EINVAL;
+	}
+	if (seed_index >= world->seed_count) {
+		return -ERANGE;
+	}
+	*blockers = seed_germination_blockers(world, &world->seeds[seed_index]);
+	return 0;
 }
 
 uint8_t picosystem_garden_world_living_plant_count(const struct picosystem_garden_world *world)

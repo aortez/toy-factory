@@ -1205,6 +1205,14 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 		stats->garden_germination_count = garden->germination_count;
 		stats->garden_seed_expiration_count = garden->seed_expiration_count;
 		stats->garden_mutation_count = garden->mutation_count;
+		stats->garden_agent_decision_count = garden->agent_telemetry.decision_count;
+		stats->garden_agent_extend_count = garden->agent_telemetry.extend_count;
+		stats->garden_agent_wait_count = garden->agent_telemetry.wait_count;
+		stats->garden_agent_finish_count = garden->agent_telemetry.finish_count;
+		stats->garden_agent_root_count = garden->agent_telemetry.root_decision_count;
+		stats->garden_agent_shoot_count = garden->agent_telemetry.shoot_decision_count;
+		stats->garden_agent_root_extend_count = garden->agent_telemetry.root_extend_count;
+		stats->garden_agent_shoot_extend_count = garden->agent_telemetry.shoot_extend_count;
 		stats->garden_node_count = garden->node_count;
 		stats->garden_moisture_total = garden->moisture_total;
 		stats->garden_maximum_generation = garden->maximum_generation;
