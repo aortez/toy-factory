@@ -159,6 +159,7 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 		    (snapshot->rope_count != 0U) || (snapshot->granular_particle_count != 0U) ||
 		    (garden->node_count > PICOSYSTEM_GARDEN_MAX_NODES) ||
 		    (garden->plant_count > PICOSYSTEM_GARDEN_MAX_PLANTS) ||
+		    (garden->seed_count > PICOSYSTEM_GARDEN_MAX_SEEDS) ||
 		    (garden->cursor_column >= PICOSYSTEM_GARDEN_GRID_COLUMNS) ||
 		    (garden->cursor_row >= PICOSYSTEM_GARDEN_CURSOR_ROWS) ||
 		    (garden->selected_tool >= PICOSYSTEM_GARDEN_TOOL_COUNT) ||
@@ -181,6 +182,17 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 			    (node->x >= PICOSYSTEM_GRAPHICS_WIDTH) ||
 			    (node->y >= PICOSYSTEM_GRAPHICS_HEIGHT) ||
 			    ((node->parent_distance != 0U) && (node->parent_distance > index))) {
+				return -ERANGE;
+			}
+		}
+		for (uint8_t index = 0U; index < garden->seed_count; ++index) {
+			const struct picosystem_scene_garden_seed *const seed =
+				&garden->seeds[index];
+			if ((seed->x >= PICOSYSTEM_GRAPHICS_WIDTH) ||
+			    ((seed->style &
+			      (uint8_t)~PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_VALID_MASK) != 0U) ||
+			    ((seed->style & PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_SPECIES_MASK) >=
+			     PICOSYSTEM_GARDEN_SPECIES_COUNT)) {
 				return -ERANGE;
 			}
 		}
@@ -1053,6 +1065,22 @@ render_garden(const struct picosystem_scene_snapshot *snapshot, const struct pic
 				(uint16_t)((end_column - column) * PICOSYSTEM_GARDEN_CELL_PIXELS),
 				PICOSYSTEM_GARDEN_CELL_PIXELS, color);
 			column = end_column;
+		}
+	}
+	for (uint8_t index = 0U; index < garden->seed_count; ++index) {
+		const struct picosystem_scene_garden_seed *const seed = &garden->seeds[index];
+		const uint8_t species =
+			seed->style & PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_SPECIES_MASK;
+		const picosystem_color_t color =
+			((seed->style & PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_DORMANCY_COMPLETE) != 0U)
+				? garden_flower_colors[species]
+				: GARDEN_ROOT_COLOR;
+		update_progress(progress, PICOSYSTEM_SCENE_RENDER_STAGE_GARDEN, index,
+				PICOSYSTEM_SCENE_RENDER_PRIMITIVE_FILL_0);
+		const int err = picosystem_graphics_fill_circle_clipped(
+			clip, seed->x, PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS + 2, 1U, color);
+		if (err != 0) {
+			return err;
 		}
 	}
 

@@ -13,10 +13,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* The 32-second night plus an eight-payment margin for shaded dawn/dusk. */
-#define GARDEN_BASELINE_NIGHT_RESERVE_PERIODS 40U
-
-_Static_assert(sizeof(struct picosystem_garden_agent_observation) == 96U,
+_Static_assert(sizeof(struct picosystem_garden_agent_observation) == 104U,
 	       "Garden agent observation layout changed");
 _Static_assert(sizeof(struct picosystem_garden_agent_proposal) == 12U,
 	       "Garden agent proposal layout changed");
@@ -40,7 +37,23 @@ static bool observation_is_valid(const struct picosystem_garden_agent_observatio
 	    (observation->maintenance_water_cost == 0U) ||
 	    (observation->maintenance_phase >= PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR) ||
 	    ((observation->plant_flags & (uint8_t)~PICOSYSTEM_GARDEN_PLANT_VALID_FLAGS) != 0U) ||
-	    ((observation->plant_flags & PICOSYSTEM_GARDEN_PLANT_DEAD) != 0U)) {
+	    ((observation->plant_flags & PICOSYSTEM_GARDEN_PLANT_DEAD) != 0U) ||
+	    (observation->genome.growth_rate < PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN) ||
+	    (observation->genome.growth_rate > PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX) ||
+	    (observation->genome.shoot_bias < PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN) ||
+	    (observation->genome.shoot_bias > PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX) ||
+	    (observation->genome.light_seeking < PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN) ||
+	    (observation->genome.light_seeking > PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX) ||
+	    (observation->genome.water_seeking < PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN) ||
+	    (observation->genome.water_seeking > PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX) ||
+	    (observation->genome.branching < PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN) ||
+	    (observation->genome.branching > PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX) ||
+	    (observation->genome.stature < PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN) ||
+	    (observation->genome.stature > PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX) ||
+	    (observation->genome.reserve_strategy < PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN) ||
+	    (observation->genome.reserve_strategy > PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX) ||
+	    (observation->genome.dispersal < PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN) ||
+	    (observation->genome.dispersal > PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX)) {
 		return false;
 	}
 
@@ -89,6 +102,9 @@ static int8_t shoot_candidate_score(const struct picosystem_garden_agent_observa
 	const int8_t centered_step = (int8_t)candidate_index - 2;
 	const int32_t absolute_step = (centered_step < 0) ? -(int32_t)centered_step : centered_step;
 	int32_t score = candidate->light / 8U;
+	const int32_t light_term = (int32_t)candidate->light / 16;
+	const int32_t clearance_term = (int32_t)candidate->clearance_squared / 32;
+	score += (int32_t)observation->genome.light_seeking * (light_term - clearance_term);
 	score += (int32_t)centered_step * observation->lean;
 	score += absolute_step * observation->horizontal_tendency;
 	if ((observation->tip_flags & PICOSYSTEM_GARDEN_NODE_PRUNED) != 0U) {
@@ -131,7 +147,7 @@ preferred_root_candidate(const struct picosystem_garden_agent_observation *obser
 			 int16_t *priority)
 {
 	uint8_t preferred = 1U;
-	uint8_t best_moisture = 0U;
+	int32_t best_score = INT32_MIN;
 	const uint8_t random_offset =
 		(uint8_t)(observation->decision_nonce % observation->candidate_count);
 	for (uint8_t offset = 0U; offset < observation->candidate_count; ++offset) {
@@ -142,12 +158,19 @@ preferred_root_candidate(const struct picosystem_garden_agent_observation *obser
 		if ((candidate->flags & PICOSYSTEM_GARDEN_AGENT_CANDIDATE_IN_BOUNDS) == 0U) {
 			continue;
 		}
-		if (candidate->moisture >= best_moisture) {
-			best_moisture = candidate->moisture;
+		const int32_t score =
+			((int32_t)candidate->moisture * 4) +
+			((int32_t)observation->genome.water_seeking *
+			 ((int32_t)candidate->moisture - candidate->clearance_squared));
+		if (score >= best_score) {
+			best_score = score;
 			preferred = candidate_index;
 		}
 	}
-	*priority = best_moisture;
+	best_score /= 4;
+	*priority = (best_score < INT16_MIN)
+			    ? INT16_MIN
+			    : ((best_score > INT16_MAX) ? INT16_MAX : (int16_t)best_score);
 	return preferred;
 }
 
@@ -170,10 +193,14 @@ int picosystem_garden_agent_baseline_propose(
 		return 0;
 	}
 	if (observation->sun_strength == PICOSYSTEM_GARDEN_LIGHT_MINIMUM) {
-		const uint16_t energy_reserve = (uint16_t)observation->maintenance_energy_cost *
-						GARDEN_BASELINE_NIGHT_RESERVE_PERIODS;
-		const uint16_t water_reserve = (uint16_t)observation->maintenance_water_cost *
-					       GARDEN_BASELINE_NIGHT_RESERVE_PERIODS;
+		const uint16_t reserve_periods =
+			(uint16_t)(PICOSYSTEM_GARDEN_NIGHT_RESERVE_PERIODS +
+				   (observation->genome.reserve_strategy *
+				    PICOSYSTEM_GARDEN_RESERVE_TRAIT_PERIOD_STEP));
+		const uint16_t energy_reserve =
+			(uint16_t)observation->maintenance_energy_cost * reserve_periods;
+		const uint16_t water_reserve =
+			(uint16_t)observation->maintenance_water_cost * reserve_periods;
 		if ((observation->stored_energy <= energy_reserve) ||
 		    (observation->stored_water <= water_reserve)) {
 			return 0;

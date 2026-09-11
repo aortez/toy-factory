@@ -12,21 +12,22 @@ contracts defined here.
 
 ## Hardware and scheduling budget
 
-The recommended fast build uses 255,372 bytes of the linker's 255 KiB Zephyr
-RAM region and 255,852 bytes of flash. Its 115,200-byte framebuffer and
+The recommended fast build uses 255,580 bytes of the linker's 255 KiB Zephyr
+RAM region and 259,416 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
 rigid physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, two
 12-particle ropes, and bounded pair-event storage. The independent 512-particle
 granular world is 16,480 bytes, including its 40 x 48 16-bit grid heads,
 per-cell boundary masks, particle links, and sparse occupied-cell list. The
-garden world is 3,540 bytes, including eight plants, 256 graph nodes, moisture,
-derived light fields, and lifecycle counters. All three alternatives share one
+garden world is 3,916 bytes, including eight plants, 256 graph nodes, eight
+dormant seeds, compact genomes, moisture, derived light fields, and lifecycle
+counters. All three alternatives share one
 tagged game-world union. The serialized A/B
 workspace is 33,360 bytes, is inactive during normal play, and
 avoids placing a second world on a thread stack. The profile
-command and main/renderer threads use fixed 5,120-byte stacks. The 1,640-byte
-render snapshot leaves 5,748 bytes of linked Zephyr RAM headroom. Garden
+command and main/renderer threads use fixed 5,120-byte stacks. The 1,664-byte
+render snapshot leaves 5,540 bytes of linked Zephyr RAM headroom. Garden
 lifecycle validation measured main, renderer, and core-1 stack high-water marks
 of 3,764/5,120, 3,172/5,120, and 296/4,096 bytes. The fast
 build also places

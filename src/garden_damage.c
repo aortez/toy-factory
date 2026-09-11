@@ -40,6 +40,7 @@ static int validate_garden_snapshot(const struct picosystem_scene_snapshot *snap
 	    (snapshot->granular_particle_count != 0U) ||
 	    (garden->node_count > PICOSYSTEM_GARDEN_MAX_NODES) ||
 	    (garden->plant_count > PICOSYSTEM_GARDEN_MAX_PLANTS) ||
+	    (garden->seed_count > PICOSYSTEM_GARDEN_MAX_SEEDS) ||
 	    (garden->cursor_column >= PICOSYSTEM_GARDEN_GRID_COLUMNS) ||
 	    (garden->cursor_row >= PICOSYSTEM_GARDEN_CURSOR_ROWS) ||
 	    (garden->selected_tool >= PICOSYSTEM_GARDEN_TOOL_COUNT) ||
@@ -61,6 +62,16 @@ static int validate_garden_snapshot(const struct picosystem_scene_snapshot *snap
 		    ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK) >=
 		     PICOSYSTEM_GARDEN_SPECIES_COUNT) ||
 		    ((node->parent_distance != 0U) && (node->parent_distance > index))) {
+			return -ERANGE;
+		}
+	}
+	for (uint8_t index = 0U; index < garden->seed_count; ++index) {
+		const struct picosystem_scene_garden_seed *const seed = &garden->seeds[index];
+		if ((seed->x >= PICOSYSTEM_GRAPHICS_WIDTH) ||
+		    ((seed->style & (uint8_t)~PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_VALID_MASK) !=
+		     0U) ||
+		    ((seed->style & PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_SPECIES_MASK) >=
+		     PICOSYSTEM_GARDEN_SPECIES_COUNT)) {
 			return -ERANGE;
 		}
 	}
@@ -178,6 +189,41 @@ static void mark_changed_nodes(struct picosystem_garden_damage_plan *plan,
 	}
 }
 
+static bool garden_seeds_match(const struct picosystem_scene_garden_payload *presented,
+			       const struct picosystem_scene_garden_payload *current, uint8_t index)
+{
+	return (index < presented->seed_count) && (index < current->seed_count) &&
+	       (presented->seeds[index].x == current->seeds[index].x) &&
+	       (presented->seeds[index].style == current->seeds[index].style);
+}
+
+static void mark_garden_seed(struct picosystem_garden_damage_plan *plan,
+			     const struct picosystem_scene_garden_seed *seed)
+{
+	struct picosystem_rect bounds;
+	picosystem_garden_seed_visual_bounds(seed, &bounds);
+	mark_pixel_bounds(plan, bounds.x, bounds.y, bounds.x + bounds.width - 1U,
+			  bounds.y + bounds.height - 1U);
+}
+
+static void mark_changed_seeds(struct picosystem_garden_damage_plan *plan,
+			       const struct picosystem_scene_garden_payload *presented,
+			       const struct picosystem_scene_garden_payload *current)
+{
+	const uint8_t seed_count = TOY_FACTORY_MAX(presented->seed_count, current->seed_count);
+	for (uint8_t index = 0U; index < seed_count; ++index) {
+		if (garden_seeds_match(presented, current, index)) {
+			continue;
+		}
+		if (index < presented->seed_count) {
+			mark_garden_seed(plan, &presented->seeds[index]);
+		}
+		if (index < current->seed_count) {
+			mark_garden_seed(plan, &current->seeds[index]);
+		}
+	}
+}
+
 static void mark_changed_sun(struct picosystem_garden_damage_plan *plan,
 			     const struct picosystem_scene_garden_payload *presented,
 			     const struct picosystem_scene_garden_payload *current)
@@ -252,6 +298,7 @@ int picosystem_garden_damage_plan_build(const struct picosystem_scene_snapshot *
 		&current->payload.garden;
 	mark_changed_moisture(plan, presented_garden, current_garden);
 	mark_changed_nodes(plan, presented_garden, current_garden);
+	mark_changed_seeds(plan, presented_garden, current_garden);
 	mark_changed_sun(plan, presented_garden, current_garden);
 	mark_changed_cursor(plan, presented_garden, current_garden);
 

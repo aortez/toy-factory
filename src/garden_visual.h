@@ -82,6 +82,22 @@ picosystem_garden_sun_visual_bounds(const struct picosystem_scene_garden_payload
 	return true;
 }
 
+static inline void
+picosystem_garden_seed_visual_bounds(const struct picosystem_scene_garden_seed *seed,
+				     struct picosystem_rect *bounds)
+{
+	const uint16_t left = (seed->x == 0U) ? 0U : (uint16_t)(seed->x - 1U);
+	const uint16_t right = (seed->x >= (PICOSYSTEM_GRAPHICS_WIDTH - 1U))
+				       ? (PICOSYSTEM_GRAPHICS_WIDTH - 1U)
+				       : (uint16_t)(seed->x + 1U);
+	*bounds = (struct picosystem_rect){
+		.x = left,
+		.y = PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS + 1U,
+		.width = (uint16_t)(right - left + 1U),
+		.height = 3U,
+	};
+}
+
 /* Return conservative bounds covering every pixel this node can currently draw. */
 static inline bool
 picosystem_garden_node_visual_bounds(const struct picosystem_scene_garden_payload *garden,

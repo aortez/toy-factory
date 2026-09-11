@@ -45,16 +45,20 @@ make host-cli ARGS="--scene hourglass --step right 60 \
 
 The runner emits one JSON object containing scene, tick, authoritative-state
 hash, and framebuffer CRC-32. Garden results also include current living/dead
-plant and node totals plus cumulative death/reclamation counters.
+plant and node totals, dormant seeds, cumulative lifecycle/reproduction
+counters, maximum generation, and a record for every current lineage. Each
+lineage record exposes its ID, parent, generation, offspring count, species,
+and eight-trait genome.
 `--expect-hash` and `--expect-crc` turn the deterministic values into
 assertions; `--output` writes RGB PPM and `--framebuffer` writes the native
 RGB565 big-endian bytes. Run `make host-cli ARGS="--help"` for the complete
 syntax.
 
 The current Clockwork, directional Hourglass, neutral Hourglass, Marble
-Machine, growing Garden, established Garden, and unattended Garden lifecycle
-fixtures all match their hardware-established hashes and framebuffer CRCs
-exactly.
+Machine, growing Garden, established Garden, unattended Garden lifecycle, and
+Garden generation fixtures all match their committed hashes and framebuffer
+CRCs exactly on the host. The generation fixture explicitly reaches two living
+generation-1 offspring through the ordinary seed bank and germination path.
 
 ## Garden profiling
 

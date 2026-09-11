@@ -66,12 +66,13 @@ one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
 updates crossed the 16.667 ms budget. The 320-grain population remains normal
 to preserve headroom for additional gameplay.
 
-The current image, including Garden, uses 255,372 bytes of the 255 KiB Zephyr
-RAM region and 255,852 bytes of flash, leaving 5,748 bytes of linker RAM plus
-the separately reserved 8 KiB core-1 mailbox/stack area. The conservative image
-uses 222,884 bytes of Zephyr RAM and 249,952 bytes of flash. The fixed granular
-capacity is 512 particles, the fixed Garden capacity is eight plants and 256
-nodes, the immutable render snapshot is 1,640 bytes, and the tagged game-world
+The current image, including Garden reproduction, uses 255,580 bytes of the
+255 KiB Zephyr RAM region and 259,416 bytes of flash, leaving 5,540 bytes of
+linker RAM plus the separately reserved 8 KiB core-1 mailbox/stack area. The
+conservative image uses 222,956 bytes of Zephyr RAM and 253,384 bytes of flash. The fixed granular
+capacity is 512 particles, the fixed Garden capacity is eight plants, 256
+nodes, and eight dormant seeds, the immutable render snapshot is 1,664 bytes,
+and the tagged game-world
 and snapshot unions avoid allocating inactive scene alternatives. Full
 Hourglass results are in the
 [Hourglass report](../benchmarks/hourglass/README.md).
@@ -87,18 +88,29 @@ neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
 
 ## Current Garden validation
 
-With resource maintenance and moving directional light, the mixed
-manual/automatic sequence reaches tick 930 at state hash `f089ee50` and
-framebuffer CRC-32 `e732b744`. Continuing the exact replay to tick 3,771 reaches
-190 nodes after one death and 34-node reclamation, at hash `9e3bb3f8` and CRC-32
-`09272e48`. An unattended lifecycle replay reaches tick 3,330 with two living
+With resource maintenance, directional light, and reproduction, the mixed
+manual/automatic sequence reaches tick 930 at state hash `c7492628` and
+framebuffer CRC-32 `061d06d1`. Continuing the exact replay to tick 3,771 reaches
+190 nodes after one death and 34-node reclamation, at hash `481cbd42` and CRC-32
+`20d36204`. An unattended lifecycle replay reaches tick 3,330 with two living
 plants, one visibly decomposing plant, and one reclaimed 33-node plant at hash
-`7febdb8c` and CRC-32 `818cee96`. Host full/damage rendering and the PIM559
-reproduce all three checkpoints exactly.
+`67618a4a` and CRC-32 `2556ea8f`. A longer automatic fixture reaches tick 8,430
+with seven produced seeds, two germinations, two expirations, four bounded
+mutations, and two current generation-1 offspring at hash `fdd48ef6` and CRC-32
+`3d456476`. UBSan host full/damage rendering reproduces all four checkpoints;
+the PIM559 also reproduced the complete generation fixture's final hash and
+framebuffer CRC exactly.
 
-A live device window after the lifecycle replay held 60.0 Hz with no skipped or
-over-budget updates. Complete updates averaged 0.653 ms and peaked at 6.277 ms;
-world/model work averaged 0.258 ms and peaked at 5.838 ms. Main, renderer, and
+After that device replay, an 899-tick live reproduction window held 60.0 Hz
+with no skipped or over-budget updates. Complete updates averaged 0.853 ms and
+peaked at 6.927 ms; world/model work averaged 0.374 ms and peaked at 6.369 ms.
+Full-frame presentation held 29.5 fps with 11.839/12.712 ms last/maximum core-1
+raster time and an 18.464 ms display transfer. Main and renderer stack
+high-water marks were 3,836/5,120 and 3,196/5,120 bytes.
+
+A live device window after the earlier lifecycle replay held 60.0 Hz with no
+skipped or over-budget updates. Complete updates averaged 0.653 ms and peaked
+at 6.277 ms; world/model work averaged 0.258 ms and peaked at 5.838 ms. Main, renderer, and
 core-1 stack high-water marks were 3,764/5,120, 3,172/5,120, and 296/4,096
 bytes after reclamation ran.
 
@@ -266,7 +278,7 @@ three updates and 10,000 ticks for 60 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation publishes a 1,640-byte scene-tagged immutable snapshot. Its rigid
+Simulation publishes a 1,664-byte scene-tagged immutable snapshot. Its rigid
 payload covers up to 12 circle, oriented-box, or capsule bodies, eight physical
 static segments, 16 render-only guide segments, two ropes with up to 12
 particles each, eight render records each for distance and revolute joints, and

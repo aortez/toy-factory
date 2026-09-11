@@ -158,12 +158,14 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 		const struct picosystem_garden_world *const garden_world = &world->garden;
 		struct picosystem_scene_garden_payload *const garden = &snapshot->payload.garden;
 		if ((garden_world->node_count > TOY_FACTORY_ARRAY_SIZE(garden->nodes)) ||
-		    (garden_world->plant_count > PICOSYSTEM_GARDEN_MAX_PLANTS)) {
+		    (garden_world->plant_count > PICOSYSTEM_GARDEN_MAX_PLANTS) ||
+		    (garden_world->seed_count > TOY_FACTORY_ARRAY_SIZE(garden->seeds))) {
 			return -ENOSPC;
 		}
 		garden->node_count = garden_world->node_count;
 		garden->moisture_total = garden_world->moisture_total;
 		garden->plant_count = garden_world->plant_count;
+		garden->seed_count = garden_world->seed_count;
 		garden->cursor_column = garden_world->cursor_column;
 		garden->cursor_row = garden_world->cursor_row;
 		garden->selected_tool = garden_world->selected_tool;
@@ -178,6 +180,33 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 		garden->sun_strength = sun.strength;
 		garden->sun_ray_step_x_q4 = sun.ray_step_x_q4;
 		memcpy(garden->moisture, garden_world->moisture, sizeof(garden->moisture));
+		for (uint8_t index = 0U; index < garden->seed_count; ++index) {
+			const struct picosystem_garden_seed *const source =
+				&garden_world->seeds[index];
+			if ((source->column >= PICOSYSTEM_GARDEN_GRID_COLUMNS) ||
+			    (source->species_id >= PICOSYSTEM_GARDEN_SPECIES_COUNT) ||
+			    (source->visual_offset < PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN) ||
+			    (source->visual_offset > PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX)) {
+				return -ERANGE;
+			}
+			uint8_t style = source->species_id &
+					PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_SPECIES_MASK;
+			if (source->age_ecology_ticks >= PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS) {
+				style |= PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_DORMANCY_COMPLETE;
+			}
+			const int16_t x =
+				(int16_t)(PICOSYSTEM_GARDEN_ORIGIN_X_PIXELS +
+					  (source->column * PICOSYSTEM_GARDEN_CELL_PIXELS) +
+					  (PICOSYSTEM_GARDEN_CELL_PIXELS / 2U)) +
+				source->visual_offset;
+			if ((x < 0) || (x >= PICOSYSTEM_GRAPHICS_WIDTH)) {
+				return -ERANGE;
+			}
+			garden->seeds[index] = (struct picosystem_scene_garden_seed){
+				.x = (uint8_t)x,
+				.style = style,
+			};
+		}
 		for (uint16_t index = 0U; index < garden->node_count; ++index) {
 			const struct picosystem_garden_node *const source =
 				&garden_world->nodes[index];

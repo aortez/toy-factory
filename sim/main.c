@@ -320,11 +320,31 @@ int main(int argc, char **argv)
 		const struct picosystem_garden_world *const garden = &simulator.world.garden;
 		printf(",\"garden\":{\"plants\":%u,\"living\":%u,\"dead\":%u,\"nodes\":%u,"
 		       "\"blooms\":%" PRIu32 ",\"deaths\":%" PRIu32 ",\"reclaimed_plants\":%" PRIu32
-		       ",\"reclaimed_nodes\":%" PRIu32 ",\"moisture\":%u}",
+		       ",\"reclaimed_nodes\":%" PRIu32 ",\"seeds\":%u,\"seeds_created\":%" PRIu32
+		       ",\"germinations\":%" PRIu32 ",\"seeds_expired\":%" PRIu32
+		       ",\"mutations\":%" PRIu32 ",\"max_generation\":%u,\"moisture\":%u,"
+		       "\"lineages\":[",
 		       garden->plant_count, picosystem_garden_world_living_plant_count(garden),
 		       picosystem_garden_world_dead_plant_count(garden), garden->node_count,
 		       garden->bloom_count, garden->death_count, garden->reclaimed_plant_count,
-		       garden->reclaimed_node_count, garden->moisture_total);
+		       garden->reclaimed_node_count, garden->seed_count,
+		       garden->seed_creation_count, garden->germination_count,
+		       garden->seed_expiration_count, garden->mutation_count,
+		       garden->maximum_generation, garden->moisture_total);
+		for (uint8_t index = 0U; index < garden->plant_count; ++index) {
+			const struct picosystem_garden_plant *const plant = &garden->plants[index];
+			printf("%s{\"id\":%" PRIu32 ",\"parent\":%" PRIu32
+			       ",\"generation\":%u,\"offspring\":%u,\"species\":%u,"
+			       "\"traits\":[%d,%d,%d,%d,%d,%d,%d,%d]}",
+			       (index == 0U) ? "" : ",", plant->lineage_id,
+			       plant->parent_lineage_id, plant->generation, plant->offspring_count,
+			       plant->species_id, plant->genome.growth_rate,
+			       plant->genome.shoot_bias, plant->genome.light_seeking,
+			       plant->genome.water_seeking, plant->genome.branching,
+			       plant->genome.stature, plant->genome.reserve_strategy,
+			       plant->genome.dispersal);
+		}
+		printf("]}");
 	}
 	puts("}");
 

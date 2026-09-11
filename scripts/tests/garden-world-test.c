@@ -57,6 +57,7 @@ static void test_seed_spacing_capacity_and_access(void)
 	assert(picosystem_garden_world_node_at(&world, 4U) == NULL);
 	assert(picosystem_garden_world_plant_at(&world, 0U) != NULL);
 	assert(picosystem_garden_world_plant_at(&world, 1U) == NULL);
+	assert(picosystem_garden_world_seed_at(&world, 0U) == NULL);
 
 	for (uint8_t index = 1U; index < PICOSYSTEM_GARDEN_MAX_PLANTS; ++index) {
 		assert(picosystem_garden_world_plant_seed(
@@ -229,6 +230,8 @@ static void test_agent_observation_and_baseline_policy(void)
 	assert(observation.last_energy_income == 0U);
 	assert(observation.last_water_income == 0U);
 	assert(observation.plant_flags == 0U);
+	assert(memcmp(&observation.genome, &world.plants[0].genome, sizeof(observation.genome)) ==
+	       0);
 	assert(observation.candidates[0].delta_x == -5);
 	assert(observation.candidates[0].delta_y == -5);
 	assert(observation.candidates[2].delta_x == 0);
@@ -326,6 +329,10 @@ static void test_agent_observation_and_baseline_policy(void)
 	observation.stress = PICOSYSTEM_GARDEN_STRESS_DEATH_THRESHOLD;
 	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == -ERANGE);
 	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
+	observation.stress = 0U;
+	observation.genome.growth_rate = PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX + 1;
+	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == -ERANGE);
+	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
 }
 
 static void water_all_plants(struct picosystem_garden_world *world)
@@ -355,7 +362,8 @@ static void test_survival_stress_decomposition_and_reclamation(void)
 	step_garden(&world, 3U * PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE *
 				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR / 2U);
 	assert(world.ecology_tick_count == 192U);
-	assert(picosystem_garden_world_living_plant_count(&world) == 1U);
+	assert(picosystem_garden_world_living_plant_count(&world) >= 1U);
+	assert((world.plants[0].flags & PICOSYSTEM_GARDEN_PLANT_DEAD) == 0U);
 	assert(picosystem_garden_world_dead_plant_count(&world) == 0U);
 	assert(world.death_count == 0U);
 
@@ -456,6 +464,96 @@ static void test_survival_stress_decomposition_and_reclamation(void)
 	assert(churn.death_count == 12U);
 	assert(churn.reclaimed_plant_count == 12U);
 	assert(churn.reclaimed_node_count == 48U);
+}
+
+static void make_plant_reproductive(struct picosystem_garden_world *world, uint8_t plant_index)
+{
+	struct picosystem_garden_plant *const plant = &world->plants[plant_index];
+	plant->stored_energy = 256U;
+	plant->stored_water = 512U;
+	plant->growth_cooldown = UINT8_MAX;
+	for (uint16_t index = 0U; index < world->node_count; ++index) {
+		struct picosystem_garden_node *const node = &world->nodes[index];
+		if ((node->plant_index != plant_index) ||
+		    (node->kind != PICOSYSTEM_GARDEN_NODE_STEM) ||
+		    (node->parent_index == PICOSYSTEM_GARDEN_NODE_NONE)) {
+			continue;
+		}
+		node->flags &=
+			(uint8_t) ~(PICOSYSTEM_GARDEN_NODE_TIP | PICOSYSTEM_GARDEN_NODE_PRUNED |
+				    PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
+		node->flags |= PICOSYSTEM_GARDEN_NODE_LEAF | PICOSYSTEM_GARDEN_NODE_FLOWER;
+		node->growth_progress = UINT8_MAX;
+		return;
+	}
+	assert(false);
+}
+
+static uint8_t genome_difference_count(const struct picosystem_garden_genome *left,
+				       const struct picosystem_garden_genome *right)
+{
+	return (uint8_t)((left->growth_rate != right->growth_rate) +
+			 (left->shoot_bias != right->shoot_bias) +
+			 (left->light_seeking != right->light_seeking) +
+			 (left->water_seeking != right->water_seeking) +
+			 (left->branching != right->branching) + (left->stature != right->stature) +
+			 (left->reserve_strategy != right->reserve_strategy) +
+			 (left->dispersal != right->dispersal));
+}
+
+static void test_reproduction_germination_and_seed_expiration(void)
+{
+	struct picosystem_garden_world world;
+	assert(picosystem_garden_world_reset(&world, UINT32_C(0x51eed123)) == 0);
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_SHRUB, 14U) ==
+	       0);
+	assert(world.plants[0].lineage_id == 1U);
+	assert(world.plants[0].parent_lineage_id == 0U);
+	assert(world.plants[0].generation == 0U);
+	make_plant_reproductive(&world, 0U);
+	step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.seed_count == 1U);
+	assert(world.seed_creation_count == 1U);
+	assert(world.germination_count == 0U);
+	const struct picosystem_garden_seed seed = world.seeds[0];
+	assert(seed.parent_lineage_id == world.plants[0].lineage_id);
+	assert(seed.generation == 1U);
+	assert(seed.species_id == PICOSYSTEM_GARDEN_SPECIES_SHRUB);
+	assert((seed.column <= 11U) || (seed.column >= 17U));
+	assert((world.mutation_count == 0U) || (world.mutation_count == 1U));
+	assert(genome_difference_count(&world.plants[0].genome, &seed.genome) ==
+	       world.mutation_count);
+	assert(picosystem_garden_world_seed_at(&world, 0U) != NULL);
+	assert(picosystem_garden_world_seed_at(&world, 1U) == NULL);
+
+	for (uint16_t age = 0U; age < PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS; ++age) {
+		assert(picosystem_garden_world_water(&world, seed.column, UINT8_MAX) == 0);
+		step_garden(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	}
+	assert(world.seed_count == 0U);
+	assert(world.germination_count == 1U);
+	assert(world.plant_count == 2U);
+	assert(world.maximum_generation == 1U);
+	assert(world.plants[0].offspring_count == 1U);
+	assert(world.plants[1].lineage_id == 2U);
+	assert(world.plants[1].parent_lineage_id == world.plants[0].lineage_id);
+	assert(world.plants[1].generation == 1U);
+	assert(memcmp(&world.plants[1].genome, &seed.genome, sizeof(seed.genome)) == 0);
+	assert(picosystem_garden_world_hash(&world) != 0U);
+
+	assert(picosystem_garden_world_reset(&world, UINT32_C(0x51eed123)) == 0);
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_SHRUB, 14U) ==
+	       0);
+	make_plant_reproductive(&world, 0U);
+	step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.seed_count == 1U);
+	world.seeds[0].age_ecology_ticks = PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS - 1U;
+	step_garden(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.seed_count == 0U);
+	assert(world.germination_count == 0U);
+	assert(world.seed_expiration_count == 1U);
 }
 
 static void test_growth_variety_and_determinism(void)
@@ -598,6 +696,7 @@ int main(void)
 	test_directional_light_solver();
 	test_agent_observation_and_baseline_policy();
 	test_survival_stress_decomposition_and_reclamation();
+	test_reproduction_germination_and_seed_expiration();
 	test_growth_variety_and_determinism();
 	test_cursor_tools_and_pruning();
 	test_pruning_rejects_distant_tip();

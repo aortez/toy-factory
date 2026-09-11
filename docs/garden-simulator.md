@@ -19,19 +19,21 @@ collection of unrelated subsystems:
   over time;
 - flower, shrub, and ground-cover species vary their cadence, costs, branching,
   height, root reach, leaf density, shade, and horizontal tendency;
-- per-plant deterministic traits add lean and vigor without dynamic content or
-  unstable random ordering.
+- a compact per-plant genome perturbs growth rate, root/shoot allocation,
+  resource seeking, branching, stature, reserves, and seed dispersal without
+  dynamic content or unstable random ordering.
 
-Insects, disease, nutrients, reproduction, persistence, and rigid-body stems
-remain outside the current scope. Resource maintenance, stress, death, and
+Insects, disease, nutrients, persistence, and rigid-body stems remain outside
+the current scope. Resource maintenance, stress, reproduction, death, and
 decomposition are part of the authoritative simulation.
 
 ## Fixed-capacity state
 
 [`garden_world.c`](../src/garden_world.c) has no Zephyr, renderer, allocation,
-or wall-clock dependency. Its caller-owned state is 3,540 bytes and contains:
+or wall-clock dependency. Its caller-owned state is 3,916 bytes and contains:
 
 - eight plant records and a shared pool of 256 ten-byte plant nodes;
+- a dense eight-entry dormant-seed bank with compact genomes and lineage IDs;
 - a 28 x 11 byte soil-moisture field covering eight-pixel cells;
 - a derived 28 x 14 byte canopy-light field; the sun itself is derived from
   the ecology tick and consumes no persistent world storage;
@@ -65,6 +67,25 @@ stable per-plant random stream. Selected depths schedule at most one secondary
 branch. Leaves begin collecting energy and casting shade after a fixed visible
 growth threshold; terminal tips flower after their species threshold.
 
+Each plant also carries eight signed one-byte traits in the range -2 through
++2. Species parameters remain immutable templates in flash; the genome is only
+a compact set of offsets around that template. Traits influence growth cadence,
+shoot allocation, light and water seeking, branch spacing, shoot/root stature,
+night reserves, and dispersal. The complete genome is included in the agent
+observation, so a later learned policy can act on the same inherited state.
+
+A mature flower may produce one seed after paying bounded energy and water
+costs while retaining its strategy-adjusted reserve and enough resources for a
+complete normal night. The flower is then marked as spent. Seeds disperse a
+bounded horizontal distance, remain dormant for eight ecology ticks (two
+seconds), and expire after 256 ecology ticks (64 seconds). A dormant seed
+germinates only when its surface soil has sufficient moisture, the bottom
+canopy row has sufficient light, plant spacing is valid, and fixed plant/node
+capacity is available. Mutation is deterministic: three quarters of new seeds
+change exactly one trait by one bounded step. Every plant has a monotonic
+lineage ID, parent lineage, generation, and offspring count; cumulative seed,
+germination, expiration, and mutation counters survive parent reclamation.
+
 Each one-second maintenance event costs one energy unit per eight total nodes
 and one water unit per eight shoot nodes, rounded up. A failed payment records
 which resource was short and increments plant stress; a successful event heals
@@ -95,7 +116,7 @@ a free list or invalidating child indexes.
 ## Agent boundary
 
 Growth decisions now cross a versioned, fixed-capacity observation/proposal
-boundary. A 96-byte observation describes one active tip, its parent-relative
+boundary. A 104-byte observation describes one active tip, its parent-relative
 orientation, the plant's energy, water, age, morphology totals, stress,
 maintenance costs and phase, recent resource income, plant status, and up to
 five canonical growth candidates. Each candidate reports its endpoint, local
@@ -118,20 +139,22 @@ editor. It chooses a target, visibly moves the same cursor, selects an ordinary
 tool, and calls the same planting, watering, or pruning operation exposed to
 manual control. Fixed priority and rotating scan origins make ties reproducible.
 It establishes a five-plant mixture, waters low-resource plants, and
-occasionally pinches a mature tip in deep shade.
+occasionally pinches a mature tip in deep shade. Below that population target,
+it waters a viable dormant seed before buying another seedling, allowing
+natural offspring to claim reclaimed space.
 
 This gives the idle toy an autonomous mode and supplies a long-running workload
 for capacity, determinism, and rendering tests.
 
 ## Presentation and validation
 
-The renderer receives a 1,604-byte garden payload inside the existing
+The renderer receives a 1,622-byte garden payload inside the existing
 scene-tagged snapshot union. Each rendered node is five bytes: position,
-backward parent distance, growth progress, and packed style. The complete
-immutable snapshot remains 1,640 bytes because lifecycle appearance reuses two
-packed style bits and the sun fields occupy former tail padding. Soil moisture
-is copied directly; the 392-byte derived light field is not duplicated. A small
-sun marker makes the cycle visible. Garden uses the established 30 Hz
+backward parent distance, growth progress, and packed style. Each dormant seed
+uses two bytes for its screen column and packed species/dormancy style. The
+complete immutable snapshot is 1,664 bytes. Soil moisture is copied directly;
+the 392-byte derived light field and authoritative genomes are not duplicated.
+A small sun marker makes the cycle visible. Garden uses the established 30 Hz
 full-frame path while ecology and input remain authoritative at 60 Hz.
 
 The host prototype now treats that framebuffer as a pixel cache. A bounded
@@ -151,22 +174,30 @@ The strict-warning/UBSan native suites currently cover invalid inputs, spacing,
 plant and node capacity, downward water travel, evaporation, cursor repeat,
 tool cycling, pruning, distinct species growth, exact paired replays, healthy
 night survival, reversible resource stress, dry death, graph compaction, twelve
-death/replant cycles without leakage, and a five-minute automatic soak. The
-mixed device-sequence fixture waters the plot, plants another flower, enables
-automation, and advances 930 exact ticks to hash `f089ee50` and framebuffer
-CRC-32 `e732b744`. Continuing the same state to tick 3,771 reaches 190 live
-nodes after one 34-node plant has died and been reclaimed, at hash `9e3bb3f8`
-and CRC-32 `09272e48`. A separate unaided lifecycle fixture reaches tick 3,330
+death/replant cycles without leakage, reproduction costs, single-trait bounded
+mutation, seed dormancy/expiry, germination, parent-child lineage, exact seed
+damage rendering, and a five-minute automatic soak. The
+mixed sequence fixture waters the plot, plants another flower, enables
+automation, and advances 930 exact ticks to hash `c7492628` and framebuffer
+CRC-32 `061d06d1`. Continuing the same state to tick 3,771 reaches 190 live
+nodes after one 34-node plant has died and been reclaimed, at hash `481cbd42`
+and CRC-32 `20d36204`. A separate unaided lifecycle fixture reaches tick 3,330
 with two living plants, one visibly decomposing plant, and one already reclaimed
-33-node plant at hash `7febdb8c` and CRC-32 `818cee96`. Host and PIM559 runs
-reproduce all three checkpoints exactly.
+33-node plant at hash `67618a4a` and CRC-32 `2556ea8f`. The generation fixture
+continues through tick 8,430 with seven seeds produced, two germinations, two
+expirations, four mutations, and two living generation-1 offspring. It reaches
+hash `fdd48ef6` and CRC-32 `3d456476`. UBSan host runs reproduce all four
+checkpoints exactly. The PIM559 also reproduced the complete generation
+fixture's final hash and framebuffer CRC exactly.
 
 In a 32-repetition optimized host profile, median ecology steps ranged from
-2.936 to 6.462 microseconds across the three checkpoints, and the slowest
-observed step was 12.674 microseconds. On the PIM559 after the lifecycle replay,
-a live window maintained 60.0 Hz with no skipped or over-budget updates.
-Complete updates averaged 0.653 ms and peaked at 6.277 ms; world/model work
-averaged 0.258 ms and peaked at 5.838 ms.
+2.975 to 7.254 microseconds across the three checkpoints, and the slowest
+observed step was 9.919 microseconds. On the PIM559 after the generation replay,
+an 899-tick live window maintained 60.0 Hz with no skipped or over-budget
+updates. Complete updates averaged 0.853 ms and peaked at 6.927 ms; world/model
+work averaged 0.374 ms and peaked at 6.369 ms. Full-frame presentation held
+29.5 fps; the last/maximum core-1 raster times were 11.839/12.712 ms and the
+last display transfer took 18.464 ms.
 
 The first Garden-capable image booted on the PIM559, but its Hourglass startup
 run reached 4,956/5,120 bytes on the renderer stack. Adding the larger snapshot
@@ -185,9 +216,9 @@ window maintained 60.0 Hz simulation and 29.6 fps presentation without skipped
 or over-budget updates. Complete updates averaged 0.616 ms and peaked at 3.623
 ms. Mature-scene rasterization took 12.7-13.0 ms and the final DMA transfer took
 18.387 ms, so full-screen presentation—not ecology—is the limiting path. With
-the shared clipped Garden renderer, the fast image uses 255,372 bytes of Zephyr
-RAM and 255,852 bytes of flash, leaving 5,748 bytes of linked RAM plus the
-separately reserved 8 KiB core-1 area.
+the shared clipped Garden renderer, the fast reproduction image uses 255,580
+bytes of Zephyr RAM and 259,416 bytes of flash, leaving 5,540 bytes of linked
+RAM plus the separately reserved 8 KiB core-1 area.
 
 Physical playtesting confirmed that manual planting, watering, pruning, tool
 selection, reset, and the visible auto-gardener behave smoothly on the PIM559.
@@ -206,8 +237,8 @@ pruning still redirects growth instead of freeing arbitrary subtrees. Branches
 use a small set of integer steps, nearby leaves can merge into dense circular
 clusters, and soil moisture is a visibly coarse field. Tool identity is
 communicated primarily by cursor color, with no plant inspection or resource
-overlay. Nutrients, reproduction, and learned recurrent policies remain future
-simulation layers. The host profiler reconstructs initial, growing, and
+overlay. Nutrients and learned recurrent policies remain future simulation
+layers. The host profiler reconstructs initial, growing, and
 established Gardens and measures model, snapshot, raster, primitive-work,
 framebuffer-delta, and exact semantic damage behavior without requiring the
 PicoSystem.

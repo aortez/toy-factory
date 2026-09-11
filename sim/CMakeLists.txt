@@ -168,6 +168,7 @@ add_test(NAME garden-damage-unit COMMAND toy-factory-garden-damage-test)
 foreach(sequence IN ITEMS
 	clockwork-smoke.json
 	deterministic-smoke.json
+	garden-generations.json
 	garden-lifecycle.json
 	garden-smoke.json
 	garden-mature.json

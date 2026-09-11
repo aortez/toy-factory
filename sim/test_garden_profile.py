@@ -10,9 +10,9 @@ import subprocess
 
 
 EXPECTED_CHECKPOINTS = {
-    "initial": (0, "41a06084", "c515c869"),
-    "growing": (930, "f089ee50", "e732b744"),
-    "mature": (3771, "9e3bb3f8", "09272e48"),
+    "initial": (0, "bfb614d6", "c515c869"),
+    "growing": (930, "c7492628", "061d06d1"),
+    "mature": (3771, "481cbd42", "20d36204"),
 }
 EXPECTED_STATE = {
     "initial": {
@@ -24,6 +24,12 @@ EXPECTED_STATE = {
         "deaths": 0,
         "reclaimed_plants": 0,
         "reclaimed_nodes": 0,
+        "seeds": 0,
+        "seeds_created": 0,
+        "germinations": 0,
+        "seeds_expired": 0,
+        "mutations": 0,
+        "max_generation": 0,
         "moisture": 1536,
     },
     "growing": {
@@ -35,7 +41,13 @@ EXPECTED_STATE = {
         "deaths": 0,
         "reclaimed_plants": 0,
         "reclaimed_nodes": 0,
-        "moisture": 3991,
+        "seeds": 1,
+        "seeds_created": 1,
+        "germinations": 0,
+        "seeds_expired": 0,
+        "mutations": 0,
+        "max_generation": 0,
+        "moisture": 4652,
     },
     "mature": {
         "plants": 5,
@@ -46,7 +58,13 @@ EXPECTED_STATE = {
         "deaths": 1,
         "reclaimed_plants": 1,
         "reclaimed_nodes": 34,
-        "moisture": 3856,
+        "seeds": 3,
+        "seeds_created": 3,
+        "germinations": 0,
+        "seeds_expired": 0,
+        "mutations": 2,
+        "max_generation": 0,
+        "moisture": 3520,
     },
 }
 TIMING_NAMES = ("ordinary_step", "ecology_step", "snapshot", "raster")
@@ -124,6 +142,12 @@ def validate_profile(profile: object) -> None:
             "deaths",
             "reclaimed_plants",
             "reclaimed_nodes",
+            "seeds",
+            "seeds_created",
+            "germinations",
+            "seeds_expired",
+            "mutations",
+            "max_generation",
             "moisture",
         ):
             if not isinstance(state.get(count_name), int) or state[count_name] < 0:

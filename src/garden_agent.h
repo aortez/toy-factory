@@ -11,7 +11,7 @@
 
 #include "garden_world.h"
 
-#define PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION 3U
+#define PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION 4U
 #define PICOSYSTEM_GARDEN_AGENT_MAX_CANDIDATES      5U
 #define PICOSYSTEM_GARDEN_AGENT_CANDIDATE_NONE      UINT8_MAX
 
@@ -90,6 +90,7 @@ struct picosystem_garden_agent_observation {
 	uint8_t last_energy_income;
 	uint8_t last_water_income;
 	uint8_t plant_flags;
+	struct picosystem_garden_genome genome;
 	struct picosystem_garden_agent_candidate candidates[PICOSYSTEM_GARDEN_AGENT_MAX_CANDIDATES];
 };
 

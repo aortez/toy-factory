@@ -113,7 +113,8 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Route baseline growth through a bounded Garden observation/proposal contract.
 - [x] Add deterministic moving directional light over the canopy grid.
 - [x] Add resource maintenance, mortality, decomposition, and node reclamation.
-- [ ] Add reproduction and a replaceable recurrent plant policy.
+- [x] Add bounded heritable reproduction, seed dormancy, germination, and lineage.
+- [ ] Add a replaceable recurrent plant policy.
 
 ## 8. Host simulation
 

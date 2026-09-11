@@ -27,12 +27,19 @@
 	 (PICOSYSTEM_GARDEN_CANOPY_ROWS * PICOSYSTEM_GARDEN_CELL_PIXELS))
 #define PICOSYSTEM_GARDEN_MAX_PLANTS                8U
 #define PICOSYSTEM_GARDEN_MAX_NODES                 256U
+#define PICOSYSTEM_GARDEN_MAX_SEEDS                 8U
 #define PICOSYSTEM_GARDEN_NODE_NONE                 UINT16_MAX
 #define PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR      15U
 #define PICOSYSTEM_GARDEN_NODE_GROWTH_TICKS         12U
 #define PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS      96U
 #define PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR  4U
 #define PICOSYSTEM_GARDEN_STRESS_DEATH_THRESHOLD    8U
+#define PICOSYSTEM_GARDEN_NIGHT_RESERVE_PERIODS     40
+#define PICOSYSTEM_GARDEN_RESERVE_TRAIT_PERIOD_STEP 4
+#define PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS       8U
+#define PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS       256U
+#define PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN          (-2)
+#define PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX          2
 #define PICOSYSTEM_GARDEN_AUTO_CURSOR_TICK_DIVISOR  4U
 #define PICOSYSTEM_GARDEN_CURSOR_REPEAT_DELAY_TICKS 10U
 #define PICOSYSTEM_GARDEN_CURSOR_REPEAT_RATE_TICKS  4U
@@ -56,12 +63,13 @@ enum picosystem_garden_node_flag {
 	PICOSYSTEM_GARDEN_NODE_FLOWER = 1U << 2,
 	PICOSYSTEM_GARDEN_NODE_PRUNED = 1U << 3,
 	PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING = 1U << 4,
+	PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED = 1U << 5,
 };
 
 #define PICOSYSTEM_GARDEN_NODE_VALID_FLAGS                                                         \
 	(PICOSYSTEM_GARDEN_NODE_TIP | PICOSYSTEM_GARDEN_NODE_LEAF |                                \
 	 PICOSYSTEM_GARDEN_NODE_FLOWER | PICOSYSTEM_GARDEN_NODE_PRUNED |                           \
-	 PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING)
+	 PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING | PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED)
 
 enum picosystem_garden_plant_flag {
 	PICOSYSTEM_GARDEN_PLANT_DEAD = 1U << 0,
@@ -94,8 +102,22 @@ struct picosystem_garden_node {
 	uint8_t flags;
 };
 
+/* Compact heritable offsets around a flash-resident species template. */
+struct picosystem_garden_genome {
+	int8_t growth_rate;
+	int8_t shoot_bias;
+	int8_t light_seeking;
+	int8_t water_seeking;
+	int8_t branching;
+	int8_t stature;
+	int8_t reserve_strategy;
+	int8_t dispersal;
+};
+
 struct picosystem_garden_plant {
 	uint32_t random_state;
+	uint32_t lineage_id;
+	uint32_t parent_lineage_id;
 	uint16_t base_node_index;
 	uint16_t last_shoot_tip_index;
 	uint16_t last_root_tip_index;
@@ -103,8 +125,12 @@ struct picosystem_garden_plant {
 	uint16_t stored_water;
 	uint16_t age_ecology_ticks;
 	uint16_t node_count;
+	uint16_t offspring_count;
+	uint16_t generation;
+	struct picosystem_garden_genome genome;
 	uint8_t base_column;
 	uint8_t growth_cooldown;
+	uint8_t reproduction_cooldown;
 	uint8_t growth_phase;
 	uint8_t species_id;
 	int8_t lean;
@@ -115,10 +141,22 @@ struct picosystem_garden_plant {
 	uint8_t last_water_income;
 };
 
+/* Dense fixed-capacity seed bank; entries wait for a viable germination window. */
+struct picosystem_garden_seed {
+	struct picosystem_garden_genome genome;
+	uint32_t parent_lineage_id;
+	uint16_t age_ecology_ticks;
+	uint16_t generation;
+	uint8_t column;
+	uint8_t species_id;
+	int8_t visual_offset;
+};
+
 /* Caller-owned fixed-capacity state; no garden operation allocates memory. */
 struct picosystem_garden_world {
 	struct picosystem_garden_node nodes[PICOSYSTEM_GARDEN_MAX_NODES];
 	struct picosystem_garden_plant plants[PICOSYSTEM_GARDEN_MAX_PLANTS];
+	struct picosystem_garden_seed seeds[PICOSYSTEM_GARDEN_MAX_SEEDS];
 	uint8_t moisture[PICOSYSTEM_GARDEN_SOIL_CELL_COUNT];
 	uint8_t light[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT];
 	uint32_t random_state;
@@ -131,9 +169,16 @@ struct picosystem_garden_world {
 	uint32_t death_count;
 	uint32_t reclaimed_plant_count;
 	uint32_t reclaimed_node_count;
+	uint32_t seed_creation_count;
+	uint32_t germination_count;
+	uint32_t seed_expiration_count;
+	uint32_t mutation_count;
+	uint32_t lineage_sequence;
 	uint16_t node_count;
 	uint16_t moisture_total;
+	uint16_t maximum_generation;
 	uint8_t plant_count;
+	uint8_t seed_count;
 	uint8_t cursor_column;
 	uint8_t cursor_row;
 	uint8_t selected_tool;
@@ -188,6 +233,9 @@ picosystem_garden_world_node_at(const struct picosystem_garden_world *world, siz
 
 const struct picosystem_garden_plant *
 picosystem_garden_world_plant_at(const struct picosystem_garden_world *world, size_t index);
+
+const struct picosystem_garden_seed *
+picosystem_garden_world_seed_at(const struct picosystem_garden_world *world, size_t index);
 
 uint8_t picosystem_garden_world_living_plant_count(const struct picosystem_garden_world *world);
 uint8_t picosystem_garden_world_dead_plant_count(const struct picosystem_garden_world *world);

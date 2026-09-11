@@ -401,6 +401,13 @@ static void print_garden_stats(const struct shell *shell,
 		    game->garden_auto_gardener_enabled ? "on" : "off",
 		    game->garden_auto_action_count, game->garden_auto_decision_count,
 		    game->garden_manual_action_count);
+	shell_print(shell,
+		    "garden heredity: seeds=%u/%u, created=%u, germinated=%u, expired=%u, "
+		    "mutations=%u, max-generation=%u",
+		    game->garden_seed_count, PICOSYSTEM_GARDEN_MAX_SEEDS,
+		    game->garden_seed_creation_count, game->garden_germination_count,
+		    game->garden_seed_expiration_count, game->garden_mutation_count,
+		    game->garden_maximum_generation);
 }
 
 static void print_game_runtime_stats(const struct shell *shell,
