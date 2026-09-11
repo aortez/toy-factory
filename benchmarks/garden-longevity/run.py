@@ -83,6 +83,8 @@ def summarize(report: dict, previous: dict | None) -> list[dict]:
                 "species": [],
                 "interval": {"from_cycles": previous["tick_count"] // TICKS_PER_CYCLE if previous else 0},
             }
+            if "lifetimes" in policy["totals"]:
+                row["lifetimes"] = policy["totals"]["lifetimes"]
             for species in range(3):
                 values = [t["species"][species] for t in trials]
                 row["species"].append({

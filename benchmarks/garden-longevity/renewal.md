@@ -49,8 +49,8 @@ but some gardens become space-limited: the baseline/adaptive batches reach the
 256-node ceiling, and many seeds expire before finding viable space. The maximum
 observed lineage count is 52, well below the host's 4,096 tracking capacity.
 
-The next evaluation improvement should distinguish offspring that survive a
-whole day/night cycle from the existing 1.25-second establishment gate. Aging,
+The subsequent [lifetime investigation](lifetimes.md) distinguishes offspring
+that survive a whole day/night cycle from the existing 1.25-second establishment gate. Aging,
 structural regrowth, selection pressure, and capacity changes remain separate
 design decisions. This paired comparison uses the prior evaluation seeds;
 future weight selection should retain a fresh held-out set.

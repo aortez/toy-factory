@@ -46,6 +46,7 @@
 #define ELEVATOR_CLEAT_HALF_WIDTH   8
 #define GARDEN_AUTO_TEXT_X          208
 #define GARDEN_AUTO_TEXT_Y          10
+#define GARDEN_RAIN_TEXT_X          176
 #define GARDEN_SKY_COLOR            UINT16_C(0x4d3f)
 #define GARDEN_DRY_SOIL_COLOR       UINT16_C(0x51e4)
 #define GARDEN_DAMP_SOIL_COLOR      UINT16_C(0x41e5)
@@ -167,6 +168,7 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 		    (garden->auto_target_row >= PICOSYSTEM_GARDEN_CURSOR_ROWS) ||
 		    (garden->auto_target_tool >= PICOSYSTEM_GARDEN_TOOL_COUNT) ||
 		    (garden->auto_gardener_enabled > 1U) || (garden->auto_target_valid > 1U) ||
+		    (garden->rain_rate > PICOSYSTEM_GARDEN_RAIN_MAX_RATE) ||
 		    (garden->sun_strength < PICOSYSTEM_GARDEN_LIGHT_MINIMUM) ||
 		    (garden->sun_ray_step_x_q4 < -PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4) ||
 		    (garden->sun_ray_step_x_q4 > PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4)) {
@@ -1207,8 +1209,20 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_header(const struct picosystem_scene
 			SENSOR_COUNT_SCALE,
 			hourglass ? PICOSYSTEM_COLOR_YELLOW : PICOSYSTEM_COLOR_GREEN);
 	}
-	if ((err != 0) || (snapshot->scene_id != PICOSYSTEM_GAME_SCENE_GARDEN) ||
-	    (snapshot->payload.garden.auto_gardener_enabled == 0U)) {
+	if ((err != 0) || (snapshot->scene_id != PICOSYSTEM_GAME_SCENE_GARDEN)) {
+		return err;
+	}
+	if (snapshot->payload.garden.rain_rate != 0U) {
+		if (clip == NULL) {
+			err = picosystem_graphics_draw_text(GARDEN_RAIN_TEXT_X, GARDEN_AUTO_TEXT_Y,
+							    "RAIN", 1U, PICOSYSTEM_COLOR_CYAN);
+		} else {
+			err = picosystem_graphics_draw_text_clipped(clip, GARDEN_RAIN_TEXT_X,
+								    GARDEN_AUTO_TEXT_Y, "RAIN", 1U,
+								    PICOSYSTEM_COLOR_CYAN);
+		}
+	}
+	if ((err != 0) || (snapshot->payload.garden.auto_gardener_enabled == 0U)) {
 		return err;
 	}
 	if (clip == NULL) {

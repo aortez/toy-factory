@@ -267,10 +267,10 @@ static int evaluate_model(const struct picosystem_garden_neural_model *model,
 	}
 	*fitness = (struct garden_train_fitness){0};
 	for (size_t scenario_index = 0U;
-	     scenario_index < TOY_FACTORY_ARRAY_SIZE(toy_factory_garden_evaluation_scenarios);
+	     scenario_index < TOY_FACTORY_ARRAY_SIZE(toy_factory_garden_rainfed_scenarios);
 	     ++scenario_index) {
 		const struct toy_factory_garden_evaluation_scenario *const scenario =
-			&toy_factory_garden_evaluation_scenarios[scenario_index];
+			&toy_factory_garden_rainfed_scenarios[scenario_index];
 		for (uint32_t trial = 0U; trial < options->trial_count; ++trial) {
 			const uint32_t random_seed =
 				toy_factory_garden_evaluation_trial_seed(options->base_seed, trial);
@@ -285,6 +285,10 @@ static int evaluate_model(const struct picosystem_garden_neural_model *model,
 								    observe_tick, &observer);
 			if (err != 0) {
 				return err;
+			}
+			if (world.auto_gardener_enabled || (world.auto_action_count != 0U) ||
+			    (world.manual_action_count != 0U)) {
+				return -EINVAL;
 			}
 			const uint8_t living = picosystem_garden_world_living_plant_count(&world);
 			fitness->final_living += living;
@@ -446,13 +450,16 @@ static void print_report(const struct garden_train_options *options,
 {
 	printf("{\n  \"schema_version\": %u,\n", GARDEN_TRAIN_SCHEMA_VERSION);
 	printf("  \"algorithm\": \"deterministic-(1+lambda)\",\n");
+	printf("  \"environment\": {\"rain_version\":%u,\"gardener\":false,"
+	       "\"irrigation\":false,\"scenarios\":[\"rainfed\",\"rainfed-crowded\"]},\n",
+	       PICOSYSTEM_GARDEN_RAIN_VERSION);
 	printf("  \"base_seed\": \"%08" PRIx32 "\",\n", options->base_seed);
 	printf("  \"settings\": {\"generations\":%" PRIu32 ",\"population\":%" PRIu32
 	       ",\"trials_per_scenario\":%" PRIu32 ",\"ticks_per_trial\":%" PRIu32
 	       ",\"mutations_per_offspring\":%" PRIu32 ",\"scenario_count\":%u},\n",
 	       options->generation_count, options->population_count, options->trial_count,
 	       options->tick_count, options->mutation_count,
-	       TOY_FACTORY_GARDEN_EVALUATION_SCENARIO_COUNT);
+	       TOY_FACTORY_GARDEN_RAINFED_SCENARIO_COUNT);
 	printf("  \"fitness_order\": [\"minimum_extinctions\",\"maximum_final_viable\","
 	       "\"maximum_final_living\",\"maximum_established_offspring\","
 	       "\"maximum_descendant_plant_ticks\",\"maximum_generation\","

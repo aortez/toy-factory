@@ -36,7 +36,16 @@ GARDEN_EVAL_TRIALS ?= 8
 GARDEN_EVAL_TICKS ?= 7680
 GARDEN_EVAL_SEED ?= 0x6576616c
 GARDEN_EVAL_OUT ?= artifacts/garden-evaluation.json
+GARDEN_EVAL_RAINFED ?= 0
 GARDEN_EVAL_MODEL ?=
+GARDEN_EXPERIMENT_OUT ?= artifacts/garden-experiment
+GARDEN_EXPERIMENT_ARGS ?=
+GARDEN_GALLERY_BUNDLE ?= artifacts/garden-experiment
+GARDEN_GALLERY_OUT ?= artifacts/garden-gallery
+GARDEN_GALLERY_ARGS ?=
+GARDEN_AUDIT_BUNDLE ?= artifacts/garden-experiment
+GARDEN_AUDIT_OUT ?= artifacts/garden-establishment
+GARDEN_AUDIT_ARGS ?=
 GARDEN_TRAIN_GENERATIONS ?= 8
 GARDEN_TRAIN_POPULATION ?= 16
 GARDEN_TRAIN_TRIALS ?= 2
@@ -57,7 +66,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 .PHONY: help image setup build build-fast build-pio build-pio-dma build-pl022-dma \
 	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
 	host-build host-check host-run host-cli host-profile-build host-profile-garden \
-	host-evaluate-garden host-train-garden \
+	host-evaluate-garden host-train-garden host-experiment-garden host-gallery-garden host-audit-garden \
 	host-image host-player-build host-player-check host-play \
 	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
 	bootloader console status game-stats \
@@ -89,6 +98,8 @@ help: ## Show this list of targets
 	@printf '                    [GARDEN_PROFILE_OUT=artifacts/garden-host-profile.json]\n'
 	@printf '                    [GARDEN_EVAL_TRIALS=8] [GARDEN_EVAL_TICKS=7680]\n'
 	@printf '                    [GARDEN_EVAL_SEED=0x6576616c]\n'
+	@printf '                    [GARDEN_EVAL_RAINFED=1] (seeded rain, no gardener)\n'
+	@printf '                    [GARDEN_EXPERIMENT_OUT=artifacts/new-run] [GARDEN_EXPERIMENT_ARGS="--cycles 8"]\n'
 	@printf '                    [GARDEN_EVAL_OUT=artifacts/garden-evaluation.json] [GARDEN_EVAL_MODEL=path.tgm]\n'
 	@printf '                    [GARDEN_TRAIN_GENERATIONS=8] [GARDEN_TRAIN_POPULATION=16]\n'
 	@printf '                    [GARDEN_TRAIN_TRIALS=2] [GARDEN_TRAIN_TICKS=7680]\n'
@@ -172,10 +183,23 @@ host-evaluate-garden: host-build ## Compare Garden policies over deterministic s
 		--trials "$(GARDEN_EVAL_TRIALS)" --ticks "$(GARDEN_EVAL_TICKS)" \
 		--seed "$(GARDEN_EVAL_SEED)" \
 		$(if $(strip $(GARDEN_EVAL_MODEL)),--model "$(GARDEN_EVAL_MODEL)",) \
+		$(if $(filter 1,$(GARDEN_EVAL_RAINFED)),--rainfed,) \
 		> "$(GARDEN_EVAL_OUT)"
 	@$(COMPOSE) run --rm firmware python3 -m json.tool "$(GARDEN_EVAL_OUT)" >/dev/null
 	@$(COMPOSE) run --rm firmware python3 sim/summarize_garden_experiment.py \
 		"$(GARDEN_EVAL_OUT)"
+
+host-experiment-garden: host-build ## Collect matched rain-fed trials, report, and verified diagnostic replays
+	$(COMPOSE) run --rm firmware python3 sim/garden_experiments.py \
+		--output "$(GARDEN_EXPERIMENT_OUT)" $(GARDEN_EXPERIMENT_ARGS)
+
+host-gallery-garden: host-build ## Capture a fixed visual-review panel from a completed experiment bundle
+	$(COMPOSE) run --rm firmware python3 sim/garden_gallery.py \
+		--bundle "$(GARDEN_GALLERY_BUNDLE)" --output "$(GARDEN_GALLERY_OUT)" $(GARDEN_GALLERY_ARGS)
+
+host-audit-garden: host-build ## Audit seed lifetimes and planting sites against a completed experiment
+	$(COMPOSE) run --rm firmware python3 sim/garden_establishment.py \
+		--bundle "$(GARDEN_AUDIT_BUNDLE)" --output "$(GARDEN_AUDIT_OUT)" $(GARDEN_AUDIT_ARGS)
 
 host-train-garden: host-build ## Evolve and export a deterministic Garden neural policy
 	@mkdir -p "$(dir $(GARDEN_TRAIN_OUT))" "$(dir $(GARDEN_MODEL_OUT))" \

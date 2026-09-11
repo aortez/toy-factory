@@ -48,6 +48,7 @@ static int validate_garden_snapshot(const struct picosystem_scene_snapshot *snap
 	    (garden->auto_target_row >= PICOSYSTEM_GARDEN_CURSOR_ROWS) ||
 	    (garden->auto_target_tool >= PICOSYSTEM_GARDEN_TOOL_COUNT) ||
 	    (garden->auto_gardener_enabled > 1U) || (garden->auto_target_valid > 1U) ||
+	    (garden->rain_rate > PICOSYSTEM_GARDEN_RAIN_MAX_RATE) ||
 	    (garden->sun_strength < PICOSYSTEM_GARDEN_LIGHT_MINIMUM) ||
 	    (garden->sun_ray_step_x_q4 < -PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4) ||
 	    (garden->sun_ray_step_x_q4 > PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4)) {
@@ -309,6 +310,9 @@ int picosystem_garden_damage_plan_build(const struct picosystem_scene_snapshot *
 	if (presented_garden->auto_gardener_enabled != current_garden->auto_gardener_enabled) {
 		/* The AUTO indicator occupies two tiles at the right of the header. */
 		mark_pixel_bounds(plan, 208, 8, 223, 15);
+	}
+	if ((presented_garden->rain_rate != 0U) != (current_garden->rain_rate != 0U)) {
+		mark_pixel_bounds(plan, 176, 8, 191, 15);
 	}
 	return 0;
 }

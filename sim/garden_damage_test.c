@@ -320,5 +320,15 @@ int main(void)
 	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == -ENOTSUP);
 	CHECK(plan.dirty_tile_count == 0U);
 	CHECK(verify_interactive_transitions() == 0);
+	presented = empty_garden_snapshot();
+	current = presented;
+	current.payload.garden.rain_rate = 2U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	CHECK(verify_partial_reconstruction(&current, &presented) == 0);
+	presented = current;
+	current.payload.garden.rain_rate = 4U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	current.payload.garden.rain_rate = PICOSYSTEM_GARDEN_RAIN_MAX_RATE + 1U;
+	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == -ERANGE);
 	return 0;
 }

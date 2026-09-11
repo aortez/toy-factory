@@ -24,7 +24,7 @@ def require_integer(container: dict[str, object], name: str) -> int:
 def main() -> int:
     arguments = parse_arguments()
     report = json.loads(arguments.report.read_text())
-    if not isinstance(report, dict) or report.get("schema_version") not in (2, 3):
+    if not isinstance(report, dict) or report.get("schema_version") not in (2, 3, 4):
         raise RuntimeError("unexpected Garden experiment schema")
     trial_count = require_integer(report, "trial_count")
     tick_count = require_integer(report, "tick_count")
@@ -40,6 +40,7 @@ def main() -> int:
         f"{'final live':>10} {'deaths':>6} {'estab':>5} {'ext':>5} "
         f"{'germ':>5} {'blocked':>7} {'extend R/S':>12} {'wait':>7}"
     )
+    lifetime_rows = []
     for scenario in scenarios:
         if not isinstance(scenario, dict) or not isinstance(scenario.get("name"), str):
             raise RuntimeError("invalid Garden experiment scenario")
@@ -84,6 +85,33 @@ def main() -> int:
                 f"{require_integer(agent, 'shoot_extend'):<5d} "
                 f"{wait_percentage:6.1f}%"
             )
+            if report["schema_version"] >= 4:
+                lifetimes = totals.get("lifetimes")
+                if not isinstance(lifetimes, dict):
+                    raise RuntimeError("Garden lifetime totals are missing")
+                survivors = require_integer(lifetimes, "cycle_survivors")
+                eligible = require_integer(lifetimes, "eligible_offspring")
+                if survivors > eligible:
+                    raise RuntimeError("cycle survivors exceed the complete-followup cohort")
+                fraction = f"{survivors}/{eligible}"
+                rate = f"{100.0 * survivors / eligible:.1f}%" if eligible else "n/a"
+                young = (
+                    f"{require_integer(lifetimes, 'too_young_alive')}/"
+                    f"{require_integer(lifetimes, 'too_young_dead')}"
+                )
+                parents = require_integer(lifetimes, "cycle_survivors_with_surviving_child")
+                lifetime_rows.append(
+                    f"{scenario['name']:<11} {policy['name']:<16} {fraction:>19} "
+                    f"{rate:>7} {young:>15} {parents:>15}"
+                )
+    if lifetime_rows:
+        print()
+        print("Offspring follow-up (durable parents: parent AND child survived a full cycle)")
+        print(
+            f"{'scenario':<11} {'policy':<16} {'cycle pass/eligible':>19} "
+            f"{'rate':>7} {'young live/dead':>15} {'durable parents':>15}"
+        )
+        print("\n".join(lifetime_rows))
     return 0
 
 

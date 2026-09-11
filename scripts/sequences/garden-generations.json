@@ -12,7 +12,7 @@
     {"input": "none", "ticks": 3900}
   ],
   "expect": {
-    "hash": "4e6d7dda",
-    "framebuffer_crc32": "fd71309b"
+    "hash": "08d270fc",
+    "framebuffer_crc32": "bd42bea8"
   }
 }

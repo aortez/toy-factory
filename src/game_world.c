@@ -385,6 +385,9 @@ static int reset_garden(struct picosystem_game_world *world)
 	memset(world, 0, sizeof(*world));
 	int err = picosystem_garden_world_reset(&world->garden, UINT32_C(0x67617264));
 	if (err == 0) {
+		err = picosystem_garden_world_set_weather(&world->garden, UINT32_C(0x67617264));
+	}
+	if (err == 0) {
 		err = picosystem_garden_world_plant_seed(&world->garden,
 							 PICOSYSTEM_GARDEN_SPECIES_FLOWER, 4U);
 	}

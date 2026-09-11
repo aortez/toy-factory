@@ -18,6 +18,7 @@
 
 #define GARDEN_HASH_VERSION                      UINT32_C(5)
 #define GARDEN_AGENT_MEMORY_HASH_TAG             UINT32_C(0x4d454d31)
+#define GARDEN_WEATHER_HASH_TAG                  UINT32_C(0x5241494e)
 #define GARDEN_DEFAULT_RANDOM_SEED               UINT32_C(0x746f7921)
 #define GARDEN_FNV1A_OFFSET_BASIS                UINT32_C(2166136261)
 #define GARDEN_FNV1A_PRIME                       UINT32_C(16777619)
@@ -547,6 +548,47 @@ static void move_water_between(uint8_t *source, uint8_t *destination, uint8_t li
 	*destination = (uint8_t)(*destination + transfer);
 }
 
+uint8_t picosystem_garden_rain_at(uint32_t weather_seed, uint32_t ecology_tick)
+{
+	if (weather_seed == 0U) {
+		return 0U;
+	}
+	/* Counter-based weather cannot change when a policy consumes more randomness. */
+	uint32_t bits = weather_seed ^ (ecology_tick / PICOSYSTEM_GARDEN_RAIN_WINDOW_TICKS);
+	bits ^= UINT32_C(0x7261696e);
+	bits ^= bits >> 16U;
+	bits *= UINT32_C(0x7feb352d);
+	bits ^= bits >> 15U;
+	bits *= UINT32_C(0x846ca68b);
+	bits ^= bits >> 16U;
+	/* One 4--8 second shower per 32 second window, with dry margins. */
+	const uint32_t start = 8U + (bits % 81U);
+	const uint32_t duration = 16U + ((bits >> 8U) % 17U);
+	const uint32_t phase = ecology_tick % PICOSYSTEM_GARDEN_RAIN_WINDOW_TICKS;
+	return ((phase >= start) && (phase < (start + duration)))
+		       ? (uint8_t)(2U + ((bits >> 16U) % 3U))
+		       : 0U;
+}
+
+static void update_rain(struct picosystem_garden_world *world)
+{
+	const uint8_t rate =
+		picosystem_garden_rain_at(world->weather_seed, world->ecology_tick_count);
+	if (rate == 0U) {
+		return;
+	}
+	uint32_t deposited = 0U;
+	for (uint8_t column = 0U; column < PICOSYSTEM_GARDEN_GRID_COLUMNS; ++column) {
+		uint8_t *const surface = &world->moisture[soil_index(column, 0U)];
+		const uint8_t next = saturating_add_u8(*surface, rate);
+		deposited += (uint32_t)(next - *surface);
+		*surface = next;
+	}
+	world->rain_deposited = saturating_add_u32(world->rain_deposited, deposited);
+	world->rain_runoff = saturating_add_u32(
+		world->rain_runoff, ((uint32_t)rate * PICOSYSTEM_GARDEN_GRID_COLUMNS) - deposited);
+}
+
 static void update_moisture(struct picosystem_garden_world *world)
 {
 	for (uint8_t row = 0U; row < (PICOSYSTEM_GARDEN_SOIL_ROWS - 1U); ++row) {
@@ -643,9 +685,19 @@ static void absorb_water_and_light(struct picosystem_garden_world *world)
 				const uint8_t column = pixel_to_column(node->x);
 				const uint8_t row = pixel_to_soil_row(node->y);
 				uint8_t *const moisture = &world->moisture[soil_index(column, row)];
-				const uint8_t uptake = (*moisture >= species->root_uptake)
-							       ? species->root_uptake
-							       : *moisture;
+				uint8_t uptake = (*moisture >= species->root_uptake)
+							 ? species->root_uptake
+							 : *moisture;
+#if defined(TOY_FACTORY_GARDEN_WATER_HEADROOM)
+				/* Storage is updated per root; leave surplus in this soil cell.
+				 * Do not skip leaves or reserve capacity for later upkeep.
+				 */
+				const uint16_t headroom =
+					(uint16_t)(GARDEN_MAX_STORED_WATER - plant->stored_water);
+				if (uptake > headroom) {
+					uptake = (uint8_t)headroom;
+				}
+#endif
 				*moisture = (uint8_t)(*moisture - uptake);
 				gathered_water = (uint16_t)(gathered_water + uptake);
 				plant->stored_water = saturating_add_u16_limit(
@@ -722,8 +774,8 @@ static void mark_plant_dead(struct picosystem_garden_world *world, uint8_t plant
 			continue;
 		}
 		node->flags &=
-			(uint8_t) ~(PICOSYSTEM_GARDEN_NODE_TIP | PICOSYSTEM_GARDEN_NODE_PRUNED |
-				    PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
+			(uint8_t)~(PICOSYSTEM_GARDEN_NODE_TIP | PICOSYSTEM_GARDEN_NODE_PRUNED |
+				   PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
 		const uint16_t countdown =
 			GARDEN_DECOMPOSITION_TIP_TICKS + (uint16_t)(maximum_depth - node->depth);
 		node->growth_progress = (countdown > UINT8_MAX) ? UINT8_MAX : (uint8_t)countdown;
@@ -753,8 +805,8 @@ static void update_plant_maintenance(struct picosystem_garden_world *world)
 			continue;
 		}
 
-		plant->flags &= (uint8_t) ~(PICOSYSTEM_GARDEN_PLANT_ENERGY_SHORTAGE |
-					    PICOSYSTEM_GARDEN_PLANT_WATER_SHORTAGE);
+		plant->flags &= (uint8_t)~(PICOSYSTEM_GARDEN_PLANT_ENERGY_SHORTAGE |
+					   PICOSYSTEM_GARDEN_PLANT_WATER_SHORTAGE);
 		const bool energy_available =
 			debit_resource(&plant->stored_energy, plant_energy_maintenance_cost(plant));
 		const bool water_available = debit_resource(
@@ -1044,7 +1096,7 @@ static void build_agent_observation(const struct picosystem_garden_world *world,
 		}
 	}
 
-	const int8_t(*steps)[2] =
+	const int8_t (*steps)[2] =
 		(tip->kind == PICOSYSTEM_GARDEN_NODE_STEM) ? shoot_steps : root_steps;
 	for (uint8_t index = 0U; index < observation->candidate_count; ++index) {
 		struct picosystem_garden_agent_candidate *const candidate =
@@ -1158,9 +1210,9 @@ static int extend_tip(struct picosystem_garden_world *world, uint8_t plant_index
 			flags |= PICOSYSTEM_GARDEN_NODE_LEAF;
 		}
 		if (parent->kind == PICOSYSTEM_GARDEN_NODE_STEM) {
-			parent->flags &= (uint8_t) ~(PICOSYSTEM_GARDEN_NODE_TIP |
-						     PICOSYSTEM_GARDEN_NODE_PRUNED |
-						     PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
+			parent->flags &= (uint8_t)~(PICOSYSTEM_GARDEN_NODE_TIP |
+						    PICOSYSTEM_GARDEN_NODE_PRUNED |
+						    PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
 		} else {
 			parent->flags &= (uint8_t)~PICOSYSTEM_GARDEN_NODE_TIP;
 		}
@@ -1481,7 +1533,8 @@ static uint16_t unseeded_flower_index(const struct picosystem_garden_world *worl
 
 static uint8_t dispersed_seed_column(const struct picosystem_garden_plant *plant, uint32_t random)
 {
-	const int32_t distance = 5 + plant->genome.dispersal + (int32_t)((random >> 1U) % 3U);
+	const int32_t distance = PICOSYSTEM_GARDEN_DISPERSAL_MINIMUM + plant->genome.dispersal +
+				 (int32_t)((random >> 1U) % PICOSYSTEM_GARDEN_DISPERSAL_CHOICES);
 	const int32_t direction = ((random & 1U) != 0U) ? 1 : -1;
 	int32_t column = (int32_t)plant->base_column + (direction * distance);
 	if ((column < 0) || (column >= (int32_t)PICOSYSTEM_GARDEN_GRID_COLUMNS)) {
@@ -1986,6 +2039,16 @@ int picosystem_garden_world_prune(struct picosystem_garden_world *world, uint8_t
 	return 0;
 }
 
+int picosystem_garden_world_set_weather(struct picosystem_garden_world *world,
+					uint32_t weather_seed)
+{
+	if (!world_is_valid(world)) {
+		return -EINVAL;
+	}
+	world->weather_seed = weather_seed;
+	return 0;
+}
+
 int picosystem_garden_world_move_cursor(struct picosystem_garden_world *world, int8_t horizontal,
 					int8_t vertical)
 {
@@ -2083,6 +2146,7 @@ int picosystem_garden_world_step_input_with_policy(
 	}
 
 	++world->ecology_tick_count;
+	update_rain(world);
 	update_moisture(world);
 	int err = update_light(world);
 	if (err != 0) {
@@ -2139,6 +2203,39 @@ int picosystem_garden_world_seed_germination_blockers(const struct picosystem_ga
 		return -ERANGE;
 	}
 	*blockers = seed_germination_blockers(world, &world->seeds[seed_index]);
+	return 0;
+}
+
+int picosystem_garden_world_seed_sites(const struct picosystem_garden_world *world,
+				       struct picosystem_garden_seed_sites *sites)
+{
+	_Static_assert(PICOSYSTEM_GARDEN_GRID_COLUMNS <= 32U,
+		       "dispersal columns must fit a bit set");
+	if ((sites == NULL) || !world_is_valid(world)) {
+		return -EINVAL;
+	}
+	struct picosystem_garden_seed_sites result = {0};
+	for (uint8_t column = 0U; column < PICOSYSTEM_GARDEN_GRID_COLUMNS; ++column) {
+		const struct picosystem_garden_seed seed = {
+			.column = column,
+			.age_ecology_ticks = PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS,
+		};
+		result.blockers[column] = seed_germination_blockers(world, &seed);
+	}
+	for (uint8_t index = 0U; index < world->plant_count; ++index) {
+		if (plant_is_dead(&world->plants[index])) {
+			continue;
+		}
+		/* The placement helper uses one direction bit and a fixed distance range.
+		 * Enumerate their support, not probabilities or the parent's next RNG draw.
+		 */
+		for (uint32_t choice = 0U; choice < 2U * PICOSYSTEM_GARDEN_DISPERSAL_CHOICES;
+		     ++choice) {
+			const uint8_t column = dispersed_seed_column(&world->plants[index], choice);
+			result.dispersal_columns[index] |= UINT32_C(1) << column;
+		}
+	}
+	*sites = result;
 	return 0;
 }
 
@@ -2210,6 +2307,12 @@ uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *worl
 	}
 	uint32_t hash = GARDEN_FNV1A_OFFSET_BASIS;
 	hash = fnv1a_u32(hash, GARDEN_HASH_VERSION);
+	/* Preserve rain-disabled v5 benchmark hashes, as with optional agent memory. */
+	if (world->weather_seed != 0U) {
+		hash = fnv1a_u32(hash, GARDEN_WEATHER_HASH_TAG);
+		hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_RAIN_VERSION);
+		hash = fnv1a_u32(hash, world->weather_seed);
+	}
 	hash = fnv1a_u32(hash, world->random_state);
 	hash = fnv1a_u32(hash, world->logic_tick_count);
 	hash = fnv1a_u32(hash, world->ecology_tick_count);

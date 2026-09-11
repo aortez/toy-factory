@@ -106,10 +106,15 @@ def validate_report(report: dict[str, object]) -> None:
         "trials_per_scenario": 1,
         "ticks_per_trial": 3840,
         "mutations_per_offspring": 32,
-        "scenario_count": 3,
+        "scenario_count": 2,
     }
     if settings != expected_settings:
         raise RuntimeError("Garden training settings are incorrect")
+    if report.get("environment") != {
+        "rain_version": 1, "gardener": False, "irrigation": False,
+        "scenarios": ["rainfed", "rainfed-crowded"],
+    }:
+        raise RuntimeError("Garden training environmental contract changed")
     if report.get("evaluations") != 15:
         raise RuntimeError("Garden training evaluation count is incorrect")
     initial = report.get("initial")
@@ -192,10 +197,12 @@ def validate_generated_c(cc: str, source_root: Path, c_source: Path, directory: 
         raise RuntimeError(f"generated Garden C model did not compile: {detail}")
 
 
-def validate_evaluator(evaluator: Path, model: Path, expected_crc: str) -> None:
+def validate_evaluator(evaluator: Path, model: Path, expected_crc: str,
+                       expected_fitness: dict) -> None:
     completed = subprocess.run(
         [
             str(evaluator.resolve()),
+            "--rainfed",
             "--trials",
             "1",
             "--ticks",
@@ -216,8 +223,9 @@ def validate_evaluator(evaluator: Path, model: Path, expected_crc: str) -> None:
     if report.get("candidate_model_crc32") != expected_crc:
         raise RuntimeError("Garden evaluator reported the wrong candidate CRC")
     scenarios = report.get("scenarios")
-    if not isinstance(scenarios, list) or len(scenarios) != 3:
+    if not isinstance(scenarios, list) or len(scenarios) != 2:
         raise RuntimeError("Garden candidate evaluation scenarios are missing")
+    matched_trials = []
     for scenario in scenarios:
         if not isinstance(scenario, dict):
             raise RuntimeError("Garden candidate evaluation scenario is invalid")
@@ -227,6 +235,24 @@ def validate_evaluator(evaluator: Path, model: Path, expected_crc: str) -> None:
         names = {policy.get("name") for policy in policies if isinstance(policy, dict)}
         if names != {"baseline", "adaptive", "neural-candidate"}:
             raise RuntimeError("Garden candidate evaluation policy names are incorrect")
+        candidate = next(p for p in policies if p["name"] == "neural-candidate")
+        matched_trials.extend(candidate["trials"])
+    # Reloaded models must reproduce the trainer's actual environmental evaluation,
+    # not just parse successfully in a different irrigation suite.
+    for fitness_name, trial_name in (
+        ("final_living", "living"), ("final_seeds", "seed_bank"),
+        ("established_offspring", "established_offspring"),
+        ("living_plant_ticks", "living_plant_ticks"),
+        ("descendant_plant_ticks", "descendant_plant_ticks"), ("deaths", "deaths"),
+        ("seeds_created", "seeds_created"), ("germinations", "germinations"),
+    ):
+        if sum(t[trial_name] for t in matched_trials) != expected_fitness[fitness_name]:
+            raise RuntimeError(f"reloaded rain-fed fitness differs: {fitness_name}")
+    digest = 0
+    for trial in matched_trials:
+        digest ^= (int(trial["hash"], 16) + 0x9E3779B9 + (digest << 6) + (digest >> 2)) & 0xFFFFFFFF
+    if f"{digest:08x}" != expected_fitness["state_digest"]:
+        raise RuntimeError("reloaded rain-fed world digest differs from training")
 
 
 def validate_corruption_rejected(binary: Path, model: Path, directory: Path) -> None:
@@ -293,7 +319,7 @@ def main() -> int:
         final_crc = final["model_crc32"]
         validate_binary(first_model, final_crc)
         validate_generated_c(args.cc, args.source_root, first_c, first_dir)
-        validate_evaluator(args.evaluator, first_model, final_crc)
+        validate_evaluator(args.evaluator, first_model, final_crc, first_report["final"]["fitness"])
 
         _, reload_report, reload_model, _ = run_training(
             args.binary, reload_dir, input_model=first_model

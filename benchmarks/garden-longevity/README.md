@@ -3,6 +3,25 @@
 This is the pre-renewal baseline (Garden hash version 4). The subsequent
 [renewable-flower comparison](renewal.md) uses the same frozen model and seeds
 with the corrected lifecycle. The original observations below remain unchanged.
+The following [offspring lifetime investigation](lifetimes.md) holds that corrected
+ecology fixed and measures full-cycle survival and durable parent/child pairs.
+The [resource-budget investigation](resources.md) then traces individual failures
+and tests isolated host-side decision overrides.
+The [rainfall experiment](rainfall.md) adds gardener-free seeded environmental
+water and moves training to rain-fed plots, while preserving the old diagnostic
+suite and frozen-model artifacts for comparisons.
+The [nighttime-growth probe](night-growth.md) then holds the rain-fed ecology
+fixed: early survival improves, but late seed establishment remains sparse.
+The [seed-establishment audit](establishment.md) identifies narrow-dispersal
+blind spots alongside overlapping moisture, spacing, shade and capacity limits.
+The [wider-scattering comparison](dispersal.md) increases establishment but gives
+mixed durable-lineage results, so it remains a host-only experiment.
+The [storage-limited uptake test](water-headroom.md) then holds original
+scattering fixed: water stress falls, but space/node pressure limits renewal.
+The [combined uptake/scattering test](combined-ecology.md) completes the 2×2
+comparison: more offspring survive and the gardens fill up, but late renewal
+nearly stops as allocation limits join spacing and shade. None of these
+experimental variants has been promoted to device/default ecology.
 
 The first trained neural champion keeps every watered held-out garden alive
 through 24 day/night cycles. Reproduction stops before the end of the test,
@@ -93,7 +112,8 @@ to make. No late activity was hidden by sampling only the final population.
 
 ## Why the populations become quiet
 
-`inspect.c` is a host-only observer linked to the existing pure simulation core.
+[`garden_inspect.c`](../../sim/garden_inspect.c) is the maintained host-only observer
+linked to the existing pure simulation core (formerly `inspect.c` here).
 It prints JSONL at initial state, cycle boundaries, and birth/death changes,
 including plant ancestry, resources, growth tips, flowers, and spent flowers.
 It does not change the simulation or policy. Build it after `make host-build`:
@@ -102,7 +122,7 @@ It does not change the simulation or policy. Build it after `make host-build`:
 docker compose run --rm firmware cc \
   -std=c11 -Wall -Wextra -Werror -Wconversion -Wsign-conversion \
   -fsanitize=undefined -fno-sanitize-recover=undefined \
-  -Isrc -Isim benchmarks/garden-longevity/inspect.c \
+  -Isrc -Isim sim/garden_inspect.c \
   build-host/libtoy_factory_simulator_core.a \
   -o artifacts/garden-longevity-heldout/inspect
 

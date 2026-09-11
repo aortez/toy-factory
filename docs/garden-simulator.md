@@ -1,8 +1,10 @@
 # Garden Simulator design
 
-[GitHub issue #4](https://github.com/aortez/toy-factory/issues/4) is the living
-milestone tracker. This document records the implementation contract that must
-remain synchronized with the native and device tests.
+[GitHub issue #4](https://github.com/aortez/toy-factory/issues/4) records the
+completed playable prototype. The [Garden A-life roadmap](garden-alife-roadmap.md)
+and [issue #30](https://github.com/aortez/toy-factory/issues/30) track environment
+validation, visual review, and training. This document records the implementation
+contract that must remain synchronized with the native and device tests.
 
 ![A mature Garden running on the PicoSystem](images/garden.png)
 
@@ -30,7 +32,7 @@ decomposition are part of the authoritative simulation.
 ## Fixed-capacity state
 
 [`garden_world.c`](../src/garden_world.c) has no Zephyr, renderer, allocation,
-or wall-clock dependency. Its caller-owned state is 4,340 bytes and contains:
+or wall-clock dependency. Its caller-owned state is 4,352 bytes and contains:
 
 - eight plant records, including eight bytes of lifetime policy memory and 40
   bytes of derived decision telemetry each, and a shared pool of 256 ten-byte
@@ -59,6 +61,53 @@ from sunrise back to noon. Its signed Q4 ray slope ranges from -0.75 to +0.75
 canopy cells per row. Each target cell traces toward the source and accumulates
 the opacity of leaves it crosses, clamping at a nonzero ambient floor. This is
 bounded integer work with no trigonometry or allocation.
+
+## Environmental water
+
+The playable Garden has seeded rain enabled from reset. The auto-gardener remains
+off until explicitly enabled; it is optional assistance, not the environmental
+water source. Initial founders still receive their fixed startup watering and
+32 units of internal water. There is no subsequent rescue watering unless the
+player enables automation or uses the tool.
+
+Rain version 1 schedules one 4--8 second shower within each 32-second window,
+with a seed-dependent start time and intensity of 2--4 water units per surface
+column per ecology step. Windows have dry margins; consecutive showers can be
+separated by 4--48 seconds. This is a deliberately small starting climate, not
+a calibrated seasonal model. All 28 surface columns receive the same offered
+rain. Existing downward flow, lateral diffusion, and root uptake determine
+where that water subsequently goes. Unlike the watering tool, rain does not
+deposit directly into the second soil row or overlap neighboring deposits.
+
+Weather is a pure integer function of an independent immutable seed and the
+ecology tick. Plant births, deaths, policy decisions, and random-number use
+cannot alter it. No clock, atmosphere grid, raindrop particles, heap storage,
+or random stream advances are required. The world stores a four-byte weather
+seed and two four-byte saturating diagnostic counters: water deposited and
+water rejected at saturated surface cells (runoff). These counters exclude
+startup/tool watering and are not a complete ecosystem water budget.
+
+This is an open system: rain supplies external water; evaporation and plant
+costs remove it. Runoff leaves the world. There is no groundwater source,
+atmospheric recycling, canopy interception, rain shading, or decomposition
+water return in this version. The existing plant observations are unchanged;
+policies see moisture and resource income, not privileged weather forecasts.
+
+Bare `garden_world_reset` leaves rain disabled for isolated tests and historical
+benchmarks. `garden_world_set_weather` selects a seed (zero disables rain)
+without changing time, moisture, or plant randomness. Enabled weather contributes
+a tagged version/seed extension to the Garden v5 hash. Rain-disabled worlds
+retain their previous hashes exactly. The snapshot carries only the current
+rain rate; a small `RAIN` header indicator changes only at wet/dry transitions,
+with matching dirty-region invalidation.
+
+Training now uses the `rainfed` and `rainfed-crowded` environments, with three
+and five founders respectively. Both have startup water, seeded rain, no fixed
+irrigation, and no gardener. Candidates receive matched world/weather seeds.
+The old unassisted/irrigated/crowded suite remains an explicit diagnostic baseline;
+`make host-evaluate-garden GARDEN_EVAL_RAINFED=1` selects the training environments.
+See the [rainfall checks](../benchmarks/garden-longevity/rainfall.md) for the
+first long-run results and limitations.
 
 ## Growth and tools
 
@@ -224,6 +273,11 @@ let the host partition those results by species and initial founder even after
 dead plants and their nodes have been compacted out of the live world. Death
 causes and sampled seed-germination blockers expose why a candidate failed, not
 just its final population.
+The host-only lifetime ledger also distinguishes a 64-second cycle-surviving
+offspring from short-lived establishment, retains parent credit after death,
+and reports mortality by age and sun phase. Recent births are reported separately
+so unequal follow-up does not inflate or depress the cycle-survival rate. These
+diagnostics do not change the trainer's fitness or occupy firmware RAM.
 `make host-evaluate-garden` prints the comparison and stores the full trial report in
 `artifacts/garden-evaluation.json`; see the [host simulator guide](host-simulator.md)
 for its exact experiment contract.
@@ -279,23 +333,23 @@ adaptive choices, memory bounds, shared-input all-tip bidding, winner-only
 commit, injected-policy determinism and rejection, and a five-minute automatic
 soak. The mixed sequence fixture waters the plot, plants another flower,
 enables automation, and advances 930 exact ticks to five plants, 137 nodes,
-four blooms, and one dormant seed at hash `9b775c1a` and framebuffer CRC-32
-`c96704e4`. Continuing the same state to tick 3,771 reaches five healthy plants,
-189 nodes, 15 blooms, and six dormant seeds at hash `ec860825` and CRC-32
-`bf6ec1a6`.
+four blooms, and one dormant seed at hash `28489ef5` and framebuffer CRC-32
+`fc95584f`, during a shower. Continuing the same state to tick 3,771 reaches five
+healthy plants, 188 nodes, 15 blooms, and six dormant seeds at hash `4345d5b7`
+and CRC-32 `1f128cce`.
 
-A separate unaided lifecycle fixture reaches tick 4,530 with two living plants,
-one visibly decomposing plant, two cumulative deaths, and one reclaimed 25-node
-plant at hash `46691dd0` and CRC-32 `5c1d934a`. The generation fixture applies
-the same pressure before enabling automation, then continues through tick 8,430
-with six living plants, twelve produced seeds, one germination, three expirations,
-eleven mutations, and one living generation-one offspring. It reaches hash
-`4e6d7dda` and CRC-32 `fd71309b`. UBSan host runs reproduce all four checkpoints
-exactly. These checkpoints use Garden hash version 5 for renewable flowers and
-attainable reserves. The PIM559 reproduced the preceding version-4 mixed and
-generation fixtures; the version-5 firmware builds but has not yet been replayed
-on the device. See the [longevity investigation](../benchmarks/garden-longevity/README.md)
-for the baseline that motivated these rules.
+A separate gardener-free lifecycle fixture now runs through tick 18,030:
+rain delays the old dry-plot deaths, so the longer fixture exercises two deaths,
+two reclamations, and one germination, ending with three living plants at hash
+`a9cbbc66` and CRC-32 `283abd58`. The generation fixture enables automation at
+tick 4,530, then continues through tick 8,430 with five living plants, 18 produced
+seeds, one germination, nine expirations, and 16 mutations. It reaches hash
+`08d270fc` and CRC-32 `bd42bea8`. UBSan host runs reproduce all four checkpoints.
+The PIM559 also reproduced the rainy 930-tick and 8,430-tick fixtures, including
+both framebuffers.
+These playable checkpoints use Garden hash v5 with the rain-v1 extension.
+The [longevity investigation](../benchmarks/garden-longevity/README.md) retains
+the historical rain-disabled results.
 
 Under the preceding lifecycle rules, a 32-repetition optimized host profile had
 median ecology steps ranging from

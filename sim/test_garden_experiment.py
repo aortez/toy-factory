@@ -43,6 +43,14 @@ SPECIES = {0: "flower", 1: "shrub", 2: "ground-cover"}
 POLICY_NAMES = {"baseline", "adaptive", "neural-reference"}
 TRIAL_COUNT = 2
 TICK_COUNT = 7680
+LIFETIME_COUNTS = (
+    "offspring_born", "eligible_offspring", "cycle_survivors", "died_before_cycle",
+    "too_young_alive", "too_young_dead", "offspring_with_surviving_child",
+    "cycle_survivors_with_surviving_child", "founders_with_surviving_child",
+    "offspring_living_at_end", "founders_living_at_end",
+)
+MORTALITY_GROUPS = ("offspring_mortality", "founder_mortality")
+CAUSES = ("energy", "water", "combined", "other")
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -101,6 +109,8 @@ def validate_maximum_duration(binary: Path) -> None:
     scenarios = report.get("scenarios")
     if not isinstance(scenarios, list):
         raise RuntimeError("maximum-duration Garden scenarios are missing")
+    observed_survivors = 0
+    observed_parents = 0
     for scenario in scenarios:
         if not isinstance(scenario, dict) or not isinstance(scenario.get("policies"), list):
             raise RuntimeError("maximum-duration Garden scenario is invalid")
@@ -112,6 +122,21 @@ def validate_maximum_duration(binary: Path) -> None:
                     raise RuntimeError("maximum-duration Garden trial is invalid")
                 if require_nonnegative_integer(trial, "lineages") > capacity:
                     raise RuntimeError("maximum-duration Garden trial exceeded lineage capacity")
+                validate_lifetimes(trial, "living")
+                observed_survivors += trial["lifetimes"]["cycle_survivors"]
+                observed_parents += trial["lifetimes"]["cycle_survivors_with_surviving_child"]
+                for key in ("species", "founders"):
+                    for group in trial[key]:
+                        validate_lifetimes(group, "final_living")
+                    validate_lifetime_partition(
+                        trial["lifetimes"], [group["lifetimes"] for group in trial[key]]
+                    )
+            validate_lifetimes(policy["totals"], "")
+            validate_lifetime_partition(
+                policy["totals"]["lifetimes"], [t["lifetimes"] for t in policy["trials"]]
+            )
+    if observed_survivors == 0 or observed_parents == 0:
+        raise RuntimeError("long-run fixture did not exercise durable offspring and parents")
 
 
 def require_nonnegative_integer(container: dict[str, object], name: str) -> int:
@@ -183,6 +208,101 @@ def validate_seed_blockers(value: object) -> dict[str, object]:
     return value
 
 
+def validate_lifetimes(container: dict[str, object], living_key: str) -> None:
+    value = container.get("lifetimes")
+    if not isinstance(value, dict):
+        raise RuntimeError("lifetime metrics are missing")
+    for name in LIFETIME_COUNTS:
+        require_nonnegative_integer(value, name)
+    if value["eligible_offspring"] != value["cycle_survivors"] + value["died_before_cycle"]:
+        raise RuntimeError("complete-followup cohort does not partition")
+    if value["offspring_born"] != (
+        value["eligible_offspring"] + value["too_young_alive"] + value["too_young_dead"]
+    ):
+        raise RuntimeError("offspring births do not partition by followup")
+    if not (
+        value["cycle_survivors_with_surviving_child"] <= value["cycle_survivors"]
+        and value["cycle_survivors_with_surviving_child"]
+        <= value["offspring_with_surviving_child"] <= value["offspring_born"]
+        and value["founders_with_surviving_child"] + value["offspring_with_surviving_child"]
+        <= value["cycle_survivors"]
+        and value["too_young_alive"] <= value["offspring_living_at_end"]
+        <= value["cycle_survivors"] + value["too_young_alive"]
+    ):
+        raise RuntimeError("lifetime survival or parent credit is inconsistent")
+    if living_key and value["offspring_living_at_end"] + value["founders_living_at_end"] != (
+        require_nonnegative_integer(container, living_key)
+    ):
+        raise RuntimeError("lifetime living counts disagree with world/group")
+    if "germinations" in container and value["offspring_born"] != container["germinations"]:
+        raise RuntimeError("lifetime births disagree with germinations")
+
+    cause_totals = [0] * len(CAUSES)
+    for name in MORTALITY_GROUPS:
+        mortality = value.get(name)
+        if not isinstance(mortality, dict):
+            raise RuntimeError("lifetime mortality is missing")
+        deaths = require_nonnegative_integer(mortality, "deaths")
+        age_sum = require_nonnegative_integer(mortality, "age_ticks_sum")
+        if deaths:
+            minimum = require_nonnegative_integer(mortality, "minimum_age_ticks")
+            maximum = require_nonnegative_integer(mortality, "maximum_age_ticks")
+            if not minimum * deaths <= age_sum <= maximum * deaths:
+                raise RuntimeError("mortality age bounds are inconsistent")
+        elif age_sum or any(mortality.get(key) is not None for key in (
+            "minimum_age_ticks", "maximum_age_ticks"
+        )):
+            raise RuntimeError("empty mortality must have zero sum and null bounds")
+        matrix_totals = []
+        for matrix_name, rows in (("age_by_cause", 6), ("sun_phase_by_cause", 8)):
+            matrix = mortality.get(matrix_name)
+            if not isinstance(matrix, list) or len(matrix) != rows or any(
+                not isinstance(row, list) or len(row) != len(CAUSES) or any(
+                    isinstance(count, bool) or not isinstance(count, int) or count < 0
+                    for count in row
+                ) for row in matrix
+            ):
+                raise RuntimeError("mortality histogram has invalid dimensions/counts")
+            columns = [sum(row[cause] for row in matrix) for cause in range(len(CAUSES))]
+            if sum(columns) != deaths:
+                raise RuntimeError("mortality histogram does not sum to deaths")
+            matrix_totals.append(columns)
+        if matrix_totals[0] != matrix_totals[1]:
+            raise RuntimeError("mortality histograms disagree about causes")
+        cause_totals = [a + b for a, b in zip(cause_totals, matrix_totals[0], strict=True)]
+    if value["offspring_mortality"]["deaths"] + value["offspring_living_at_end"] != value["offspring_born"]:
+        raise RuntimeError("lifetime births do not partition into living/dead offspring")
+    if value["died_before_cycle"] + value["too_young_dead"] > value["offspring_mortality"]["deaths"]:
+        raise RuntimeError("early deaths exceed all offspring deaths")
+    if "initial_founders" in container and (
+        value["founder_mortality"]["deaths"] + value["founders_living_at_end"]
+        != container["initial_founders"]
+    ):
+        raise RuntimeError("lifetime founder accounting is inconsistent")
+    death_causes, _ = validate_death_causes(container.get("death_causes"))
+    if cause_totals != [death_causes[cause] for cause in CAUSES]:
+        raise RuntimeError("lifetime mortality disagrees with legacy death causes")
+
+
+def validate_lifetime_partition(total: dict, parts: list[dict]) -> None:
+    expected = {name: sum(part[name] for part in parts) for name in LIFETIME_COUNTS}
+    for name in MORTALITY_GROUPS:
+        mortalities = [part[name] for part in parts]
+        nonempty = [part for part in mortalities if part["deaths"]]
+        expected[name] = {
+            key: sum(part[key] for part in mortalities) for key in ("deaths", "age_ticks_sum")
+        }
+        for key, merge in (("minimum_age_ticks", min), ("maximum_age_ticks", max)):
+            expected[name][key] = merge(part[key] for part in nonempty) if nonempty else None
+        for key, rows in (("age_by_cause", 6), ("sun_phase_by_cause", 8)):
+            expected[name][key] = [
+                [sum(part[key][row][cause] for part in mortalities) for cause in range(4)]
+                for row in range(rows)
+            ]
+    if total != expected:
+        raise RuntimeError("lifetime species/founder/trial partition is inconsistent")
+
+
 def validate_group(value: object) -> tuple[dict[str, object], int]:
     if not isinstance(value, dict):
         raise RuntimeError("lineage group metrics are not an object")
@@ -201,11 +321,12 @@ def validate_group(value: object) -> tuple[dict[str, object], int]:
     if extinction_tick is not None and value.get("final_living") != 0:
         raise RuntimeError("an extinct group still has living plants")
     _, deaths = validate_death_causes(value.get("death_causes"))
+    validate_lifetimes(value, "final_living")
     return value, deaths
 
 
 def validate_report(report: dict[str, object]) -> None:
-    if report.get("schema_version") != 3:
+    if report.get("schema_version") != 4:
         raise RuntimeError("unexpected Garden experiment schema")
     if report.get("trial_count") != TRIAL_COUNT or report.get("tick_count") != TICK_COUNT:
         raise RuntimeError("Garden experiment dimensions changed")
@@ -225,6 +346,16 @@ def validate_report(report: dict[str, object]) -> None:
         "requires_zero_stress": True,
     }:
         raise RuntimeError("Garden establishment definition changed")
+    if report.get("lifetime_followup") != {
+        "cycle_ticks": 3840,
+        "requires_alive_at_boundary": True,
+        "cohort": "complete-followup",
+        "parent_credit_after_death": True,
+        "death_cause_order": list(CAUSES),
+        "age_bucket_upper_ticks": [960, 1920, 3840, 7680, 15360, None],
+        "sun_phase_bucket_width": 32,
+    }:
+        raise RuntimeError("Garden lifetime followup definition changed")
 
     scenarios = report.get("scenarios")
     if not isinstance(scenarios, list) or len(scenarios) != len(SCENARIOS):
@@ -339,6 +470,7 @@ def validate_report(report: dict[str, object]) -> None:
                     trial.get("seed_germination_blockers")
                 )
                 validate_agent(trial.get("agent"))
+                validate_lifetimes(trial, "living")
 
                 species = trial.get("species")
                 if not isinstance(species, list) or len(species) != len(SPECIES):
@@ -417,6 +549,10 @@ def validate_report(report: dict[str, object]) -> None:
                         raise RuntimeError(f"founder {name} partition is incorrect")
                 if species_deaths != trial["deaths"] or founder_deaths != trial["deaths"]:
                     raise RuntimeError("lineage-group death partition is incorrect")
+                for groups in (species_groups, founder_groups):
+                    validate_lifetime_partition(
+                        trial["lifetimes"], [group["lifetimes"] for group in groups]
+                    )
                 if max(
                     require_nonnegative_integer(group, "maximum_generation")
                     for group in species_groups
@@ -427,6 +563,8 @@ def validate_report(report: dict[str, object]) -> None:
                 observed_established += trial["established_offspring"]
                 observed_seed_blockers += require_nonnegative_integer(blockers, "blocked")
 
+            validate_lifetimes(totals, "")
+            validate_lifetime_partition(totals["lifetimes"], [t["lifetimes"] for t in trials])
             for name in (
                 "living_plant_ticks",
                 "descendant_plant_ticks",
@@ -605,10 +743,21 @@ def main() -> int:
             detail = summary.stderr.strip() or summary.stdout.strip()
             raise RuntimeError(f"Garden summary failed: {detail}")
         summary_lines = summary.stdout.splitlines()
-        if len(summary_lines) != 11 or not summary_lines[0].startswith(
+        if len(summary_lines) != 23 or not summary_lines[0].startswith(
             "Garden policy evaluation:"
-        ):
+        ) or "cycle pass/eligible" not in summary_lines[13]:
             raise RuntimeError("Garden summary shape changed")
+
+        # Historic reports retain their old summary; no invented lifetime counts.
+        for version in (2, 3):
+            first["schema_version"] = version
+            report_path.write_text(json.dumps(first))
+            legacy_summary = subprocess.run(
+                [sys.executable, str(arguments.summary.resolve()), str(report_path)],
+                capture_output=True, text=True, check=True,
+            )
+            if legacy_summary.stdout.splitlines() != summary_lines[:11]:
+                raise RuntimeError("legacy Garden summary changed")
 
     for options in (
         ("--trials", "0"),

@@ -179,6 +179,8 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 		garden->sun_phase = sun.phase;
 		garden->sun_strength = sun.strength;
 		garden->sun_ray_step_x_q4 = sun.ray_step_x_q4;
+		garden->rain_rate = picosystem_garden_rain_at(garden_world->weather_seed,
+							      garden_world->ecology_tick_count);
 		memcpy(garden->moisture, garden_world->moisture, sizeof(garden->moisture));
 		for (uint8_t index = 0U; index < garden->seed_count; ++index) {
 			const struct picosystem_garden_seed *const source =

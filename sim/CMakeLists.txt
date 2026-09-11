@@ -6,6 +6,16 @@ project(toy_factory_simulator C)
 option(TOY_FACTORY_SIMULATOR_SANITIZERS "Enable host undefined-behavior checks" ON)
 option(TOY_FACTORY_SIMULATOR_PLAYER "Build the interactive SDL3 player" OFF)
 option(TOY_FACTORY_SIMULATOR_PROFILING "Build host profiling tools" OFF)
+option(TOY_FACTORY_GARDEN_WIDE_DISPERSAL "Experimental host-only 3-9 cell seed scattering" OFF)
+option(TOY_FACTORY_GARDEN_WATER_HEADROOM "Experimental host-only storage-limited root uptake" OFF)
+option(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT "Explicit opt-in to the combined host ecology trial" OFF)
+if(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT)
+	if(NOT TOY_FACTORY_GARDEN_WIDE_DISPERSAL OR NOT TOY_FACTORY_GARDEN_WATER_HEADROOM)
+		message(FATAL_ERROR "Combined experiment requires both ecology options")
+	endif()
+elseif(TOY_FACTORY_GARDEN_WIDE_DISPERSAL AND TOY_FACTORY_GARDEN_WATER_HEADROOM)
+	message(FATAL_ERROR "Combined ecology requires TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT=ON")
+endif()
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -32,10 +42,20 @@ set(toy_factory_sources
 	${toy_factory_root}/src/scene_renderer.c
 	garden_evaluation.c
 	garden_model_file.c
+	garden_policy_probe.c
 	simulator.c
 )
 
 add_library(toy_factory_simulator_core STATIC ${toy_factory_sources})
+if(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_WIDE_DISPERSAL=1)
+endif()
+if(TOY_FACTORY_GARDEN_WATER_HEADROOM)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_WATER_HEADROOM=1)
+endif()
+if(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT=1)
+endif()
 target_include_directories(toy_factory_simulator_core PUBLIC
 	${toy_factory_root}/src
 	${CMAKE_CURRENT_LIST_DIR}
@@ -57,7 +77,7 @@ target_compile_options(toy-factory-sim PRIVATE
 	-Wsign-conversion
 )
 
-add_executable(toy-factory-garden-eval garden_experiment.c)
+add_executable(toy-factory-garden-eval garden_experiment.c garden_lifetimes.c)
 target_link_libraries(toy-factory-garden-eval PRIVATE toy_factory_simulator_core)
 target_compile_options(toy-factory-garden-eval PRIVATE
 	-Wall
@@ -75,6 +95,42 @@ target_compile_options(toy-factory-garden-train PRIVATE
 	-Werror
 	-Wconversion
 	-Wsign-conversion
+)
+
+add_executable(toy-factory-garden-inspect garden_inspect.c)
+target_link_libraries(toy-factory-garden-inspect PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-inspect PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion
+)
+
+add_executable(toy-factory-garden-replay garden_replay.c)
+target_link_libraries(toy-factory-garden-replay PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-replay PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion
+)
+
+add_executable(toy-factory-garden-lifetimes-test garden_lifetimes_test.c garden_lifetimes.c)
+target_link_libraries(toy-factory-garden-lifetimes-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-lifetimes-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion
+)
+
+add_executable(toy-factory-garden-policy-probe-test garden_policy_probe_test.c)
+target_link_libraries(toy-factory-garden-policy-probe-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-policy-probe-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG
+)
+
+add_executable(toy-factory-garden-seed-sites-test garden_seed_sites_test.c)
+target_link_libraries(toy-factory-garden-seed-sites-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-seed-sites-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG
+)
+
+add_executable(toy-factory-garden-water-uptake-test garden_water_uptake_test.c)
+target_link_libraries(toy-factory-garden-water-uptake-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-water-uptake-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG
 )
 
 add_executable(toy-factory-garden-damage-test garden_damage_test.c)
@@ -115,6 +171,42 @@ if(TOY_FACTORY_SIMULATOR_PROFILING)
 endif()
 
 if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(toy-factory-garden-water-uptake-test PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_link_options(toy-factory-garden-water-uptake-test PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_compile_options(toy-factory-garden-seed-sites-test PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_link_options(toy-factory-garden-seed-sites-test PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_compile_options(toy-factory-garden-policy-probe-test PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_link_options(toy-factory-garden-policy-probe-test PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_compile_options(toy-factory-garden-replay PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_link_options(toy-factory-garden-replay PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_compile_options(toy-factory-garden-inspect PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_link_options(toy-factory-garden-inspect PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_compile_options(toy-factory-garden-lifetimes-test PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
+	target_link_options(toy-factory-garden-lifetimes-test PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined
+	)
 	target_compile_options(toy_factory_simulator_core PRIVATE
 		-fsanitize=undefined
 		-fno-sanitize-recover=undefined
@@ -225,11 +317,29 @@ enable_testing()
 
 add_test(NAME garden-damage-unit COMMAND toy-factory-garden-damage-test)
 add_test(NAME garden-neural-unit COMMAND toy-factory-garden-neural-test)
+add_test(NAME garden-lifetimes-unit COMMAND toy-factory-garden-lifetimes-test)
+add_test(
+	NAME garden-resources-unit
+	COMMAND ${Python3_EXECUTABLE} -W error
+		${toy_factory_root}/benchmarks/garden-longevity/test_resources.py
+)
 add_test(
 	NAME garden-experiment-smoke
 	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_experiment.py
 		--binary $<TARGET_FILE:toy-factory-garden-eval>
 		--summary ${CMAKE_CURRENT_LIST_DIR}/summarize_garden_experiment.py
+)
+add_test(
+	NAME garden-rainfall-smoke
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_rainfall.py
+		--binary $<TARGET_FILE:toy-factory-garden-eval>
+)
+add_test(
+	NAME garden-experiment-bundle
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_experiments.py
+		--evaluator $<TARGET_FILE:toy-factory-garden-eval>
+		--inspector $<TARGET_FILE:toy-factory-garden-inspect>
+		--trainer $<TARGET_FILE:toy-factory-garden-train>
 )
 add_test(
 	NAME garden-train-smoke
@@ -238,6 +348,35 @@ add_test(
 		--evaluator $<TARGET_FILE:toy-factory-garden-eval>
 		--source-root ${toy_factory_root}
 		--cc ${CMAKE_C_COMPILER}
+)
+
+add_test(
+	NAME garden-gallery-smoke
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_gallery.py
+		--replayer $<TARGET_FILE:toy-factory-garden-replay>
+		--evaluator $<TARGET_FILE:toy-factory-garden-eval>
+		--inspector $<TARGET_FILE:toy-factory-garden-inspect>
+		--trainer $<TARGET_FILE:toy-factory-garden-train>
+)
+
+add_test(NAME garden-policy-probe-unit COMMAND toy-factory-garden-policy-probe-test)
+add_test(NAME garden-seed-sites-unit COMMAND toy-factory-garden-seed-sites-test)
+add_test(NAME garden-water-uptake-unit COMMAND toy-factory-garden-water-uptake-test)
+add_test(NAME garden-factorial-unit
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_factorial.py)
+add_test(
+	NAME garden-establishment-smoke
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_establishment.py
+		--evaluator $<TARGET_FILE:toy-factory-garden-eval>
+		--inspector $<TARGET_FILE:toy-factory-garden-inspect>
+)
+add_test(
+	NAME garden-policy-probe-smoke
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_policy_probe.py
+		--replayer $<TARGET_FILE:toy-factory-garden-replay>
+		--evaluator $<TARGET_FILE:toy-factory-garden-eval>
+		--inspector $<TARGET_FILE:toy-factory-garden-inspect>
+		--trainer $<TARGET_FILE:toy-factory-garden-train>
 )
 
 foreach(sequence IN ITEMS

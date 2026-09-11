@@ -402,6 +402,13 @@ static void print_garden_stats(const struct shell *shell,
 		    game->garden_auto_action_count, game->garden_auto_decision_count,
 		    game->garden_manual_action_count);
 	shell_print(shell,
+		    "garden weather: seed=%08x, rain=%u units/column/ecology-step, "
+		    "deposited=%u, runoff=%u",
+		    game->garden_weather_seed,
+		    picosystem_garden_rain_at(game->garden_weather_seed,
+					      game->garden_ecology_tick_count),
+		    game->garden_rain_deposited, game->garden_rain_runoff);
+	shell_print(shell,
 		    "garden heredity: seeds=%u/%u, created=%u, germinated=%u, expired=%u, "
 		    "mutations=%u, max-generation=%u",
 		    game->garden_seed_count, PICOSYSTEM_GARDEN_MAX_SEEDS,

@@ -19,6 +19,127 @@ static uint16_t test_light_index(uint8_t column, uint8_t row)
 	return (uint16_t)(((uint16_t)row * PICOSYSTEM_GARDEN_GRID_COLUMNS) + column);
 }
 
+static void test_seeded_rain_schedule(void)
+{
+	bool differs = false;
+	for (uint32_t window = 0U; window < 256U; ++window) {
+		uint32_t wet_ticks = 0U;
+		uint32_t transitions = 0U;
+		uint8_t previous = 0U;
+		for (uint32_t phase = 0U; phase < PICOSYSTEM_GARDEN_RAIN_WINDOW_TICKS; ++phase) {
+			const uint32_t tick = window * PICOSYSTEM_GARDEN_RAIN_WINDOW_TICKS + phase;
+			const uint8_t rain = picosystem_garden_rain_at(123U, tick);
+			assert(picosystem_garden_rain_at(0U, tick) == 0U);
+			assert(rain == picosystem_garden_rain_at(123U, tick));
+			assert((rain == 0U) ||
+			       ((rain >= 2U) && (rain <= PICOSYSTEM_GARDEN_RAIN_MAX_RATE)));
+			if ((phase < 8U) || (phase >= 120U)) {
+				assert(rain == 0U);
+			}
+			wet_ticks += (rain != 0U) ? 1U : 0U;
+			transitions += ((rain != 0U) != (previous != 0U)) ? 1U : 0U;
+			differs |= rain != picosystem_garden_rain_at(124U, tick);
+			previous = rain;
+		}
+		assert((wet_ticks >= 16U) && (wet_ticks <= 32U));
+		assert(transitions == 2U);
+	}
+	assert(differs);
+	assert(picosystem_garden_rain_at(UINT32_MAX, UINT32_MAX) == 0U);
+}
+
+static void test_rain_deposition_and_independence(void)
+{
+	struct picosystem_garden_world world;
+	assert(picosystem_garden_world_set_weather(NULL, 1U) == -EINVAL);
+	assert(picosystem_garden_world_reset(&world, 123U) == 0);
+	const uint32_t dry_hash = picosystem_garden_world_hash(&world);
+	assert(picosystem_garden_world_set_weather(&world, 123U) == 0);
+	assert(picosystem_garden_world_hash(&world) != dry_hash);
+	assert(world.random_state == 123U);
+	assert(picosystem_garden_world_set_weather(&world, 0U) == 0);
+	assert(picosystem_garden_world_hash(&world) == dry_hash);
+	assert(picosystem_garden_world_set_weather(&world, 123U) == 0);
+	struct picosystem_garden_world crowded = world;
+	assert(picosystem_garden_world_plant_seed(&crowded, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 4U) ==
+	       0);
+	assert(crowded.random_state != world.random_state);
+	uint32_t offered = 0U;
+	uint32_t evaporated = 0U;
+	for (uint32_t tick = 1U; tick <= 7680U; ++tick) {
+		const uint32_t before = world.rain_deposited;
+		assert(picosystem_garden_world_step(&world) == 0);
+		assert(picosystem_garden_world_step(&crowded) == 0);
+		if ((tick % PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR) == 0U) {
+			offered += (uint32_t)picosystem_garden_rain_at(123U,
+								       world.ecology_tick_count) *
+				   PICOSYSTEM_GARDEN_GRID_COLUMNS;
+			if ((world.ecology_tick_count % 4U) == 0U) {
+				/* Identical columns in an empty plot; rain never reaches
+				 * saturation. */
+				evaporated = offered - world.moisture_total;
+			}
+		} else {
+			assert(world.rain_deposited == before);
+		}
+		assert(world.rain_deposited + world.rain_runoff == offered);
+		assert(crowded.rain_deposited + crowded.rain_runoff == offered);
+		assert(world.rain_runoff == 0U);
+		assert(world.moisture_total + evaporated == offered);
+		assert(world.auto_action_count == 0U);
+		assert(world.manual_action_count == 0U);
+	}
+	assert(offered > 0U);
+	assert(evaporated > 0U);
+	assert(world.random_state == 123U);
+	assert(world.moisture[PICOSYSTEM_GARDEN_GRID_COLUMNS] > 0U);
+
+	/* At rain onset, deposit only at the surface; overflow is measured, not wrapped. */
+	uint32_t wet_tick = 1U;
+	while (picosystem_garden_rain_at(123U, wet_tick) == 0U) {
+		++wet_tick;
+	}
+	assert(picosystem_garden_world_reset(&world, 123U) == 0);
+	assert(picosystem_garden_world_set_weather(&world, 123U) == 0);
+	world.ecology_tick_count = wet_tick - 1U;
+	world.logic_tick_count = (wet_tick * PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR) - 1U;
+	const struct picosystem_garden_world empty = world;
+	memset(world.moisture, UINT8_MAX, sizeof(world.moisture));
+	world.moisture[0] = UINT8_MAX - 1U;
+	assert(picosystem_garden_world_step(&world) == 0);
+	assert(world.rain_deposited == 1U);
+	assert(world.rain_runoff == (uint32_t)picosystem_garden_rain_at(123U, wet_tick) *
+						    PICOSYSTEM_GARDEN_GRID_COLUMNS -
+					    1U);
+	struct picosystem_garden_world diagnostics = world;
+	diagnostics.rain_deposited = UINT32_MAX;
+	diagnostics.rain_runoff = UINT32_MAX;
+	assert(picosystem_garden_world_hash(&world) == picosystem_garden_world_hash(&diagnostics));
+	assert(picosystem_garden_world_step(&diagnostics) == 0);
+	for (uint32_t tick = 0U; tick < PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR; ++tick) {
+		assert(picosystem_garden_world_step(&diagnostics) == 0);
+	}
+	assert(diagnostics.rain_deposited == UINT32_MAX);
+	assert(diagnostics.rain_runoff == UINT32_MAX);
+	world = empty;
+	assert(picosystem_garden_world_step(&world) == 0);
+	const uint8_t rate = picosystem_garden_rain_at(123U, wet_tick);
+	const uint8_t downward = (uint8_t)(rate / 4U);
+	const uint8_t evaporation = ((wet_tick % 4U) == 0U) ? 1U : 0U;
+	for (uint8_t column = 0U; column < PICOSYSTEM_GARDEN_GRID_COLUMNS; ++column) {
+		assert(world.moisture[column] == (uint8_t)(rate - downward - evaporation));
+		assert(world.moisture[PICOSYSTEM_GARDEN_GRID_COLUMNS + column] == downward);
+	}
+	for (uint16_t index = 2U * PICOSYSTEM_GARDEN_GRID_COLUMNS;
+	     index < PICOSYSTEM_GARDEN_SOIL_CELL_COUNT; ++index) {
+		assert(world.moisture[index] == 0U);
+	}
+	assert(picosystem_garden_world_reset(&world, 123U) == 0);
+	assert(world.weather_seed == 0U);
+	assert(world.rain_deposited == 0U);
+	assert(world.rain_runoff == 0U);
+}
+
 static void test_reset_and_validation(void)
 {
 	assert(picosystem_garden_world_reset(NULL, 1U) == -EINVAL);
@@ -855,8 +976,8 @@ static void make_plant_reproductive(struct picosystem_garden_world *world, uint8
 			continue;
 		}
 		node->flags &=
-			(uint8_t) ~(PICOSYSTEM_GARDEN_NODE_TIP | PICOSYSTEM_GARDEN_NODE_PRUNED |
-				    PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
+			(uint8_t)~(PICOSYSTEM_GARDEN_NODE_TIP | PICOSYSTEM_GARDEN_NODE_PRUNED |
+				   PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
 		node->flags |= PICOSYSTEM_GARDEN_NODE_LEAF | PICOSYSTEM_GARDEN_NODE_FLOWER;
 		node->growth_progress = UINT8_MAX;
 		return;
@@ -1313,6 +1434,8 @@ static void test_pruning_rejects_distant_tip(void)
 
 int main(void)
 {
+	test_seeded_rain_schedule();
+	test_rain_deposition_and_independence();
 	test_reset_and_validation();
 	test_seed_spacing_capacity_and_access();
 	test_water_flow_and_light_competition();

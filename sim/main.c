@@ -346,7 +346,7 @@ int main(int argc, char **argv)
 		       "\"agent\":{\"decisions\":%" PRIu32 ",\"extend\":%" PRIu32
 		       ",\"wait\":%" PRIu32 ",\"finish\":%" PRIu32 ",\"root\":%" PRIu32
 		       ",\"shoot\":%" PRIu32 ",\"root_extend\":%" PRIu32
-		       ",\"shoot_extend\":%" PRIu32 "},\"lineages\":[",
+		       ",\"shoot_extend\":%" PRIu32 "}",
 		       garden->plant_count, picosystem_garden_world_living_plant_count(garden),
 		       picosystem_garden_world_dead_plant_count(garden), garden->node_count,
 		       garden->bloom_count, garden->death_count, garden->reclaimed_plant_count,
@@ -360,6 +360,11 @@ int main(int argc, char **argv)
 		       garden->agent_telemetry.shoot_decision_count,
 		       garden->agent_telemetry.root_extend_count,
 		       garden->agent_telemetry.shoot_extend_count);
+		printf(",\"weather\":{\"seed\":\"%08" PRIx32 "\",\"rain_rate\":%u,"
+		       "\"deposited\":%" PRIu32 ",\"runoff\":%" PRIu32 "},\"lineages\":[",
+		       garden->weather_seed,
+		       picosystem_garden_rain_at(garden->weather_seed, garden->ecology_tick_count),
+		       garden->rain_deposited, garden->rain_runoff);
 		for (uint8_t index = 0U; index < garden->plant_count; ++index) {
 			const struct picosystem_garden_plant *const plant = &garden->plants[index];
 			printf("%s{\"id\":%" PRIu32 ",\"parent\":%" PRIu32

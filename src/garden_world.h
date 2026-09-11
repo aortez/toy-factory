@@ -44,6 +44,41 @@
 #define PICOSYSTEM_GARDEN_AUTO_CURSOR_TICK_DIVISOR  4U
 #define PICOSYSTEM_GARDEN_CURSOR_REPEAT_DELAY_TICKS 10U
 #define PICOSYSTEM_GARDEN_CURSOR_REPEAT_RATE_TICKS  4U
+#define PICOSYSTEM_GARDEN_RAIN_VERSION              1U
+#define PICOSYSTEM_GARDEN_RAIN_WINDOW_TICKS         128U
+#define PICOSYSTEM_GARDEN_RAIN_MAX_RATE             4U
+
+/* Host-only ecology experiment. Normal builds retain the device's scattering rule. */
+#if defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
+#if defined(__ZEPHYR__)
+#error "Wide dispersal is an unqualified host experiment, not a firmware option"
+#endif
+#define PICOSYSTEM_GARDEN_DISPERSAL_MINIMUM 3
+#define PICOSYSTEM_GARDEN_DISPERSAL_CHOICES 7U
+#define PICOSYSTEM_GARDEN_DISPERSAL_NAME    "wide-v1"
+#else
+#define PICOSYSTEM_GARDEN_DISPERSAL_MINIMUM 5
+#define PICOSYSTEM_GARDEN_DISPERSAL_CHOICES 3U
+#define PICOSYSTEM_GARDEN_DISPERSAL_NAME    "narrow-v1"
+#endif
+
+#if defined(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT) &&                                             \
+	(!defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL) ||                                            \
+	 !defined(TOY_FACTORY_GARDEN_WATER_HEADROOM))
+#error "Combined experiment requires both scattering and water headroom"
+#endif
+
+#if defined(TOY_FACTORY_GARDEN_WATER_HEADROOM)
+#if defined(__ZEPHYR__)
+#error "Water headroom is a host experiment, not a firmware option"
+#endif
+#if defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL) && !defined(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT)
+#error "Combining ecology rules requires explicit experiment opt-in"
+#endif
+#define PICOSYSTEM_GARDEN_WATER_UPTAKE_NAME "headroom-v1"
+#else
+#define PICOSYSTEM_GARDEN_WATER_UPTAKE_NAME "legacy-v1"
+#endif
 
 enum picosystem_garden_species_id {
 	PICOSYSTEM_GARDEN_SPECIES_FLOWER,
@@ -196,6 +231,14 @@ struct picosystem_garden_seed {
 	int8_t visual_offset;
 };
 
+/* Caller-owned read-only diagnostic; never retained in the authoritative world. */
+struct picosystem_garden_seed_sites {
+	/* All possible dispersal columns for each living parent, as a bit set. */
+	uint32_t dispersal_columns[PICOSYSTEM_GARDEN_MAX_PLANTS];
+	/* Site constraints for a hypothetical mature seed; excludes dormancy. */
+	uint8_t blockers[PICOSYSTEM_GARDEN_GRID_COLUMNS];
+};
+
 /* Caller-owned fixed-capacity state; no garden operation allocates memory. */
 struct picosystem_garden_world {
 	struct picosystem_garden_node nodes[PICOSYSTEM_GARDEN_MAX_NODES];
@@ -208,6 +251,11 @@ struct picosystem_garden_world {
 	uint32_t random_state;
 	uint32_t logic_tick_count;
 	uint32_t ecology_tick_count;
+	/* Independent weather seed; zero disables rain without advancing plant RNGs. */
+	uint32_t weather_seed;
+	/* Derived, saturating counters, excluded from the authoritative hash. */
+	uint32_t rain_deposited;
+	uint32_t rain_runoff;
 	uint32_t manual_action_count;
 	uint32_t auto_decision_count;
 	uint32_t auto_action_count;
@@ -241,6 +289,14 @@ struct picosystem_garden_world {
 /* Restore an empty, reproducible garden. A zero seed selects a stable default. */
 int picosystem_garden_world_reset(struct picosystem_garden_world *world, uint32_t random_seed);
 
+/* Query current sites using the same checks as germination and seed dispersal.
+ * No seeds are placed and no RNG is consumed. Simultaneously open sites are
+ * independent alternatives, not a promise they can all be occupied together.
+ * Invalid arguments return -EINVAL and leave sites unchanged.
+ */
+int picosystem_garden_world_seed_sites(const struct picosystem_garden_world *world,
+				       struct picosystem_garden_seed_sites *sites);
+
 /* Append one seedling after validating spacing and fixed capacities. */
 int picosystem_garden_world_plant_seed(struct picosystem_garden_world *world,
 				       enum picosystem_garden_species_id species_id,
@@ -249,6 +305,13 @@ int picosystem_garden_world_plant_seed(struct picosystem_garden_world *world,
 /* Deposit a bounded amount of water around one soil column. */
 int picosystem_garden_world_water(struct picosystem_garden_world *world, uint8_t column,
 				  uint8_t amount);
+
+/* Pure surface-water units per column per ecology step; seed zero means dry. */
+uint8_t picosystem_garden_rain_at(uint32_t weather_seed, uint32_t ecology_tick);
+
+/* Change only the weather seed. Does not reset time, moisture, or diagnostics. */
+int picosystem_garden_world_set_weather(struct picosystem_garden_world *world,
+					uint32_t weather_seed);
 
 /* Pinch the nearest active shoot tip so its next segment turns and branches. */
 int picosystem_garden_world_prune(struct picosystem_garden_world *world, uint8_t column,

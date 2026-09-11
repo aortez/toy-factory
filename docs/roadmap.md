@@ -103,6 +103,11 @@ enough to mark hardware-dependent acceptance items complete.
 
 ## 7. Playable toys
 
+The original Garden prototype is complete. Its environment-validation,
+visual-review, and training follow-ups are tracked in the dedicated
+[Garden A-life roadmap](garden-alife-roadmap.md) and
+[issue #30](https://github.com/aortez/toy-factory/issues/30).
+
 - [x] Separate reusable game-world control from flash-resident scene builders.
 - [x] Build and physically verify the Clockwork kinetic sculpture.
 - [x] Preserve Machine Lab as a deterministic profiling fixture.

@@ -124,6 +124,9 @@ struct picosystem_game_demo_stats {
 	uint32_t granular_maximum_grid_cell_occupancy;
 	uint32_t granular_passage_count;
 	uint32_t garden_ecology_tick_count;
+	uint32_t garden_weather_seed;
+	uint32_t garden_rain_deposited;
+	uint32_t garden_rain_runoff;
 	uint32_t garden_manual_action_count;
 	uint32_t garden_auto_decision_count;
 	uint32_t garden_auto_action_count;

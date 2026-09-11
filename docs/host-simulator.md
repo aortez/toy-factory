@@ -81,6 +81,21 @@ policies receive exactly the same external water while generational success
 remains observable. Each trial advances 7,680 ticks, or two complete Garden
 day/night cycles.
 
+For the environmental conditions used by current training, run:
+
+```sh
+make host-evaluate-garden GARDEN_EVAL_RAINFED=1 \
+    GARDEN_EVAL_OUT=artifacts/garden-rainfed.json
+```
+
+This selects `rainfed` (three founders) and `rainfed-crowded` (five), each with
+fixed startup water followed only by seeded surface rain. There is no gardener
+or periodic irrigation. Reports include the weather version, per-trial seed,
+rain deposited, and saturation runoff; deposited plus runoff is identical for
+matched trials across policies and planting densities. Rainfall is independent
+of plant RNG consumption. The default diagnostic suite above stays unchanged
+so historical irrigation results remain reproducible.
+
 The command prints a compact comparison and writes the complete report to
 `artifacts/garden-evaluation.json`. Raw results include state hashes,
 living-plant-time and sampled resource integrals, final and peak population and
@@ -88,7 +103,9 @@ node counts, stress, deaths, reclamation, seeds, germination, mutation,
 generation, recurrent-memory use, and decision telemetry. The evaluator also
 tracks every observed lineage back to its initial founder and partitions
 survival, descendant plant-time, established offspring, mortality, maximum
-generation, and extinction by both founder and species.
+generation, and extinction by both founder and species. Schema 4 adds exact
+offspring lifetime follow-up and mortality timing, with a second compact table
+showing cycle survival and durable parents.
 
 The neural reference is deliberately untrained. It is a stable executable
 fixture for the feature contract, recurrent inference, action head, and
@@ -115,7 +132,7 @@ The report treats evaluation as ordered gates rather than one weighted score:
 
 Deaths are classified by the energy/water shortage flags present at death.
 Seed-state counters sample seeds left in the bank after each ecology step.
-Report schema 3 separates dormant, ready, and mature blocked samples. A seed can
+Since schema 3, reports separate dormant, ready, and mature blocked samples. A seed can
 become ready after the final light update and await the next germination pass;
 this is a valid transient state. Moisture, light,
 plant capacity, node capacity, and spacing reasons may overlap. Those are sample
@@ -137,13 +154,85 @@ same batch twice under UBSan, requires byte-equivalent JSON, validates global,
 species, and founder accounting invariants, rejects invalid limits, and verifies
 that matched policies receive identical trial seeds.
 
+### Offspring lifetime follow-up
+
+Schema 4's `lifetimes` objects appear in each trial, its species/founder groups,
+and policy totals. They are host-only observations: no changes to world state,
+growth policies, model weights, or trainer fitness. The existing 1.25-second
+establishment test remains unchanged.
+
+- A cycle survivor is alive at **birth tick + 3,840** (64 simulated seconds),
+  irrespective of its birth's sun phase. A death exactly at that boundary fails;
+  a later death does not erase survival credit. Birth timestamps come from the
+  first observed tick, not the plant age counter (already 1 at birth).
+- The survival rate is `cycle_survivors / eligible_offspring`. Eligibility means
+  birth at least one full cycle before the trial cutoff, so every individual in
+  the denominator has equal potential follow-up. Newer births are split into
+  `too_young_alive` and `too_young_dead`. The latter are **known early deaths**,
+  excluded from this cohort denominator along with recent living births—not
+  hidden or treated as successes. No eligible offspring means `n/a`, not 0%.
+- `offspring_with_surviving_child` counts unique non-founder parents with at least
+  one cycle-surviving child. `cycle_survivors_with_surviving_child` additionally
+  requires the parent's own cycle survival; the printed table calls these
+  **durable parents**. Founder parents have a separate count. Credit persists
+  after a parent's death/reclamation, including births from its banked seeds.
+  These are cumulative counts, not reproductive success rates: late parents
+  have less opportunity to reproduce before the cutoff.
+- Separate founder/offspring mortality objects include all observed deaths,
+  including recent births, with age sum/min/max and age-by-cause and
+  sun-phase-by-cause histograms. Empty min/max values are `null`. Age bucket upper
+  bounds are exclusive: 16/32/64/128/256 seconds, then unbounded. Eight equal
+  sun-phase bins span dawn (0), noon (64), sunset (128), and night (128–255).
+  Cause columns are energy, water, combined, other; they describe shortage flags
+  at death, not a proven explanation of the earlier decisions causing it.
+
+The ledger retains at most 4,096 lineages outside live plant storage, and reports
+capacity exhaustion rather than dropping observations. Boundary/capacity unit
+tests and JSON partition checks cover the new accounting. The summary tool still
+accepts historical schema-2/3 reports without inventing lifetime measurements.
+See the [paired lifetime investigation](../benchmarks/garden-longevity/lifetimes.md)
+for results and the limitations of the short default trial horizon.
+
 ## Garden policy search
+
+The [Garden A-life roadmap](garden-alife-roadmap.md) sets the environment-first
+acceptance gates and plans per-generation visual review and parallel training.
+The existing scene screenshot/player paths do not yet replay arbitrary saved
+models under the evaluation setup. The dedicated
+[Garden visual-review tool](garden-visual-review.md) now supplies that boundary
+for headless screenshots and fixed-panel galleries.
+
+Before changing policy or fitness, use the
+[matched experiment workflow](garden-experiments.md) to retain timelines,
+paired outcomes, source/model provenance, and automatically selected verified
+diagnostic replays:
+
+```sh
+make host-experiment-garden GARDEN_EXPERIMENT_OUT=artifacts/baseline-01 \
+    GARDEN_EXPERIMENT_ARGS="--candidate-model artifacts/garden-champion.tgm --cycles 8"
+```
+
+This collects evidence; it does **not** train or change the policy. With no
+candidate model, the default is the untrained neural reference versus adaptive.
 
 Run the deterministic integer-model search with:
 
 ```sh
 make host-train-garden
 ```
+
+Training uses the two **rain-fed environments**, not the auto-gardener and not
+the historical irrigation suite. Environment metadata in each report identifies
+rain version 1, scenario names, and absence of gardener/irrigation. Initial
+founder resources are fixed conditions, not ongoing intervention. Use
+`GARDEN_EVAL_RAINFED=1 GARDEN_EVAL_MODEL=path.tgm` to evaluate an exported model
+under the same environments, with a different batch seed for validation.
+
+Previously exported weights remain loadable, but old training fitness is not
+directly comparable after this environment change. Fitness ordering and the
+short default horizon are unchanged; durable-offspring objectives and longer
+searches are separate follow-up work. The test suite verifies that a reloaded
+model reproduces its training fitness and world-state digest in the evaluator.
 
 The trainer uses a `(1 + lambda)` strategy: each generation keeps one elite,
 creates the remaining candidates by bounded mutations of that generation's

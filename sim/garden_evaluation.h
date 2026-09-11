@@ -17,6 +17,7 @@
 #define TOY_FACTORY_GARDEN_EVALUATION_DEFAULT_SEED         UINT32_C(0x6576616c)
 #define TOY_FACTORY_GARDEN_EVALUATION_MAX_PLANTS           5U
 #define TOY_FACTORY_GARDEN_EVALUATION_SCENARIO_COUNT       3U
+#define TOY_FACTORY_GARDEN_RAINFED_SCENARIO_COUNT          2U
 #define TOY_FACTORY_GARDEN_EVALUATION_MAX_TRACKED_LINEAGES 4096U
 
 #define TOY_FACTORY_GARDEN_ESTABLISHED_MINIMUM_AGE (PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR + 1U)
@@ -29,6 +30,7 @@ struct toy_factory_garden_evaluation_scenario {
 	uint8_t plant_count;
 	uint8_t columns[TOY_FACTORY_GARDEN_EVALUATION_MAX_PLANTS];
 	uint8_t species[TOY_FACTORY_GARDEN_EVALUATION_MAX_PLANTS];
+	bool rain_enabled;
 };
 
 typedef int (*toy_factory_garden_evaluation_observer_fn)(
@@ -36,6 +38,10 @@ typedef int (*toy_factory_garden_evaluation_observer_fn)(
 
 extern const struct toy_factory_garden_evaluation_scenario
 	toy_factory_garden_evaluation_scenarios[TOY_FACTORY_GARDEN_EVALUATION_SCENARIO_COUNT];
+
+/* Training environments: matched seeded rain, never gardener assistance. */
+extern const struct toy_factory_garden_evaluation_scenario
+	toy_factory_garden_rainfed_scenarios[TOY_FACTORY_GARDEN_RAINFED_SCENARIO_COUNT];
 
 /* Derive one stable nonzero world seed from a batch seed and trial index. */
 uint32_t toy_factory_garden_evaluation_trial_seed(uint32_t base_seed, uint32_t trial_index);

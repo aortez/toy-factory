@@ -15,11 +15,14 @@
 #include "garden_agent.h"
 #include "garden_agent_neural.h"
 #include "garden_evaluation.h"
+#include "garden_lifetimes.h"
+#include "garden_light.h"
 #include "garden_model_file.h"
+#include "garden_policy_probe.h"
 #include "garden_world.h"
 #include "portable_util.h"
 
-#define GARDEN_EXPERIMENT_SCHEMA_VERSION       3U
+#define GARDEN_EXPERIMENT_SCHEMA_VERSION       4U
 #define GARDEN_EXPERIMENT_DEFAULT_TRIALS       8U
 #define GARDEN_EXPERIMENT_MAX_TRIALS           64U
 #define GARDEN_EXPERIMENT_DEFAULT_TICKS        7680U
@@ -84,6 +87,7 @@ struct garden_experiment_policy {
 };
 
 struct garden_experiment_outcome {
+	struct toy_factory_garden_lifetime_report lifetimes;
 	struct picosystem_garden_agent_telemetry agent;
 	struct garden_experiment_death_causes death_causes;
 	struct garden_experiment_seed_blockers seed_blockers;
@@ -96,6 +100,9 @@ struct garden_experiment_outcome {
 	uint64_t sampled_stress;
 	uint32_t random_seed;
 	uint32_t state_hash;
+	uint32_t weather_seed;
+	uint32_t rain_deposited;
+	uint32_t rain_runoff;
 	uint32_t ecology_samples;
 	uint32_t bloom_count;
 	uint32_t death_count;
@@ -126,6 +133,7 @@ struct garden_experiment_outcome {
 };
 
 struct garden_experiment_summary {
+	struct toy_factory_garden_lifetime_metrics lifetimes;
 	uint64_t living_plant_ticks;
 	uint64_t descendant_plant_ticks;
 	uint64_t sampled_energy;
@@ -170,7 +178,20 @@ struct garden_experiment_summary {
 
 static struct picosystem_garden_neural_model candidate_model;
 static struct picosystem_garden_agent_policy candidate_policy;
+static struct picosystem_garden_agent_policy probe_policy;
+static bool no_night_growth;
 static const struct picosystem_garden_agent_policy *selected_neural_policy;
+static const struct toy_factory_garden_evaluation_scenario *selected_scenarios =
+	toy_factory_garden_evaluation_scenarios;
+static size_t selected_scenario_count = TOY_FACTORY_GARDEN_EVALUATION_SCENARIO_COUNT;
+static FILE *timeline_stream;
+static const char *timeline_path;
+static const char *timeline_scenario;
+static const char *timeline_policy;
+static uint32_t timeline_last_tick;
+static uint32_t timeline_births;
+static uint32_t timeline_deaths;
+static uint8_t timeline_rain;
 
 static const struct picosystem_garden_agent_policy *get_selected_neural_policy(void)
 {
@@ -198,12 +219,15 @@ static struct garden_experiment_outcome outcomes[GARDEN_EXPERIMENT_SCENARIO_COUN
 						[GARDEN_EXPERIMENT_MAX_TRIALS];
 static struct garden_experiment_lineage_tracking
 	lineage_tracking[GARDEN_EXPERIMENT_MAX_TRACKED_LINEAGES + 1U];
+static struct toy_factory_garden_lifetimes lifetime_tracking;
 
 _Static_assert(TOY_FACTORY_ARRAY_SIZE(toy_factory_garden_evaluation_scenarios) ==
 		       GARDEN_EXPERIMENT_SCENARIO_COUNT,
 	       "Garden experiment scenario capacity changed");
 _Static_assert(TOY_FACTORY_ARRAY_SIZE(policies) == GARDEN_EXPERIMENT_POLICY_COUNT,
 	       "Garden experiment policy capacity changed");
+_Static_assert(TOY_FACTORY_GARDEN_RAINFED_SCENARIO_COUNT <= GARDEN_EXPERIMENT_SCENARIO_COUNT,
+	       "Rain-fed scenarios must fit the outcome workspace");
 _Static_assert(GARDEN_EXPERIMENT_MAX_TRACKED_LINEAGES >= PICOSYSTEM_GARDEN_MAX_PLANTS,
 	       "Garden experiment lineage capacity is too small");
 
@@ -211,7 +235,9 @@ static void print_usage(FILE *stream, const char *program)
 {
 	fprintf(stream,
 		"Usage: %s [--trials 1-%u] [--ticks 1-%u] [--seed UINT32] "
-		"[--model PATH]\n",
+		"[--model PATH] [--rainfed] [--timeline NEW_PATH] [--no-night-growth]\n"
+		"  --no-night-growth  Host-only candidate probe; requires --model and --rainfed\n"
+		"  --rainfed  Evaluate the gardener-free seeded-rain training environments\n",
 		program, GARDEN_EXPERIMENT_MAX_TRIALS, GARDEN_EXPERIMENT_MAX_TICKS);
 }
 
@@ -240,12 +266,22 @@ static int parse_options(int argc, char **argv, uint32_t *trial_count, uint32_t 
 	*model_path = NULL;
 	for (int index = 1; index < argc; ++index) {
 		const char *const option = argv[index];
+		if ((strcmp(option, "--no-night-growth") == 0) && !no_night_growth) {
+			no_night_growth = true;
+			continue;
+		}
+		if (strcmp(option, "--rainfed") == 0) {
+			selected_scenarios = toy_factory_garden_rainfed_scenarios;
+			selected_scenario_count = TOY_FACTORY_GARDEN_RAINFED_SCENARIO_COUNT;
+			continue;
+		}
 		if (strcmp(option, "--help") == 0) {
 			print_usage(stdout, argv[0]);
 			return 1;
 		}
 		if ((strcmp(option, "--trials") != 0) && (strcmp(option, "--ticks") != 0) &&
-		    (strcmp(option, "--seed") != 0) && (strcmp(option, "--model") != 0)) {
+		    (strcmp(option, "--seed") != 0) && (strcmp(option, "--model") != 0) &&
+		    (strcmp(option, "--timeline") != 0)) {
 			fprintf(stderr, "unknown option '%s'\n", option);
 			return -EINVAL;
 		}
@@ -263,6 +299,11 @@ static int parse_options(int argc, char **argv, uint32_t *trial_count, uint32_t 
 			err = parse_u32(value, 0, 1U, UINT32_MAX, base_seed);
 		} else if (*value == '\0') {
 			err = -EINVAL;
+		} else if (strcmp(option, "--timeline") == 0) {
+			if (timeline_path != NULL) {
+				return -EINVAL;
+			}
+			timeline_path = value;
 		} else {
 			*model_path = value;
 		}
@@ -337,6 +378,10 @@ static void record_death_cause(struct garden_experiment_death_causes *causes, ui
 static int initialize_lineage_tracking(const struct picosystem_garden_world *world,
 				       struct garden_experiment_outcome *outcome)
 {
+	const int reset_err = toy_factory_garden_lifetimes_reset(&lifetime_tracking);
+	if (reset_err != 0) {
+		return reset_err;
+	}
 	memset(lineage_tracking, 0, sizeof(lineage_tracking));
 	outcome->founder_count = world->plant_count;
 	if (outcome->founder_count > GARDEN_EXPERIMENT_MAX_PLANTS) {
@@ -356,6 +401,12 @@ static int initialize_lineage_tracking(const struct picosystem_garden_world *wor
 		if ((tracking->flags & GARDEN_EXPERIMENT_LINEAGE_SEEN) != 0U) {
 			return -EEXIST;
 		}
+		const int err = toy_factory_garden_lifetimes_birth(
+			&lifetime_tracking, plant->lineage_id, 0U, plant->species_id,
+			world->logic_tick_count);
+		if (err != 0) {
+			return err;
+		}
 		*tracking = (struct garden_experiment_lineage_tracking){
 			.founder_index = index,
 			.species_id = plant->species_id,
@@ -373,7 +424,7 @@ static int initialize_lineage_tracking(const struct picosystem_garden_world *wor
 }
 
 static int register_lineage(struct garden_experiment_outcome *outcome,
-			    const struct picosystem_garden_plant *plant,
+			    const struct picosystem_garden_plant *plant, uint32_t tick,
 			    struct garden_experiment_lineage_tracking **result)
 {
 	if ((plant->lineage_id == 0U) || (plant->species_id >= PICOSYSTEM_GARDEN_SPECIES_COUNT)) {
@@ -395,6 +446,12 @@ static int register_lineage(struct garden_experiment_outcome *outcome,
 		    (parent->species_id != plant->species_id) ||
 		    (parent->founder_index >= outcome->founder_count)) {
 			return -EIO;
+		}
+		const int err = toy_factory_garden_lifetimes_birth(
+			&lifetime_tracking, plant->lineage_id, plant->parent_lineage_id,
+			plant->species_id, tick);
+		if (err != 0) {
+			return err;
 		}
 		*tracking = (struct garden_experiment_lineage_tracking){
 			.founder_index = parent->founder_index,
@@ -477,7 +534,7 @@ static int observe_world(const struct picosystem_garden_world *world,
 	for (uint8_t index = 0U; index < world->plant_count; ++index) {
 		const struct picosystem_garden_plant *const plant = &world->plants[index];
 		struct garden_experiment_lineage_tracking *tracking;
-		int err = register_lineage(outcome, plant, &tracking);
+		int err = register_lineage(outcome, plant, world->logic_tick_count, &tracking);
 		if (err != 0) {
 			return err;
 		}
@@ -487,6 +544,12 @@ static int observe_world(const struct picosystem_garden_world *world,
 			&outcome->founders[tracking->founder_index].metrics;
 		if ((plant->flags & PICOSYSTEM_GARDEN_PLANT_DEAD) != 0U) {
 			if ((tracking->flags & GARDEN_EXPERIMENT_LINEAGE_DEAD) == 0U) {
+				err = toy_factory_garden_lifetimes_death(
+					&lifetime_tracking, plant->lineage_id,
+					world->logic_tick_count, plant->flags);
+				if (err != 0) {
+					return err;
+				}
 				record_death_cause(&outcome->death_causes, plant->flags);
 				record_death_cause(&species->death_causes, plant->flags);
 				record_death_cause(&founder->death_causes, plant->flags);
@@ -633,7 +696,14 @@ static bool outcome_totals_are_valid(const struct garden_experiment_outcome *out
 					 blockers->spacing;
 	const bool globally_extinct =
 		(outcome->final_living_count == 0U) && (outcome->final_seed_count == 0U);
+	const struct toy_factory_garden_lifetime_metrics *const lifetimes =
+		&outcome->lifetimes.total;
 	return telemetry_totals_are_valid(&outcome->agent) &&
+	       (lifetimes->offspring_born == outcome->germination_count) &&
+	       (lifetimes->offspring_mortality.deaths + lifetimes->founder_mortality.deaths ==
+		outcome->death_count) &&
+	       (lifetimes->offspring_living_at_end + lifetimes->founders_living_at_end ==
+		outcome->final_living_count) &&
 	       (outcome->founder_count <= GARDEN_EXPERIMENT_MAX_PLANTS) &&
 	       (outcome->lineage_count <= GARDEN_EXPERIMENT_MAX_TRACKED_LINEAGES) &&
 	       (outcome->lineage_count ==
@@ -664,6 +734,90 @@ static bool outcome_totals_are_valid(const struct garden_experiment_outcome *out
 	       ((outcome->extinction_tick == 0U) || (outcome->extinction_tick <= tick_count));
 }
 
+static int write_timeline(const struct picosystem_garden_world *world,
+			  const struct garden_experiment_outcome *outcome, bool force)
+{
+	if ((timeline_stream == NULL) || (timeline_last_tick == world->logic_tick_count)) {
+		return 0;
+	}
+	const uint8_t rain =
+		picosystem_garden_rain_at(world->weather_seed, world->ecology_tick_count);
+	const bool event = (timeline_births != world->germination_count) ||
+			   (timeline_deaths != world->death_count) || (timeline_rain != rain);
+	if (!force && !event && ((world->logic_tick_count % 60U) != 0U)) {
+		return 0;
+	}
+	uint32_t energy;
+	uint32_t water;
+	uint32_t stress;
+	uint8_t maximum_stress = 0U;
+	current_resource_totals(world, &energy, &water, &stress, &maximum_stress);
+	uint8_t descendants = 0U;
+	uint16_t roots = 0U;
+	uint16_t leaves = 0U;
+	for (uint8_t index = 0U; index < world->plant_count; ++index) {
+		const struct picosystem_garden_plant *const plant = &world->plants[index];
+		if ((plant->generation != 0U) &&
+		    ((plant->flags & PICOSYSTEM_GARDEN_PLANT_DEAD) == 0U)) {
+			++descendants;
+		}
+	}
+	for (uint16_t index = 0U; index < world->node_count; ++index) {
+		const struct picosystem_garden_node *const node = &world->nodes[index];
+		if ((world->plants[node->plant_index].flags & PICOSYSTEM_GARDEN_PLANT_DEAD) != 0U) {
+			continue;
+		}
+		if (node->kind == PICOSYSTEM_GARDEN_NODE_ROOT) {
+			++roots;
+		}
+		if (((node->flags & PICOSYSTEM_GARDEN_NODE_LEAF) != 0U) &&
+		    (node->growth_progress >= PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS)) {
+			++leaves;
+		}
+	}
+	const struct picosystem_garden_sun sun =
+		picosystem_garden_sun_at(world->ecology_tick_count);
+	fprintf(timeline_stream,
+		"{\"schema_version\":1,\"scenario\":\"%s\",\"policy\":\"%s\",\"seed\":\"%08" PRIx32
+		"\",\"tick\":%" PRIu32 ",\"hash\":\"%08" PRIx32 "\",\"sun_phase\":%u,"
+		"\"sun_strength\":%u,\"rain_rate\":%u,\"rain_deposited\":%" PRIu32
+		",\"rain_runoff\":%" PRIu32 ",\"living\":%u,\"descendants\":%u,"
+		"\"plant_slots\":%u,\"nodes\":%u,\"roots\":%u,\"active_leaves\":%u,\"seed_bank\":%"
+		"u,"
+		"\"births\":%" PRIu32 ",\"deaths\":%" PRIu32 ",\"moisture\":%u,"
+		"\"energy\":%" PRIu32 ",\"water\":%" PRIu32 ",\"stress\":%" PRIu32
+		",\"living_plant_ticks\":%" PRIu64 ",\"descendant_plant_ticks\":%" PRIu64
+		",\"seeds_created\":%" PRIu32 ",\"seeds_expired\":%" PRIu32,
+		timeline_scenario, timeline_policy, outcome->random_seed, world->logic_tick_count,
+		picosystem_garden_world_hash(world), sun.phase, sun.strength, rain,
+		world->rain_deposited, world->rain_runoff,
+		picosystem_garden_world_living_plant_count(world), descendants, world->plant_count,
+		world->node_count, roots, leaves, world->seed_count, world->germination_count,
+		world->death_count, world->moisture_total, energy, water, stress,
+		outcome->living_plant_ticks, outcome->descendant_plant_ticks,
+		world->seed_creation_count, world->seed_expiration_count);
+	if ((world->logic_tick_count % TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS) == 0U) {
+		struct toy_factory_garden_lifetime_report report;
+		const int err = toy_factory_garden_lifetimes_summarize(
+			&lifetime_tracking, world->logic_tick_count, &report);
+		if (err != 0) {
+			return err;
+		}
+		fprintf(timeline_stream,
+			",\"lifetimes\":{\"eligible_offspring\":%" PRIu32
+			",\"cycle_survivors\":%" PRIu32
+			",\"cycle_survivors_with_surviving_child\":%" PRIu32 "}",
+			report.total.eligible_offspring, report.total.cycle_survivors,
+			report.total.cycle_survivors_with_surviving_child);
+	}
+	fprintf(timeline_stream, "}\n");
+	timeline_last_tick = world->logic_tick_count;
+	timeline_births = world->germination_count;
+	timeline_deaths = world->death_count;
+	timeline_rain = rain;
+	return ferror(timeline_stream) ? -EIO : 0;
+}
+
 static int observe_trial_tick(const struct picosystem_garden_world *world, bool ecology_sample,
 			      void *context)
 {
@@ -691,7 +845,7 @@ static int observe_trial_tick(const struct picosystem_garden_world *world, bool 
 		outcome->sampled_stress += stress;
 		++outcome->ecology_samples;
 	}
-	return 0;
+	return ecology_sample ? write_timeline(world, outcome, false) : 0;
 }
 
 static int run_trial(const struct toy_factory_garden_evaluation_scenario *scenario,
@@ -716,8 +870,18 @@ static int run_trial(const struct toy_factory_garden_evaluation_scenario *scenar
 	if ((err != 0) || (world.plant_count != scenario->plant_count)) {
 		return (err != 0) ? err : -EIO;
 	}
+	timeline_last_tick = UINT32_MAX;
+	err = write_timeline(&world, outcome, true);
+	if (err != 0) {
+		return err;
+	}
 	err = toy_factory_garden_evaluation_advance(&world, scenario, policy, tick_count,
 						    observe_trial_tick, outcome);
+	if (err != 0) {
+		return err;
+	}
+	err = toy_factory_garden_lifetimes_summarize(&lifetime_tracking, world.logic_tick_count,
+						     &outcome->lifetimes);
 	if (err != 0) {
 		return err;
 	}
@@ -725,6 +889,13 @@ static int run_trial(const struct toy_factory_garden_evaluation_scenario *scenar
 	current_resource_totals(&world, &outcome->final_energy, &outcome->final_water,
 				&outcome->final_stress, &outcome->maximum_stress);
 	outcome->agent = world.agent_telemetry;
+	if (world.auto_gardener_enabled || (world.auto_action_count != 0U) ||
+	    (world.manual_action_count != 0U)) {
+		return -EINVAL;
+	}
+	outcome->weather_seed = world.weather_seed;
+	outcome->rain_deposited = world.rain_deposited;
+	outcome->rain_runoff = world.rain_runoff;
 	outcome->state_hash = picosystem_garden_world_hash(&world);
 	outcome->bloom_count = world.bloom_count;
 	outcome->death_count = world.death_count;
@@ -743,7 +914,8 @@ static int run_trial(const struct toy_factory_garden_evaluation_scenario *scenar
 	outcome->final_dead_count = picosystem_garden_world_dead_plant_count(&world);
 	outcome->final_seed_count = world.seed_count;
 	outcome->nonzero_memory_count = nonzero_memory_count(&world);
-	return outcome_totals_are_valid(outcome, tick_count) ? 0 : -EIO;
+	return outcome_totals_are_valid(outcome, tick_count) ? write_timeline(&world, outcome, true)
+							     : -EIO;
 }
 
 static struct garden_experiment_summary
@@ -757,6 +929,8 @@ summarize_outcomes(const struct garden_experiment_outcome *values, uint32_t coun
 	};
 	for (uint32_t index = 0U; index < count; ++index) {
 		const struct garden_experiment_outcome *const outcome = &values[index];
+		toy_factory_garden_lifetime_metrics_add(&summary.lifetimes,
+							&outcome->lifetimes.total);
 		summary.living_plant_ticks += outcome->living_plant_ticks;
 		summary.descendant_plant_ticks += outcome->descendant_plant_ticks;
 		summary.sampled_energy += outcome->sampled_energy;
@@ -815,6 +989,59 @@ summarize_outcomes(const struct garden_experiment_outcome *values, uint32_t coun
 	return summary;
 }
 
+static void print_cause_matrix(const uint32_t values[][TOY_FACTORY_GARDEN_LIFETIME_CAUSES],
+			       uint8_t rows)
+{
+	putchar('[');
+	for (uint8_t row = 0U; row < rows; ++row) {
+		printf("%s[", (row == 0U) ? "" : ",");
+		for (uint8_t cause = 0U; cause < TOY_FACTORY_GARDEN_LIFETIME_CAUSES; ++cause) {
+			printf("%s%" PRIu32, (cause == 0U) ? "" : ",", values[row][cause]);
+		}
+		putchar(']');
+	}
+	putchar(']');
+}
+
+static void print_mortality(const struct toy_factory_garden_mortality *metrics)
+{
+	printf("{\"deaths\":%" PRIu32 ",\"age_ticks_sum\":%" PRIu64, metrics->deaths,
+	       metrics->age_ticks_sum);
+	if (metrics->deaths == 0U) {
+		printf(",\"minimum_age_ticks\":null,\"maximum_age_ticks\":null");
+	} else {
+		printf(",\"minimum_age_ticks\":%" PRIu32 ",\"maximum_age_ticks\":%" PRIu32,
+		       metrics->minimum_age_ticks, metrics->maximum_age_ticks);
+	}
+	printf(",\"age_by_cause\":");
+	print_cause_matrix(metrics->age_by_cause, TOY_FACTORY_GARDEN_LIFETIME_AGE_BUCKETS);
+	printf(",\"sun_phase_by_cause\":");
+	print_cause_matrix(metrics->sun_phase_by_cause, TOY_FACTORY_GARDEN_LIFETIME_SUN_BUCKETS);
+	putchar('}');
+}
+
+static void print_lifetimes(const struct toy_factory_garden_lifetime_metrics *metrics)
+{
+	printf("{\"offspring_born\":%" PRIu32 ",\"eligible_offspring\":%" PRIu32
+	       ",\"cycle_survivors\":%" PRIu32 ",\"died_before_cycle\":%" PRIu32
+	       ",\"too_young_alive\":%" PRIu32 ",\"too_young_dead\":%" PRIu32
+	       ",\"offspring_with_surviving_child\":%" PRIu32
+	       ",\"cycle_survivors_with_surviving_child\":%" PRIu32
+	       ",\"founders_with_surviving_child\":%" PRIu32 ",\"offspring_living_at_end\":%" PRIu32
+	       ",\"founders_living_at_end\":%" PRIu32,
+	       metrics->offspring_born, metrics->eligible_offspring, metrics->cycle_survivors,
+	       metrics->died_before_cycle, metrics->too_young_alive, metrics->too_young_dead,
+	       metrics->offspring_with_surviving_child,
+	       metrics->cycle_survivors_with_surviving_child,
+	       metrics->founders_with_surviving_child, metrics->offspring_living_at_end,
+	       metrics->founders_living_at_end);
+	printf(",\"offspring_mortality\":");
+	print_mortality(&metrics->offspring_mortality);
+	printf(",\"founder_mortality\":");
+	print_mortality(&metrics->founder_mortality);
+	putchar('}');
+}
+
 static void print_summary(const struct garden_experiment_summary *summary)
 {
 	printf("{\"living_plant_ticks\":%" PRIu64 ",\"descendant_plant_ticks\":%" PRIu64
@@ -833,7 +1060,7 @@ static void print_summary(const struct garden_experiment_summary *summary)
 	       ",\"finish\":%" PRIu64 ",\"root\":%" PRIu64 ",\"shoot\":%" PRIu64
 	       ",\"root_extend\":%" PRIu64 ",\"shoot_extend\":%" PRIu64
 	       "},\"final_living_range\":[%" PRIu32 ",%" PRIu32 "],\"final_node_range\":[%" PRIu32
-	       ",%" PRIu32 "],\"maximum_generation\":%" PRIu32 ",\"maximum_stress\":%" PRIu32 "}",
+	       ",%" PRIu32 "],\"maximum_generation\":%" PRIu32 ",\"maximum_stress\":%" PRIu32,
 	       summary->living_plant_ticks, summary->descendant_plant_ticks,
 	       summary->sampled_energy, summary->sampled_water, summary->sampled_stress,
 	       summary->blooms, summary->deaths, summary->seeds_created, summary->germinations,
@@ -849,6 +1076,9 @@ static void print_summary(const struct garden_experiment_summary *summary)
 	       summary->minimum_final_living, summary->maximum_final_living,
 	       summary->minimum_final_nodes, summary->maximum_final_nodes,
 	       summary->maximum_generation, summary->maximum_stress);
+	printf(",\"lifetimes\":");
+	print_lifetimes(&summary->lifetimes);
+	putchar('}');
 }
 
 static void print_nullable_tick(uint32_t tick)
@@ -901,6 +1131,8 @@ static void print_species_metrics(const struct garden_experiment_outcome *outcom
 		printf("{\"id\":%u,\"name\":\"%s\",", index,
 		       picosystem_garden_species_name((enum picosystem_garden_species_id)index));
 		print_group_metric_fields(&outcome->species[index]);
+		printf(",\"lifetimes\":");
+		print_lifetimes(&outcome->lifetimes.species[index]);
 		putchar('}');
 	}
 	putchar(']');
@@ -922,6 +1154,8 @@ static void print_founder_metrics(const struct garden_experiment_outcome *outcom
 			       (enum picosystem_garden_species_id)founder->species_id),
 		       founder->column);
 		print_group_metric_fields(&founder->metrics);
+		printf(",\"lifetimes\":");
+		print_lifetimes(&outcome->lifetimes.founders[index]);
 		putchar('}');
 	}
 	putchar(']');
@@ -969,6 +1203,13 @@ static void print_outcome(const struct garden_experiment_outcome *outcome)
 	print_species_metrics(outcome);
 	printf(",\"founders\":");
 	print_founder_metrics(outcome);
+	printf(",\"lifetimes\":");
+	print_lifetimes(&outcome->lifetimes.total);
+	if (outcome->weather_seed != 0U) {
+		printf(",\"weather\":{\"seed\":\"%08" PRIx32 "\",\"deposited\":%" PRIu32
+		       ",\"runoff\":%" PRIu32 "}",
+		       outcome->weather_seed, outcome->rain_deposited, outcome->rain_runoff);
+	}
 	putchar('}');
 }
 
@@ -979,6 +1220,21 @@ static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t bas
 	printf("  \"trial_count\": %" PRIu32 ",\n", trial_count);
 	printf("  \"tick_count\": %" PRIu32 ",\n", tick_count);
 	printf("  \"base_seed\": \"%08" PRIx32 "\",\n", base_seed);
+	if (no_night_growth) {
+		printf("  \"candidate_probe\":\"%s\",\n", TOY_FACTORY_GARDEN_NIGHT_PROBE_NAME);
+	}
+	if (selected_scenarios == toy_factory_garden_rainfed_scenarios) {
+		printf("  \"environment\":{\"rain_version\":%u,\"gardener\":false,"
+		       "\"irrigation\":false",
+		       PICOSYSTEM_GARDEN_RAIN_VERSION);
+#if defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
+		printf(",\"seed_dispersal\":\"%s\"", PICOSYSTEM_GARDEN_DISPERSAL_NAME);
+#endif
+#if defined(TOY_FACTORY_GARDEN_WATER_HEADROOM)
+		printf(",\"water_uptake\":\"%s\"", PICOSYSTEM_GARDEN_WATER_UPTAKE_NAME);
+#endif
+		printf("},\n");
+	}
 	if (has_candidate_model) {
 		printf("  \"candidate_model_crc32\": \"%08" PRIx32 "\",\n", candidate_fingerprint);
 	}
@@ -988,12 +1244,24 @@ static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t bas
 	printf("  \"establishment\": {\"minimum_age_ecology_ticks\": %u, "
 	       "\"requires_active_leaf\": true, \"requires_zero_stress\": true},\n",
 	       GARDEN_EXPERIMENT_ESTABLISHED_MINIMUM_AGE);
+	printf("  \"lifetime_followup\": {\"cycle_ticks\":%u,"
+	       "\"requires_alive_at_boundary\":true,\"cohort\":\"complete-followup\","
+	       "\"parent_credit_after_death\":true,"
+	       "\"death_cause_order\":[\"energy\",\"water\",\"combined\",\"other\"],"
+	       "\"age_bucket_upper_ticks\":[%u,%u,%u,%u,%u,null],"
+	       "\"sun_phase_bucket_width\":%u},\n",
+	       TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS,
+	       TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS / 4U,
+	       TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS / 2U,
+	       TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS,
+	       TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS * 2U,
+	       TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS * 4U,
+	       PICOSYSTEM_GARDEN_SUN_CYCLE_TICKS / TOY_FACTORY_GARDEN_LIFETIME_SUN_BUCKETS);
 	printf("  \"scenarios\": [\n");
-	for (size_t scenario_index = 0U;
-	     scenario_index < TOY_FACTORY_ARRAY_SIZE(toy_factory_garden_evaluation_scenarios);
+	for (size_t scenario_index = 0U; scenario_index < selected_scenario_count;
 	     ++scenario_index) {
 		const struct toy_factory_garden_evaluation_scenario *const scenario =
-			&toy_factory_garden_evaluation_scenarios[scenario_index];
+			&selected_scenarios[scenario_index];
 		printf("    {\"name\":\"%s\",\"plants\":%u,\"initial_water_per_plant\":%u,"
 		       "\"irrigation_pattern\":\"%s\","
 		       "\"irrigation_period_ticks\":%" PRIu32
@@ -1017,11 +1285,7 @@ static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t bas
 			printf("]}%s\n",
 			       (policy_index + 1U < TOY_FACTORY_ARRAY_SIZE(policies)) ? "," : "");
 		}
-		printf("    ]}%s\n",
-		       (scenario_index + 1U <
-			TOY_FACTORY_ARRAY_SIZE(toy_factory_garden_evaluation_scenarios))
-			       ? ","
-			       : "");
+		printf("    ]}%s\n", (scenario_index + 1U < selected_scenario_count) ? "," : "");
 	}
 	printf("  ]\n}\n");
 }
@@ -1041,6 +1305,11 @@ int main(int argc, char **argv)
 		print_usage(stderr, argv[0]);
 		return 2;
 	}
+	if (no_night_growth && ((model_path == NULL) ||
+				(selected_scenarios != toy_factory_garden_rainfed_scenarios))) {
+		fprintf(stderr, "--no-night-growth requires --model and --rainfed\n");
+		return 2;
+	}
 	uint32_t candidate_fingerprint = 0U;
 	if (model_path != NULL) {
 		int err = toy_factory_garden_model_read(model_path, &candidate_model,
@@ -1049,36 +1318,47 @@ int main(int argc, char **argv)
 			err = picosystem_garden_neural_policy_init(&candidate_model,
 								   &candidate_policy);
 		}
+		if ((err == 0) && no_night_growth) {
+			err = toy_factory_garden_no_night_growth_init(&candidate_policy,
+								      &probe_policy);
+		}
 		if (err != 0) {
 			fprintf(stderr, "failed to load candidate model '%s' (%d)\n", model_path,
 				err);
 			return 1;
 		}
-		selected_neural_policy = &candidate_policy;
-		policies[2].name = "neural-candidate";
+		selected_neural_policy = no_night_growth ? &probe_policy : &candidate_policy;
+		policies[2].name = no_night_growth ? TOY_FACTORY_GARDEN_NIGHT_PROBE_POLICY
+						   : "neural-candidate";
 	}
 
-	for (size_t scenario_index = 0U;
-	     scenario_index < TOY_FACTORY_ARRAY_SIZE(toy_factory_garden_evaluation_scenarios);
+	if (timeline_path != NULL) {
+		timeline_stream = fopen(timeline_path, "wx");
+		if (timeline_stream == NULL) {
+			fprintf(stderr, "cannot create timeline '%s': %s\n", timeline_path,
+				strerror(errno));
+			return 1;
+		}
+	}
+	for (size_t scenario_index = 0U; scenario_index < selected_scenario_count;
 	     ++scenario_index) {
 		for (size_t policy_index = 0U; policy_index < TOY_FACTORY_ARRAY_SIZE(policies);
 		     ++policy_index) {
+			timeline_scenario = selected_scenarios[scenario_index].name;
+			timeline_policy = policies[policy_index].name;
 			const struct picosystem_garden_agent_policy *const policy =
 				policies[policy_index].get_policy();
 			for (uint32_t trial = 0U; trial < trial_count; ++trial) {
 				const uint32_t random_seed =
 					toy_factory_garden_evaluation_trial_seed(base_seed, trial);
 				const int err = run_trial(
-					&toy_factory_garden_evaluation_scenarios[scenario_index],
-					policy, random_seed, tick_count,
-					&outcomes[scenario_index][policy_index][trial]);
+					&selected_scenarios[scenario_index], policy, random_seed,
+					tick_count, &outcomes[scenario_index][policy_index][trial]);
 				if (err != 0) {
 					fprintf(stderr,
 						"%s/%s trial %" PRIu32 " failed at seed %08" PRIx32
 						" (%d)\n",
-						toy_factory_garden_evaluation_scenarios
-							[scenario_index]
-								.name,
+						selected_scenarios[scenario_index].name,
 						policies[policy_index].name, trial, random_seed,
 						err);
 					return 1;
@@ -1088,5 +1368,9 @@ int main(int argc, char **argv)
 	}
 
 	print_report(trial_count, tick_count, base_seed, model_path != NULL, candidate_fingerprint);
-	return 0;
+	if ((timeline_stream != NULL) && (fclose(timeline_stream) != 0)) {
+		fprintf(stderr, "could not finish timeline\n");
+		return 1;
+	}
+	return (fflush(stdout) == 0) ? 0 : 1;
 }

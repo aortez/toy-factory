@@ -10,9 +10,9 @@ import subprocess
 
 
 EXPECTED_CHECKPOINTS = {
-    "initial": (0, "edda4220", "c515c869"),
-    "growing": (930, "9b775c1a", "c96704e4"),
-    "mature": (3771, "ec860825", "bf6ec1a6"),
+    "initial": (0, "42bd6367", "c515c869"),
+    "growing": (930, "28489ef5", "fc95584f"),
+    "mature": (3771, "4345d5b7", "1f128cce"),
 }
 EXPECTED_STATE = {
     "initial": {
@@ -47,13 +47,13 @@ EXPECTED_STATE = {
         "seeds_expired": 0,
         "mutations": 1,
         "max_generation": 0,
-        "moisture": 3924,
+        "moisture": 4004,
     },
     "mature": {
         "plants": 5,
         "living": 5,
         "dead": 0,
-        "nodes": 189,
+        "nodes": 188,
         "blooms": 15,
         "deaths": 0,
         "reclaimed_plants": 0,
@@ -64,7 +64,7 @@ EXPECTED_STATE = {
         "seeds_expired": 0,
         "mutations": 4,
         "max_generation": 0,
-        "moisture": 3259,
+        "moisture": 3830,
     },
 }
 TIMING_NAMES = ("ordinary_step", "ecology_step", "snapshot", "raster")

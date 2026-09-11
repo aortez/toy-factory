@@ -56,6 +56,32 @@ const struct toy_factory_garden_evaluation_scenario
 		},
 };
 
+const struct toy_factory_garden_evaluation_scenario
+	toy_factory_garden_rainfed_scenarios[TOY_FACTORY_GARDEN_RAINFED_SCENARIO_COUNT] = {
+		{
+			.name = "rainfed",
+			.initial_water = 128U,
+			.plant_count = 3U,
+			.columns = {4U, 13U, 22U},
+			.species = {PICOSYSTEM_GARDEN_SPECIES_FLOWER,
+				    PICOSYSTEM_GARDEN_SPECIES_SHRUB,
+				    PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER},
+			.rain_enabled = true,
+		},
+		{
+			.name = "rainfed-crowded",
+			.initial_water = 96U,
+			.plant_count = 5U,
+			.columns = {3U, 8U, 13U, 18U, 23U},
+			.species = {PICOSYSTEM_GARDEN_SPECIES_FLOWER,
+				    PICOSYSTEM_GARDEN_SPECIES_SHRUB,
+				    PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER,
+				    PICOSYSTEM_GARDEN_SPECIES_SHRUB,
+				    PICOSYSTEM_GARDEN_SPECIES_FLOWER},
+			.rain_enabled = true,
+		},
+};
+
 static int irrigate(struct picosystem_garden_world *world, uint8_t amount)
 {
 	/* Exogenous input must not scale with a policy's current plants or seeds. */
@@ -103,6 +129,10 @@ int toy_factory_garden_evaluation_reset(
 	}
 
 	int err = picosystem_garden_world_reset(world, random_seed);
+	if ((err == 0) && scenario->rain_enabled) {
+		/* Capture the reset seed before founder creation consumes world randomness. */
+		err = picosystem_garden_world_set_weather(world, world->random_state);
+	}
 	for (uint8_t index = 0U; (err == 0) && (index < scenario->plant_count); ++index) {
 		if (scenario->species[index] >= PICOSYSTEM_GARDEN_SPECIES_COUNT) {
 			return -ERANGE;

@@ -1194,6 +1194,9 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 	if (state->world.scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
 		const struct picosystem_garden_world *const garden = &state->world.garden;
 		stats->garden_ecology_tick_count = garden->ecology_tick_count;
+		stats->garden_weather_seed = garden->weather_seed;
+		stats->garden_rain_deposited = garden->rain_deposited;
+		stats->garden_rain_runoff = garden->rain_runoff;
 		stats->garden_manual_action_count = garden->manual_action_count;
 		stats->garden_auto_decision_count = garden->auto_decision_count;
 		stats->garden_auto_action_count = garden->auto_action_count;
