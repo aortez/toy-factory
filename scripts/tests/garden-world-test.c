@@ -191,6 +191,7 @@ baseline_observation(enum picosystem_garden_node_kind kind)
 		.tip_x = 32U,
 		.base_x = 32U,
 		.maximum_depth = 10U,
+		.flower_depth = 6U,
 		.candidate_count = (kind == PICOSYSTEM_GARDEN_NODE_STEM) ? 5U : 3U,
 		.sun_phase = PICOSYSTEM_GARDEN_SUN_NOON_PHASE,
 		.sun_strength = UINT8_MAX,

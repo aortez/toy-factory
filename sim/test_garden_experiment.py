@@ -40,7 +40,7 @@ FOUNDERS = {
     "crowded": [(1, 0, 3), (2, 1, 8), (3, 2, 13), (4, 1, 18), (5, 0, 23)],
 }
 SPECIES = {0: "flower", 1: "shrub", 2: "ground-cover"}
-POLICY_NAMES = {"baseline", "adaptive"}
+POLICY_NAMES = {"baseline", "adaptive", "neural-reference"}
 TRIAL_COUNT = 2
 TICK_COUNT = 7680
 
@@ -233,7 +233,9 @@ def validate_report(report: dict[str, object]) -> None:
     ):
         raise RuntimeError("unexpected Garden experiment scenarios")
 
-    policy_difference_count = 0
+    policy_difference_counts = {
+        name: 0 for name in POLICY_NAMES if name != "baseline"
+    }
     observed_deaths = 0
     observed_established = 0
     observed_seed_blockers = 0
@@ -538,16 +540,22 @@ def validate_report(report: dict[str, object]) -> None:
             if policy_name == "adaptive" and not any(memory_counts):
                 raise RuntimeError("adaptive policy did not exercise recurrent memory")
 
-        if seeds_by_policy["baseline"] != seeds_by_policy["adaptive"]:
-            raise RuntimeError("policies did not receive identical trial seeds")
-        policy_difference_count += sum(
-            left != right
-            for left, right in zip(
-                hashes_by_policy["baseline"], hashes_by_policy["adaptive"], strict=True
+        for policy_name in POLICY_NAMES - {"baseline"}:
+            if seeds_by_policy["baseline"] != seeds_by_policy[policy_name]:
+                raise RuntimeError("policies did not receive identical trial seeds")
+            policy_difference_counts[policy_name] += sum(
+                left != right
+                for left, right in zip(
+                    hashes_by_policy["baseline"],
+                    hashes_by_policy[policy_name],
+                    strict=True,
+                )
             )
-        )
-    if policy_difference_count == 0:
-        raise RuntimeError("baseline and adaptive policies produced no observable difference")
+    for policy_name, difference_count in policy_difference_counts.items():
+        if difference_count == 0:
+            raise RuntimeError(
+                f"baseline and {policy_name} produced no observable difference"
+            )
     if observed_deaths == 0 or observed_established == 0 or observed_seed_blockers == 0:
         raise RuntimeError("Garden evaluator test did not exercise its survival metrics")
 
@@ -574,7 +582,7 @@ def main() -> int:
             detail = summary.stderr.strip() or summary.stdout.strip()
             raise RuntimeError(f"Garden summary failed: {detail}")
         summary_lines = summary.stdout.splitlines()
-        if len(summary_lines) != 8 or not summary_lines[0].startswith(
+        if len(summary_lines) != 11 or not summary_lines[0].startswith(
             "Garden policy evaluation:"
         ):
             raise RuntimeError("Garden summary shape changed")

@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "garden_agent.h"
+#include "garden_agent_neural.h"
 #include "garden_world.h"
 #include "portable_util.h"
 
@@ -24,7 +25,7 @@
 #define GARDEN_EXPERIMENT_DEFAULT_SEED         UINT32_C(0x6576616c)
 #define GARDEN_EXPERIMENT_MAX_PLANTS           5U
 #define GARDEN_EXPERIMENT_SCENARIO_COUNT       3U
-#define GARDEN_EXPERIMENT_POLICY_COUNT         2U
+#define GARDEN_EXPERIMENT_POLICY_COUNT         3U
 #define GARDEN_EXPERIMENT_MAX_TRACKED_LINEAGES 4096U
 
 #define GARDEN_EXPERIMENT_LINEAGE_SEEN            (1U << 0)
@@ -226,6 +227,10 @@ static const struct garden_experiment_policy policies[] = {
 	{
 		.name = "adaptive",
 		.get_policy = picosystem_garden_agent_adaptive_policy,
+	},
+	{
+		.name = "neural-reference",
+		.get_policy = picosystem_garden_agent_neural_reference_policy,
 	},
 };
 

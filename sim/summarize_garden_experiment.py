@@ -36,7 +36,7 @@ def main() -> int:
 
     print(f"Garden policy evaluation: {trial_count} trials x {tick_count} ticks")
     print(
-        f"{'scenario':<11} {'policy':<8} {'avg live':>8} {'avg desc':>8} "
+        f"{'scenario':<11} {'policy':<16} {'avg live':>8} {'avg desc':>8} "
         f"{'final live':>10} {'deaths':>6} {'estab':>5} {'ext':>5} "
         f"{'germ':>5} {'blocked':>7} {'extend R/S':>12} {'wait':>7}"
     )
@@ -72,7 +72,7 @@ def main() -> int:
             average_descendants = descendant_ticks / (trial_count * tick_count)
             wait_percentage = 100.0 * waits / decisions if decisions else 0.0
             print(
-                f"{scenario['name']:<11} {policy['name']:<8} {average_living:8.2f} "
+                f"{scenario['name']:<11} {policy['name']:<16} {average_living:8.2f} "
                 f"{average_descendants:8.2f} "
                 f"{final_range[0]:>4}..{final_range[1]:<4} "
                 f"{require_integer(totals, 'deaths'):6d} "

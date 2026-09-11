@@ -116,6 +116,7 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add bounded heritable reproduction, seed dormancy, germination, and lineage.
 - [x] Add fixed lifetime memory and a replaceable pure plant-policy callback.
 - [x] Add an adaptive recurrent plant policy and plant-level action arbitration.
+- [x] Add a versioned fixed-point neural policy ABI, reference model, and matched-seed control.
 
 ## 8. Host simulation
 

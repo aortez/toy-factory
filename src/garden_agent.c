@@ -53,7 +53,8 @@ _Static_assert(GARDEN_ADAPTIVE_MEMORY_COUNT == PICOSYSTEM_GARDEN_AGENT_MEMORY_WI
 #define GARDEN_ADAPTIVE_TERMINAL_PRIORITY     30000
 #define GARDEN_ADAPTIVE_BLOCKED_PRIORITY      29000
 
-static bool observation_is_valid(const struct picosystem_garden_agent_observation *observation)
+bool picosystem_garden_agent_observation_is_valid(
+	const struct picosystem_garden_agent_observation *observation)
 {
 	if ((observation == NULL) ||
 	    (observation->version != PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION) ||
@@ -61,7 +62,8 @@ static bool observation_is_valid(const struct picosystem_garden_agent_observatio
 	    (observation->tip_index >= PICOSYSTEM_GARDEN_MAX_NODES) ||
 	    (observation->species_id >= PICOSYSTEM_GARDEN_SPECIES_COUNT) ||
 	    (observation->tissue_kind >= PICOSYSTEM_GARDEN_NODE_KIND_COUNT) ||
-	    (observation->maximum_depth == 0U) ||
+	    (observation->maximum_depth == 0U) || (observation->flower_depth == 0U) ||
+	    ((observation->tip_flags & (uint8_t)~PICOSYSTEM_GARDEN_NODE_VALID_FLAGS) != 0U) ||
 	    (observation->sun_strength < PICOSYSTEM_GARDEN_LIGHT_MINIMUM) ||
 	    (observation->sun_ray_step_x_q4 < -PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4) ||
 	    (observation->sun_ray_step_x_q4 > PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4) ||
@@ -315,7 +317,7 @@ int picosystem_garden_agent_baseline_propose(
 	if (observation == NULL) {
 		return -EINVAL;
 	}
-	if (!observation_is_valid(observation)) {
+	if (!picosystem_garden_agent_observation_is_valid(observation)) {
 		return -ERANGE;
 	}
 	if (observation->depth >= observation->maximum_depth) {
@@ -357,7 +359,7 @@ int picosystem_garden_agent_decide(const struct picosystem_garden_agent_policy *
 	    (memory == NULL)) {
 		return -EINVAL;
 	}
-	if (!observation_is_valid(observation)) {
+	if (!picosystem_garden_agent_observation_is_valid(observation)) {
 		return -ERANGE;
 	}
 

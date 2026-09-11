@@ -7,6 +7,7 @@
 #ifndef PICOSYSTEM_GARDEN_AGENT_H_
 #define PICOSYSTEM_GARDEN_AGENT_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "garden_world.h"
@@ -128,6 +129,10 @@ struct picosystem_garden_agent_policy {
 	const void *context;
 	enum picosystem_garden_agent_arbitration arbitration;
 };
+
+/* Validate the complete, versioned observation contract without mutating it. */
+bool picosystem_garden_agent_observation_is_valid(
+	const struct picosystem_garden_agent_observation *observation);
 
 /* Observe one active tip without mutating the world. */
 int picosystem_garden_agent_observe_tip(const struct picosystem_garden_world *world,

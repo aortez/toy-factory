@@ -156,8 +156,42 @@ Terminal and physically blocked tips bid to finish, and low-light proposals may
 wait to protect maintenance reserves. Any callback error or invalid proposal
 rejects the whole plant decision without leaking private state. The world
 remains the sole authority for resource costs and graph mutation, so this same
-path can later host a quantized learned policy without creating a second
-simulation.
+path hosts quantized learned policies without creating a second simulation.
+
+### Integer neural policy contract
+
+Neural inference consumes a separately versioned signed-byte feature contract:
+32 common plant/environment features plus nine features for each of up to five
+growth candidates. The common vector includes species and tissue identity,
+shape and depth, energy/water reserve margins, resource income, stress, light,
+sun direction, morphology totals, selected genome traits, and the existing
+eight lifetime-memory bytes. Candidate rows encode direction, light, moisture,
+clearance, bounds, availability, and nearby own/foreign tissue. Unused fixed
+capacity remains zero.
+
+The 1,204-byte position-independent model is immutable data suitable for XIP
+flash. Its header locks a magic value, model version, feature version, exact
+size, and three bounded scaling shifts. Signed 8-bit weights feed a 16-unit ReLU
+plant layer, three action logits, a tip-arbitration priority, eight next-memory
+outputs, and an eight-unit shared candidate layer. Accumulators and biases are
+signed 32-bit integers; explicit division gives identical negative-value
+rounding on the host and RP2040. Model validation rejects incompatible headers,
+unsafe biases, and shifts before inference.
+
+The candidate layer combines plant context with each candidate before scoring
+it. This nonlinearity matters: in a purely linear shared scorer, the plant term
+would be the same for every direction and cancel during ranking. Here the same
+light reading can matter differently to a shoot than to a root. Equal scores
+retain a deterministic nonce-rotated order. Maximum-depth and physically
+blocked tips are hard world-contract envelopes around model output, and the
+world still validates every proposal before committing state.
+
+A five-candidate shoot bid performs at most 1,872 multiply-accumulates; a
+three-candidate root bid performs 1,456. Inference uses only small call-local
+vectors and the existing eight bytes of persistent plant memory. The included
+fixed reference model is intentionally untrained: it exercises the full ABI and
+provides a reproducible evaluator control while the adaptive policy remains the
+normal Garden policy.
 
 Every accepted selected decision increments saturating per-plant and cumulative
 telemetry: extend/wait/finish, root/shoot arbitration wins, root/shoot extend
@@ -167,8 +201,9 @@ when that plant is reclaimed, while the world aggregate survives reclamation.
 These diagnostics are deliberately excluded from the authoritative hash, so
 observability does not redefine simulation identity.
 
-A fixed-capacity host evaluator runs the original baseline and normal adaptive
-policies against identical seeds in unassisted, irrigated, and crowded plots.
+A fixed-capacity host evaluator runs the original baseline, normal adaptive,
+and untrained neural-reference policies against identical seeds in unassisted,
+irrigated, and crowded plots.
 It reports survival as the first gate, established reproduction as the second,
 then descendant plant-time, generation depth, resources, memory, and decision
 measurements rather than imposing one fitness function. Persistent lineage IDs

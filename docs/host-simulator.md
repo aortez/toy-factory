@@ -66,16 +66,17 @@ generation-1 offspring through the ordinary seed bank and germination path.
 
 ## Garden policy evaluation
 
-Compare the baseline and adaptive policies over a deterministic batch with:
+Compare the baseline, adaptive, and fixed neural-reference policies over a
+deterministic batch with:
 
 ```sh
 make host-evaluate-garden
 ```
 
-The default run gives both policies the same eight derived seeds in each of
-three scenarios: an unassisted three-plant plot, that plot with periodic
+The default run gives all three policies the same eight derived seeds in each
+of three scenarios: an unassisted three-plant plot, that plot with periodic
 irrigation, and a periodically irrigated crowded five-plant plot. Irrigation
-uses a fixed whole-plot pattern independent of current plants and seeds, so both
+uses a fixed whole-plot pattern independent of current plants and seeds, so all
 policies receive exactly the same external water while generational success
 remains observable. Each trial advances 7,680 ticks, or two complete Garden
 day/night cycles.
@@ -88,6 +89,12 @@ generation, recurrent-memory use, and decision telemetry. The evaluator also
 tracks every observed lineage back to its initial founder and partitions
 survival, descendant plant-time, established offspring, mortality, maximum
 generation, and extinction by both founder and species.
+
+The neural reference is deliberately untrained. It is a stable executable
+fixture for the feature contract, recurrent inference, action head, and
+context-sensitive candidate scorer—not a claimed improvement over the adaptive
+policy. That distinction gives later search runs a fixed control and makes poor
+weights visible in the same survival-first report as useful ones.
 
 The report treats evaluation as ordered gates rather than one weighted score:
 

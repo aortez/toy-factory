@@ -36,8 +36,9 @@ path:
   reversible stress, death/decomposition, node reclamation, compact heritable
   genomes, dormant seeds, natural germination, eight-byte lifetime agent memory,
   a replaceable pure growth-policy boundary, an adaptive recurrent policy with
-  plant-level all-tip arbitration, bounded decision telemetry, a deterministic
-  host-side policy evaluator, and a toggleable auto-gardener;
+  plant-level all-tip arbitration, a versioned integer-only neural policy ABI,
+  bounded decision telemetry, a deterministic host-side policy evaluator, and a
+  toggleable auto-gardener;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -515,9 +516,9 @@ uses a separate optimized build to compare initial, growing, and established
 Garden checkpoints. It writes JSON timing, memory, raster-work, and 30/10/4 Hz
 frame-delta data to `artifacts/garden-host-profile.json`. Host time is useful
 for relative A/B measurements; device measurements remain authoritative.
-`make host-evaluate-garden` runs the baseline and adaptive policies with matched
-seeds through unassisted, irrigated, and crowded scenarios. It prints a compact
-comparison and preserves raw counts and resource integrals in
+`make host-evaluate-garden` runs the baseline, adaptive, and untrained neural-reference
+policies with matched seeds through unassisted, irrigated, and crowded scenarios.
+It prints a compact comparison and preserves raw counts and resource integrals in
 `artifacts/garden-evaluation.json`. Survival and extinction are reported before
 reproductive success; established offspring must survive a maintenance period
 with an active leaf and no stress. Descendant plant-time, death causes,
@@ -663,8 +664,9 @@ generation and also runs native garden-world moisture/light, capacity, growth,
 tool, pruning, maintenance, stress recovery, mortality, reclamation,
 seed production, mutation, dormancy, germination, expiration, lineage,
 adaptive resource allocation, recurrent-memory saturation, transactional
-all-tip arbitration, decision-telemetry accounting, matched-seed policy
-evaluation, auto-gardener soak, and replay tests; granular-world
+all-tip arbitration, neural feature/ABI/inference validation, deterministic
+candidate ranking, decision-telemetry accounting, matched-seed policy evaluation,
+auto-gardener soak, and replay tests; granular-world
 configuration, 512-grain
 capacity and wide-index handling, conservative contact-length approximation,
 containment, flip, work-bound, and deterministic replay
