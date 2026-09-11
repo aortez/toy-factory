@@ -13,7 +13,7 @@ contracts defined here.
 ## Hardware and scheduling budget
 
 The recommended fast build uses 255,580 bytes of the linker's 255 KiB Zephyr
-RAM region and 259,680 bytes of flash. Its 115,200-byte framebuffer and
+RAM region and 260,964 bytes of flash. Its 115,200-byte framebuffer and
 3,840-byte display transfer buffer dominate that footprint. The fixed-capacity
 rigid physics world is 22,636 bytes, including its 1,024-byte scratch grid, eight
 slots each for distance, revolute, and prismatic joints and box sensors, two

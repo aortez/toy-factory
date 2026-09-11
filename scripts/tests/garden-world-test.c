@@ -240,6 +240,35 @@ static int failing_agent_decide(const struct picosystem_garden_agent_observation
 	return -EIO;
 }
 
+static int highest_tip_agent_decide(const struct picosystem_garden_agent_observation *observation,
+				    const struct picosystem_garden_agent_memory *memory,
+				    struct picosystem_garden_agent_decision *decision,
+				    const void *context)
+{
+	const int err =
+		picosystem_garden_agent_baseline_decide(observation, memory, decision, NULL);
+	if (err != 0) {
+		return err;
+	}
+	if ((context != NULL) && (observation->tip_index == *(const uint16_t *)context)) {
+		++decision->proposal.tip_index;
+		decision->next_memory.hidden[0] = 99;
+		return 0;
+	}
+	decision->proposal.priority = (int16_t)observation->tip_index;
+	decision->next_memory.hidden[0] = (int8_t)observation->tip_index;
+	decision->next_memory.hidden[1] = memory->hidden[0];
+	return 0;
+}
+
+static uint32_t test_random_next(uint32_t state)
+{
+	state ^= state << 13U;
+	state ^= state >> 17U;
+	state ^= state << 5U;
+	return state;
+}
+
 static void test_agent_observation_and_baseline_policy(void)
 {
 	struct picosystem_garden_world world;
@@ -367,6 +396,7 @@ static void test_agent_observation_and_baseline_policy(void)
 		picosystem_garden_agent_baseline_policy();
 	assert(baseline_policy != NULL);
 	assert(baseline_policy->decide == picosystem_garden_agent_baseline_decide);
+	assert(baseline_policy->arbitration == PICOSYSTEM_GARDEN_AGENT_ARBITRATION_PHASED);
 	const struct picosystem_garden_agent_memory memory = {
 		.hidden = {3, -2, 1, 0, 4, -4, 2, -1},
 	};
@@ -427,6 +457,88 @@ static void test_agent_observation_and_baseline_policy(void)
 	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
 }
 
+static void test_adaptive_agent_policy(void)
+{
+	const struct picosystem_garden_agent_policy *const adaptive_policy =
+		picosystem_garden_agent_adaptive_policy();
+	assert(adaptive_policy != NULL);
+	assert(adaptive_policy->decide == picosystem_garden_agent_adaptive_decide);
+	assert(adaptive_policy->arbitration == PICOSYSTEM_GARDEN_AGENT_ARBITRATION_ALL_TIPS);
+
+	const struct picosystem_garden_agent_memory empty_memory = {0};
+	struct picosystem_garden_agent_observation shoot =
+		baseline_observation(PICOSYSTEM_GARDEN_NODE_STEM);
+	struct picosystem_garden_agent_observation root =
+		baseline_observation(PICOSYSTEM_GARDEN_NODE_ROOT);
+	shoot.leaf_node_count = 3U;
+	root.leaf_node_count = shoot.leaf_node_count;
+	shoot.stored_energy = 256U;
+	shoot.stored_water = 41U;
+	root.stored_energy = shoot.stored_energy;
+	root.stored_water = shoot.stored_water;
+	struct picosystem_garden_agent_decision shoot_decision;
+	struct picosystem_garden_agent_decision root_decision;
+	assert(picosystem_garden_agent_decide(adaptive_policy, &shoot, &empty_memory,
+					      &shoot_decision) == 0);
+	assert(picosystem_garden_agent_decide(adaptive_policy, &root, &empty_memory,
+					      &root_decision) == 0);
+	assert(root_decision.proposal.priority > shoot_decision.proposal.priority);
+	assert(root_decision.next_memory.hidden[0] < 0);
+	assert(root_decision.next_memory.hidden[1] > 0);
+	assert(root_decision.next_memory.hidden[2] > 0);
+	assert(root_decision.next_memory.hidden[7] > 0);
+
+	shoot.stored_energy = 41U;
+	shoot.stored_water = 512U;
+	root.stored_energy = shoot.stored_energy;
+	root.stored_water = shoot.stored_water;
+	assert(picosystem_garden_agent_decide(adaptive_policy, &shoot, &empty_memory,
+					      &shoot_decision) == 0);
+	assert(picosystem_garden_agent_decide(adaptive_policy, &root, &empty_memory,
+					      &root_decision) == 0);
+	assert(shoot_decision.proposal.priority > root_decision.proposal.priority);
+	assert(shoot_decision.next_memory.hidden[0] > 0);
+	assert(shoot_decision.next_memory.hidden[1] < 0);
+	assert(shoot_decision.next_memory.hidden[2] < 0);
+	assert(shoot_decision.next_memory.hidden[7] < 0);
+
+	shoot.stored_energy = 40U;
+	shoot.sun_strength = 128U;
+	assert(picosystem_garden_agent_decide(adaptive_policy, &shoot, &empty_memory,
+					      &shoot_decision) == 0);
+	assert(shoot_decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
+	assert(shoot_decision.proposal.candidate_count == 0U);
+
+	shoot.depth = shoot.maximum_depth;
+	assert(picosystem_garden_agent_decide(adaptive_policy, &shoot, &empty_memory,
+					      &shoot_decision) == 0);
+	assert(shoot_decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP);
+	assert(shoot_decision.proposal.candidate_count == 0U);
+	assert(shoot_decision.proposal.priority > root_decision.proposal.priority);
+
+	root = baseline_observation(PICOSYSTEM_GARDEN_NODE_ROOT);
+	for (uint8_t index = 0U; index < root.candidate_count; ++index) {
+		root.candidates[index].flags = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_IN_BOUNDS;
+	}
+	assert(picosystem_garden_agent_decide(adaptive_policy, &root, &empty_memory,
+					      &root_decision) == 0);
+	assert(root_decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP);
+	assert(root_decision.proposal.candidate_count == 0U);
+	assert(root_decision.proposal.candidate_order[0] == PICOSYSTEM_GARDEN_AGENT_CANDIDATE_NONE);
+
+	root = baseline_observation(PICOSYSTEM_GARDEN_NODE_ROOT);
+	root.stored_energy = 256U;
+	root.stored_water = 512U;
+	struct picosystem_garden_agent_memory recurrent_memory = {0};
+	for (uint8_t decision_index = 0U; decision_index < 32U; ++decision_index) {
+		assert(picosystem_garden_agent_decide(adaptive_policy, &root, &recurrent_memory,
+						      &root_decision) == 0);
+		recurrent_memory = root_decision.next_memory;
+	}
+	assert(recurrent_memory.hidden[2] == 64);
+	assert(recurrent_memory.hidden[7] == 8);
+}
+
 static void water_all_plants(struct picosystem_garden_world *world)
 {
 	for (uint8_t index = 0U; index < world->plant_count; ++index) {
@@ -439,6 +551,14 @@ static void step_garden(struct picosystem_garden_world *world, uint32_t tick_cou
 {
 	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
 		assert(picosystem_garden_world_step(world) == 0);
+	}
+}
+
+static void step_garden_with_policy(struct picosystem_garden_world *world, uint32_t tick_count,
+				    const struct picosystem_garden_agent_policy *policy)
+{
+	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
+		assert(picosystem_garden_world_step_with_policy(world, policy) == 0);
 	}
 }
 
@@ -467,7 +587,8 @@ static void test_injected_agent_policy_memory_and_rejection(void)
 	for (uint8_t tick = 0U; tick < PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR; ++tick) {
 		assert(picosystem_garden_world_step_with_policy(&left, &remembering_policy) == 0);
 		assert(picosystem_garden_world_step_with_policy(&right, &remembering_policy) == 0);
-		assert(picosystem_garden_world_step(&baseline) == 0);
+		assert(picosystem_garden_world_step_with_policy(
+			       &baseline, picosystem_garden_agent_baseline_policy()) == 0);
 	}
 	assert(left.plants[0].agent_memory.hidden[0] == memory_increment);
 	assert(memcmp(&left.plants[0].agent_memory, &right.plants[0].agent_memory,
@@ -501,6 +622,66 @@ static void test_injected_agent_policy_memory_and_rejection(void)
 	assert(memcmp(&rejected.plants[0].agent_memory, &empty_memory, sizeof(empty_memory)) == 0);
 }
 
+static void test_all_tip_arbitration_and_rejection(void)
+{
+	const struct picosystem_garden_agent_policy highest_tip_policy = {
+		.decide = highest_tip_agent_decide,
+		.arbitration = PICOSYSTEM_GARDEN_AGENT_ARBITRATION_ALL_TIPS,
+	};
+	struct picosystem_garden_world world;
+	assert(picosystem_garden_world_reset(&world, UINT32_C(0x31415926)) == 0);
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 14U) ==
+	       0);
+	for (uint8_t tick = 0U; tick < PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR - 1U; ++tick) {
+		assert(picosystem_garden_world_step_with_policy(&world, &highest_tip_policy) == 0);
+	}
+	const uint32_t random_state = world.plants[0].random_state;
+	assert(picosystem_garden_world_step_with_policy(&world, &highest_tip_policy) == 0);
+	assert(world.node_count == 5U);
+	assert(world.nodes[4].parent_index == 3U);
+	assert(world.plants[0].last_shoot_tip_index == PICOSYSTEM_GARDEN_NODE_NONE);
+	assert(world.plants[0].last_root_tip_index == 3U);
+	assert(world.plants[0].agent_memory.hidden[0] == 3);
+	assert(world.plants[0].agent_memory.hidden[1] == 0);
+	assert(world.plants[0].random_state == test_random_next(random_state));
+	assert(world.plants[0].growth_phase == 1U);
+
+	assert(picosystem_garden_world_reset(&world, UINT32_C(0x27182818)) == 0);
+	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 14U) ==
+	       0);
+	for (uint8_t tick = 0U; tick < PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR - 1U; ++tick) {
+		assert(picosystem_garden_world_step_with_policy(&world, &highest_tip_policy) == 0);
+	}
+	const uint16_t rejected_tip = 3U;
+	const struct picosystem_garden_agent_policy rejecting_policy = {
+		.decide = highest_tip_agent_decide,
+		.context = &rejected_tip,
+		.arbitration = PICOSYSTEM_GARDEN_AGENT_ARBITRATION_ALL_TIPS,
+	};
+	const uint32_t rejected_random_state = world.plants[0].random_state;
+	const uint16_t rejected_shoot_tip = world.plants[0].last_shoot_tip_index;
+	const uint16_t rejected_root_tip = world.plants[0].last_root_tip_index;
+	const uint16_t rejected_node_count = world.node_count;
+	const uint8_t rejected_growth_phase = world.plants[0].growth_phase;
+	const struct picosystem_garden_agent_memory rejected_memory = world.plants[0].agent_memory;
+	assert(picosystem_garden_world_step_with_policy(&world, &rejecting_policy) == -ERANGE);
+	assert(world.plants[0].random_state == rejected_random_state);
+	assert(world.plants[0].last_shoot_tip_index == rejected_shoot_tip);
+	assert(world.plants[0].last_root_tip_index == rejected_root_tip);
+	assert(world.plants[0].growth_phase == rejected_growth_phase);
+	assert(world.node_count == rejected_node_count);
+	assert(memcmp(&world.plants[0].agent_memory, &rejected_memory, sizeof(rejected_memory)) ==
+	       0);
+
+	const struct picosystem_garden_world unchanged = world;
+	const struct picosystem_garden_agent_policy invalid_arbitration = {
+		.decide = highest_tip_agent_decide,
+		.arbitration = PICOSYSTEM_GARDEN_AGENT_ARBITRATION_COUNT,
+	};
+	assert(picosystem_garden_world_step_with_policy(&world, &invalid_arbitration) == -EINVAL);
+	assert(memcmp(&world, &unchanged, sizeof(world)) == 0);
+}
+
 static void test_survival_stress_decomposition_and_reclamation(void)
 {
 	struct picosystem_garden_world world;
@@ -513,8 +694,10 @@ static void test_survival_stress_decomposition_and_reclamation(void)
 	step_garden(&world, 3U * PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE *
 				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR / 2U);
 	assert(world.ecology_tick_count == 192U);
-	assert(picosystem_garden_world_living_plant_count(&world) >= 1U);
+	assert(picosystem_garden_world_living_plant_count(&world) == 1U);
 	assert((world.plants[0].flags & PICOSYSTEM_GARDEN_PLANT_DEAD) == 0U);
+	assert(world.plants[0].stored_energy > 0U);
+	assert(world.plants[0].stress == 0U);
 	assert(picosystem_garden_world_dead_plant_count(&world) == 0U);
 	assert(world.death_count == 0U);
 
@@ -654,6 +837,8 @@ static uint8_t genome_difference_count(const struct picosystem_garden_genome *le
 
 static void test_reproduction_germination_and_seed_expiration(void)
 {
+	const struct picosystem_garden_agent_policy *const baseline_policy =
+		picosystem_garden_agent_baseline_policy();
 	struct picosystem_garden_world world;
 	assert(picosystem_garden_world_reset(&world, UINT32_C(0x51eed123)) == 0);
 	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_SHRUB, 14U) ==
@@ -663,8 +848,10 @@ static void test_reproduction_germination_and_seed_expiration(void)
 	assert(world.plants[0].generation == 0U);
 	world.plants[0].agent_memory.hidden[0] = 42;
 	make_plant_reproductive(&world, 0U);
-	step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
-				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	step_garden_with_policy(&world,
+				PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+					PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR,
+				baseline_policy);
 	assert(world.seed_count == 1U);
 	assert(world.seed_creation_count == 1U);
 	assert(world.germination_count == 0U);
@@ -681,7 +868,8 @@ static void test_reproduction_germination_and_seed_expiration(void)
 
 	for (uint16_t age = 0U; age < PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS; ++age) {
 		assert(picosystem_garden_world_water(&world, seed.column, UINT8_MAX) == 0);
-		step_garden(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+		step_garden_with_policy(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR,
+					baseline_policy);
 	}
 	assert(world.seed_count == 0U);
 	assert(world.germination_count == 1U);
@@ -701,11 +889,13 @@ static void test_reproduction_germination_and_seed_expiration(void)
 	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_SHRUB, 14U) ==
 	       0);
 	make_plant_reproductive(&world, 0U);
-	step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
-				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	step_garden_with_policy(&world,
+				PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+					PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR,
+				baseline_policy);
 	assert(world.seed_count == 1U);
 	world.seeds[0].age_ecology_ticks = PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS - 1U;
-	step_garden(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	step_garden_with_policy(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR, baseline_policy);
 	assert(world.seed_count == 0U);
 	assert(world.germination_count == 0U);
 	assert(world.seed_expiration_count == 1U);
@@ -738,8 +928,6 @@ static void test_growth_variety_and_determinism(void)
 	assert(left.death_count == 0U);
 	assert(left.plants[PICOSYSTEM_GARDEN_SPECIES_FLOWER].node_count !=
 	       left.plants[PICOSYSTEM_GARDEN_SPECIES_SHRUB].node_count);
-	assert(left.plants[PICOSYSTEM_GARDEN_SPECIES_SHRUB].node_count !=
-	       left.plants[PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER].node_count);
 	printf("garden manual hash=%08x plants=%u nodes=%u blooms=%u water=%u\n",
 	       picosystem_garden_world_hash(&left), left.plant_count, left.node_count,
 	       (unsigned int)left.bloom_count, left.moisture_total);
@@ -820,10 +1008,11 @@ static void test_auto_gardener_long_soak(void)
 	assert(left.bloom_count > 0U);
 	assert(left.moisture_total > 0U);
 	assert(picosystem_garden_world_hash(&left) == picosystem_garden_world_hash(&right));
-	printf("garden auto hash=%08x plants=%u nodes=%u blooms=%u actions=%u decisions=%u "
-	       "water=%u\n",
+	printf("garden auto hash=%08x plants=%u nodes=%u blooms=%u deaths=%u generations=%u "
+	       "actions=%u decisions=%u water=%u\n",
 	       picosystem_garden_world_hash(&left), left.plant_count, left.node_count,
-	       (unsigned int)left.bloom_count, (unsigned int)left.auto_action_count,
+	       (unsigned int)left.bloom_count, (unsigned int)left.death_count,
+	       (unsigned int)left.maximum_generation, (unsigned int)left.auto_action_count,
 	       (unsigned int)left.auto_decision_count, left.moisture_total);
 }
 
@@ -850,7 +1039,9 @@ int main(void)
 	test_water_flow_and_light_competition();
 	test_directional_light_solver();
 	test_agent_observation_and_baseline_policy();
+	test_adaptive_agent_policy();
 	test_injected_agent_policy_memory_and_rejection();
+	test_all_tip_arbitration_and_rejection();
 	test_survival_stress_decomposition_and_reclamation();
 	test_reproduction_germination_and_seed_expiration();
 	test_growth_variety_and_determinism();

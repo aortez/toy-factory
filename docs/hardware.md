@@ -66,10 +66,10 @@ one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
 updates crossed the 16.667 ms budget. The 320-grain population remains normal
 to preserve headroom for additional gameplay.
 
-The current image, including the Garden agent boundary, uses 255,580 bytes of
-the 255 KiB Zephyr RAM region and 259,680 bytes of flash, leaving 5,540 bytes of
+The current image, including the adaptive Garden policy, uses 255,580 bytes of
+the 255 KiB Zephyr RAM region and 260,964 bytes of flash, leaving 5,540 bytes of
 linker RAM plus the separately reserved 8 KiB core-1 mailbox/stack area. The
-conservative image uses 222,956 bytes of Zephyr RAM and 253,904 bytes of flash.
+conservative image uses 222,956 bytes of Zephyr RAM and 255,188 bytes of flash.
 The fixed granular capacity is 512 particles, the fixed Garden capacity is
 eight plants, 256 nodes, and eight dormant seeds, the immutable render snapshot
 is 1,664 bytes, and the tagged game-world and snapshot unions avoid allocating
@@ -87,24 +87,28 @@ neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
 
 ## Current Garden validation
 
-With resource maintenance, directional light, and reproduction, the mixed
-manual/automatic sequence reaches tick 930 at state hash `c7492628` and
-framebuffer CRC-32 `061d06d1`. Continuing the exact replay to tick 3,771 reaches
-190 nodes after one death and 34-node reclamation, at hash `481cbd42` and CRC-32
-`20d36204`. An unattended lifecycle replay reaches tick 3,330 with two living
-plants, one visibly decomposing plant, and one reclaimed 33-node plant at hash
-`67618a4a` and CRC-32 `2556ea8f`. A longer automatic fixture reaches tick 8,430
-with seven produced seeds, two germinations, two expirations, four bounded
-mutations, and two current generation-1 offspring at hash `fdd48ef6` and CRC-32
-`3d456476`. UBSan host full/damage rendering reproduces all four checkpoints;
-the PIM559 also reproduced the complete generation fixture's final hash and
-framebuffer CRC exactly.
+With adaptive recurrent allocation and plant-level all-tip arbitration, the
+mixed manual/automatic sequence reaches tick 930 with five plants, 137 nodes,
+four blooms, and one dormant seed at state hash `dc82ca95` and framebuffer
+CRC-32 `c96704e4`. Continuing the exact replay to tick 3,771 reaches five
+healthy plants, 189 nodes, 15 blooms, and five dormant seeds at hash `3da95d0b`
+and CRC-32 `37bcf2aa`. An unattended lifecycle replay reaches tick 4,530 with
+two living plants, one visibly decomposing plant, two cumulative deaths, and
+one reclaimed 25-node plant at hash `43930afa` and CRC-32 `5c1d934a`.
 
-After that device replay, an 899-tick live reproduction window held 60.0 Hz
-with no skipped or over-budget updates. Complete updates averaged 0.853 ms and
-peaked at 6.927 ms; world/model work averaged 0.374 ms and peaked at 6.369 ms.
-Full-frame presentation held 29.5 fps with 11.839/12.712 ms last/maximum core-1
-raster time and an 18.464 ms display transfer. Main and renderer stack
+A longer fixture delays intervention until ecological pressure has caused
+turnover, then enables automation. At tick 8,430 it has six living plants,
+seven produced seeds, one germination, three expirations, six bounded mutations,
+and one current generation-one offspring at hash `cf48b126` and CRC-32
+`c836f83a`. UBSan host full/damage rendering reproduces all four checkpoints;
+the PIM559 also reproduced the mixed and complete generation fixtures' final
+hashes and framebuffer CRCs exactly.
+
+After that device replay, a 412-tick live reproduction window held 60.0 Hz with
+no skipped or over-budget updates. Complete updates averaged 0.890 ms and peaked
+at 10.851 ms; world/model work averaged 0.452 ms and peaked at 10.268 ms.
+Full-frame presentation held 29.3 fps with 11.742/12.055 ms last/maximum core-1
+raster time and an 18.372 ms display transfer. Main and renderer stack
 high-water marks were 3,836/5,120 and 3,196/5,120 bytes.
 
 A live device window after the earlier lifecycle replay held 60.0 Hz with no

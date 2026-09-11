@@ -1184,9 +1184,22 @@ static int extend_tip(struct picosystem_garden_world *world, uint8_t plant_index
 	return -ENOSPC;
 }
 
-static int grow_tip(struct picosystem_garden_world *world, uint8_t plant_index,
-		    enum picosystem_garden_node_kind kind,
-		    const struct picosystem_garden_agent_policy *policy, bool *advance_phase)
+static int execute_agent_decision(struct picosystem_garden_world *world, uint8_t plant_index,
+				  const struct picosystem_garden_agent_observation *observation,
+				  const struct picosystem_garden_agent_decision *decision)
+{
+	if (decision->proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT) {
+		return -EAGAIN;
+	}
+	if (decision->proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP) {
+		return finish_tip(world, observation->tip_index);
+	}
+	return extend_tip(world, plant_index, observation, &decision->proposal);
+}
+
+static int grow_phased_tip(struct picosystem_garden_world *world, uint8_t plant_index,
+			   enum picosystem_garden_node_kind kind,
+			   const struct picosystem_garden_agent_policy *policy, bool *advance_phase)
 {
 	*advance_phase = false;
 	struct picosystem_garden_plant *const plant = &world->plants[plant_index];
@@ -1220,13 +1233,69 @@ static int grow_tip(struct picosystem_garden_world *world, uint8_t plant_index,
 	*previous_tip = tip_index;
 	plant->random_state = next_random_state;
 	plant->agent_memory = decision.next_memory;
-	if (decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT) {
-		return -EAGAIN;
+	return execute_agent_decision(world, plant_index, &observation, &decision);
+}
+
+static int grow_best_tip(struct picosystem_garden_world *world, uint8_t plant_index,
+			 const struct picosystem_garden_agent_policy *policy, bool *advance_phase)
+{
+	*advance_phase = false;
+	if (world->node_count == 0U) {
+		*advance_phase = true;
+		return -ENOENT;
 	}
-	if (decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP) {
-		return finish_tip(world, tip_index);
+
+	struct picosystem_garden_plant *const plant = &world->plants[plant_index];
+	const struct picosystem_garden_agent_memory current_memory = plant->agent_memory;
+	uint32_t next_random_state = plant->random_state;
+	const uint32_t decision_nonce = random_next(&next_random_state);
+	const uint16_t start = (uint16_t)(plant->growth_phase % world->node_count);
+	struct picosystem_garden_agent_observation best_observation;
+	struct picosystem_garden_agent_decision best_decision;
+	bool found_tip = false;
+
+	for (uint16_t offset = 0U; offset < world->node_count; ++offset) {
+		const uint16_t tip_index = (uint16_t)((start + offset) % world->node_count);
+		const struct picosystem_garden_node *const tip = &world->nodes[tip_index];
+		if ((tip->plant_index != plant_index) ||
+		    ((tip->flags & PICOSYSTEM_GARDEN_NODE_TIP) == 0U)) {
+			continue;
+		}
+
+		struct picosystem_garden_agent_observation observation;
+		build_agent_observation(world, plant_index, tip_index, decision_nonce,
+					&observation);
+		struct picosystem_garden_agent_decision decision;
+		const int err = picosystem_garden_agent_decide(policy, &observation,
+							       &current_memory, &decision);
+		if (err != 0) {
+			return err;
+		}
+		if (!proposal_is_valid(&observation, &decision.proposal)) {
+			return -ERANGE;
+		}
+		if (!found_tip || (decision.proposal.priority > best_decision.proposal.priority)) {
+			best_observation = observation;
+			best_decision = decision;
+			found_tip = true;
+		}
 	}
-	return extend_tip(world, plant_index, &observation, &decision.proposal);
+
+	if (!found_tip) {
+		*advance_phase = true;
+		return -ENOENT;
+	}
+
+	/* Every bid saw one immutable snapshot; only the winner advances private state. */
+	*advance_phase = true;
+	if (best_observation.tissue_kind == PICOSYSTEM_GARDEN_NODE_STEM) {
+		plant->last_shoot_tip_index = best_observation.tip_index;
+	} else {
+		plant->last_root_tip_index = best_observation.tip_index;
+	}
+	plant->random_state = next_random_state;
+	plant->agent_memory = best_decision.next_memory;
+	return execute_agent_decision(world, plant_index, &best_observation, &best_decision);
 }
 
 static enum picosystem_garden_node_kind
@@ -1275,9 +1344,14 @@ static int grow_plants(struct picosystem_garden_world *world,
 			continue;
 		}
 
-		const enum picosystem_garden_node_kind kind = plant_growth_kind(plant);
 		bool advance_phase;
-		const int err = grow_tip(world, index, kind, policy, &advance_phase);
+		int err;
+		if (policy->arbitration == PICOSYSTEM_GARDEN_AGENT_ARBITRATION_ALL_TIPS) {
+			err = grow_best_tip(world, index, policy, &advance_phase);
+		} else {
+			const enum picosystem_garden_node_kind kind = plant_growth_kind(plant);
+			err = grow_phased_tip(world, index, kind, policy, &advance_phase);
+		}
 		if (!advance_phase && (err != 0)) {
 			return err;
 		}
@@ -1880,14 +1954,14 @@ int picosystem_garden_world_set_auto_gardener(struct picosystem_garden_world *wo
 int picosystem_garden_world_step(struct picosystem_garden_world *world)
 {
 	return picosystem_garden_world_step_with_policy(world,
-							picosystem_garden_agent_baseline_policy());
+							picosystem_garden_agent_adaptive_policy());
 }
 
 int picosystem_garden_world_step_input(struct picosystem_garden_world *world, int8_t horizontal,
 				       int8_t vertical)
 {
 	return picosystem_garden_world_step_input_with_policy(
-		world, horizontal, vertical, picosystem_garden_agent_baseline_policy());
+		world, horizontal, vertical, picosystem_garden_agent_adaptive_policy());
 }
 
 int picosystem_garden_world_step_with_policy(struct picosystem_garden_world *world,
@@ -1900,7 +1974,9 @@ int picosystem_garden_world_step_input_with_policy(
 	struct picosystem_garden_world *world, int8_t horizontal, int8_t vertical,
 	const struct picosystem_garden_agent_policy *policy)
 {
-	if ((policy == NULL) || (policy->decide == NULL) || !world_is_valid(world)) {
+	if ((policy == NULL) || (policy->decide == NULL) ||
+	    ((uint32_t)policy->arbitration >= PICOSYSTEM_GARDEN_AGENT_ARBITRATION_COUNT) ||
+	    !world_is_valid(world)) {
 		return -EINVAL;
 	}
 	const int input_err = update_cursor_input(world, horizontal, vertical);

@@ -92,8 +92,9 @@ and one water unit per eight shoot nodes, rounded up. A failed payment records
 which resource was short and increments plant stress; a successful event heals
 one stress point. Stress reaching eight kills a plant; without a recovery, that
 takes eight seconds. The baseline growth policy keeps a forty-maintenance-period
-reserve during minimum ambient light, allowing a healthy plant to cross the
-normal night instead of spending its reserves on blind growth.
+reserve at minimum ambient light. The adaptive policy starts preserving that
+reserve as daylight fades, allowing a healthy plant to cross the normal night
+instead of spending its reserves on blind growth.
 
 Dead tissue stops collecting resources and growing, changes to a brown palette,
 then disappears from the tips inward over roughly 12--16 seconds. Once every
@@ -114,7 +115,7 @@ Pruning pinches a nearby live shoot tip rather than deleting graph storage. Its
 next segment turns outward, which redirects the visible form without requiring
 a free list or invalidating child indexes.
 
-## Agent boundary
+## Agent boundary and adaptive policy
 
 Growth decisions cross a versioned, fixed-capacity observation/decision
 boundary. A 104-byte observation describes one active tip, its parent-relative
@@ -136,13 +137,26 @@ not heritable: a germinated offspring starts with zero memory while receiving
 its parent-derived genome. Nonzero memory participates in the authoritative
 state hash and is exposed by the host lineage diagnostics.
 
-The original hand-authored policy is the default consumer of this interface.
-It carries memory through unchanged, so existing scene behavior, hashes, and
-framebuffer goldens remain intact. The world still chooses the alternating
-root/shoot opportunity, pays resource costs, and performs every mutation. The
-same injectable boundary now exposes both directional light and survival
-pressure, ready for plant-level recurrent allocation, multiple-tip bidding, or
-a quantized learned policy without creating a second simulation path.
+The original hand-authored policy remains available as an explicit A/B oracle.
+It carries memory through unchanged and uses the original phased root/shoot and
+round-robin tip selection. Normal Garden updates use the adaptive policy. Its
+eight memory channels smooth energy pressure, water pressure, stress, recent
+energy income, recent water income, and local crowding while tracking lifetime
+root/shoot allocation and consecutive choices. Those signals, current
+morphology, inherited shoot bias, shortages, and candidate quality determine a
+bounded integer priority. A three-leaf establishment bias strongly favors shoot
+growth until a seedling can collect useful light.
+
+Adaptive plants use all-tip arbitration: every active root and shoot tip bids
+against the same immutable memory and deterministic random nonce. The world
+scans from a stable rotating origin, resolves equal priorities by that order,
+and commits only the winning decision's memory, random advance, and tip cursor.
+Terminal and physically blocked tips bid to finish, and low-light proposals may
+wait to protect maintenance reserves. Any callback error or invalid proposal
+rejects the whole plant decision without leaking private state. The world
+remains the sole authority for resource costs and graph mutation, so this same
+path can later host a quantized learned policy without creating a second
+simulation.
 
 ## Auto-gardener
 
@@ -188,29 +202,35 @@ tool cycling, pruning, distinct species growth, exact paired replays, healthy
 night survival, reversible resource stress, dry death, graph compaction, twelve
 death/replant cycles without leakage, reproduction costs, single-trait bounded
 mutation, seed dormancy/expiry, germination, parent-child lineage, exact seed
-damage rendering, recurrent-memory carry/reset/hash behavior, injected-policy
-determinism and rejection, and a five-minute automatic soak. The
-mixed sequence fixture waters the plot, plants another flower, enables
-automation, and advances 930 exact ticks to hash `c7492628` and framebuffer
-CRC-32 `061d06d1`. Continuing the same state to tick 3,771 reaches 190 live
-nodes after one 34-node plant has died and been reclaimed, at hash `481cbd42`
-and CRC-32 `20d36204`. A separate unaided lifecycle fixture reaches tick 3,330
-with two living plants, one visibly decomposing plant, and one already reclaimed
-33-node plant at hash `67618a4a` and CRC-32 `2556ea8f`. The generation fixture
-continues through tick 8,430 with seven seeds produced, two germinations, two
-expirations, four mutations, and two living generation-1 offspring. It reaches
-hash `fdd48ef6` and CRC-32 `3d456476`. UBSan host runs reproduce all four
-checkpoints exactly. The PIM559 also reproduced the complete generation
-fixture's final hash and framebuffer CRC exactly.
+damage rendering, recurrent-memory carry/reset/hash behavior, pressure-sensitive
+adaptive choices, memory bounds, shared-input all-tip bidding, winner-only
+commit, injected-policy determinism and rejection, and a five-minute automatic
+soak. The mixed sequence fixture waters the plot, plants another flower,
+enables automation, and advances 930 exact ticks to five plants, 137 nodes,
+four blooms, and one dormant seed at hash `dc82ca95` and framebuffer CRC-32
+`c96704e4`. Continuing the same state to tick 3,771 reaches five healthy plants,
+189 nodes, 15 blooms, and five dormant seeds at hash `3da95d0b` and CRC-32
+`37bcf2aa`.
+
+A separate unaided lifecycle fixture reaches tick 4,530 with two living plants,
+one visibly decomposing plant, two cumulative deaths, and one reclaimed 25-node
+plant at hash `43930afa` and CRC-32 `5c1d934a`. The generation fixture applies
+the same pressure before enabling automation, then continues through tick 8,430
+with six living plants, seven produced seeds, one germination, three expirations,
+six mutations, and one living generation-one offspring. It reaches hash
+`cf48b126` and CRC-32 `c836f83a`. UBSan host runs reproduce all four checkpoints
+exactly. The PIM559 also reproduced the short mixed fixture and complete
+generation fixture's final hashes and framebuffer CRCs exactly.
 
 In a 32-repetition optimized host profile, median ecology steps ranged from
-2.975 to 7.254 microseconds across the three checkpoints, and the slowest
-observed step was 9.919 microseconds. On the PIM559 after the generation replay,
-an 899-tick live window maintained 60.0 Hz with no skipped or over-budget
-updates. Complete updates averaged 0.853 ms and peaked at 6.927 ms; world/model
-work averaged 0.374 ms and peaked at 6.369 ms. Full-frame presentation held
-29.5 fps; the last/maximum core-1 raster times were 11.839/12.712 ms and the
-last display transfer took 18.464 ms.
+6.201 to 8.446 microseconds across the three checkpoints, and the slowest
+observed step was 18.285 microseconds. The established checkpoint's 8.446
+microsecond median is about 16% above the preceding phased-policy baseline. On
+the PIM559 after the generation replay, a 412-tick live window maintained 60.0
+Hz with no skipped or over-budget updates. Complete updates averaged 0.890 ms
+and peaked at 10.851 ms; world/model work averaged 0.452 ms and peaked at 10.268
+ms. Full-frame presentation held 29.3 fps; the last/maximum core-1 raster times
+were 11.742/12.055 ms and the last display transfer took 18.372 ms.
 
 The first Garden-capable image booted on the PIM559, but its Hourglass startup
 run reached 4,956/5,120 bytes on the renderer stack. Adding the larger snapshot
@@ -229,8 +249,8 @@ window maintained 60.0 Hz simulation and 29.6 fps presentation without skipped
 or over-budget updates. Complete updates averaged 0.616 ms and peaked at 3.623
 ms. Mature-scene rasterization took 12.7-13.0 ms and the final DMA transfer took
 18.387 ms, so full-screen presentation—not ecology—is the limiting path. With
-the shared clipped Garden renderer, the fast agent-boundary image uses 255,580
-bytes of Zephyr RAM and 259,680 bytes of flash, leaving 5,540 bytes of linked
+the shared clipped Garden renderer, the fast adaptive-policy image uses 255,580
+bytes of Zephyr RAM and 260,964 bytes of flash, leaving 5,540 bytes of linked
 RAM plus the separately reserved 8 KiB core-1 area.
 
 Physical playtesting confirmed that manual planting, watering, pruning, tool
@@ -250,8 +270,8 @@ pruning still redirects growth instead of freeing arbitrary subtrees. Branches
 use a small set of integer steps, nearby leaves can merge into dense circular
 clusters, and soil moisture is a visibly coarse field. Tool identity is
 communicated primarily by cursor color, with no plant inspection or resource
-overlay. Nutrients, an adaptive recurrent controller, and plant-level action
-arbitration remain future simulation layers. The host profiler reconstructs
+overlay. Nutrients, richer inspection channels, and a quantized learned policy
+remain future simulation layers. The host profiler reconstructs
 initial, growing, and established Gardens and measures model, snapshot, raster,
 primitive-work, framebuffer-delta, and exact semantic damage behavior without
 requiring the PicoSystem.

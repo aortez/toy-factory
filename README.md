@@ -35,7 +35,8 @@ path:
   canopy shadows, planting, watering, pruning, flowering, resource maintenance,
   reversible stress, death/decomposition, node reclamation, compact heritable
   genomes, dormant seeds, natural germination, eight-byte lifetime agent memory,
-  a replaceable pure growth-policy boundary, and a toggleable auto-gardener;
+  a replaceable pure growth-policy boundary, an adaptive recurrent policy with
+  plant-level all-tip arbitration, and a toggleable auto-gardener;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -470,8 +471,9 @@ decomposition, and reclaimed graph storage through the shared host/device
 simulation path.
 
 [`scripts/sequences/garden-generations.json`](scripts/sequences/garden-generations.json)
-extends the automatic garden through seed production, mutation, dormancy,
-germination, and two generations of traceable plant lineage.
+lets an unattended garden experience ecological pressure before enabling the
+auto-gardener, then verifies seed production, mutation, dormancy, germination,
+reclamation, and a traceable generation-one offspring.
 
 The runner holds one exclusive USB connection, pauses and selects the declared
 scene at tick zero, applies each input or exact scene action, and checks the
@@ -649,7 +651,9 @@ framebuffer is allocated.
 generation and also runs native garden-world moisture/light, capacity, growth,
 tool, pruning, maintenance, stress recovery, mortality, reclamation,
 seed production, mutation, dormancy, germination, expiration, lineage,
-auto-gardener soak, and replay tests; granular-world configuration, 512-grain
+adaptive resource allocation, recurrent-memory saturation, transactional
+all-tip arbitration, auto-gardener soak, and replay tests; granular-world
+configuration, 512-grain
 capacity and wide-index handling, conservative contact-length approximation,
 containment, flip, work-bound, and deterministic replay
 tests; rigid-body
@@ -666,7 +670,7 @@ uses the undefined-behavior sanitizer and treats the accepted reset,
 double-action, full-drain, recirculation, and retained Machine Lab replay hashes
 as native goldens.
 The default image uses 222,956 bytes of its 255 KiB Zephyr RAM region (85.38%)
-and 253,904 bytes of flash. This includes the 115,200-byte framebuffer,
+and 255,188 bytes of flash. This includes the 115,200-byte framebuffer,
 3,840-byte transfer buffer, 22,636-byte fixed-capacity rigid physics world with a
 1,024-byte scratch grid, eight slots each for distance, motor/limit-capable
 revolute and prismatic joints and box sensors, two 12-particle ropes, bounded
@@ -678,7 +682,7 @@ workspace, two 1,664-byte
 render snapshots, 5,120-byte main
 and 5,120-byte renderer stacks, a 5,120-byte shell stack, display-profile result
 storage, and a 1,024-byte shell TX ring. The fast image uses 255,580 bytes of
-that region (97.88%) and 259,680 bytes of flash. It keeps the rigid-physics and
+that region (97.88%) and 260,964 bytes of flash. It keeps the rigid-physics and
 renderer hot paths in SRAM while the granular solver remains in XIP flash, and
 both images route compiler integer division through the RP2040's interrupt-safe
 hardware-divider wrappers. Both images also reserve

@@ -35,6 +35,14 @@ enum picosystem_garden_agent_action {
 	PICOSYSTEM_GARDEN_AGENT_ACTION_COUNT,
 };
 
+enum picosystem_garden_agent_arbitration {
+	/* Preserve the original root/shoot cadence and round-robin tip selection. */
+	PICOSYSTEM_GARDEN_AGENT_ARBITRATION_PHASED,
+	/* Evaluate every active tip against one memory snapshot and choose one winner. */
+	PICOSYSTEM_GARDEN_AGENT_ARBITRATION_ALL_TIPS,
+	PICOSYSTEM_GARDEN_AGENT_ARBITRATION_COUNT,
+};
+
 /* One canonical growth direction and the resources available at its endpoint. */
 struct picosystem_garden_agent_candidate {
 	int8_t delta_x;
@@ -118,6 +126,7 @@ typedef int (*picosystem_garden_agent_decide_fn)(
 struct picosystem_garden_agent_policy {
 	picosystem_garden_agent_decide_fn decide;
 	const void *context;
+	enum picosystem_garden_agent_arbitration arbitration;
 };
 
 /* Observe one active tip without mutating the world. */
@@ -143,6 +152,13 @@ int picosystem_garden_agent_baseline_decide(
 	const struct picosystem_garden_agent_memory *memory,
 	struct picosystem_garden_agent_decision *decision, const void *context);
 
+/* Balance resource pressure, plant form, and recent choices across every active tip. */
+int picosystem_garden_agent_adaptive_decide(
+	const struct picosystem_garden_agent_observation *observation,
+	const struct picosystem_garden_agent_memory *memory,
+	struct picosystem_garden_agent_decision *decision, const void *context);
+
 const struct picosystem_garden_agent_policy *picosystem_garden_agent_baseline_policy(void);
+const struct picosystem_garden_agent_policy *picosystem_garden_agent_adaptive_policy(void);
 
 #endif /* PICOSYSTEM_GARDEN_AGENT_H_ */
