@@ -114,7 +114,8 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add deterministic moving directional light over the canopy grid.
 - [x] Add resource maintenance, mortality, decomposition, and node reclamation.
 - [x] Add bounded heritable reproduction, seed dormancy, germination, and lineage.
-- [ ] Add a replaceable recurrent plant policy.
+- [x] Add fixed lifetime memory and a replaceable pure plant-policy callback.
+- [ ] Add an adaptive recurrent plant policy and plant-level action arbitration.
 
 ## 8. Host simulation
 

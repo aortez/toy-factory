@@ -40,6 +40,7 @@
 #define PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS       256U
 #define PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN          (-2)
 #define PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX          2
+#define PICOSYSTEM_GARDEN_AGENT_MEMORY_WIDTH        8U
 #define PICOSYSTEM_GARDEN_AUTO_CURSOR_TICK_DIVISOR  4U
 #define PICOSYSTEM_GARDEN_CURSOR_REPEAT_DELAY_TICKS 10U
 #define PICOSYSTEM_GARDEN_CURSOR_REPEAT_RATE_TICKS  4U
@@ -114,6 +115,11 @@ struct picosystem_garden_genome {
 	int8_t dispersal;
 };
 
+/* Opaque lifetime memory owned by the authoritative world, never inherited. */
+struct picosystem_garden_agent_memory {
+	int8_t hidden[PICOSYSTEM_GARDEN_AGENT_MEMORY_WIDTH];
+};
+
 struct picosystem_garden_plant {
 	uint32_t random_state;
 	uint32_t lineage_id;
@@ -128,6 +134,7 @@ struct picosystem_garden_plant {
 	uint16_t offspring_count;
 	uint16_t generation;
 	struct picosystem_garden_genome genome;
+	struct picosystem_garden_agent_memory agent_memory;
 	uint8_t base_column;
 	uint8_t growth_cooldown;
 	uint8_t reproduction_cooldown;
@@ -140,6 +147,8 @@ struct picosystem_garden_plant {
 	uint8_t last_energy_income;
 	uint8_t last_water_income;
 };
+
+struct picosystem_garden_agent_policy;
 
 /* Dense fixed-capacity seed bank; entries wait for a viable germination window. */
 struct picosystem_garden_seed {
@@ -227,6 +236,15 @@ int picosystem_garden_world_step(struct picosystem_garden_world *world);
 /* Advance one tick while applying immediate-then-repeating cursor input. */
 int picosystem_garden_world_step_input(struct picosystem_garden_world *world, int8_t horizontal,
 				       int8_t vertical);
+
+/* Advance with a caller-owned pure policy; its context must be immutable. */
+int picosystem_garden_world_step_with_policy(struct picosystem_garden_world *world,
+					     const struct picosystem_garden_agent_policy *policy);
+
+/* Apply cursor input and a caller-owned policy in one authoritative tick. */
+int picosystem_garden_world_step_input_with_policy(
+	struct picosystem_garden_world *world, int8_t horizontal, int8_t vertical,
+	const struct picosystem_garden_agent_policy *policy);
 
 const struct picosystem_garden_node *
 picosystem_garden_world_node_at(const struct picosystem_garden_world *world, size_t index);

@@ -17,6 +17,7 @@
 #include <string.h>
 
 #define GARDEN_HASH_VERSION                      UINT32_C(4)
+#define GARDEN_AGENT_MEMORY_HASH_TAG             UINT32_C(0x4d454d31)
 #define GARDEN_DEFAULT_RANDOM_SEED               UINT32_C(0x746f7921)
 #define GARDEN_FNV1A_OFFSET_BASIS                UINT32_C(2166136261)
 #define GARDEN_FNV1A_PRIME                       UINT32_C(16777619)
@@ -1184,38 +1185,48 @@ static int extend_tip(struct picosystem_garden_world *world, uint8_t plant_index
 }
 
 static int grow_tip(struct picosystem_garden_world *world, uint8_t plant_index,
-		    enum picosystem_garden_node_kind kind)
+		    enum picosystem_garden_node_kind kind,
+		    const struct picosystem_garden_agent_policy *policy, bool *advance_phase)
 {
+	*advance_phase = false;
 	struct picosystem_garden_plant *const plant = &world->plants[plant_index];
 	uint16_t *const previous_tip = (kind == PICOSYSTEM_GARDEN_NODE_STEM)
 					       ? &plant->last_shoot_tip_index
 					       : &plant->last_root_tip_index;
 	const uint16_t tip_index = find_next_tip(world, plant_index, kind, *previous_tip);
 	if (tip_index == PICOSYSTEM_GARDEN_NODE_NONE) {
+		*advance_phase = true;
 		return -ENOENT;
 	}
-	*previous_tip = tip_index;
 
 	struct picosystem_garden_agent_observation observation;
 	build_agent_observation(world, plant_index, tip_index, 0U, &observation);
+	uint32_t next_random_state = plant->random_state;
 	if (observation.depth < observation.maximum_depth) {
-		observation.decision_nonce = random_next(&plant->random_state);
+		observation.decision_nonce = random_next(&next_random_state);
 	}
-	struct picosystem_garden_agent_proposal proposal;
-	int err = picosystem_garden_agent_baseline_propose(&observation, &proposal);
+	const struct picosystem_garden_agent_memory current_memory = plant->agent_memory;
+	struct picosystem_garden_agent_decision decision;
+	int err = picosystem_garden_agent_decide(policy, &observation, &current_memory, &decision);
 	if (err != 0) {
 		return err;
 	}
-	if (!proposal_is_valid(&observation, &proposal)) {
+	if (!proposal_is_valid(&observation, &decision.proposal)) {
 		return -ERANGE;
 	}
-	if (proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT) {
+
+	/* Policy output is transactional: only a valid decision advances private state. */
+	*advance_phase = true;
+	*previous_tip = tip_index;
+	plant->random_state = next_random_state;
+	plant->agent_memory = decision.next_memory;
+	if (decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT) {
 		return -EAGAIN;
 	}
-	if (proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP) {
+	if (decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP) {
 		return finish_tip(world, tip_index);
 	}
-	return extend_tip(world, plant_index, &observation, &proposal);
+	return extend_tip(world, plant_index, &observation, &decision.proposal);
 }
 
 static enum picosystem_garden_node_kind
@@ -1241,7 +1252,8 @@ plant_growth_kind(const struct picosystem_garden_plant *plant)
 	return ((phase % 4U) == 3U) ? PICOSYSTEM_GARDEN_NODE_ROOT : PICOSYSTEM_GARDEN_NODE_STEM;
 }
 
-static void grow_plants(struct picosystem_garden_world *world)
+static int grow_plants(struct picosystem_garden_world *world,
+		       const struct picosystem_garden_agent_policy *policy)
 {
 	for (uint8_t index = 0U; index < world->plant_count; ++index) {
 		struct picosystem_garden_plant *const plant = &world->plants[index];
@@ -1263,10 +1275,15 @@ static void grow_plants(struct picosystem_garden_world *world)
 			continue;
 		}
 
-		int err;
 		const enum picosystem_garden_node_kind kind = plant_growth_kind(plant);
-		err = grow_tip(world, index, kind);
-		++plant->growth_phase;
+		bool advance_phase;
+		const int err = grow_tip(world, index, kind, policy, &advance_phase);
+		if (!advance_phase && (err != 0)) {
+			return err;
+		}
+		if (advance_phase) {
+			++plant->growth_phase;
+		}
 		if ((err == 0) || (err == -ENOSPC)) {
 			plant->stored_energy = (uint16_t)(plant->stored_energy - energy_cost);
 			plant->stored_water =
@@ -1275,6 +1292,7 @@ static void grow_plants(struct picosystem_garden_world *world)
 				(uint8_t)(plant_growth_period(species, &plant->genome) - 1U);
 		}
 	}
+	return 0;
 }
 
 static int8_t mutated_trait(int8_t value, bool increase)
@@ -1861,13 +1879,28 @@ int picosystem_garden_world_set_auto_gardener(struct picosystem_garden_world *wo
 
 int picosystem_garden_world_step(struct picosystem_garden_world *world)
 {
-	return picosystem_garden_world_step_input(world, 0, 0);
+	return picosystem_garden_world_step_with_policy(world,
+							picosystem_garden_agent_baseline_policy());
 }
 
 int picosystem_garden_world_step_input(struct picosystem_garden_world *world, int8_t horizontal,
 				       int8_t vertical)
 {
-	if (!world_is_valid(world)) {
+	return picosystem_garden_world_step_input_with_policy(
+		world, horizontal, vertical, picosystem_garden_agent_baseline_policy());
+}
+
+int picosystem_garden_world_step_with_policy(struct picosystem_garden_world *world,
+					     const struct picosystem_garden_agent_policy *policy)
+{
+	return picosystem_garden_world_step_input_with_policy(world, 0, 0, policy);
+}
+
+int picosystem_garden_world_step_input_with_policy(
+	struct picosystem_garden_world *world, int8_t horizontal, int8_t vertical,
+	const struct picosystem_garden_agent_policy *policy)
+{
+	if ((policy == NULL) || (policy->decide == NULL) || !world_is_valid(world)) {
 		return -EINVAL;
 	}
 	const int input_err = update_cursor_input(world, horizontal, vertical);
@@ -1897,7 +1930,10 @@ int picosystem_garden_world_step_input(struct picosystem_garden_world *world, in
 	if (err != 0) {
 		return err;
 	}
-	grow_plants(world);
+	err = grow_plants(world, policy);
+	if (err != 0) {
+		return err;
+	}
 	update_reproduction(world);
 	err = update_light(world);
 	if (err != 0) {
@@ -1974,6 +2010,16 @@ static uint32_t fnv1a_genome(uint32_t hash, const struct picosystem_garden_genom
 	hash = fnv1a_byte(hash, (uint8_t)genome->stature);
 	hash = fnv1a_byte(hash, (uint8_t)genome->reserve_strategy);
 	return fnv1a_byte(hash, (uint8_t)genome->dispersal);
+}
+
+static bool agent_memory_is_zero(const struct picosystem_garden_agent_memory *memory)
+{
+	for (uint8_t index = 0U; index < PICOSYSTEM_GARDEN_AGENT_MEMORY_WIDTH; ++index) {
+		if (memory->hidden[index] != 0) {
+			return false;
+		}
+	}
+	return true;
 }
 
 uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *world)
@@ -2068,6 +2114,26 @@ uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *worl
 		hash = fnv1a_byte(hash, node->child_count);
 		hash = fnv1a_byte(hash, node->kind);
 		hash = fnv1a_byte(hash, node->flags);
+	}
+
+	bool has_agent_memory = false;
+	for (uint8_t plant_index = 0U; plant_index < world->plant_count; ++plant_index) {
+		if (!agent_memory_is_zero(&world->plants[plant_index].agent_memory)) {
+			has_agent_memory = true;
+			break;
+		}
+	}
+	/* Preserve established baseline hashes while extending nonzero policy state. */
+	if (has_agent_memory) {
+		hash = fnv1a_u32(hash, GARDEN_AGENT_MEMORY_HASH_TAG);
+		for (uint8_t plant_index = 0U; plant_index < world->plant_count; ++plant_index) {
+			const struct picosystem_garden_agent_memory *const memory =
+				&world->plants[plant_index].agent_memory;
+			for (uint8_t memory_index = 0U;
+			     memory_index < PICOSYSTEM_GARDEN_AGENT_MEMORY_WIDTH; ++memory_index) {
+				hash = fnv1a_byte(hash, (uint8_t)memory->hidden[memory_index]);
+			}
+		}
 	}
 	return hash;
 }

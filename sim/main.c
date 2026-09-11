@@ -335,14 +335,19 @@ int main(int argc, char **argv)
 			const struct picosystem_garden_plant *const plant = &garden->plants[index];
 			printf("%s{\"id\":%" PRIu32 ",\"parent\":%" PRIu32
 			       ",\"generation\":%u,\"offspring\":%u,\"species\":%u,"
-			       "\"traits\":[%d,%d,%d,%d,%d,%d,%d,%d]}",
+			       "\"traits\":[%d,%d,%d,%d,%d,%d,%d,%d],"
+			       "\"memory\":[%d,%d,%d,%d,%d,%d,%d,%d]}",
 			       (index == 0U) ? "" : ",", plant->lineage_id,
 			       plant->parent_lineage_id, plant->generation, plant->offspring_count,
 			       plant->species_id, plant->genome.growth_rate,
 			       plant->genome.shoot_bias, plant->genome.light_seeking,
 			       plant->genome.water_seeking, plant->genome.branching,
 			       plant->genome.stature, plant->genome.reserve_strategy,
-			       plant->genome.dispersal);
+			       plant->genome.dispersal, plant->agent_memory.hidden[0],
+			       plant->agent_memory.hidden[1], plant->agent_memory.hidden[2],
+			       plant->agent_memory.hidden[3], plant->agent_memory.hidden[4],
+			       plant->agent_memory.hidden[5], plant->agent_memory.hidden[6],
+			       plant->agent_memory.hidden[7]);
 		}
 		printf("]}");
 	}

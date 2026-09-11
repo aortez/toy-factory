@@ -17,6 +17,10 @@ _Static_assert(sizeof(struct picosystem_garden_agent_observation) == 104U,
 	       "Garden agent observation layout changed");
 _Static_assert(sizeof(struct picosystem_garden_agent_proposal) == 12U,
 	       "Garden agent proposal layout changed");
+_Static_assert(sizeof(struct picosystem_garden_agent_memory) == 8U,
+	       "Garden agent memory must remain densely packed");
+_Static_assert(sizeof(struct picosystem_garden_agent_decision) == 20U,
+	       "Garden agent decision layout changed");
 _Static_assert(PICOSYSTEM_GARDEN_AGENT_MAX_CANDIDATES <= 8U,
 	       "candidate validation uses one byte as a visited mask");
 
@@ -88,6 +92,13 @@ static void initialize_proposal(uint16_t tip_index,
 	for (uint8_t index = 0U; index < PICOSYSTEM_GARDEN_AGENT_MAX_CANDIDATES; ++index) {
 		proposal->candidate_order[index] = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_NONE;
 	}
+}
+
+static void initialize_decision(uint16_t tip_index,
+				struct picosystem_garden_agent_decision *decision)
+{
+	*decision = (struct picosystem_garden_agent_decision){0};
+	initialize_proposal(tip_index, &decision->proposal);
 }
 
 static int8_t shoot_candidate_score(const struct picosystem_garden_agent_observation *observation,
@@ -220,4 +231,54 @@ int picosystem_garden_agent_baseline_propose(
 			(uint8_t)((preferred + offset) % proposal->candidate_count);
 	}
 	return 0;
+}
+
+int picosystem_garden_agent_decide(const struct picosystem_garden_agent_policy *policy,
+				   const struct picosystem_garden_agent_observation *observation,
+				   const struct picosystem_garden_agent_memory *memory,
+				   struct picosystem_garden_agent_decision *decision)
+{
+	if (decision == NULL) {
+		return -EINVAL;
+	}
+	initialize_decision((observation == NULL) ? 0U : observation->tip_index, decision);
+	if ((policy == NULL) || (policy->decide == NULL) || (observation == NULL) ||
+	    (memory == NULL)) {
+		return -EINVAL;
+	}
+	if (!observation_is_valid(observation)) {
+		return -ERANGE;
+	}
+
+	const int err = policy->decide(observation, memory, decision, policy->context);
+	if (err != 0) {
+		initialize_decision(observation->tip_index, decision);
+		return (err < 0) ? err : -EINVAL;
+	}
+	return 0;
+}
+
+int picosystem_garden_agent_baseline_decide(
+	const struct picosystem_garden_agent_observation *observation,
+	const struct picosystem_garden_agent_memory *memory,
+	struct picosystem_garden_agent_decision *decision, const void *context)
+{
+	(void)context;
+	if (decision == NULL) {
+		return -EINVAL;
+	}
+	initialize_decision((observation == NULL) ? 0U : observation->tip_index, decision);
+	if (memory == NULL) {
+		return -EINVAL;
+	}
+	decision->next_memory = *memory;
+	return picosystem_garden_agent_baseline_propose(observation, &decision->proposal);
+}
+
+const struct picosystem_garden_agent_policy *picosystem_garden_agent_baseline_policy(void)
+{
+	static const struct picosystem_garden_agent_policy policy = {
+		.decide = picosystem_garden_agent_baseline_decide,
+	};
+	return &policy;
 }

@@ -48,7 +48,9 @@ hash, and framebuffer CRC-32. Garden results also include current living/dead
 plant and node totals, dormant seeds, cumulative lifecycle/reproduction
 counters, maximum generation, and a record for every current lineage. Each
 lineage record exposes its ID, parent, generation, offspring count, species,
-and eight-trait genome.
+eight-trait genome, and eight signed lifetime-memory values. The default policy
+leaves those memory values at zero; injected policies can use them without
+forking the simulation implementation.
 `--expect-hash` and `--expect-crc` turn the deterministic values into
 assertions; `--output` writes RGB PPM and `--framebuffer` writes the native
 RGB565 big-endian bytes. Run `make host-cli ARGS="--help"` for the complete

@@ -30,9 +30,10 @@ decomposition are part of the authoritative simulation.
 ## Fixed-capacity state
 
 [`garden_world.c`](../src/garden_world.c) has no Zephyr, renderer, allocation,
-or wall-clock dependency. Its caller-owned state is 3,916 bytes and contains:
+or wall-clock dependency. Its caller-owned state is 3,980 bytes and contains:
 
-- eight plant records and a shared pool of 256 ten-byte plant nodes;
+- eight plant records, including eight bytes of lifetime policy memory each,
+  and a shared pool of 256 ten-byte plant nodes;
 - a dense eight-entry dormant-seed bank with compact genomes and lineage IDs;
 - a 28 x 11 byte soil-moisture field covering eight-pixel cells;
 - a derived 28 x 14 byte canopy-light field; the sun itself is derived from
@@ -115,7 +116,7 @@ a free list or invalidating child indexes.
 
 ## Agent boundary
 
-Growth decisions now cross a versioned, fixed-capacity observation/proposal
+Growth decisions cross a versioned, fixed-capacity observation/decision
 boundary. A 104-byte observation describes one active tip, its parent-relative
 orientation, the plant's energy, water, age, morphology totals, stress,
 maintenance costs and phase, recent resource income, plant status, and up to
@@ -123,14 +124,25 @@ five canonical growth candidates. Each candidate reports its endpoint, local
 light or moisture, bounded clearance, and nearby own/foreign tissue. The
 observation also reports sun phase, strength, and signed ray slope. A 12-byte
 proposal selects an action, supplies a priority for later arbitration, and
-ranks the candidate indexes without receiving mutable world access.
+ranks the candidate indexes without receiving mutable world access. A complete
+20-byte decision pairs that proposal with the plant's next eight-byte signed
+memory vector.
 
-The original hand-authored policy is the first consumer of this interface. The
-world still chooses the alternating root/shoot opportunity, validates the
-proposal, pays resource costs, and performs every mutation. The same boundary
-now exposes both directional light and survival pressure. This establishes a
-testable baseline before adding plant-level recurrent state, multiple-tip
-bidding, or a quantized learned policy.
+The world owns that lifetime memory and passes its current value immutably to a
+caller-supplied pure callback. It validates the callback's proposal before
+transactionally committing its next memory, private random stream, and tip
+cursor; rejected or failed decisions commit none of those fields. Memory is
+not heritable: a germinated offspring starts with zero memory while receiving
+its parent-derived genome. Nonzero memory participates in the authoritative
+state hash and is exposed by the host lineage diagnostics.
+
+The original hand-authored policy is the default consumer of this interface.
+It carries memory through unchanged, so existing scene behavior, hashes, and
+framebuffer goldens remain intact. The world still chooses the alternating
+root/shoot opportunity, pays resource costs, and performs every mutation. The
+same injectable boundary now exposes both directional light and survival
+pressure, ready for plant-level recurrent allocation, multiple-tip bidding, or
+a quantized learned policy without creating a second simulation path.
 
 ## Auto-gardener
 
@@ -176,7 +188,8 @@ tool cycling, pruning, distinct species growth, exact paired replays, healthy
 night survival, reversible resource stress, dry death, graph compaction, twelve
 death/replant cycles without leakage, reproduction costs, single-trait bounded
 mutation, seed dormancy/expiry, germination, parent-child lineage, exact seed
-damage rendering, and a five-minute automatic soak. The
+damage rendering, recurrent-memory carry/reset/hash behavior, injected-policy
+determinism and rejection, and a five-minute automatic soak. The
 mixed sequence fixture waters the plot, plants another flower, enables
 automation, and advances 930 exact ticks to hash `c7492628` and framebuffer
 CRC-32 `061d06d1`. Continuing the same state to tick 3,771 reaches 190 live
@@ -216,8 +229,8 @@ window maintained 60.0 Hz simulation and 29.6 fps presentation without skipped
 or over-budget updates. Complete updates averaged 0.616 ms and peaked at 3.623
 ms. Mature-scene rasterization took 12.7-13.0 ms and the final DMA transfer took
 18.387 ms, so full-screen presentation—not ecology—is the limiting path. With
-the shared clipped Garden renderer, the fast reproduction image uses 255,580
-bytes of Zephyr RAM and 259,416 bytes of flash, leaving 5,540 bytes of linked
+the shared clipped Garden renderer, the fast agent-boundary image uses 255,580
+bytes of Zephyr RAM and 259,680 bytes of flash, leaving 5,540 bytes of linked
 RAM plus the separately reserved 8 KiB core-1 area.
 
 Physical playtesting confirmed that manual planting, watering, pruning, tool
@@ -237,8 +250,8 @@ pruning still redirects growth instead of freeing arbitrary subtrees. Branches
 use a small set of integer steps, nearby leaves can merge into dense circular
 clusters, and soil moisture is a visibly coarse field. Tool identity is
 communicated primarily by cursor color, with no plant inspection or resource
-overlay. Nutrients and learned recurrent policies remain future simulation
-layers. The host profiler reconstructs initial, growing, and
-established Gardens and measures model, snapshot, raster, primitive-work,
-framebuffer-delta, and exact semantic damage behavior without requiring the
-PicoSystem.
+overlay. Nutrients, an adaptive recurrent controller, and plant-level action
+arbitration remain future simulation layers. The host profiler reconstructs
+initial, growing, and established Gardens and measures model, snapshot, raster,
+primitive-work, framebuffer-delta, and exact semantic damage behavior without
+requiring the PicoSystem.

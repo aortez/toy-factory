@@ -103,6 +103,23 @@ struct picosystem_garden_agent_proposal {
 	uint8_t candidate_order[PICOSYSTEM_GARDEN_AGENT_MAX_CANDIDATES];
 };
 
+/* A policy proposes both an action and the lifetime memory committed with it. */
+struct picosystem_garden_agent_decision {
+	struct picosystem_garden_agent_proposal proposal;
+	struct picosystem_garden_agent_memory next_memory;
+};
+
+typedef int (*picosystem_garden_agent_decide_fn)(
+	const struct picosystem_garden_agent_observation *observation,
+	const struct picosystem_garden_agent_memory *memory,
+	struct picosystem_garden_agent_decision *decision, const void *context);
+
+/* The callback and immutable context are supplied by the caller, never stored in the world. */
+struct picosystem_garden_agent_policy {
+	picosystem_garden_agent_decide_fn decide;
+	const void *context;
+};
+
 /* Observe one active tip without mutating the world. */
 int picosystem_garden_agent_observe_tip(const struct picosystem_garden_world *world,
 					uint8_t plant_index, uint16_t tip_index,
@@ -113,5 +130,19 @@ int picosystem_garden_agent_observe_tip(const struct picosystem_garden_world *wo
 int picosystem_garden_agent_baseline_propose(
 	const struct picosystem_garden_agent_observation *observation,
 	struct picosystem_garden_agent_proposal *proposal);
+
+/* Evaluate one policy without exposing mutable world state. */
+int picosystem_garden_agent_decide(const struct picosystem_garden_agent_policy *policy,
+				   const struct picosystem_garden_agent_observation *observation,
+				   const struct picosystem_garden_agent_memory *memory,
+				   struct picosystem_garden_agent_decision *decision);
+
+/* Preserve the original hand-authored proposal and carry lifetime memory unchanged. */
+int picosystem_garden_agent_baseline_decide(
+	const struct picosystem_garden_agent_observation *observation,
+	const struct picosystem_garden_agent_memory *memory,
+	struct picosystem_garden_agent_decision *decision, const void *context);
+
+const struct picosystem_garden_agent_policy *picosystem_garden_agent_baseline_policy(void);
 
 #endif /* PICOSYSTEM_GARDEN_AGENT_H_ */

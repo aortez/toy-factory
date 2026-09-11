@@ -189,6 +189,57 @@ baseline_observation(enum picosystem_garden_node_kind kind)
 	return observation;
 }
 
+static int remembering_agent_decide(const struct picosystem_garden_agent_observation *observation,
+				    const struct picosystem_garden_agent_memory *memory,
+				    struct picosystem_garden_agent_decision *decision,
+				    const void *context)
+{
+	if (context == NULL) {
+		return -EINVAL;
+	}
+	const int err =
+		picosystem_garden_agent_baseline_decide(observation, memory, decision, NULL);
+	if (err != 0) {
+		return err;
+	}
+	const int16_t next_value = (int16_t)memory->hidden[0] + *(const int8_t *)context;
+	decision->next_memory.hidden[0] =
+		(next_value < INT8_MIN) ? INT8_MIN
+					: ((next_value > INT8_MAX) ? INT8_MAX : (int8_t)next_value);
+	return 0;
+}
+
+static int invalid_agent_decide(const struct picosystem_garden_agent_observation *observation,
+				const struct picosystem_garden_agent_memory *memory,
+				struct picosystem_garden_agent_decision *decision,
+				const void *context)
+{
+	(void)context;
+	const int err =
+		picosystem_garden_agent_baseline_decide(observation, memory, decision, NULL);
+	if (err != 0) {
+		return err;
+	}
+	++decision->proposal.tip_index;
+	decision->next_memory.hidden[0] = 99;
+	return 0;
+}
+
+static int failing_agent_decide(const struct picosystem_garden_agent_observation *observation,
+				const struct picosystem_garden_agent_memory *memory,
+				struct picosystem_garden_agent_decision *decision,
+				const void *context)
+{
+	(void)context;
+	const int err =
+		picosystem_garden_agent_baseline_decide(observation, memory, decision, NULL);
+	if (err != 0) {
+		return err;
+	}
+	decision->next_memory.hidden[0] = 88;
+	return -EIO;
+}
+
 static void test_agent_observation_and_baseline_policy(void)
 {
 	struct picosystem_garden_world world;
@@ -312,6 +363,47 @@ static void test_agent_observation_and_baseline_policy(void)
 	assert(memcmp(proposal.candidate_order, expected_root_order, sizeof(expected_root_order)) ==
 	       0);
 
+	const struct picosystem_garden_agent_policy *const baseline_policy =
+		picosystem_garden_agent_baseline_policy();
+	assert(baseline_policy != NULL);
+	assert(baseline_policy->decide == picosystem_garden_agent_baseline_decide);
+	const struct picosystem_garden_agent_memory memory = {
+		.hidden = {3, -2, 1, 0, 4, -4, 2, -1},
+	};
+	struct picosystem_garden_agent_decision decision;
+	assert(picosystem_garden_agent_decide(baseline_policy, &observation, &memory, NULL) ==
+	       -EINVAL);
+	assert(picosystem_garden_agent_decide(NULL, &observation, &memory, &decision) == -EINVAL);
+	assert(decision.proposal.tip_index == observation.tip_index);
+	assert(decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
+	assert(decision.proposal.candidate_order[0] == PICOSYSTEM_GARDEN_AGENT_CANDIDATE_NONE);
+	const struct picosystem_garden_agent_memory empty_memory = {0};
+	assert(memcmp(&decision.next_memory, &empty_memory, sizeof(empty_memory)) == 0);
+	assert(picosystem_garden_agent_decide(baseline_policy, NULL, &memory, &decision) ==
+	       -EINVAL);
+	assert(decision.proposal.tip_index == 0U);
+	assert(picosystem_garden_agent_decide(baseline_policy, &observation, NULL, &decision) ==
+	       -EINVAL);
+	struct picosystem_garden_agent_observation invalid_observation = observation;
+	invalid_observation.version = 0U;
+	assert(picosystem_garden_agent_decide(baseline_policy, &invalid_observation, &memory,
+					      &decision) == -ERANGE);
+	assert(decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
+	assert(memcmp(&decision.next_memory, &empty_memory, sizeof(empty_memory)) == 0);
+	assert(picosystem_garden_agent_decide(baseline_policy, &observation, &memory, &decision) ==
+	       0);
+	assert(memcmp(&decision.next_memory, &memory, sizeof(memory)) == 0);
+	assert(decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_EXTEND);
+	assert(memcmp(decision.proposal.candidate_order, expected_root_order,
+		      sizeof(expected_root_order)) == 0);
+	const struct picosystem_garden_agent_policy failing_policy = {
+		.decide = failing_agent_decide,
+	};
+	assert(picosystem_garden_agent_decide(&failing_policy, &observation, &memory, &decision) ==
+	       -EIO);
+	assert(decision.proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
+	assert(memcmp(&decision.next_memory, &empty_memory, sizeof(empty_memory)) == 0);
+
 	observation.candidates[0].flags = PICOSYSTEM_GARDEN_AGENT_CANDIDATE_AVAILABLE;
 	assert(picosystem_garden_agent_baseline_propose(&observation, &proposal) == -ERANGE);
 	assert(proposal.action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT);
@@ -348,6 +440,65 @@ static void step_garden(struct picosystem_garden_world *world, uint32_t tick_cou
 	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
 		assert(picosystem_garden_world_step(world) == 0);
 	}
+}
+
+static void test_injected_agent_policy_memory_and_rejection(void)
+{
+	static const int8_t memory_increment = 1;
+	const struct picosystem_garden_agent_policy remembering_policy = {
+		.decide = remembering_agent_decide,
+		.context = &memory_increment,
+	};
+	const struct picosystem_garden_agent_policy empty_policy = {0};
+	struct picosystem_garden_world left;
+	struct picosystem_garden_world right;
+	struct picosystem_garden_world baseline;
+	assert(picosystem_garden_world_reset(&left, UINT32_C(0xfeed1234)) == 0);
+	assert(picosystem_garden_world_plant_seed(&left, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 14U) ==
+	       0);
+	right = left;
+	baseline = left;
+	const struct picosystem_garden_world unchanged = left;
+	assert(picosystem_garden_world_step_with_policy(&left, NULL) == -EINVAL);
+	assert(memcmp(&left, &unchanged, sizeof(left)) == 0);
+	assert(picosystem_garden_world_step_with_policy(&left, &empty_policy) == -EINVAL);
+	assert(memcmp(&left, &unchanged, sizeof(left)) == 0);
+
+	for (uint8_t tick = 0U; tick < PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR; ++tick) {
+		assert(picosystem_garden_world_step_with_policy(&left, &remembering_policy) == 0);
+		assert(picosystem_garden_world_step_with_policy(&right, &remembering_policy) == 0);
+		assert(picosystem_garden_world_step(&baseline) == 0);
+	}
+	assert(left.plants[0].agent_memory.hidden[0] == memory_increment);
+	assert(memcmp(&left.plants[0].agent_memory, &right.plants[0].agent_memory,
+		      sizeof(left.plants[0].agent_memory)) == 0);
+	assert(picosystem_garden_world_hash(&left) == picosystem_garden_world_hash(&right));
+	assert(picosystem_garden_world_hash(&left) != picosystem_garden_world_hash(&baseline));
+	left.plants[0].agent_memory = (struct picosystem_garden_agent_memory){0};
+	assert(memcmp(&left, &baseline, sizeof(left)) == 0);
+	assert(picosystem_garden_world_hash(&left) == picosystem_garden_world_hash(&baseline));
+
+	struct picosystem_garden_world rejected;
+	assert(picosystem_garden_world_reset(&rejected, UINT32_C(0xfeed5678)) == 0);
+	assert(picosystem_garden_world_plant_seed(&rejected, PICOSYSTEM_GARDEN_SPECIES_FLOWER,
+						  14U) == 0);
+	step_garden(&rejected, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR - 1U);
+	const uint32_t random_state = rejected.plants[0].random_state;
+	const uint16_t shoot_tip_index = rejected.plants[0].last_shoot_tip_index;
+	const uint16_t root_tip_index = rejected.plants[0].last_root_tip_index;
+	const uint16_t node_count = rejected.node_count;
+	const uint8_t growth_phase = rejected.plants[0].growth_phase;
+	const struct picosystem_garden_agent_policy invalid_policy = {
+		.decide = invalid_agent_decide,
+	};
+	assert(picosystem_garden_world_step_with_policy(&rejected, &invalid_policy) == -ERANGE);
+	assert(rejected.plants[0].random_state == random_state);
+	assert(rejected.plants[0].last_shoot_tip_index == shoot_tip_index);
+	assert(rejected.plants[0].last_root_tip_index == root_tip_index);
+	assert(rejected.plants[0].growth_phase == growth_phase);
+	assert(rejected.node_count == node_count);
+	const struct picosystem_garden_agent_memory empty_memory = {0};
+	assert(memcmp(&rejected.plants[0].agent_memory, &empty_memory, sizeof(empty_memory)) == 0);
 }
 
 static void test_survival_stress_decomposition_and_reclamation(void)
@@ -510,6 +661,7 @@ static void test_reproduction_germination_and_seed_expiration(void)
 	assert(world.plants[0].lineage_id == 1U);
 	assert(world.plants[0].parent_lineage_id == 0U);
 	assert(world.plants[0].generation == 0U);
+	world.plants[0].agent_memory.hidden[0] = 42;
 	make_plant_reproductive(&world, 0U);
 	step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
 				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
@@ -540,6 +692,9 @@ static void test_reproduction_germination_and_seed_expiration(void)
 	assert(world.plants[1].parent_lineage_id == world.plants[0].lineage_id);
 	assert(world.plants[1].generation == 1U);
 	assert(memcmp(&world.plants[1].genome, &seed.genome, sizeof(seed.genome)) == 0);
+	const struct picosystem_garden_agent_memory empty_memory = {0};
+	assert(memcmp(&world.plants[1].agent_memory, &empty_memory, sizeof(empty_memory)) == 0);
+	assert(world.plants[0].agent_memory.hidden[0] == 42);
 	assert(picosystem_garden_world_hash(&world) != 0U);
 
 	assert(picosystem_garden_world_reset(&world, UINT32_C(0x51eed123)) == 0);
@@ -695,6 +850,7 @@ int main(void)
 	test_water_flow_and_light_competition();
 	test_directional_light_solver();
 	test_agent_observation_and_baseline_policy();
+	test_injected_agent_policy_memory_and_rejection();
 	test_survival_stress_decomposition_and_reclamation();
 	test_reproduction_germination_and_seed_expiration();
 	test_growth_variety_and_determinism();
