@@ -64,6 +64,7 @@ enum picosystem_garden_node_flag {
 	PICOSYSTEM_GARDEN_NODE_FLOWER = 1U << 2,
 	PICOSYSTEM_GARDEN_NODE_PRUNED = 1U << 3,
 	PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING = 1U << 4,
+	/* Spent for this Garden day; living flowers renew at dawn. */
 	PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED = 1U << 5,
 };
 

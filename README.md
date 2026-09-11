@@ -37,8 +37,8 @@ path:
   genomes, dormant seeds, natural germination, eight-byte lifetime agent memory,
   a replaceable pure growth-policy boundary, an adaptive recurrent policy with
   plant-level all-tip arbitration, a versioned integer-only neural policy ABI,
-  bounded decision telemetry, a deterministic host-side policy evaluator, and a
-  toggleable auto-gardener;
+  bounded decision telemetry, deterministic host-side policy evaluation and
+  evolutionary search, CRC-protected model artifacts, and a toggleable auto-gardener;
 - filters collision candidates through a fixed 16 x 16 uniform grid while
   retaining a deterministic brute-force fallback and native oracle;
 - supports bounded bilateral distance joints, impulse-limited damped springs,
@@ -129,6 +129,7 @@ make host-check  # replay every committed device sequence on the host
 make host-run SEQUENCE=scripts/sequences/garden-smoke.json  # write a host PNG
 make host-profile-garden  # benchmark initial, growing, and established Gardens
 make host-evaluate-garden  # compare Garden policies over matched deterministic trials
+make host-train-garden     # evolve and export a deterministic integer policy
 make host-play ARGS="--scene garden --paused"  # launch the interactive player
 ```
 
@@ -507,6 +508,7 @@ make host-run SEQUENCE=scripts/sequences/garden-smoke.json \
 make host-cli ARGS="--scene hourglass --step none 600"
 make host-profile-garden
 make host-evaluate-garden
+make host-train-garden
 ```
 
 `make host-check` runs every committed device sequence under UBSan and asserts
@@ -528,6 +530,12 @@ separate instead of being collapsed into a subjective fitness score. For a Garde
 reproduction counters, maximum generation, and current lineage records—including
 each plant's genome, lifetime agent memory, and decision telemetry—in its result
 JSON.
+
+`make host-train-garden` applies deterministic `(1 + lambda)` mutation and
+selection to the integer policy over the same scenario definitions. It writes a
+JSON trace, a canonical CRC-protected binary model, and equivalent linkable C to
+`artifacts/`. The binary can seed another search or replace the neural reference
+in `make host-evaluate-garden`.
 
 For interactive work on Linux, `make host-play` builds pinned SDL3 sources in a
 separate Docker image, then launches the resulting self-contained player on the

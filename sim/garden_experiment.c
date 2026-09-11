@@ -14,24 +14,26 @@
 
 #include "garden_agent.h"
 #include "garden_agent_neural.h"
+#include "garden_evaluation.h"
+#include "garden_model_file.h"
 #include "garden_world.h"
 #include "portable_util.h"
 
-#define GARDEN_EXPERIMENT_SCHEMA_VERSION       2U
+#define GARDEN_EXPERIMENT_SCHEMA_VERSION       3U
 #define GARDEN_EXPERIMENT_DEFAULT_TRIALS       8U
 #define GARDEN_EXPERIMENT_MAX_TRIALS           64U
 #define GARDEN_EXPERIMENT_DEFAULT_TICKS        7680U
 #define GARDEN_EXPERIMENT_MAX_TICKS            100000U
-#define GARDEN_EXPERIMENT_DEFAULT_SEED         UINT32_C(0x6576616c)
-#define GARDEN_EXPERIMENT_MAX_PLANTS           5U
-#define GARDEN_EXPERIMENT_SCENARIO_COUNT       3U
+#define GARDEN_EXPERIMENT_DEFAULT_SEED         TOY_FACTORY_GARDEN_EVALUATION_DEFAULT_SEED
+#define GARDEN_EXPERIMENT_MAX_PLANTS           TOY_FACTORY_GARDEN_EVALUATION_MAX_PLANTS
+#define GARDEN_EXPERIMENT_SCENARIO_COUNT       TOY_FACTORY_GARDEN_EVALUATION_SCENARIO_COUNT
 #define GARDEN_EXPERIMENT_POLICY_COUNT         3U
-#define GARDEN_EXPERIMENT_MAX_TRACKED_LINEAGES 4096U
+#define GARDEN_EXPERIMENT_MAX_TRACKED_LINEAGES TOY_FACTORY_GARDEN_EVALUATION_MAX_TRACKED_LINEAGES
 
 #define GARDEN_EXPERIMENT_LINEAGE_SEEN            (1U << 0)
 #define GARDEN_EXPERIMENT_LINEAGE_DEAD            (1U << 1)
 #define GARDEN_EXPERIMENT_LINEAGE_ESTABLISHED     (1U << 2)
-#define GARDEN_EXPERIMENT_ESTABLISHED_MINIMUM_AGE (PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR + 1U)
+#define GARDEN_EXPERIMENT_ESTABLISHED_MINIMUM_AGE TOY_FACTORY_GARDEN_ESTABLISHED_MINIMUM_AGE
 
 struct garden_experiment_death_causes {
 	uint32_t energy;
@@ -43,6 +45,7 @@ struct garden_experiment_death_causes {
 struct garden_experiment_seed_blockers {
 	uint32_t samples;
 	uint32_t dormant;
+	uint32_t ready;
 	uint32_t blocked;
 	uint32_t moisture;
 	uint32_t light;
@@ -73,16 +76,6 @@ struct garden_experiment_lineage_tracking {
 	uint8_t founder_index;
 	uint8_t species_id;
 	uint8_t flags;
-};
-
-struct garden_experiment_scenario {
-	const char *name;
-	uint32_t irrigation_period_ticks;
-	uint8_t initial_water;
-	uint8_t irrigation_water;
-	uint8_t plant_count;
-	uint8_t columns[GARDEN_EXPERIMENT_MAX_PLANTS];
-	uint8_t species[GARDEN_EXPERIMENT_MAX_PLANTS];
 };
 
 struct garden_experiment_policy {
@@ -159,6 +152,7 @@ struct garden_experiment_summary {
 	uint64_t death_other;
 	uint64_t seed_samples;
 	uint64_t seed_dormant;
+	uint64_t seed_ready;
 	uint64_t seed_blocked;
 	uint64_t seed_blocked_moisture;
 	uint64_t seed_blocked_light;
@@ -174,52 +168,17 @@ struct garden_experiment_summary {
 	uint32_t extinction_count;
 };
 
-static const struct garden_experiment_scenario scenarios[] = {
-	{
-		.name = "unassisted",
-		.initial_water = 128U,
-		.plant_count = 3U,
-		.columns = {4U, 13U, 22U},
-		.species =
-			{
-				PICOSYSTEM_GARDEN_SPECIES_FLOWER,
-				PICOSYSTEM_GARDEN_SPECIES_SHRUB,
-				PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER,
-			},
-	},
-	{
-		.name = "irrigated",
-		.irrigation_period_ticks = 960U,
-		.initial_water = 128U,
-		.irrigation_water = 8U,
-		.plant_count = 3U,
-		.columns = {4U, 13U, 22U},
-		.species =
-			{
-				PICOSYSTEM_GARDEN_SPECIES_FLOWER,
-				PICOSYSTEM_GARDEN_SPECIES_SHRUB,
-				PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER,
-			},
-	},
-	{
-		.name = "crowded",
-		.irrigation_period_ticks = 960U,
-		.initial_water = 96U,
-		.irrigation_water = 8U,
-		.plant_count = 5U,
-		.columns = {3U, 8U, 13U, 18U, 23U},
-		.species =
-			{
-				PICOSYSTEM_GARDEN_SPECIES_FLOWER,
-				PICOSYSTEM_GARDEN_SPECIES_SHRUB,
-				PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER,
-				PICOSYSTEM_GARDEN_SPECIES_SHRUB,
-				PICOSYSTEM_GARDEN_SPECIES_FLOWER,
-			},
-	},
-};
+static struct picosystem_garden_neural_model candidate_model;
+static struct picosystem_garden_agent_policy candidate_policy;
+static const struct picosystem_garden_agent_policy *selected_neural_policy;
 
-static const struct garden_experiment_policy policies[] = {
+static const struct picosystem_garden_agent_policy *get_selected_neural_policy(void)
+{
+	return (selected_neural_policy == NULL) ? picosystem_garden_agent_neural_reference_policy()
+						: selected_neural_policy;
+}
+
+static struct garden_experiment_policy policies[] = {
 	{
 		.name = "baseline",
 		.get_policy = picosystem_garden_agent_baseline_policy,
@@ -230,7 +189,7 @@ static const struct garden_experiment_policy policies[] = {
 	},
 	{
 		.name = "neural-reference",
-		.get_policy = picosystem_garden_agent_neural_reference_policy,
+		.get_policy = get_selected_neural_policy,
 	},
 };
 
@@ -240,7 +199,8 @@ static struct garden_experiment_outcome outcomes[GARDEN_EXPERIMENT_SCENARIO_COUN
 static struct garden_experiment_lineage_tracking
 	lineage_tracking[GARDEN_EXPERIMENT_MAX_TRACKED_LINEAGES + 1U];
 
-_Static_assert(TOY_FACTORY_ARRAY_SIZE(scenarios) == GARDEN_EXPERIMENT_SCENARIO_COUNT,
+_Static_assert(TOY_FACTORY_ARRAY_SIZE(toy_factory_garden_evaluation_scenarios) ==
+		       GARDEN_EXPERIMENT_SCENARIO_COUNT,
 	       "Garden experiment scenario capacity changed");
 _Static_assert(TOY_FACTORY_ARRAY_SIZE(policies) == GARDEN_EXPERIMENT_POLICY_COUNT,
 	       "Garden experiment policy capacity changed");
@@ -249,8 +209,10 @@ _Static_assert(GARDEN_EXPERIMENT_MAX_TRACKED_LINEAGES >= PICOSYSTEM_GARDEN_MAX_P
 
 static void print_usage(FILE *stream, const char *program)
 {
-	fprintf(stream, "Usage: %s [--trials 1-%u] [--ticks 1-%u] [--seed UINT32]\n", program,
-		GARDEN_EXPERIMENT_MAX_TRIALS, GARDEN_EXPERIMENT_MAX_TICKS);
+	fprintf(stream,
+		"Usage: %s [--trials 1-%u] [--ticks 1-%u] [--seed UINT32] "
+		"[--model PATH]\n",
+		program, GARDEN_EXPERIMENT_MAX_TRIALS, GARDEN_EXPERIMENT_MAX_TICKS);
 }
 
 static int parse_u32(const char *text, int base, uint32_t minimum, uint32_t maximum,
@@ -270,11 +232,12 @@ static int parse_u32(const char *text, int base, uint32_t minimum, uint32_t maxi
 }
 
 static int parse_options(int argc, char **argv, uint32_t *trial_count, uint32_t *tick_count,
-			 uint32_t *base_seed)
+			 uint32_t *base_seed, const char **model_path)
 {
 	*trial_count = GARDEN_EXPERIMENT_DEFAULT_TRIALS;
 	*tick_count = GARDEN_EXPERIMENT_DEFAULT_TICKS;
 	*base_seed = GARDEN_EXPERIMENT_DEFAULT_SEED;
+	*model_path = NULL;
 	for (int index = 1; index < argc; ++index) {
 		const char *const option = argv[index];
 		if (strcmp(option, "--help") == 0) {
@@ -282,7 +245,7 @@ static int parse_options(int argc, char **argv, uint32_t *trial_count, uint32_t 
 			return 1;
 		}
 		if ((strcmp(option, "--trials") != 0) && (strcmp(option, "--ticks") != 0) &&
-		    (strcmp(option, "--seed") != 0)) {
+		    (strcmp(option, "--seed") != 0) && (strcmp(option, "--model") != 0)) {
 			fprintf(stderr, "unknown option '%s'\n", option);
 			return -EINVAL;
 		}
@@ -291,53 +254,20 @@ static int parse_options(int argc, char **argv, uint32_t *trial_count, uint32_t 
 			return -EINVAL;
 		}
 		const char *const value = argv[++index];
-		int err;
+		int err = 0;
 		if (strcmp(option, "--trials") == 0) {
 			err = parse_u32(value, 10, 1U, GARDEN_EXPERIMENT_MAX_TRIALS, trial_count);
 		} else if (strcmp(option, "--ticks") == 0) {
 			err = parse_u32(value, 10, 1U, GARDEN_EXPERIMENT_MAX_TICKS, tick_count);
-		} else {
+		} else if (strcmp(option, "--seed") == 0) {
 			err = parse_u32(value, 0, 1U, UINT32_MAX, base_seed);
+		} else if (*value == '\0') {
+			err = -EINVAL;
+		} else {
+			*model_path = value;
 		}
 		if (err != 0) {
 			fprintf(stderr, "invalid value '%s' for %s\n", value, option);
-			return err;
-		}
-	}
-	return 0;
-}
-
-static uint32_t seed_for_trial(uint32_t base_seed, uint32_t trial_index)
-{
-	uint32_t value = base_seed ^ ((trial_index + 1U) * UINT32_C(0x9e3779b9));
-	value ^= value << 13U;
-	value ^= value >> 17U;
-	value ^= value << 5U;
-	return (value == 0U) ? GARDEN_EXPERIMENT_DEFAULT_SEED : value;
-}
-
-static int reset_scenario(struct picosystem_garden_world *world,
-			  const struct garden_experiment_scenario *scenario, uint32_t random_seed)
-{
-	int err = picosystem_garden_world_reset(world, random_seed);
-	for (uint8_t index = 0U; (err == 0) && (index < scenario->plant_count); ++index) {
-		err = picosystem_garden_world_plant_seed(
-			world, (enum picosystem_garden_species_id)scenario->species[index],
-			scenario->columns[index]);
-	}
-	for (uint8_t index = 0U; (err == 0) && (index < world->plant_count); ++index) {
-		err = picosystem_garden_world_water(world, world->plants[index].base_column,
-						    scenario->initial_water);
-	}
-	return err;
-}
-
-static int irrigate(struct picosystem_garden_world *world, uint8_t amount)
-{
-	/* Exogenous input must not scale with a policy's current plants or seeds. */
-	for (uint8_t column = 0U; column < PICOSYSTEM_GARDEN_GRID_COLUMNS; ++column) {
-		const int err = picosystem_garden_world_water(world, column, amount);
-		if (err != 0) {
 			return err;
 		}
 	}
@@ -386,28 +316,6 @@ static uint8_t nonzero_memory_count(const struct picosystem_garden_world *world)
 static uint32_t death_cause_total(const struct garden_experiment_death_causes *causes)
 {
 	return causes->energy + causes->water + causes->combined + causes->other;
-}
-
-static bool plant_has_active_leaf(const struct picosystem_garden_world *world, uint8_t plant_index)
-{
-	for (uint16_t index = 0U; index < world->node_count; ++index) {
-		const struct picosystem_garden_node *const node = &world->nodes[index];
-		if ((node->plant_index == plant_index) &&
-		    ((node->flags & PICOSYSTEM_GARDEN_NODE_LEAF) != 0U) &&
-		    (node->growth_progress >= PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS)) {
-			return true;
-		}
-	}
-	return false;
-}
-
-static bool plant_is_established(const struct picosystem_garden_world *world, uint8_t plant_index)
-{
-	const struct picosystem_garden_plant *const plant = &world->plants[plant_index];
-	return (plant->generation > 0U) && ((plant->flags & PICOSYSTEM_GARDEN_PLANT_DEAD) == 0U) &&
-	       (plant->stress == 0U) &&
-	       (plant->age_ecology_ticks >= GARDEN_EXPERIMENT_ESTABLISHED_MINIMUM_AGE) &&
-	       plant_has_active_leaf(world, plant_index);
 }
 
 static void record_death_cause(struct garden_experiment_death_causes *causes, uint8_t flags)
@@ -528,7 +436,11 @@ static int record_seed_blockers(const struct picosystem_garden_world *world,
 			continue;
 		}
 		if (blockers == 0U) {
-			return -EIO;
+			/* Final light is recomputed after germination and growth. A seed can
+			 * become eligible here and wait until the next ecology step.
+			 */
+			++outcome->seed_blockers.ready;
+			continue;
 		}
 		++outcome->seed_blockers.blocked;
 		if ((blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_MOISTURE) != 0U) {
@@ -595,7 +507,7 @@ static int observe_world(const struct picosystem_garden_world *world,
 			++founder->descendant_plant_ticks;
 		}
 		if (((tracking->flags & GARDEN_EXPERIMENT_LINEAGE_ESTABLISHED) == 0U) &&
-		    plant_is_established(world, index)) {
+		    toy_factory_garden_evaluation_plant_is_established(world, index)) {
 			tracking->flags |= GARDEN_EXPERIMENT_LINEAGE_ESTABLISHED;
 			++outcome->established_offspring;
 			++species->established_offspring;
@@ -741,7 +653,7 @@ static bool outcome_totals_are_valid(const struct garden_experiment_outcome *out
 	       (species_founders == outcome->founder_count) &&
 	       (species_maximum_generation == outcome->maximum_generation) &&
 	       (founder_maximum_generation == outcome->maximum_generation) &&
-	       (blockers->samples == blockers->dormant + blockers->blocked) &&
+	       (blockers->samples == blockers->dormant + blockers->ready + blockers->blocked) &&
 	       (blocker_reasons >= blockers->blocked) &&
 	       (blockers->moisture <= blockers->blocked) &&
 	       (blockers->light <= blockers->blocked) &&
@@ -752,7 +664,37 @@ static bool outcome_totals_are_valid(const struct garden_experiment_outcome *out
 	       ((outcome->extinction_tick == 0U) || (outcome->extinction_tick <= tick_count));
 }
 
-static int run_trial(const struct garden_experiment_scenario *scenario,
+static int observe_trial_tick(const struct picosystem_garden_world *world, bool ecology_sample,
+			      void *context)
+{
+	struct garden_experiment_outcome *const outcome = context;
+	int err = observe_world(world, outcome, ecology_sample);
+	if (err != 0) {
+		return err;
+	}
+
+	const uint8_t living_count = picosystem_garden_world_living_plant_count(world);
+	outcome->living_plant_ticks += living_count;
+	if (living_count > outcome->maximum_living_count) {
+		outcome->maximum_living_count = living_count;
+	}
+	if (world->node_count > outcome->maximum_node_count) {
+		outcome->maximum_node_count = world->node_count;
+	}
+	if (ecology_sample) {
+		uint32_t energy;
+		uint32_t water;
+		uint32_t stress;
+		current_resource_totals(world, &energy, &water, &stress, &outcome->maximum_stress);
+		outcome->sampled_energy += energy;
+		outcome->sampled_water += water;
+		outcome->sampled_stress += stress;
+		++outcome->ecology_samples;
+	}
+	return 0;
+}
+
+static int run_trial(const struct toy_factory_garden_evaluation_scenario *scenario,
 		     const struct picosystem_garden_agent_policy *policy, uint32_t random_seed,
 		     uint32_t tick_count, struct garden_experiment_outcome *outcome)
 {
@@ -760,7 +702,7 @@ static int run_trial(const struct garden_experiment_scenario *scenario,
 		return -EINVAL;
 	}
 	struct picosystem_garden_world world;
-	int err = reset_scenario(&world, scenario, random_seed);
+	int err = toy_factory_garden_evaluation_reset(&world, scenario, random_seed);
 	if (err != 0) {
 		return err;
 	}
@@ -774,44 +716,10 @@ static int run_trial(const struct garden_experiment_scenario *scenario,
 	if ((err != 0) || (world.plant_count != scenario->plant_count)) {
 		return (err != 0) ? err : -EIO;
 	}
-	for (uint32_t tick = 0U; tick < tick_count; ++tick) {
-		if ((scenario->irrigation_period_ticks != 0U) && (tick != 0U) &&
-		    ((tick % scenario->irrigation_period_ticks) == 0U)) {
-			err = irrigate(&world, scenario->irrigation_water);
-			if (err != 0) {
-				return err;
-			}
-		}
-		err = picosystem_garden_world_step_with_policy(&world, policy);
-		if (err != 0) {
-			return err;
-		}
-		const bool ecology_sample =
-			(world.logic_tick_count % PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR) == 0U;
-		err = observe_world(&world, outcome, ecology_sample);
-		if (err != 0) {
-			return err;
-		}
-
-		const uint8_t living_count = picosystem_garden_world_living_plant_count(&world);
-		outcome->living_plant_ticks += living_count;
-		if (living_count > outcome->maximum_living_count) {
-			outcome->maximum_living_count = living_count;
-		}
-		if (world.node_count > outcome->maximum_node_count) {
-			outcome->maximum_node_count = world.node_count;
-		}
-		if (ecology_sample) {
-			uint32_t energy;
-			uint32_t water;
-			uint32_t stress;
-			current_resource_totals(&world, &energy, &water, &stress,
-						&outcome->maximum_stress);
-			outcome->sampled_energy += energy;
-			outcome->sampled_water += water;
-			outcome->sampled_stress += stress;
-			++outcome->ecology_samples;
-		}
+	err = toy_factory_garden_evaluation_advance(&world, scenario, policy, tick_count,
+						    observe_trial_tick, outcome);
+	if (err != 0) {
+		return err;
 	}
 
 	current_resource_totals(&world, &outcome->final_energy, &outcome->final_water,
@@ -875,6 +783,7 @@ summarize_outcomes(const struct garden_experiment_outcome *values, uint32_t coun
 		summary.death_other += outcome->death_causes.other;
 		summary.seed_samples += outcome->seed_blockers.samples;
 		summary.seed_dormant += outcome->seed_blockers.dormant;
+		summary.seed_ready += outcome->seed_blockers.ready;
 		summary.seed_blocked += outcome->seed_blockers.blocked;
 		summary.seed_blocked_moisture += outcome->seed_blockers.moisture;
 		summary.seed_blocked_light += outcome->seed_blockers.light;
@@ -917,9 +826,9 @@ static void print_summary(const struct garden_experiment_summary *summary)
 	       ",\"death_causes\":{\"energy\":%" PRIu64 ",\"water\":%" PRIu64
 	       ",\"combined\":%" PRIu64 ",\"other\":%" PRIu64 "}"
 	       ",\"seed_germination_blockers\":{\"samples\":%" PRIu64 ",\"dormant\":%" PRIu64
-	       ",\"blocked\":%" PRIu64 ",\"moisture\":%" PRIu64 ",\"light\":%" PRIu64
-	       ",\"plant_capacity\":%" PRIu64 ",\"node_capacity\":%" PRIu64 ",\"spacing\":%" PRIu64
-	       "}"
+	       ",\"ready\":%" PRIu64 ",\"blocked\":%" PRIu64 ",\"moisture\":%" PRIu64
+	       ",\"light\":%" PRIu64 ",\"plant_capacity\":%" PRIu64 ",\"node_capacity\":%" PRIu64
+	       ",\"spacing\":%" PRIu64 "}"
 	       ",\"agent\":{\"decisions\":%" PRIu64 ",\"extend\":%" PRIu64 ",\"wait\":%" PRIu64
 	       ",\"finish\":%" PRIu64 ",\"root\":%" PRIu64 ",\"shoot\":%" PRIu64
 	       ",\"root_extend\":%" PRIu64 ",\"shoot_extend\":%" PRIu64
@@ -931,12 +840,12 @@ static void print_summary(const struct garden_experiment_summary *summary)
 	       summary->seeds_expired, summary->mutations, summary->established_offspring,
 	       summary->extinction_count, summary->death_energy, summary->death_water,
 	       summary->death_combined, summary->death_other, summary->seed_samples,
-	       summary->seed_dormant, summary->seed_blocked, summary->seed_blocked_moisture,
-	       summary->seed_blocked_light, summary->seed_blocked_plant_capacity,
-	       summary->seed_blocked_node_capacity, summary->seed_blocked_spacing,
-	       summary->agent_decisions, summary->agent_extend, summary->agent_wait,
-	       summary->agent_finish, summary->agent_root, summary->agent_shoot,
-	       summary->agent_root_extend, summary->agent_shoot_extend,
+	       summary->seed_dormant, summary->seed_ready, summary->seed_blocked,
+	       summary->seed_blocked_moisture, summary->seed_blocked_light,
+	       summary->seed_blocked_plant_capacity, summary->seed_blocked_node_capacity,
+	       summary->seed_blocked_spacing, summary->agent_decisions, summary->agent_extend,
+	       summary->agent_wait, summary->agent_finish, summary->agent_root,
+	       summary->agent_shoot, summary->agent_root_extend, summary->agent_shoot_extend,
 	       summary->minimum_final_living, summary->maximum_final_living,
 	       summary->minimum_final_nodes, summary->maximum_final_nodes,
 	       summary->maximum_generation, summary->maximum_stress);
@@ -960,12 +869,13 @@ static void print_death_causes(const struct garden_experiment_death_causes *caus
 
 static void print_seed_blockers(const struct garden_experiment_seed_blockers *blockers)
 {
-	printf("{\"samples\":%" PRIu32 ",\"dormant\":%" PRIu32 ",\"blocked\":%" PRIu32
-	       ",\"moisture\":%" PRIu32 ",\"light\":%" PRIu32 ",\"plant_capacity\":%" PRIu32
-	       ",\"node_capacity\":%" PRIu32 ",\"spacing\":%" PRIu32 "}",
-	       blockers->samples, blockers->dormant, blockers->blocked, blockers->moisture,
-	       blockers->light, blockers->plant_capacity, blockers->node_capacity,
-	       blockers->spacing);
+	printf("{\"samples\":%" PRIu32 ",\"dormant\":%" PRIu32 ",\"ready\":%" PRIu32
+	       ",\"blocked\":%" PRIu32 ",\"moisture\":%" PRIu32 ",\"light\":%" PRIu32
+	       ",\"plant_capacity\":%" PRIu32 ",\"node_capacity\":%" PRIu32 ",\"spacing\":%" PRIu32
+	       "}",
+	       blockers->samples, blockers->dormant, blockers->ready, blockers->blocked,
+	       blockers->moisture, blockers->light, blockers->plant_capacity,
+	       blockers->node_capacity, blockers->spacing);
 }
 
 static void print_group_metric_fields(const struct garden_experiment_group_metrics *metrics)
@@ -1062,12 +972,16 @@ static void print_outcome(const struct garden_experiment_outcome *outcome)
 	putchar('}');
 }
 
-static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t base_seed)
+static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t base_seed,
+			 bool has_candidate_model, uint32_t candidate_fingerprint)
 {
 	printf("{\n  \"schema_version\": %u,\n", GARDEN_EXPERIMENT_SCHEMA_VERSION);
 	printf("  \"trial_count\": %" PRIu32 ",\n", trial_count);
 	printf("  \"tick_count\": %" PRIu32 ",\n", tick_count);
 	printf("  \"base_seed\": \"%08" PRIx32 "\",\n", base_seed);
+	if (has_candidate_model) {
+		printf("  \"candidate_model_crc32\": \"%08" PRIx32 "\",\n", candidate_fingerprint);
+	}
 	printf("  \"integral_units\": {\"living\": \"plant-ticks\", "
 	       "\"descendants\": \"plant-ticks\", \"resources\": \"ecology-samples\"},\n");
 	printf("  \"tracked_lineage_capacity\": %u,\n", GARDEN_EXPERIMENT_MAX_TRACKED_LINEAGES);
@@ -1075,10 +989,11 @@ static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t bas
 	       "\"requires_active_leaf\": true, \"requires_zero_stress\": true},\n",
 	       GARDEN_EXPERIMENT_ESTABLISHED_MINIMUM_AGE);
 	printf("  \"scenarios\": [\n");
-	for (size_t scenario_index = 0U; scenario_index < TOY_FACTORY_ARRAY_SIZE(scenarios);
+	for (size_t scenario_index = 0U;
+	     scenario_index < TOY_FACTORY_ARRAY_SIZE(toy_factory_garden_evaluation_scenarios);
 	     ++scenario_index) {
-		const struct garden_experiment_scenario *const scenario =
-			&scenarios[scenario_index];
+		const struct toy_factory_garden_evaluation_scenario *const scenario =
+			&toy_factory_garden_evaluation_scenarios[scenario_index];
 		printf("    {\"name\":\"%s\",\"plants\":%u,\"initial_water_per_plant\":%u,"
 		       "\"irrigation_pattern\":\"%s\","
 		       "\"irrigation_period_ticks\":%" PRIu32
@@ -1103,7 +1018,10 @@ static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t bas
 			       (policy_index + 1U < TOY_FACTORY_ARRAY_SIZE(policies)) ? "," : "");
 		}
 		printf("    ]}%s\n",
-		       (scenario_index + 1U < TOY_FACTORY_ARRAY_SIZE(scenarios)) ? "," : "");
+		       (scenario_index + 1U <
+			TOY_FACTORY_ARRAY_SIZE(toy_factory_garden_evaluation_scenarios))
+			       ? ","
+			       : "");
 	}
 	printf("  ]\n}\n");
 }
@@ -1113,7 +1031,9 @@ int main(int argc, char **argv)
 	uint32_t trial_count;
 	uint32_t tick_count;
 	uint32_t base_seed;
-	const int option_result = parse_options(argc, argv, &trial_count, &tick_count, &base_seed);
+	const char *model_path;
+	const int option_result =
+		parse_options(argc, argv, &trial_count, &tick_count, &base_seed, &model_path);
 	if (option_result > 0) {
 		return 0;
 	}
@@ -1121,23 +1041,44 @@ int main(int argc, char **argv)
 		print_usage(stderr, argv[0]);
 		return 2;
 	}
+	uint32_t candidate_fingerprint = 0U;
+	if (model_path != NULL) {
+		int err = toy_factory_garden_model_read(model_path, &candidate_model,
+							&candidate_fingerprint);
+		if (err == 0) {
+			err = picosystem_garden_neural_policy_init(&candidate_model,
+								   &candidate_policy);
+		}
+		if (err != 0) {
+			fprintf(stderr, "failed to load candidate model '%s' (%d)\n", model_path,
+				err);
+			return 1;
+		}
+		selected_neural_policy = &candidate_policy;
+		policies[2].name = "neural-candidate";
+	}
 
-	for (size_t scenario_index = 0U; scenario_index < TOY_FACTORY_ARRAY_SIZE(scenarios);
+	for (size_t scenario_index = 0U;
+	     scenario_index < TOY_FACTORY_ARRAY_SIZE(toy_factory_garden_evaluation_scenarios);
 	     ++scenario_index) {
 		for (size_t policy_index = 0U; policy_index < TOY_FACTORY_ARRAY_SIZE(policies);
 		     ++policy_index) {
 			const struct picosystem_garden_agent_policy *const policy =
 				policies[policy_index].get_policy();
 			for (uint32_t trial = 0U; trial < trial_count; ++trial) {
-				const uint32_t random_seed = seed_for_trial(base_seed, trial);
+				const uint32_t random_seed =
+					toy_factory_garden_evaluation_trial_seed(base_seed, trial);
 				const int err = run_trial(
-					&scenarios[scenario_index], policy, random_seed, tick_count,
+					&toy_factory_garden_evaluation_scenarios[scenario_index],
+					policy, random_seed, tick_count,
 					&outcomes[scenario_index][policy_index][trial]);
 				if (err != 0) {
 					fprintf(stderr,
 						"%s/%s trial %" PRIu32 " failed at seed %08" PRIx32
 						" (%d)\n",
-						scenarios[scenario_index].name,
+						toy_factory_garden_evaluation_scenarios
+							[scenario_index]
+								.name,
 						policies[policy_index].name, trial, random_seed,
 						err);
 					return 1;
@@ -1146,6 +1087,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	print_report(trial_count, tick_count, base_seed);
+	print_report(trial_count, tick_count, base_seed, model_path != NULL, candidate_fingerprint);
 	return 0;
 }

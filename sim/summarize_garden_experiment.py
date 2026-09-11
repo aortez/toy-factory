@@ -24,7 +24,7 @@ def require_integer(container: dict[str, object], name: str) -> int:
 def main() -> int:
     arguments = parse_arguments()
     report = json.loads(arguments.report.read_text())
-    if not isinstance(report, dict) or report.get("schema_version") != 2:
+    if not isinstance(report, dict) or report.get("schema_version") not in (2, 3):
         raise RuntimeError("unexpected Garden experiment schema")
     trial_count = require_integer(report, "trial_count")
     tick_count = require_integer(report, "tick_count")

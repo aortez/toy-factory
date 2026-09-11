@@ -10,9 +10,9 @@ import subprocess
 
 
 EXPECTED_CHECKPOINTS = {
-    "initial": (0, "bfb614d6", "c515c869"),
-    "growing": (930, "dc82ca95", "c96704e4"),
-    "mature": (3771, "3da95d0b", "37bcf2aa"),
+    "initial": (0, "edda4220", "c515c869"),
+    "growing": (930, "9b775c1a", "c96704e4"),
+    "mature": (3771, "ec860825", "bf6ec1a6"),
 }
 EXPECTED_STATE = {
     "initial": {
@@ -58,11 +58,11 @@ EXPECTED_STATE = {
         "deaths": 0,
         "reclaimed_plants": 0,
         "reclaimed_nodes": 0,
-        "seeds": 5,
-        "seeds_created": 5,
+        "seeds": 6,
+        "seeds_created": 6,
         "germinations": 0,
         "seeds_expired": 0,
-        "mutations": 3,
+        "mutations": 4,
         "max_generation": 0,
         "moisture": 3259,
     },

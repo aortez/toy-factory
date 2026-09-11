@@ -96,6 +96,12 @@ context-sensitive candidate scorer—not a claimed improvement over the adaptive
 policy. That distinction gives later search runs a fixed control and makes poor
 weights visible in the same survival-first report as useful ones.
 
+A saved neural candidate can replace that reference in the same detailed report:
+
+```sh
+make host-evaluate-garden GARDEN_EVAL_MODEL=artifacts/garden-champion.tgm
+```
+
 The report treats evaluation as ordered gates rather than one weighted score:
 
 1. survival, including the first tick at which no living plant or banked seed
@@ -108,8 +114,10 @@ The report treats evaluation as ordered gates rather than one weighted score:
 4. efficiency diagnostics such as resources, decisions, and growth choices.
 
 Deaths are classified by the energy/water shortage flags present at death.
-Seed-blocker counters sample seeds left in the bank after each ecology step.
-Dormant samples are separated from mature blocked samples; moisture, light,
+Seed-state counters sample seeds left in the bank after each ecology step.
+Report schema 3 separates dormant, ready, and mature blocked samples. A seed can
+become ready after the final light update and await the next germination pass;
+this is a valid transient state. Moisture, light,
 plant capacity, node capacity, and spacing reasons may overlap. Those are sample
 counts, not unique seed counts. There is intentionally no composite fitness
 score: future experiments can choose an objective without discarding the
@@ -128,6 +136,45 @@ batch is exercised as a long-run capacity check. The evaluator test executes the
 same batch twice under UBSan, requires byte-equivalent JSON, validates global,
 species, and founder accounting invariants, rejects invalid limits, and verifies
 that matched policies receive identical trial seeds.
+
+## Garden policy search
+
+Run the deterministic integer-model search with:
+
+```sh
+make host-train-garden
+```
+
+The trainer uses a `(1 + lambda)` strategy: each generation keeps one elite,
+creates the remaining candidates by bounded mutations of that generation's
+parent, evaluates every candidate on the exact shared scenarios and matched
+world seeds, and accepts only a strict improvement. Fitness is lexicographic,
+not a weighted sum: fewer extinct trials, more final viable plants/seeds, more
+living plants, more established offspring, more descendant plant-time, deeper
+generations, more total living plant-time, then fewer deaths. This keeps the
+survival contract visible and avoids choosing arbitrary exchange rates between
+biologically different outcomes.
+
+The default outputs are:
+
+- `artifacts/garden-training.json`, the complete settings and champion trace;
+- `artifacts/garden-champion.tgm`, a 1,220-byte canonical little-endian container
+  with a versioned 1,204-byte payload and CRC-32; and
+- `artifacts/garden-champion.c`, the same model as a `const` definition that can
+  reside directly in firmware flash.
+
+The mutation RNG is separate from the worlds' RNGs. No timing, thread scheduling,
+path, or floating-point value enters selection, so equal command lines produce
+byte-identical reports and artifacts. `GARDEN_TRAIN_INPUT=path.tgm` resumes from
+a saved model. Generations, population, trials, duration, mutations, seed, and
+all output paths are Make variables. CTest runs the search twice, compares every
+byte, reloads and re-exports the winner, rejects a corrupted model, compiles the
+generated C, and passes the model through the detailed evaluator.
+
+The [Garden longevity investigation](../benchmarks/garden-longevity/README.md)
+evaluates the frozen champion on held-out seeds through 24 day/night cycles.
+It records the difference between surviving populations and continuing
+reproduction, with a reproducible batch runner and per-plant inspection tool.
 
 ## Garden profiling
 

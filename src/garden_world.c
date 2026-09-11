@@ -16,7 +16,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define GARDEN_HASH_VERSION                      UINT32_C(4)
+#define GARDEN_HASH_VERSION                      UINT32_C(5)
 #define GARDEN_AGENT_MEMORY_HASH_TAG             UINT32_C(0x4d454d31)
 #define GARDEN_DEFAULT_RANDOM_SEED               UINT32_C(0x746f7921)
 #define GARDEN_FNV1A_OFFSET_BASIS                UINT32_C(2166136261)
@@ -1513,16 +1513,30 @@ static bool plant_can_reproduce(const struct picosystem_garden_world *world, uin
 	const int32_t reserve_periods = PICOSYSTEM_GARDEN_NIGHT_RESERVE_PERIODS +
 					((int32_t)plant->genome.reserve_strategy *
 					 PICOSYSTEM_GARDEN_RESERVE_TRAIT_PERIOD_STEP);
-	const int32_t maintenance_energy_reserve =
-		(int32_t)plant_energy_maintenance_cost(plant) * reserve_periods;
-	const int32_t maintenance_water_reserve =
-		(int32_t)plant_water_maintenance_cost(world, plant_index) * reserve_periods;
-	const int32_t retained_energy = (energy_reserve > maintenance_energy_reserve)
-						? energy_reserve
-						: maintenance_energy_reserve;
-	const int32_t retained_water = (water_reserve > maintenance_water_reserve)
-					       ? water_reserve
-					       : maintenance_water_reserve;
+	const int32_t energy_upkeep = plant_energy_maintenance_cost(plant);
+	const int32_t water_upkeep = plant_water_maintenance_cost(world, plant_index);
+	const int32_t maintenance_energy_reserve = energy_upkeep * reserve_periods;
+	const int32_t maintenance_water_reserve = water_upkeep * reserve_periods;
+	int32_t retained_energy = (energy_reserve > maintenance_energy_reserve)
+					  ? energy_reserve
+					  : maintenance_energy_reserve;
+	int32_t retained_water = (water_reserve > maintenance_water_reserve)
+					 ? water_reserve
+					 : maintenance_water_reserve;
+	/* Uptake caps stores before upkeep runs. Leave that debit and the seed cost
+	 * outside the reserve so a full, mature plant can still afford reproduction.
+	 * This bounds the safety margin; it does not guarantee survival next night.
+	 */
+	const int32_t maximum_energy_reserve =
+		(int32_t)GARDEN_MAX_STORED_ENERGY - energy_upkeep - GARDEN_REPRODUCTION_ENERGY_COST;
+	const int32_t maximum_water_reserve =
+		(int32_t)GARDEN_MAX_STORED_WATER - water_upkeep - GARDEN_REPRODUCTION_WATER_COST;
+	if (retained_energy > maximum_energy_reserve) {
+		retained_energy = maximum_energy_reserve;
+	}
+	if (retained_water > maximum_water_reserve) {
+		retained_water = maximum_water_reserve;
+	}
 	return ((int32_t)plant->stored_energy >=
 		(GARDEN_REPRODUCTION_ENERGY_COST + retained_energy)) &&
 	       ((int32_t)plant->stored_water >= (GARDEN_REPRODUCTION_WATER_COST + retained_water));
@@ -1532,6 +1546,18 @@ static void update_reproduction(struct picosystem_garden_world *world)
 {
 	const struct picosystem_garden_sun sun =
 		picosystem_garden_sun_at(world->ecology_tick_count);
+	if (sun.phase == 0U) {
+		/* A living flower can fund one seed each day without another growth tip.
+		 * Reuse its existing spent flag; renewal never bypasses the seed debit,
+		 * per-plant cooldown, daylight, stress, or seed-bank capacity checks.
+		 */
+		for (uint16_t index = 0U; index < world->node_count; ++index) {
+			struct picosystem_garden_node *const node = &world->nodes[index];
+			if (!plant_is_dead(&world->plants[node->plant_index])) {
+				node->flags &= (uint8_t)~PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED;
+			}
+		}
+	}
 	const uint8_t plant_count = world->plant_count;
 	for (uint8_t plant_index = 0U; plant_index < plant_count; ++plant_index) {
 		struct picosystem_garden_plant *const plant = &world->plants[plant_index];

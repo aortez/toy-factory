@@ -8,6 +8,7 @@
 #define PICOSYSTEM_GARDEN_AGENT_NEURAL_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "garden_agent.h"
@@ -21,6 +22,12 @@
 #define PICOSYSTEM_GARDEN_NEURAL_CANDIDATE_UNIT_COUNT    8U
 #define PICOSYSTEM_GARDEN_NEURAL_MODEL_SIZE              1204U
 #define PICOSYSTEM_GARDEN_NEURAL_MAX_SHIFT               15U
+#define PICOSYSTEM_GARDEN_NEURAL_MAX_ABSOLUTE_BIAS       INT32_C(1000000)
+#define PICOSYSTEM_GARDEN_NEURAL_FILE_MAGIC              UINT32_C(0x314d4754)
+#define PICOSYSTEM_GARDEN_NEURAL_FILE_VERSION            1U
+#define PICOSYSTEM_GARDEN_NEURAL_FILE_HEADER_SIZE        16U
+#define PICOSYSTEM_GARDEN_NEURAL_FILE_SIZE                                                         \
+	(PICOSYSTEM_GARDEN_NEURAL_FILE_HEADER_SIZE + PICOSYSTEM_GARDEN_NEURAL_MODEL_SIZE)
 
 #define PICOSYSTEM_GARDEN_NEURAL_HIDDEN_INPUT_COUNT                                                \
 	(PICOSYSTEM_GARDEN_NEURAL_COMMON_FEATURE_COUNT + PICOSYSTEM_GARDEN_AGENT_MEMORY_WIDTH)
@@ -121,6 +128,12 @@ int picosystem_garden_neural_encode_features(
 
 /* Reject incompatible or arithmetically unsafe flash-resident model data. */
 int picosystem_garden_neural_model_validate(const struct picosystem_garden_neural_model *model);
+
+/* Encode or transactionally decode the canonical little-endian, CRC-protected file format. */
+int picosystem_garden_neural_model_encode(const struct picosystem_garden_neural_model *model,
+					  uint8_t *buffer, size_t capacity);
+int picosystem_garden_neural_model_decode(const uint8_t *buffer, size_t size,
+					  struct picosystem_garden_neural_model *model);
 
 /* Build a caller-owned all-tip policy around one immutable model. */
 int picosystem_garden_neural_policy_init(const struct picosystem_garden_neural_model *model,

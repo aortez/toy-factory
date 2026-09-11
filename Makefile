@@ -29,12 +29,24 @@ HOST_PLAYER ?= build-host-player/toy-factory-player
 HOST_OUT ?= artifacts/host-screenshot.png
 HOST_GARDEN_PROFILE ?= build-host-profile/toy-factory-garden-profile
 HOST_GARDEN_EVALUATOR ?= build-host/toy-factory-garden-eval
+HOST_GARDEN_TRAINER ?= build-host/toy-factory-garden-train
 GARDEN_PROFILE_REPETITIONS ?= 32
 GARDEN_PROFILE_OUT ?= artifacts/garden-host-profile.json
 GARDEN_EVAL_TRIALS ?= 8
 GARDEN_EVAL_TICKS ?= 7680
 GARDEN_EVAL_SEED ?= 0x6576616c
 GARDEN_EVAL_OUT ?= artifacts/garden-evaluation.json
+GARDEN_EVAL_MODEL ?=
+GARDEN_TRAIN_GENERATIONS ?= 8
+GARDEN_TRAIN_POPULATION ?= 16
+GARDEN_TRAIN_TRIALS ?= 2
+GARDEN_TRAIN_TICKS ?= 7680
+GARDEN_TRAIN_MUTATIONS ?= 32
+GARDEN_TRAIN_SEED ?= 0x74726169
+GARDEN_TRAIN_INPUT ?=
+GARDEN_TRAIN_OUT ?= artifacts/garden-training.json
+GARDEN_MODEL_OUT ?= artifacts/garden-champion.tgm
+GARDEN_MODEL_C_OUT ?= artifacts/garden-champion.c
 DISPLAY_TRANSPORT ?= pio-dma
 DISPLAY_HZ ?= 20000000
 CORE1_CHALLENGE ?= 0x01234567
@@ -45,7 +57,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 .PHONY: help image setup build build-fast build-pio build-pio-dma build-pl022-dma \
 	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
 	host-build host-check host-run host-cli host-profile-build host-profile-garden \
-	host-evaluate-garden \
+	host-evaluate-garden host-train-garden \
 	host-image host-player-build host-player-check host-play \
 	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
 	bootloader console status game-stats \
@@ -77,7 +89,11 @@ help: ## Show this list of targets
 	@printf '                    [GARDEN_PROFILE_OUT=artifacts/garden-host-profile.json]\n'
 	@printf '                    [GARDEN_EVAL_TRIALS=8] [GARDEN_EVAL_TICKS=7680]\n'
 	@printf '                    [GARDEN_EVAL_SEED=0x6576616c]\n'
-	@printf '                    [GARDEN_EVAL_OUT=artifacts/garden-evaluation.json]\n'
+	@printf '                    [GARDEN_EVAL_OUT=artifacts/garden-evaluation.json] [GARDEN_EVAL_MODEL=path.tgm]\n'
+	@printf '                    [GARDEN_TRAIN_GENERATIONS=8] [GARDEN_TRAIN_POPULATION=16]\n'
+	@printf '                    [GARDEN_TRAIN_TRIALS=2] [GARDEN_TRAIN_TICKS=7680]\n'
+	@printf '                    [GARDEN_TRAIN_MUTATIONS=32] [GARDEN_TRAIN_SEED=0x74726169]\n'
+	@printf '                    [GARDEN_TRAIN_INPUT=path.tgm] [GARDEN_MODEL_OUT=path.tgm]\n'
 	@awk 'BEGIN { FS = ":.*## " } \
 		/^##@ / { printf "\n%s:\n", substr($$0, 5); next } \
 		/^[a-zA-Z0-9_-]+:.*## / { printf "  %-24s %s\n", $$1, $$2 }' \
@@ -154,10 +170,27 @@ host-evaluate-garden: host-build ## Compare Garden policies over deterministic s
 	@mkdir -p "$(dir $(GARDEN_EVAL_OUT))"
 	@$(COMPOSE) run --rm firmware "$(HOST_GARDEN_EVALUATOR)" \
 		--trials "$(GARDEN_EVAL_TRIALS)" --ticks "$(GARDEN_EVAL_TICKS)" \
-		--seed "$(GARDEN_EVAL_SEED)" > "$(GARDEN_EVAL_OUT)"
+		--seed "$(GARDEN_EVAL_SEED)" \
+		$(if $(strip $(GARDEN_EVAL_MODEL)),--model "$(GARDEN_EVAL_MODEL)",) \
+		> "$(GARDEN_EVAL_OUT)"
 	@$(COMPOSE) run --rm firmware python3 -m json.tool "$(GARDEN_EVAL_OUT)" >/dev/null
 	@$(COMPOSE) run --rm firmware python3 sim/summarize_garden_experiment.py \
 		"$(GARDEN_EVAL_OUT)"
+
+host-train-garden: host-build ## Evolve and export a deterministic Garden neural policy
+	@mkdir -p "$(dir $(GARDEN_TRAIN_OUT))" "$(dir $(GARDEN_MODEL_OUT))" \
+		"$(dir $(GARDEN_MODEL_C_OUT))"
+	@$(COMPOSE) run --rm firmware "$(HOST_GARDEN_TRAINER)" \
+		--generations "$(GARDEN_TRAIN_GENERATIONS)" \
+		--population "$(GARDEN_TRAIN_POPULATION)" \
+		--trials "$(GARDEN_TRAIN_TRIALS)" --ticks "$(GARDEN_TRAIN_TICKS)" \
+		--mutations "$(GARDEN_TRAIN_MUTATIONS)" --seed "$(GARDEN_TRAIN_SEED)" \
+		$(if $(strip $(GARDEN_TRAIN_INPUT)),--input "$(GARDEN_TRAIN_INPUT)",) \
+		--output "$(GARDEN_MODEL_OUT)" --c-output "$(GARDEN_MODEL_C_OUT)" \
+		> "$(GARDEN_TRAIN_OUT)"
+	@$(COMPOSE) run --rm firmware python3 -m json.tool "$(GARDEN_TRAIN_OUT)" >/dev/null
+	@$(COMPOSE) run --rm firmware python3 sim/summarize_garden_training.py \
+		"$(GARDEN_TRAIN_OUT)"
 
 host-image: ## Build or refresh the pinned SDL host-player image
 	$(COMPOSE) build host-player

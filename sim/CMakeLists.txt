@@ -17,6 +17,7 @@ set(toy_factory_sources
 	${toy_factory_root}/src/garden_damage.c
 	${toy_factory_root}/src/garden_agent.c
 	${toy_factory_root}/src/garden_agent_neural.c
+	${toy_factory_root}/src/garden_agent_neural_codec.c
 	${toy_factory_root}/src/garden_light.c
 	${toy_factory_root}/src/garden_world.c
 	${toy_factory_root}/src/game_scene_clockwork.c
@@ -29,6 +30,8 @@ set(toy_factory_sources
 	${toy_factory_root}/src/physics_chain_fixture.c
 	${toy_factory_root}/src/physics_world.c
 	${toy_factory_root}/src/scene_renderer.c
+	garden_evaluation.c
+	garden_model_file.c
 	simulator.c
 )
 
@@ -57,6 +60,16 @@ target_compile_options(toy-factory-sim PRIVATE
 add_executable(toy-factory-garden-eval garden_experiment.c)
 target_link_libraries(toy-factory-garden-eval PRIVATE toy_factory_simulator_core)
 target_compile_options(toy-factory-garden-eval PRIVATE
+	-Wall
+	-Wextra
+	-Werror
+	-Wconversion
+	-Wsign-conversion
+)
+
+add_executable(toy-factory-garden-train garden_train.c)
+target_link_libraries(toy-factory-garden-train PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-train PRIVATE
 	-Wall
 	-Wextra
 	-Werror
@@ -115,6 +128,14 @@ if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 		-fno-sanitize-recover=undefined
 	)
 	target_link_options(toy-factory-garden-eval PRIVATE
+		-fsanitize=undefined
+		-fno-sanitize-recover=undefined
+	)
+	target_compile_options(toy-factory-garden-train PRIVATE
+		-fsanitize=undefined
+		-fno-sanitize-recover=undefined
+	)
+	target_link_options(toy-factory-garden-train PRIVATE
 		-fsanitize=undefined
 		-fno-sanitize-recover=undefined
 	)
@@ -209,6 +230,14 @@ add_test(
 	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_experiment.py
 		--binary $<TARGET_FILE:toy-factory-garden-eval>
 		--summary ${CMAKE_CURRENT_LIST_DIR}/summarize_garden_experiment.py
+)
+add_test(
+	NAME garden-train-smoke
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_train.py
+		--binary $<TARGET_FILE:toy-factory-garden-train>
+		--evaluator $<TARGET_FILE:toy-factory-garden-eval>
+		--source-root ${toy_factory_root}
+		--cc ${CMAKE_C_COMPILER}
 )
 
 foreach(sequence IN ITEMS

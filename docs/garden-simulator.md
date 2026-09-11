@@ -76,9 +76,22 @@ shoot allocation, light and water seeking, branch spacing, shoot/root stature,
 night reserves, and dispersal. The complete genome is included in the agent
 observation, so a later learned policy can act on the same inherited state.
 
-A mature flower may produce one seed after paying bounded energy and water
-costs while retaining its strategy-adjusted reserve and enough resources for a
-complete normal night. The flower is then marked as spent. Seeds disperse a
+A mature flower may produce one seed per Garden day after paying 48 energy and
+24 water while retaining its strategy-adjusted reserve. That reserve is capped
+at what storage can retain after the current maintenance debit and seed cost:
+`min(requested_reserve, storage_limit - upkeep - seed_cost)`. Large plants can
+therefore reproduce at full stores without demanding more than the 256 energy
+or 512 water they can hold. The retained budget remains a safety margin; plants
+can still overgrow or reproduce into a night they cannot survive.
+
+The flower is marked spent until the next dawn, when living flowers renew using
+the existing node flag. Renewal does not grow tissue or consume extra world
+storage, and no seed is created unless daylight, zero stress, resources, and
+seed-bank space permit it. All flowers on a plant share the existing 16-ecology-
+step (four-second) reproduction cooldown. Dead flowers remain spent while
+decomposing. Tissue aging and structural regrowth are not part of this change.
+
+Seeds disperse a
 bounded horizontal distance, remain dormant for eight ecology ticks (two
 seconds), and expire after 256 ecology ticks (64 seconds). A dormant seed
 germinates only when its surface soil has sufficient moisture, the bottom
@@ -257,29 +270,35 @@ The strict-warning/UBSan native suites currently cover invalid inputs, spacing,
 plant and node capacity, downward water travel, evaporation, cursor repeat,
 tool cycling, pruning, distinct species growth, exact paired replays, healthy
 night survival, reversible resource stress, dry death, graph compaction, twelve
-death/replant cycles without leakage, reproduction costs, single-trait bounded
+death/replant cycles without leakage, reproduction costs and attainable reserve
+limits across all reserve traits and maximum body size, one-unit resource
+boundaries, daily flower renewal, full-bank recovery, cooldowns, single-trait bounded
 mutation, seed dormancy/expiry, germination, parent-child lineage, exact seed
 damage rendering, recurrent-memory carry/reset/hash behavior, pressure-sensitive
 adaptive choices, memory bounds, shared-input all-tip bidding, winner-only
 commit, injected-policy determinism and rejection, and a five-minute automatic
 soak. The mixed sequence fixture waters the plot, plants another flower,
 enables automation, and advances 930 exact ticks to five plants, 137 nodes,
-four blooms, and one dormant seed at hash `dc82ca95` and framebuffer CRC-32
+four blooms, and one dormant seed at hash `9b775c1a` and framebuffer CRC-32
 `c96704e4`. Continuing the same state to tick 3,771 reaches five healthy plants,
-189 nodes, 15 blooms, and five dormant seeds at hash `3da95d0b` and CRC-32
-`37bcf2aa`.
+189 nodes, 15 blooms, and six dormant seeds at hash `ec860825` and CRC-32
+`bf6ec1a6`.
 
 A separate unaided lifecycle fixture reaches tick 4,530 with two living plants,
 one visibly decomposing plant, two cumulative deaths, and one reclaimed 25-node
-plant at hash `43930afa` and CRC-32 `5c1d934a`. The generation fixture applies
+plant at hash `46691dd0` and CRC-32 `5c1d934a`. The generation fixture applies
 the same pressure before enabling automation, then continues through tick 8,430
-with six living plants, seven produced seeds, one germination, three expirations,
-six mutations, and one living generation-one offspring. It reaches hash
-`cf48b126` and CRC-32 `c836f83a`. UBSan host runs reproduce all four checkpoints
-exactly. The PIM559 also reproduced the short mixed fixture and complete
-generation fixture's final hashes and framebuffer CRCs exactly.
+with six living plants, twelve produced seeds, one germination, three expirations,
+eleven mutations, and one living generation-one offspring. It reaches hash
+`4e6d7dda` and CRC-32 `fd71309b`. UBSan host runs reproduce all four checkpoints
+exactly. These checkpoints use Garden hash version 5 for renewable flowers and
+attainable reserves. The PIM559 reproduced the preceding version-4 mixed and
+generation fixtures; the version-5 firmware builds but has not yet been replayed
+on the device. See the [longevity investigation](../benchmarks/garden-longevity/README.md)
+for the baseline that motivated these rules.
 
-In a 32-repetition optimized host profile, median ecology steps ranged from
+Under the preceding lifecycle rules, a 32-repetition optimized host profile had
+median ecology steps ranging from
 6.201 to 8.446 microseconds across the three checkpoints, and the slowest
 observed step was 18.285 microseconds. The established checkpoint's 8.446
 microsecond median is about 16% above the preceding phased-policy baseline. On

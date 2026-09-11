@@ -129,6 +129,8 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Prove bounded semantic Garden damage against exact full renders on the host.
 - [x] Add matched-seed Garden policy evaluation, gated lineage outcomes, and bounded decision
       telemetry.
+- [x] Add deterministic Garden neural-policy search and portable, CRC-protected model artifacts.
+- [x] Make mature reproduction reserves attainable and renew living flowers each Garden day.
 - [ ] Measure adaptive Garden partial/full presentation on the PIM559.
 - [ ] Evaluate overlapping core-1 strip rasterization with display DMA.
 - [ ] Add browser/Wasm presentation over the same portable simulation boundary.

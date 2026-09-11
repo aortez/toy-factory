@@ -267,6 +267,89 @@ static struct picosystem_garden_neural_model synthetic_model(void)
 	};
 }
 
+static uint32_t read_u32_le(const uint8_t *bytes)
+{
+	return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8U) | ((uint32_t)bytes[2] << 16U) |
+	       ((uint32_t)bytes[3] << 24U);
+}
+
+static void test_model_codec(void)
+{
+	const struct picosystem_garden_neural_model *const reference =
+		picosystem_garden_neural_reference_model();
+	uint8_t first[PICOSYSTEM_GARDEN_NEURAL_FILE_SIZE];
+	uint8_t second[PICOSYSTEM_GARDEN_NEURAL_FILE_SIZE];
+	struct picosystem_garden_neural_model decoded;
+
+	assert(picosystem_garden_neural_model_encode(NULL, first, sizeof(first)) == -EINVAL);
+	assert(picosystem_garden_neural_model_encode(reference, NULL, sizeof(first)) == -EINVAL);
+	memset(first, 0x5a, sizeof(first));
+	assert(picosystem_garden_neural_model_encode(reference, first, sizeof(first) - 1U) ==
+	       -ENOSPC);
+	for (size_t index = 0U; index < sizeof(first); ++index) {
+		assert(first[index] == 0x5aU);
+	}
+
+	assert(picosystem_garden_neural_model_encode(reference, first, sizeof(first)) == 0);
+	assert(picosystem_garden_neural_model_encode(reference, second, sizeof(second)) == 0);
+	assert(memcmp(first, second, sizeof(first)) == 0);
+	assert(read_u32_le(&first[0]) == PICOSYSTEM_GARDEN_NEURAL_FILE_MAGIC);
+	assert(first[4] == PICOSYSTEM_GARDEN_NEURAL_FILE_VERSION);
+	assert(first[5] == 0U);
+	assert(first[6] == PICOSYSTEM_GARDEN_NEURAL_FILE_HEADER_SIZE);
+	assert(first[7] == 0U);
+	assert(read_u32_le(&first[8]) == PICOSYSTEM_GARDEN_NEURAL_MODEL_SIZE);
+	assert(read_u32_le(&first[12]) == UINT32_C(0xd8131120));
+
+	memset(&decoded, 0xa5, sizeof(decoded));
+	assert(picosystem_garden_neural_model_decode(first, sizeof(first), &decoded) == 0);
+	assert(memcmp(reference, &decoded, sizeof(decoded)) == 0);
+	assert(picosystem_garden_neural_model_decode(NULL, sizeof(first), &decoded) == -EINVAL);
+	assert(picosystem_garden_neural_model_decode(first, sizeof(first), NULL) == -EINVAL);
+	assert(picosystem_garden_neural_model_decode(first, sizeof(first) - 1U, &decoded) ==
+	       -ERANGE);
+	assert(picosystem_garden_neural_model_decode(first, sizeof(first) + 1U, &decoded) ==
+	       -ERANGE);
+
+	struct picosystem_garden_neural_model preserved = synthetic_model();
+	struct picosystem_garden_neural_model expected = preserved;
+	second[0] ^= 1U;
+	assert(picosystem_garden_neural_model_decode(second, sizeof(second), &preserved) ==
+	       -EILSEQ);
+	assert(memcmp(&preserved, &expected, sizeof(preserved)) == 0);
+	memcpy(second, first, sizeof(second));
+	second[4] ^= 1U;
+	assert(picosystem_garden_neural_model_decode(second, sizeof(second), &preserved) ==
+	       -EILSEQ);
+	assert(memcmp(&preserved, &expected, sizeof(preserved)) == 0);
+	memcpy(second, first, sizeof(second));
+	second[12] ^= 1U;
+	assert(picosystem_garden_neural_model_decode(second, sizeof(second), &preserved) ==
+	       -EILSEQ);
+	assert(memcmp(&preserved, &expected, sizeof(preserved)) == 0);
+	memcpy(second, first, sizeof(second));
+	second[PICOSYSTEM_GARDEN_NEURAL_FILE_HEADER_SIZE + 19U] ^= UINT8_C(0x80);
+	assert(picosystem_garden_neural_model_decode(second, sizeof(second), &preserved) ==
+	       -EILSEQ);
+	assert(memcmp(&preserved, &expected, sizeof(preserved)) == 0);
+
+	struct picosystem_garden_neural_model extremes = synthetic_model();
+	extremes.hidden_bias[0] = PICOSYSTEM_GARDEN_NEURAL_MAX_ABSOLUTE_BIAS;
+	extremes.action_bias[0] = -PICOSYSTEM_GARDEN_NEURAL_MAX_ABSOLUTE_BIAS;
+	extremes.hidden_weights[0][0] = INT8_MIN;
+	extremes.action_weights[0][0] = INT8_MAX;
+	assert(picosystem_garden_neural_model_encode(&extremes, first, sizeof(first)) == 0);
+	assert(picosystem_garden_neural_model_decode(first, sizeof(first), &decoded) == 0);
+	assert(memcmp(&extremes, &decoded, sizeof(decoded)) == 0);
+
+	extremes.magic = 0U;
+	memset(first, 0x5a, sizeof(first));
+	assert(picosystem_garden_neural_model_encode(&extremes, first, sizeof(first)) == -ERANGE);
+	for (size_t index = 0U; index < sizeof(first); ++index) {
+		assert(first[index] == 0x5aU);
+	}
+}
+
 static void test_integer_inference_and_ranking(void)
 {
 	struct picosystem_garden_neural_model model = synthetic_model();
@@ -401,6 +484,7 @@ int main(void)
 {
 	test_feature_contract();
 	test_model_validation_and_policy_init();
+	test_model_codec();
 	test_integer_inference_and_ranking();
 	test_context_conditioned_candidate_layer();
 	test_reference_policy_determinism();

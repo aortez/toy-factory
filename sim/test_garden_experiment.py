@@ -164,6 +164,7 @@ def validate_seed_blockers(value: object) -> dict[str, object]:
         raise RuntimeError("seed germination blockers are not an object")
     samples = require_nonnegative_integer(value, "samples")
     dormant = require_nonnegative_integer(value, "dormant")
+    ready = require_nonnegative_integer(value, "ready")
     blocked = require_nonnegative_integer(value, "blocked")
     reasons = [
         require_nonnegative_integer(value, name)
@@ -175,8 +176,8 @@ def validate_seed_blockers(value: object) -> dict[str, object]:
             "spacing",
         )
     ]
-    if samples != dormant + blocked:
-        raise RuntimeError("seed samples do not split into dormant and blocked")
+    if samples != dormant + ready + blocked:
+        raise RuntimeError("seed samples do not split into dormant, ready, and blocked")
     if any(reason > blocked for reason in reasons) or sum(reasons) < blocked:
         raise RuntimeError("seed blocker reason counts are inconsistent")
     return value
@@ -204,7 +205,7 @@ def validate_group(value: object) -> tuple[dict[str, object], int]:
 
 
 def validate_report(report: dict[str, object]) -> None:
-    if report.get("schema_version") != 2:
+    if report.get("schema_version") != 3:
         raise RuntimeError("unexpected Garden experiment schema")
     if report.get("trial_count") != TRIAL_COUNT or report.get("tick_count") != TICK_COUNT:
         raise RuntimeError("Garden experiment dimensions changed")
@@ -471,6 +472,7 @@ def validate_report(report: dict[str, object]) -> None:
             for name in (
                 "samples",
                 "dormant",
+                "ready",
                 "blocked",
                 "moisture",
                 "light",
@@ -560,6 +562,26 @@ def validate_report(report: dict[str, object]) -> None:
         raise RuntimeError("Garden evaluator test did not exercise its survival metrics")
 
 
+def validate_ready_seed_regression(binary: Path) -> None:
+    # First derived world seed b738f9be exposes a ready seed at tick 7,740
+    # after the final light update, before the next germination pass.
+    completed = subprocess.run(
+        [str(binary.resolve()), "--trials", "1", "--ticks", "7800",
+         "--seed", "0xfe893bb8"],
+        capture_output=True, text=True, check=True,
+    )
+    report = json.loads(completed.stdout)
+    scenario = next(s for s in report["scenarios"] if s["name"] == "crowded")
+    policy = next(p for p in scenario["policies"] if p["name"] == "baseline")
+    trial = policy["trials"][0]
+    if trial["seed"] != "b738f9be":
+        raise RuntimeError("ready-seed regression world seed changed")
+    for values in (trial, policy["totals"]):
+        blockers = validate_seed_blockers(values["seed_germination_blockers"])
+        if blockers["ready"] == 0:
+            raise RuntimeError("ready-seed regression did not exercise pending germination")
+
+
 def main() -> int:
     arguments = parse_arguments()
     first = run_evaluator(arguments.binary)
@@ -568,6 +590,7 @@ def main() -> int:
         raise RuntimeError("Garden evaluator is not deterministic")
     validate_report(first)
     validate_maximum_duration(arguments.binary)
+    validate_ready_seed_regression(arguments.binary)
 
     with tempfile.TemporaryDirectory() as directory:
         report_path = Path(directory) / "garden-evaluation.json"

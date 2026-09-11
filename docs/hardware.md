@@ -86,7 +86,16 @@ Exact USB-controlled replay reproduced tick 360 at hash `a0919f8b` and
 framebuffer CRC-32 `41e4cdd1` after a directional/flip sequence. A 600-tick
 neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
 
-## Current Garden validation
+## Garden validation
+
+The renewable-flower lifecycle uses Garden hash version 5. Its updated sequence
+goldens and full/damage rendering are host-verified, and the firmware builds
+with unchanged static RAM usage. These new goldens have not yet been replayed
+on the PIM559; current values are in the
+[Garden design](garden-simulator.md#presentation-and-validation).
+
+The device measurements and hashes below describe the preceding version-4
+lifecycle, before renewable flowers and attainable reproduction reserves.
 
 With adaptive recurrent allocation and plant-level all-tip arbitration, the
 mixed manual/automatic sequence reaches tick 930 with five plants, 137 nodes,

@@ -11,7 +11,7 @@
     {"input": "none", "ticks": 900}
   ],
   "expect": {
-    "hash": "dc82ca95",
+    "hash": "9b775c1a",
     "framebuffer_crc32": "c96704e4"
   }
 }

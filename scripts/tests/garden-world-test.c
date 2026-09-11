@@ -864,6 +864,197 @@ static void make_plant_reproductive(struct picosystem_garden_world *world, uint8
 	assert(false);
 }
 
+/* Mature, non-growing tissue with no uptake: tests control both resource stores. */
+static void make_reproduction_fixture(struct picosystem_garden_world *world, uint16_t node_count)
+{
+	assert((node_count >= 4U) && (node_count <= PICOSYSTEM_GARDEN_MAX_NODES));
+	assert(picosystem_garden_world_reset(world, UINT32_C(0x51eed123)) == 0);
+	assert(picosystem_garden_world_plant_seed(world, PICOSYSTEM_GARDEN_SPECIES_SHRUB, 14U) ==
+	       0);
+	make_plant_reproductive(world, 0U);
+	for (uint16_t index = 0U; index < node_count; ++index) {
+		if (index >= world->node_count) {
+			world->nodes[index] = (struct picosystem_garden_node){
+				.parent_index = 0U,
+				.x = world->nodes[0].x,
+				.y = world->nodes[0].y,
+				.kind = PICOSYSTEM_GARDEN_NODE_STEM,
+				.growth_progress = UINT8_MAX,
+			};
+		}
+		world->nodes[index].flags = (index == 1U) ? PICOSYSTEM_GARDEN_NODE_FLOWER : 0U;
+	}
+	world->node_count = node_count;
+	world->plants[0].node_count = node_count;
+	assert(picosystem_garden_world_hash(world) != 0U);
+}
+
+static void test_reproduction_resource_limits(void)
+{
+	static const uint16_t node_counts[] = {4U, 40U, 41U, 57U, 59U, PICOSYSTEM_GARDEN_MAX_NODES};
+	for (size_t index = 0U; index < (sizeof(node_counts) / sizeof(node_counts[0])); ++index) {
+		for (int8_t trait = PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN;
+		     trait <= PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX; ++trait) {
+			struct picosystem_garden_world world;
+			make_reproduction_fixture(&world, node_counts[index]);
+			world.plants[0].genome.reserve_strategy = trait;
+			step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+						    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+			const uint16_t energy_upkeep = (uint16_t)((node_counts[index] + 7U) / 8U);
+			const uint16_t water_upkeep =
+				(uint16_t)((node_counts[index] - 2U + 7U) / 8U);
+			assert(world.seed_creation_count == 1U);
+			assert(world.seed_count == 1U);
+			assert(world.plants[0].stored_energy == 256U - energy_upkeep - 48U);
+			assert(world.plants[0].stored_water == 512U - water_upkeep - 24U);
+			assert(world.node_count == node_counts[index]);
+		}
+	}
+
+	static const struct {
+		uint16_t nodes;
+		uint16_t energy;
+		uint16_t water;
+		bool reproduces;
+	} boundaries[] = {
+		/* Small plants retain the existing 96-energy floor after the seed debit. */
+		{4U, 145U, 512U, true},
+		{4U, 144U, 512U, false},
+		/* Large plants must reach full pre-upkeep stores at the clamped gate. */
+		{57U, 256U, 512U, true},
+		{57U, 255U, 512U, false},
+		{256U, 256U, 512U, true},
+		{256U, 256U, 511U, false},
+	};
+	for (size_t index = 0U; index < (sizeof(boundaries) / sizeof(boundaries[0])); ++index) {
+		struct picosystem_garden_world world;
+		make_reproduction_fixture(&world, boundaries[index].nodes);
+		world.plants[0].stored_energy = boundaries[index].energy;
+		world.plants[0].stored_water = boundaries[index].water;
+		const uint32_t random_before = world.plants[0].random_state;
+		step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+					    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+		assert(world.seed_count == (boundaries[index].reproduces ? 1U : 0U));
+		assert(((world.nodes[1].flags & PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED) != 0U) ==
+		       boundaries[index].reproduces);
+		if (!boundaries[index].reproduces) {
+			assert(world.plants[0].random_state == random_before);
+			assert(world.plants[0].reproduction_cooldown == 0U);
+		}
+	}
+
+	struct picosystem_garden_world stressed;
+	make_reproduction_fixture(&stressed, 57U);
+	stressed.plants[0].stress = 2U;
+	step_garden(&stressed, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+				       PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(stressed.plants[0].stress == 1U);
+	assert(stressed.seed_count == 0U);
+}
+
+static void fill_test_seed_bank(struct picosystem_garden_world *world)
+{
+	world->seed_count = PICOSYSTEM_GARDEN_MAX_SEEDS;
+	world->seed_creation_count = PICOSYSTEM_GARDEN_MAX_SEEDS;
+	for (uint8_t index = 0U; index < world->seed_count; ++index) {
+		world->seeds[index] = (struct picosystem_garden_seed){
+			.parent_lineage_id = world->plants[0].lineage_id,
+			.generation = 1U,
+			.column = world->plants[0].base_column,
+			.species_id = world->plants[0].species_id,
+		};
+	}
+}
+
+static void test_flower_renewal_and_capacity(void)
+{
+	const uint32_t dawn_tick =
+		PICOSYSTEM_GARDEN_SUN_CYCLE_TICKS - PICOSYSTEM_GARDEN_SUN_INITIAL_PHASE;
+	struct picosystem_garden_world world;
+	make_reproduction_fixture(&world, 4U);
+	step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.seed_creation_count == 1U);
+	while (world.ecology_tick_count < dawn_tick - 1U) {
+		world.plants[0].stored_energy = 256U;
+		world.plants[0].stored_water = 512U;
+		step_garden(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+		assert(world.seed_creation_count == 1U);
+		assert((world.nodes[1].flags & PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED) != 0U);
+	}
+	/* Renewal itself neither spends resources nor reproduces in dawn darkness. */
+	world.plants[0].stored_energy = 256U;
+	world.plants[0].stored_water = 512U;
+	step_garden(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert((world.nodes[1].flags & PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED) == 0U);
+	assert(world.seed_creation_count == 1U);
+	assert(world.plants[0].stored_energy == 255U);
+	assert(world.plants[0].stored_water == 511U);
+	step_garden(&world, PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR *
+				    PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.seed_creation_count == 2U);
+	assert(world.plants[0].stored_energy == 206U);
+	assert(world.plants[0].stored_water == 486U);
+	assert(world.node_count == 4U);
+	assert((world.nodes[1].flags & PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED) != 0U);
+	for (uint32_t tick = 0U; tick < 32U; ++tick) {
+		world.plants[0].stored_energy = 256U;
+		world.plants[0].stored_water = 512U;
+		step_garden(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+		assert(world.seed_creation_count == 2U);
+	}
+
+	/* Multiple renewed flowers still share the existing 16-ecology-step cooldown. */
+	make_reproduction_fixture(&world, 5U);
+	world.nodes[4].flags = PICOSYSTEM_GARDEN_NODE_FLOWER;
+	step_garden(&world, 4U * PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.seed_creation_count == 1U);
+	for (uint32_t tick = 0U; tick < 15U; ++tick) {
+		world.plants[0].stored_energy = 256U;
+		world.plants[0].stored_water = 512U;
+		step_garden(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+		assert(world.seed_creation_count == 1U);
+	}
+	step_garden(&world, PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.seed_creation_count == 2U);
+
+	/* A full bank preserves the renewed opportunity and RNG until space returns. */
+	make_reproduction_fixture(&world, 4U);
+	fill_test_seed_bank(&world);
+	world.nodes[1].flags |= PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED;
+	world.ecology_tick_count = dawn_tick - 1U;
+	world.logic_tick_count = world.ecology_tick_count * PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR;
+	const uint32_t random_before = world.plants[0].random_state;
+	step_garden(&world, 5U * PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.seed_count == PICOSYSTEM_GARDEN_MAX_SEEDS);
+	assert(world.seed_creation_count == PICOSYSTEM_GARDEN_MAX_SEEDS);
+	assert(world.plants[0].stored_energy == 254U);
+	assert(world.plants[0].stored_water == 510U);
+	assert(world.plants[0].random_state == random_before);
+	assert(world.plants[0].reproduction_cooldown == 0U);
+	assert((world.nodes[1].flags & PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED) == 0U);
+	--world.seed_count;
+	step_garden(&world, 4U * PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert(world.seed_count == PICOSYSTEM_GARDEN_MAX_SEEDS);
+	assert(world.seed_creation_count == PICOSYSTEM_GARDEN_MAX_SEEDS + 1U);
+	assert(world.plants[0].stored_energy == 205U);
+	assert(world.plants[0].stored_water == 485U);
+	assert((world.nodes[1].flags & PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED) != 0U);
+
+	/* Dead flowers remain spent during decomposition, including at dawn. */
+	make_reproduction_fixture(&world, 4U);
+	world.nodes[1].flags |= PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED;
+	world.plants[0].flags |= PICOSYSTEM_GARDEN_PLANT_DEAD;
+	world.plants[0].stress = PICOSYSTEM_GARDEN_STRESS_DEATH_THRESHOLD;
+	world.plants[0].stored_energy = 0U;
+	world.plants[0].stored_water = 0U;
+	world.ecology_tick_count = dawn_tick - 1U;
+	world.logic_tick_count = world.ecology_tick_count * PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR;
+	step_garden(&world, 5U * PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR);
+	assert((world.nodes[1].flags & PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED) != 0U);
+	assert(world.seed_creation_count == 0U);
+}
+
 static uint8_t genome_difference_count(const struct picosystem_garden_genome *left,
 				       const struct picosystem_garden_genome *right)
 {
@@ -1132,6 +1323,8 @@ int main(void)
 	test_all_tip_arbitration_and_rejection();
 	test_survival_stress_decomposition_and_reclamation();
 	test_reproduction_germination_and_seed_expiration();
+	test_reproduction_resource_limits();
+	test_flower_renewal_and_capacity();
 	test_growth_variety_and_determinism();
 	test_cursor_tools_and_pruning();
 	test_pruning_rejects_distant_tip();

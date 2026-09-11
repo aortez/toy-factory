@@ -11,7 +11,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define GARDEN_NEURAL_MAX_ABSOLUTE_BIAS INT32_C(1000000)
 #define GARDEN_NEURAL_TERMINAL_PRIORITY INT16_MAX
 #define GARDEN_NEURAL_BLOCKED_PRIORITY  (INT16_MAX - 1)
 
@@ -246,8 +245,8 @@ int picosystem_garden_neural_encode_features(
 
 static bool bias_is_safe(int32_t value)
 {
-	return (value >= -GARDEN_NEURAL_MAX_ABSOLUTE_BIAS) &&
-	       (value <= GARDEN_NEURAL_MAX_ABSOLUTE_BIAS);
+	return (value >= -PICOSYSTEM_GARDEN_NEURAL_MAX_ABSOLUTE_BIAS) &&
+	       (value <= PICOSYSTEM_GARDEN_NEURAL_MAX_ABSOLUTE_BIAS);
 }
 
 int picosystem_garden_neural_model_validate(const struct picosystem_garden_neural_model *model)
