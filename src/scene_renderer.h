@@ -108,10 +108,16 @@ struct picosystem_scene_granular_payload {
 };
 
 /* A zero parent distance marks a plant base; every other parent precedes its child. */
+#if defined(TOY_FACTORY_GARDEN_LARGE_POOL)
+typedef uint16_t picosystem_scene_garden_parent_distance_t;
+#else
+typedef uint8_t picosystem_scene_garden_parent_distance_t;
+#endif
+
 struct picosystem_scene_garden_node {
 	uint8_t x;
 	uint8_t y;
-	uint8_t parent_distance;
+	picosystem_scene_garden_parent_distance_t parent_distance;
 	uint8_t growth_progress;
 	uint8_t style;
 };
@@ -122,6 +128,9 @@ struct picosystem_scene_garden_seed {
 };
 
 struct picosystem_scene_garden_payload {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	uint8_t leaf_condition[PICOSYSTEM_GARDEN_MAX_NODES];
+#endif
 	struct picosystem_scene_garden_node nodes[PICOSYSTEM_GARDEN_MAX_NODES];
 	struct picosystem_scene_garden_seed seeds[PICOSYSTEM_GARDEN_MAX_SEEDS];
 	uint8_t moisture[PICOSYSTEM_GARDEN_SOIL_CELL_COUNT];

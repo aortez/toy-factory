@@ -11,7 +11,7 @@ import garden_experiments as experiment
 from garden_resources import require
 
 
-def trial_metrics(rows: list[dict], trial: dict, late_cycles: int) -> dict:
+def trial_metrics(rows: list[dict], trial: dict, late_cycles: int, node_capacity: int = 256) -> dict:
     end = rows[-1]["tick"]
     start = end - late_cycles * experiment.CYCLE_TICKS
     require(0 <= start < end and end % experiment.CYCLE_TICKS == 0, "invalid late window")
@@ -46,7 +46,7 @@ def trial_metrics(rows: list[dict], trial: dict, late_cycles: int) -> dict:
         duration = max(0, following["tick"] - max(start, row["tick"]))
         sums["living_ticks"] += duration * (row["living"] > 0)
         sums["seed_only_ticks"] += duration * (row["living"] == 0 and row["seed_bank"] > 0)
-        sums["node_full_ticks"] += duration * (row["nodes"] == 256)
+        sums["node_full_ticks"] += duration * (row["nodes"] == node_capacity)
         sums["plant_full_ticks"] += duration * (row["plant_slots"] == 8)
         sums["seed_full_ticks"] += duration * (row["seed_bank"] == 8)
         sums["live_plant_ticks"] += duration * row["living"]
@@ -106,7 +106,8 @@ def summarize(bundle: Path, late_cycles: int) -> dict:
         for key, rows in sorted(timelines.items()):
             if key[1] == policy:
                 trials.append({"scenario": key[0], "policy": policy, "seed": key[2],
-                               "metrics": trial_metrics(rows, finals[key], late_cycles)})
+                               "metrics": trial_metrics(rows, finals[key], late_cycles,
+                                                        manifest["environment"].get("node_capacity", 256))})
     policies = sorted({trial["policy"] for trial in trials})
     return {"schema_version": 1, "input_manifest_sha256": experiment.digest(manifest_path),
             "analysis_sha256": experiment.digest(Path(__file__)), "late_cycles": late_cycles,

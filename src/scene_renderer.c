@@ -941,7 +941,11 @@ static PICOSYSTEM_RENDER_RAMFUNC int16_t garden_interpolate(uint8_t start, uint8
 
 static PICOSYSTEM_RENDER_RAMFUNC int
 render_garden_leaf(const struct picosystem_scene_garden_node *node, uint8_t species, int16_t x,
-		   int16_t y, const struct picosystem_rect *clip)
+		   int16_t y,
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		   uint8_t condition,
+#endif
+		   const struct picosystem_rect *clip)
 {
 	const bool dead = (node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD) != 0U;
 	const uint8_t visible_progress = dead ? 1U : PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS;
@@ -950,11 +954,27 @@ render_garden_leaf(const struct picosystem_scene_garden_node *node, uint8_t spec
 		return 0;
 	}
 	const uint16_t radius = (species == PICOSYSTEM_GARDEN_SPECIES_SHRUB) ? 3U : 2U;
-	const picosystem_color_t color =
+	picosystem_color_t color =
 		dead ? GARDEN_DEAD_LEAF_COLOR
 		     : (((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_STRESSED) != 0U)
 				? GARDEN_STRESSED_LEAF_COLOR
 				: garden_leaf_colors[species]);
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	if (!dead) {
+		/* RGB565 interpolation toward dry foliage; geometry stays unchanged. */
+		const uint32_t dry = GARDEN_DEAD_LEAF_COLOR;
+		const uint32_t remaining = UINT8_MAX - condition;
+		const uint32_t red =
+			(((color >> 11U) & 31U) * condition + ((dry >> 11U) & 31U) * remaining) /
+			UINT8_MAX;
+		const uint32_t green =
+			(((color >> 5U) & 63U) * condition + ((dry >> 5U) & 63U) * remaining) /
+			UINT8_MAX;
+		const uint32_t blue =
+			((color & 31U) * condition + (dry & 31U) * remaining) / UINT8_MAX;
+		color = (picosystem_color_t)((red << 11U) | (green << 5U) | blue);
+	}
+#endif
 	return picosystem_graphics_fill_circle_clipped(clip, x, y, radius, color);
 }
 
@@ -1127,7 +1147,11 @@ render_garden(const struct picosystem_scene_snapshot *snapshot, const struct pic
 				clip, parent->x, parent->y, rendered_x, rendered_y, segment_color);
 		}
 
-		int err = render_garden_leaf(node, species, rendered_x, rendered_y, clip);
+		int err = render_garden_leaf(node, species, rendered_x, rendered_y,
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+					     garden->leaf_condition[index],
+#endif
+					     clip);
 		if (err == 0) {
 			err = render_garden_flower(node, species, rendered_x, rendered_y, clip);
 		}

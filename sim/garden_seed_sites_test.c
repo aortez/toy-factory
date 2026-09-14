@@ -99,7 +99,8 @@ int main(void)
 	assert(picosystem_garden_world_reset(&world, 123U) == 0);
 	assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 0U) ==
 	       0);
-	for (uint16_t count = 252U; count <= 256U; ++count) {
+	for (uint16_t count = PICOSYSTEM_GARDEN_MAX_NODES - 4U;
+	     count <= PICOSYSTEM_GARDEN_MAX_NODES; ++count) {
 		for (uint16_t index = world.node_count; index < count; ++index) {
 			world.nodes[index] = world.nodes[0];
 			world.nodes[index].parent_index = 0U;
@@ -110,7 +111,7 @@ int main(void)
 		for (uint8_t column = 0U; column < PICOSYSTEM_GARDEN_GRID_COLUMNS; ++column) {
 			assert(((sites.blockers[column] &
 				 PICOSYSTEM_GARDEN_SEED_BLOCKED_NODE_CAPACITY) != 0U) ==
-			       (count > 252U));
+			       (count > PICOSYSTEM_GARDEN_MAX_NODES - 4U));
 		}
 		check_query(&world);
 	}

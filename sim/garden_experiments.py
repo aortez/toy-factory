@@ -30,19 +30,25 @@ ENVIRONMENT = {"rain_version": 1, "gardener": False, "irrigation": False}
 WIDE_ENVIRONMENT = {**ENVIRONMENT, "seed_dispersal": "wide-v1"}
 WATER_ENVIRONMENT = {**ENVIRONMENT, "water_uptake": "headroom-v1"}
 COMBINED_ENVIRONMENT = {**WIDE_ENVIRONMENT, "water_uptake": "headroom-v1"}
+LARGE_POOL_ENVIRONMENT = {**COMBINED_ENVIRONMENT, "node_capacity": 512}
 SELECTION_ORDER = ["viable", "durable_parents", "cycle_survivors", "descendant_plant_ticks"]
 
 
 def validate_environment(environment: dict) -> None:
-    require(environment in (ENVIRONMENT, WIDE_ENVIRONMENT, WATER_ENVIRONMENT, COMBINED_ENVIRONMENT),
+    require(environment in (ENVIRONMENT, WIDE_ENVIRONMENT, WATER_ENVIRONMENT, COMBINED_ENVIRONMENT,
+                            LARGE_POOL_ENVIRONMENT),
             "unexpected experiment environment")
 
 
-def requested_environment(dispersal: str, water_uptake: str, combined: bool) -> dict:
+def requested_environment(dispersal: str, water_uptake: str, combined: bool, node_capacity: int = 256) -> dict:
     require(dispersal in ("narrow-v1", "wide-v1") and water_uptake in ("legacy-v1", "headroom-v1"),
             "unknown ecology option")
     require(combined == (dispersal == "wide-v1" and water_uptake == "headroom-v1"),
             "combining both rules requires --combined-experiment; opt-in requires both rules")
+    require(node_capacity in (256, 512) and (node_capacity == 256 or combined),
+            "512 nodes requires the combined experiment")
+    if node_capacity == 512:
+        return LARGE_POOL_ENVIRONMENT
     return (COMBINED_ENVIRONMENT if combined else WATER_ENVIRONMENT if water_uptake == "headroom-v1"
             else WIDE_ENVIRONMENT if dispersal == "wide-v1" else ENVIRONMENT)
 
@@ -157,6 +163,8 @@ def validate_report(report: dict, seeds: list[str], ticks: int, model: dict | No
 
 
 def load_timelines(path: Path, report: dict) -> dict[tuple[str, str, str], list[dict]]:
+    capacity = report.get("environment", {}).get("node_capacity", 256)
+    require(capacity in (256, 512), "unsupported node capacity")
     expected = report_trials(report)
     result: dict[tuple[str, str, str], list[dict]] = {key: [] for key in expected}
     offered = {}
@@ -173,7 +181,7 @@ def load_timelines(path: Path, report: dict) -> dict[tuple[str, str, str], list[
             require(row["sun_phase"] == (64 + tick // 15) % 256, "invalid sun phase")
             require(0 <= row["descendants"] <= row["living"] <= row["plant_slots"] <= 8,
                     "invalid population counts")
-            require(0 <= row["nodes"] <= 256 and 0 <= row["moisture"] <= 28 * 11 * 255,
+            require(0 <= row["nodes"] <= capacity and 0 <= row["moisture"] <= 28 * 11 * 255,
                     "invalid capacity counts")
             if values:
                 for name in ("births", "deaths", "living_plant_ticks", "descendant_plant_ticks",
@@ -430,7 +438,8 @@ def collect(args: argparse.Namespace) -> None:
     require(not output.exists(), "output already exists; choose a new experiment directory")
     require(not args.candidate_probe or args.candidate_model is not None,
             "candidate probe requires an external candidate model")
-    environment = requested_environment(args.dispersal, args.water_uptake, args.combined_experiment)
+    environment = requested_environment(args.dispersal, args.water_uptake, args.combined_experiment,
+                                        args.node_capacity)
     seeds = trial_seeds(args.seed, args.trials)
     models = {}
     for side in ("candidate", "control"):
@@ -559,6 +568,8 @@ def main() -> int:
     mode.add_argument("--replay", type=Path)
     parser.add_argument("--case", default="01")
     parser.add_argument("--candidate-model", type=Path)
+    parser.add_argument("--node-capacity", type=int, choices=(256, 512), default=256,
+                        help="Expected host build capacity; 512 requires the combined experiment")
     parser.add_argument("--dispersal", choices=("narrow-v1", "wide-v1"), default="narrow-v1",
                         help="Expected compiled ecology rule; does not switch the executable's behavior")
     parser.add_argument("--water-uptake", choices=("legacy-v1", "headroom-v1"), default="legacy-v1",

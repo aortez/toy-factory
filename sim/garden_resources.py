@@ -67,6 +67,16 @@ def budget(previous: dict | None, plant: dict, tick: int) -> dict:
         values["water_seeds"] = 24
     expected_energy = energy - values["energy_upkeep"] - values["energy_growth"] - values["energy_seeds"]
     expected_water = water - values["water_upkeep"] - values["water_growth"] - values["water_seeds"]
+    if "leaf" in plant:
+        old_leaf = {} if newborn else previous["leaf"]
+        renewals = plant["leaf"]["renewals"] - old_leaf.get("renewals", 0)
+        require(0 <= renewals <= 1, "invalid accepted renewal count")
+        require(renewals + paid_actions + values["waits"] <= 1,
+                "renewal and growth committed in the same ecology step")
+        values["energy_renewal"] = renewals * 9
+        values["water_renewal"] = renewals * 5
+        expected_energy -= values["energy_renewal"]
+        expected_water -= values["water_renewal"]
     require((expected_energy, expected_water) == (plant["energy"], plant["water"]),
             f"budget mismatch at tick {tick}, lineage {plant['id']}: "
             f"expected {(expected_energy, expected_water)}, got {(plant['energy'], plant['water'])}")
@@ -122,6 +132,8 @@ def analyze_stream(stream: TextIO, trace_name: str) -> dict:
             pending_bids.setdefault((world["tick"], world["id"]), []).append(world)
             continue
         require(world["type"] == "world", "unknown trace record")
+        require("leaf_environment" not in world,
+                "maintenance traces require garden_leaf_experiment.audit_trace")
         tick = world["tick"]
         require((previous_tick is None and tick == 0) or tick == previous_tick + 15,
                 "trace must include every ecology sample, starting at reset")

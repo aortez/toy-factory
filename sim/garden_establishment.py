@@ -68,12 +68,13 @@ def cohort(records: list[dict], end: int, start: int | None = None) -> dict:
     return result
 
 
-def analyze(path: Path, reference: list[dict], late_cycles: int) -> dict:
+def analyze(path: Path, reference: list[dict], late_cycles: int, node_capacity: int = 256) -> dict:
     with gzip.open(path, "rt") as stream:
-        return analyze_stream(stream, reference, late_cycles)
+        return analyze_stream(stream, reference, late_cycles, node_capacity)
 
 
-def analyze_stream(stream, reference: list[dict], late_cycles: int) -> dict:
+def analyze_stream(stream, reference: list[dict], late_cycles: int, node_capacity: int = 256,
+                   *, seed_capacity: int = 8) -> dict:
     end = reference[-1]["tick"]
     start = end - late_cycles * experiment.CYCLE_TICKS
     require(0 <= start < end, "invalid late window")
@@ -87,9 +88,13 @@ def analyze_stream(stream, reference: list[dict], late_cycles: int) -> dict:
         row = json.loads(line)
         tick = row["tick"]
         require(row["schema_version"] == 1 and row["type"] == "seed-sites", "invalid census schema")
+        require(row.get("node_capacity", 256) == node_capacity and 0 <= row["nodes"] <= node_capacity,
+                "wrong census node capacity")
         require(tick == previous["tick"] + ECOLOGY_TICKS and tick <= end, "missing/reordered census tick")
         require(row["sun_phase"] == (64 + tick//15) % 256, "invalid census sun phase")
-        require(len(row["sites"]) == COLUMNS and len(row["seeds"]) <= 8 and len(row["plants"]) <= 8,
+        require(seed_capacity in (8, 16) and row.get("seed_capacity", 8) == seed_capacity,
+                "wrong census seed capacity")
+        require(len(row["sites"]) == COLUMNS and len(row["seeds"]) <= seed_capacity and len(row["plants"]) <= 8,
                 "invalid census capacities")
         for mask, water, light in row["sites"]:
             require(0 <= mask < 64 and not mask & 1 and 0 <= water <= 255 and 0 <= light <= 255,
@@ -256,7 +261,8 @@ def collect(args: argparse.Namespace) -> None:
     sources = experiment.source_files()
     record = {"schema_version": 1, "kind": "garden-establishment", "status": "running",
               "input_manifest_sha256": input_digest, "source_sha256": sources,
-              "late_cycles": args.late_cycles, "notes": NOTES}
+              "late_cycles": args.late_cycles, "notes": NOTES,
+              "node_capacity": manifest["environment"].get("node_capacity", 256)}
     output.mkdir(parents=True, exist_ok=False)
     experiment.write_json(output / "started.json", record)
     try:
@@ -304,7 +310,7 @@ def collect(args: argparse.Namespace) -> None:
                         raw = Path(temporary) / "trace.jsonl"
                         experiment.command_run(command, raw, output, args.timeout)
                         experiment.compress(raw, packed)
-                    analysis = analyze(packed, reference, args.late_cycles)
+                    analysis = analyze(packed, reference, args.late_cycles, record["node_capacity"])
                     analysis_path = f"analyses/{case_id}.json"
                     experiment.write_json(output / analysis_path, analysis)
                     case = {"id": case_id, "scenario": scenario, "policy": policy, "seed": seed,
@@ -346,7 +352,8 @@ def verify(output: Path, case_id: str, timeout: int) -> None:
             experiment.command_run(case["command"], raw, output, timeout)
             experiment.compress(raw, packed)
             require(experiment.digest(packed) == case["trace_sha256"], "frozen trace changed")
-            actual = analyze(packed, timeline[(case["scenario"], case["policy"], case["seed"])], manifest["late_cycles"])
+            actual = analyze(packed, timeline[(case["scenario"], case["policy"], case["seed"])],
+                             manifest["late_cycles"], manifest.get("node_capacity", 256))
             require(actual == experiment.read_json(output / case["analysis_path"]), "reanalysis changed")
     print(f"PASS: {len(selected)} frozen seed censuses and analyses reproduced exactly")
 

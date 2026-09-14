@@ -9,6 +9,30 @@ option(TOY_FACTORY_SIMULATOR_PROFILING "Build host profiling tools" OFF)
 option(TOY_FACTORY_GARDEN_WIDE_DISPERSAL "Experimental host-only 3-9 cell seed scattering" OFF)
 option(TOY_FACTORY_GARDEN_WATER_HEADROOM "Experimental host-only storage-limited root uptake" OFF)
 option(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT "Explicit opt-in to the combined host ecology trial" OFF)
+option(TOY_FACTORY_GARDEN_LARGE_POOL "Experimental host-only 512-node combined ecology control" OFF)
+option(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE "Host-only mature leaf wear and paid renewal" OFF)
+option(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE "Host-only bounded bottom-drainage comparison" OFF)
+option(TOY_FACTORY_GARDEN_LARGE_SEED_BANK "Host-only 16-seed bank comparison" OFF)
+option(TOY_FACTORY_GARDEN_SEED_RESERVE "Host-only sunset-aware seed energy check" OFF)
+if(TOY_FACTORY_GARDEN_SEED_RESERVE AND
+	(NOT TOY_FACTORY_GARDEN_LEAF_MAINTENANCE OR NOT TOY_FACTORY_GARDEN_LARGE_POOL OR
+	 TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE))
+	message(FATAL_ERROR "Seed reserve requires the undrained 512-node host maintenance experiment")
+endif()
+if(TOY_FACTORY_GARDEN_LARGE_SEED_BANK AND
+	(NOT TOY_FACTORY_GARDEN_LEAF_MAINTENANCE OR NOT TOY_FACTORY_GARDEN_LARGE_POOL OR
+	 TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE))
+	message(FATAL_ERROR "Large seed bank requires the undrained 512-node host maintenance experiment")
+endif()
+if(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE AND NOT TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	message(FATAL_ERROR "Bottom drainage requires the host maintenance experiment")
+endif()
+if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE AND NOT TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT)
+	message(FATAL_ERROR "Leaf maintenance requires the combined host experiment")
+endif()
+if(TOY_FACTORY_GARDEN_LARGE_POOL AND NOT TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT)
+	message(FATAL_ERROR "Large node pool requires the combined host experiment")
+endif()
 if(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT)
 	if(NOT TOY_FACTORY_GARDEN_WIDE_DISPERSAL OR NOT TOY_FACTORY_GARDEN_WATER_HEADROOM)
 		message(FATAL_ERROR "Combined experiment requires both ecology options")
@@ -42,11 +66,29 @@ set(toy_factory_sources
 	${toy_factory_root}/src/scene_renderer.c
 	garden_evaluation.c
 	garden_model_file.c
+	garden_model_mutation.c
 	garden_policy_probe.c
+	garden_reserve_policy.c
+	garden_root_bootstrap.c
 	simulator.c
 )
 
 add_library(toy_factory_simulator_core STATIC ${toy_factory_sources})
+if(TOY_FACTORY_GARDEN_SEED_RESERVE)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_SEED_RESERVE=1)
+endif()
+if(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_LARGE_SEED_BANK=1)
+endif()
+set_source_files_properties(garden_reserve_policy.c garden_root_bootstrap.c garden_model_mutation.c PROPERTIES
+	COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
+if(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE=1)
+endif()
+if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_LEAF_MAINTENANCE=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_leaf_policies.c garden_gap.c garden_disturbance.c)
+endif()
 if(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
 	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_WIDE_DISPERSAL=1)
 endif()
@@ -55,6 +97,9 @@ if(TOY_FACTORY_GARDEN_WATER_HEADROOM)
 endif()
 if(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT)
 	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT=1)
+endif()
+if(TOY_FACTORY_GARDEN_LARGE_POOL)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_LARGE_POOL=1)
 endif()
 target_include_directories(toy_factory_simulator_core PUBLIC
 	${toy_factory_root}/src
@@ -109,6 +154,11 @@ target_compile_options(toy-factory-garden-replay PRIVATE
 	-Wall -Wextra -Werror -Wconversion -Wsign-conversion
 )
 
+add_executable(toy-factory-garden-capacity-test garden_capacity_test.c)
+target_link_libraries(toy-factory-garden-capacity-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-capacity-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+
 add_executable(toy-factory-garden-lifetimes-test garden_lifetimes_test.c garden_lifetimes.c)
 target_link_libraries(toy-factory-garden-lifetimes-test PRIVATE toy_factory_simulator_core)
 target_compile_options(toy-factory-garden-lifetimes-test PRIVATE
@@ -120,6 +170,15 @@ target_link_libraries(toy-factory-garden-policy-probe-test PRIVATE toy_factory_s
 target_compile_options(toy-factory-garden-policy-probe-test PRIVATE
 	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG
 )
+
+add_executable(toy-factory-garden-reserve-policy-test garden_reserve_policy_test.c)
+target_link_libraries(toy-factory-garden-reserve-policy-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-reserve-policy-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(toy-factory-garden-reserve-policy-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	target_link_options(toy-factory-garden-reserve-policy-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+endif()
 
 add_executable(toy-factory-garden-seed-sites-test garden_seed_sites_test.c)
 target_link_libraries(toy-factory-garden-seed-sites-test PRIVATE toy_factory_simulator_core)
@@ -171,6 +230,10 @@ if(TOY_FACTORY_SIMULATOR_PROFILING)
 endif()
 
 if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(toy-factory-garden-capacity-test PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined)
+	target_link_options(toy-factory-garden-capacity-test PRIVATE
+		-fsanitize=undefined -fno-sanitize-recover=undefined)
 	target_compile_options(toy-factory-garden-water-uptake-test PRIVATE
 		-fsanitize=undefined -fno-sanitize-recover=undefined
 	)
@@ -314,10 +377,211 @@ endif()
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 enable_testing()
+add_test(NAME garden-allocation-objectives-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_allocation_objectives.py)
+add_test(NAME garden-allocation-survival-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_allocation_survival.py)
+add_test(NAME garden-descendants-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_descendants.py)
+add_test(NAME garden-lineage-fitness-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_lineage_fitness.py)
+add_test(NAME garden-lineage-persistence-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_lineage_persistence.py)
+add_test(NAME garden-pilot-validation-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_pilot_validation.py)
+add_test(NAME garden-mixed-training-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_mixed_training.py)
+add_test(NAME garden-window-stability-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_window_stability.py)
+add_test(NAME garden-sustained-renewal-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_sustained_renewal.py)
+add_test(NAME garden-individual-renewal-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_individual_renewal.py)
+add_test(NAME garden-renewal-stalls-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_stalls.py)
+add_test(NAME garden-recruitment-recovery-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_recruitment_recovery.py)
+add_executable(toy-factory-garden-model-mutate garden_model_mutate.c)
+add_executable(toy-factory-garden-persistence-check garden_persistence_check.c garden_persistence.c)
+set(persistence_targets toy-factory-garden-model-mutate toy-factory-garden-persistence-check)
+if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE AND TOY_FACTORY_GARDEN_LARGE_POOL
+	AND NOT TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE AND NOT TOY_FACTORY_GARDEN_LARGE_SEED_BANK
+	AND NOT TOY_FACTORY_GARDEN_SEED_RESERVE)
+	add_executable(toy-factory-garden-persistence-trial garden_persistence_trial.c garden_persistence.c)
+	list(APPEND persistence_targets toy-factory-garden-persistence-trial)
+endif()
+foreach(target IN LISTS persistence_targets)
+	target_link_libraries(${target} PRIVATE toy_factory_simulator_core)
+	target_compile_options(${target} PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(${target} PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(${target} PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+endforeach()
+add_test(NAME garden-persistence-native-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_persistence_native.py --build ${CMAKE_BINARY_DIR})
+add_executable(toy-factory-garden-allocation-policy-test
+	garden_allocation_policy_test.c garden_allocation_policy.c)
+set(allocation_targets toy-factory-garden-allocation-policy-test)
+if(TOY_FACTORY_GARDEN_SEED_RESERVE)
+	add_executable(toy-factory-garden-allocation garden_allocation.c garden_allocation_policy.c)
+	list(APPEND allocation_targets toy-factory-garden-allocation)
+endif()
+foreach(target IN LISTS allocation_targets)
+	target_link_libraries(${target} PRIVATE toy_factory_simulator_core)
+	target_compile_options(${target} PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(${target} PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(${target} PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+endforeach()
+add_test(NAME garden-allocation-policy-unit COMMAND toy-factory-garden-allocation-policy-test)
+add_test(NAME garden-allocation-analysis COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_allocation.py --build ${CMAKE_BINARY_DIR})
+add_executable(toy-factory-garden-root-bootstrap-test garden_root_bootstrap_test.c)
+target_link_libraries(toy-factory-garden-root-bootstrap-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-root-bootstrap-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(toy-factory-garden-root-bootstrap-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	target_link_options(toy-factory-garden-root-bootstrap-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+endif()
+add_test(NAME garden-root-bootstrap-unit COMMAND toy-factory-garden-root-bootstrap-test)
+add_test(NAME garden-root-bootstrap-audit COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_root_bootstrap.py --build ${CMAKE_BINARY_DIR})
+add_test(NAME garden-seedling-water-unit COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_seedling_water.py)
+add_test(NAME garden-seed-reserve-analysis-unit COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_seed_reserve.py)
+if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE AND TOY_FACTORY_GARDEN_LARGE_POOL
+	AND NOT TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+	add_executable(toy-factory-garden-seed-reserve-test garden_seed_reserve_test.c)
+	target_link_libraries(toy-factory-garden-seed-reserve-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-seed-reserve-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-seed-reserve-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-seed-reserve-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+	add_test(NAME garden-seed-reserve-unit COMMAND toy-factory-garden-seed-reserve-test)
+endif()
+add_test(NAME garden-reserve-policy-unit COMMAND toy-factory-garden-reserve-policy-test)
+add_test(NAME garden-policy-panel-unit COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_policy_panel.py)
+add_test(NAME garden-turnover-unit COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_turnover.py)
+add_test(NAME garden-recruitment-unit COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_recruitment.py)
+if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE AND NOT TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE
+	AND NOT TOY_FACTORY_GARDEN_LARGE_SEED_BANK AND NOT TOY_FACTORY_GARDEN_SEED_RESERVE)
+	add_test(NAME garden-recruitment-integration COMMAND ${Python3_EXECUTABLE}
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_recruitment.py --build ${CMAKE_BINARY_DIR})
+endif()
 
 add_test(NAME garden-damage-unit COMMAND toy-factory-garden-damage-test)
 add_test(NAME garden-neural-unit COMMAND toy-factory-garden-neural-test)
 add_test(NAME garden-lifetimes-unit COMMAND toy-factory-garden-lifetimes-test)
+add_test(NAME garden-water-uptake-unit COMMAND toy-factory-garden-water-uptake-test)
+add_test(NAME garden-leaf-guards COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_leaf_guards.py --cc ${CMAKE_C_COMPILER})
+add_test(NAME garden-leaf-competition-unit COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_leaf_competition.py)
+
+if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	add_executable(toy-factory-garden-water-budget garden_water_budget.c)
+	add_executable(toy-factory-garden-water-audit-test garden_water_audit_test.c)
+	add_executable(toy-factory-garden-seed-attempts garden_seed_attempts.c)
+	add_executable(toy-factory-garden-seed-audit-test garden_seed_audit_test.c)
+	foreach(target toy-factory-garden-water-budget toy-factory-garden-water-audit-test
+		toy-factory-garden-seed-attempts toy-factory-garden-seed-audit-test)
+		target_link_libraries(${target} PRIVATE toy_factory_simulator_core)
+		target_compile_options(${target} PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+		if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+			target_compile_options(${target} PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+			target_link_options(${target} PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		endif()
+	endforeach()
+	add_test(NAME garden-water-audit-unit COMMAND toy-factory-garden-water-audit-test)
+	add_test(NAME garden-seed-audit-unit COMMAND toy-factory-garden-seed-audit-test)
+	if(TOY_FACTORY_GARDEN_SEED_RESERVE)
+		add_test(NAME garden-capacity-unit COMMAND toy-factory-garden-capacity-test)
+		add_test(NAME garden-seed-sites-unit COMMAND toy-factory-garden-seed-sites-test)
+		# Old ecology smoke fixtures intentionally reject the new rule identity.
+		return()
+	endif()
+	add_test(NAME garden-seed-attempts-smoke COMMAND ${Python3_EXECUTABLE}
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_seed_attempts.py --build ${CMAKE_BINARY_DIR})
+	if(NOT TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+		add_test(NAME garden-seed-bank-smoke COMMAND ${Python3_EXECUTABLE}
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_seed_bank.py --build ${CMAKE_BINARY_DIR})
+	endif()
+	if(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+		add_test(NAME garden-capacity-unit COMMAND toy-factory-garden-capacity-test)
+		add_test(NAME garden-seed-sites-unit COMMAND toy-factory-garden-seed-sites-test)
+		# Eight-seed ecology expectations are not the new experiment's contract.
+		return()
+	endif()
+	set(water_budget_args)
+	if(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+		list(APPEND water_budget_args --drainage)
+	endif()
+	add_test(NAME garden-water-budget-smoke COMMAND ${Python3_EXECUTABLE}
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_water_budget.py --build ${CMAKE_BINARY_DIR} ${water_budget_args})
+	add_test(NAME garden-policy-diagnostic-smoke COMMAND ${Python3_EXECUTABLE}
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_policy_diagnostic.py --build ${CMAKE_BINARY_DIR})
+	add_test(NAME garden-reserve-policy-smoke COMMAND ${Python3_EXECUTABLE}
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_reserve_policy.py --build ${CMAKE_BINARY_DIR})
+	if(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+		add_test(NAME garden-drainage-smoke COMMAND ${Python3_EXECUTABLE}
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_drainage.py --build ${CMAKE_BINARY_DIR})
+		# The previous ecology's frozen census expectations are not drainage fixtures.
+		return()
+	endif()
+	add_executable(toy-factory-garden-leaf-test garden_leaf_test.c)
+	add_executable(toy-factory-garden-disturbance-test garden_disturbance_test.c)
+	target_link_libraries(toy-factory-garden-disturbance-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-disturbance-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-disturbance-test PRIVATE
+			-fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-disturbance-test PRIVATE
+			-fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+	add_test(NAME garden-disturbance-unit COMMAND toy-factory-garden-disturbance-test)
+	add_test(NAME garden-disturbance-smoke COMMAND ${Python3_EXECUTABLE}
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_disturbance.py --build ${CMAKE_BINARY_DIR})
+	add_test(NAME garden-diversity-smoke COMMAND ${Python3_EXECUTABLE}
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_diversity.py --build ${CMAKE_BINARY_DIR})
+	add_executable(toy-factory-garden-gap-test garden_gap_test.c)
+	target_link_libraries(toy-factory-garden-gap-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-gap-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	target_link_libraries(toy-factory-garden-leaf-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-leaf-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-gap-test PRIVATE
+			-fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-gap-test PRIVATE
+			-fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_compile_options(toy-factory-garden-leaf-test PRIVATE
+			-fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-leaf-test PRIVATE
+			-fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+	add_test(NAME garden-leaf-unit COMMAND toy-factory-garden-leaf-test)
+	add_test(NAME garden-gap-unit COMMAND toy-factory-garden-gap-test)
+	add_test(NAME garden-gap-smoke COMMAND ${Python3_EXECUTABLE}
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_gap_experiment.py --build ${CMAKE_BINARY_DIR})
+	add_test(NAME garden-leaf-smoke COMMAND ${Python3_EXECUTABLE}
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_leaf_experiment.py --build ${CMAKE_BINARY_DIR})
+	add_test(NAME garden-leaf-competition-smoke COMMAND ${Python3_EXECUTABLE}
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_leaf_competition.py --build ${CMAKE_BINARY_DIR})
+	# Default-ecology golden hashes and the trainer are not this experiment's contract.
+	return()
+endif()
+
 add_test(
 	NAME garden-resources-unit
 	COMMAND ${Python3_EXECUTABLE} -W error
@@ -361,9 +625,18 @@ add_test(
 
 add_test(NAME garden-policy-probe-unit COMMAND toy-factory-garden-policy-probe-test)
 add_test(NAME garden-seed-sites-unit COMMAND toy-factory-garden-seed-sites-test)
-add_test(NAME garden-water-uptake-unit COMMAND toy-factory-garden-water-uptake-test)
 add_test(NAME garden-factorial-unit
 	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_factorial.py)
+add_test(NAME garden-capacity-unit COMMAND toy-factory-garden-capacity-test)
+add_test(NAME garden-tip-audit-unit
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_tip_audit.py)
+add_test(NAME garden-capacity-guards
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_capacity.py
+		--cc ${CMAKE_C_COMPILER})
+add_test(NAME garden-node-audit-smoke
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_node_audit.py
+		--evaluator $<TARGET_FILE:toy-factory-garden-eval>
+		--inspector $<TARGET_FILE:toy-factory-garden-inspect>)
 add_test(
 	NAME garden-establishment-smoke
 	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test_garden_establishment.py

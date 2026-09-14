@@ -9,8 +9,9 @@
 
 #include "garden_agent.h"
 
-#define TOY_FACTORY_GARDEN_NIGHT_PROBE_NAME   "no-night-growth-v1"
-#define TOY_FACTORY_GARDEN_NIGHT_PROBE_POLICY "neural-no-night-growth"
+#define TOY_FACTORY_GARDEN_NIGHT_PROBE_NAME      "no-night-growth-v1"
+#define TOY_FACTORY_GARDEN_NIGHT_PROBE_POLICY    "neural-no-night-growth"
+#define TOY_FACTORY_GARDEN_ADAPTIVE_NIGHT_POLICY "adaptive-no-night-growth"
 
 /* Host-only counterfactual: veto paid growth during sun phases 128..255.
  * Priority, tip identity, arbitration, and proposed recurrent memory are preserved.

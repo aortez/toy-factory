@@ -17,6 +17,7 @@
 #include "garden_agent_neural.h"
 #include "garden_evaluation.h"
 #include "garden_model_file.h"
+#include "garden_model_mutation.h"
 #include "garden_world.h"
 #include "portable_util.h"
 
@@ -74,20 +75,6 @@ struct garden_train_generation {
 	struct garden_train_fitness fitness;
 	uint32_t fingerprint;
 	bool accepted;
-};
-
-struct garden_train_rng {
-	uint32_t state;
-};
-
-struct garden_train_i8_span {
-	int8_t *values;
-	size_t count;
-};
-
-struct garden_train_i32_span {
-	int32_t *values;
-	size_t count;
 };
 
 static void print_usage(FILE *stream, const char *program)
@@ -195,16 +182,6 @@ static int parse_options(int argc, char **argv, struct garden_train_options *opt
 		return -EINVAL;
 	}
 	return 0;
-}
-
-static uint32_t rng_next(struct garden_train_rng *rng)
-{
-	uint32_t value = rng->state;
-	value ^= value << 13U;
-	value ^= value >> 17U;
-	value ^= value << 5U;
-	rng->state = (value == 0U) ? GARDEN_TRAIN_DEFAULT_SEED : value;
-	return rng->state;
 }
 
 static int mark_established(struct garden_train_observer *observer, uint32_t lineage_id)
@@ -335,99 +312,6 @@ static bool fitness_is_better(const struct garden_train_fitness *candidate,
 	return candidate->deaths < champion->deaths;
 }
 
-static int8_t clamp_i8(int32_t value)
-{
-	if (value < INT8_MIN) {
-		return INT8_MIN;
-	}
-	return (value > INT8_MAX) ? INT8_MAX : (int8_t)value;
-}
-
-static int32_t clamp_bias(int32_t value)
-{
-	if (value < -PICOSYSTEM_GARDEN_NEURAL_MAX_ABSOLUTE_BIAS) {
-		return -PICOSYSTEM_GARDEN_NEURAL_MAX_ABSOLUTE_BIAS;
-	}
-	return (value > PICOSYSTEM_GARDEN_NEURAL_MAX_ABSOLUTE_BIAS)
-		       ? PICOSYSTEM_GARDEN_NEURAL_MAX_ABSOLUTE_BIAS
-		       : value;
-}
-
-static void mutate_weight(struct picosystem_garden_neural_model *model,
-			  struct garden_train_rng *rng, size_t flat_index)
-{
-	struct garden_train_i8_span spans[] = {
-		{&model->hidden_weights[0][0], sizeof(model->hidden_weights)},
-		{&model->action_weights[0][0], sizeof(model->action_weights)},
-		{model->priority_weights, sizeof(model->priority_weights)},
-		{&model->memory_weights[0][0], sizeof(model->memory_weights)},
-		{&model->candidate_hidden_weights[0][0], sizeof(model->candidate_hidden_weights)},
-		{&model->candidate_feature_weights[0][0], sizeof(model->candidate_feature_weights)},
-		{model->candidate_output_weights, sizeof(model->candidate_output_weights)},
-	};
-	for (size_t index = 0U; index < TOY_FACTORY_ARRAY_SIZE(spans); ++index) {
-		if (flat_index < spans[index].count) {
-			int32_t delta = (int32_t)(rng_next(rng) % 17U) - 8;
-			if (delta == 0) {
-				delta = ((rng_next(rng) & 1U) == 0U) ? -1 : 1;
-			}
-			spans[index].values[flat_index] =
-				clamp_i8((int32_t)spans[index].values[flat_index] + delta);
-			return;
-		}
-		flat_index -= spans[index].count;
-	}
-}
-
-static void mutate_bias(struct picosystem_garden_neural_model *model, struct garden_train_rng *rng,
-			size_t flat_index)
-{
-	struct garden_train_i32_span spans[] = {
-		{model->hidden_bias, TOY_FACTORY_ARRAY_SIZE(model->hidden_bias)},
-		{model->action_bias, TOY_FACTORY_ARRAY_SIZE(model->action_bias)},
-		{&model->priority_bias, 1U},
-		{model->memory_bias, TOY_FACTORY_ARRAY_SIZE(model->memory_bias)},
-		{model->candidate_hidden_bias,
-		 TOY_FACTORY_ARRAY_SIZE(model->candidate_hidden_bias)},
-		{&model->candidate_output_bias, 1U},
-	};
-	for (size_t index = 0U; index < TOY_FACTORY_ARRAY_SIZE(spans); ++index) {
-		if (flat_index < spans[index].count) {
-			int32_t delta = (int32_t)(rng_next(rng) % 513U) - 256;
-			if (delta == 0) {
-				delta = ((rng_next(rng) & 1U) == 0U) ? -1 : 1;
-			}
-			spans[index].values[flat_index] =
-				clamp_bias(spans[index].values[flat_index] + delta);
-			return;
-		}
-		flat_index -= spans[index].count;
-	}
-}
-
-static void mutate_model(struct picosystem_garden_neural_model *model, struct garden_train_rng *rng,
-			 uint32_t mutation_count)
-{
-	const size_t weight_count =
-		sizeof(model->hidden_weights) + sizeof(model->action_weights) +
-		sizeof(model->priority_weights) + sizeof(model->memory_weights) +
-		sizeof(model->candidate_hidden_weights) + sizeof(model->candidate_feature_weights) +
-		sizeof(model->candidate_output_weights);
-	const size_t bias_count = TOY_FACTORY_ARRAY_SIZE(model->hidden_bias) +
-				  TOY_FACTORY_ARRAY_SIZE(model->action_bias) + 1U +
-				  TOY_FACTORY_ARRAY_SIZE(model->memory_bias) +
-				  TOY_FACTORY_ARRAY_SIZE(model->candidate_hidden_bias) + 1U;
-	for (uint32_t index = 0U; index < mutation_count; ++index) {
-		const size_t parameter =
-			(size_t)(rng_next(rng) % (uint32_t)(weight_count + bias_count));
-		if (parameter < weight_count) {
-			mutate_weight(model, rng, parameter);
-		} else {
-			mutate_bias(model, rng, parameter - weight_count);
-		}
-	}
-}
-
 static void print_fitness(const struct garden_train_fitness *fitness)
 {
 	printf("{\"extinctions\":%" PRIu32 ",\"final_viable\":%" PRIu32 ",\"final_living\":%" PRIu32
@@ -508,6 +392,11 @@ static int write_champion(const struct garden_train_options *options,
 
 int main(int argc, char **argv)
 {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	fprintf(stderr,
+		"Training is disabled in leaf-maintenance-v1; use the scripted host experiment.\n");
+	return 2;
+#endif
 	struct garden_train_options options;
 	const int option_result = parse_options(argc, argv, &options);
 	if (option_result > 0) {
@@ -546,7 +435,7 @@ int main(int argc, char **argv)
 	}
 	const struct garden_train_fitness initial_fitness = champion_fitness;
 	struct garden_train_generation generations[GARDEN_TRAIN_MAX_GENERATIONS];
-	struct garden_train_rng search_rng = {
+	struct toy_factory_garden_mutation_rng search_rng = {
 		.state = options.base_seed ^ UINT32_C(0xa511e9b3),
 	};
 	if (search_rng.state == 0U) {
@@ -560,7 +449,11 @@ int main(int argc, char **argv)
 		bool accepted = false;
 		for (uint32_t member = 1U; member < options.population_count; ++member) {
 			struct picosystem_garden_neural_model candidate = parent;
-			mutate_model(&candidate, &search_rng, options.mutation_count);
+			err = toy_factory_garden_model_mutate(&candidate, &search_rng,
+							      options.mutation_count);
+			if (err != 0) {
+				return 1;
+			}
 			struct garden_train_fitness candidate_fitness;
 			err = evaluate_model(&candidate, &options, &candidate_fitness);
 			if (err != 0) {

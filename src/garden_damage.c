@@ -126,6 +126,11 @@ static bool garden_nodes_match(const struct picosystem_scene_garden_payload *pre
 		return false;
 	}
 	const struct picosystem_scene_garden_node *const left = &presented->nodes[index];
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	if (presented->leaf_condition[index] != current->leaf_condition[index]) {
+		return false;
+	}
+#endif
 	const struct picosystem_scene_garden_node *const right = &current->nodes[index];
 	if ((left->x != right->x) || (left->y != right->y) ||
 	    (left->parent_distance != right->parent_distance) ||

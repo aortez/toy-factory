@@ -217,16 +217,17 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 			     PICOSYSTEM_GARDEN_SPECIES_COUNT)) {
 				return -ERANGE;
 			}
-			uint8_t parent_distance = 0U;
+			picosystem_scene_garden_parent_distance_t parent_distance = 0U;
 			if (source->parent_index != PICOSYSTEM_GARDEN_NODE_NONE) {
 				if (source->parent_index >= index) {
 					return -ERANGE;
 				}
 				const uint16_t distance = (uint16_t)(index - source->parent_index);
-				if (distance > UINT8_MAX) {
+				if (distance >= PICOSYSTEM_GARDEN_MAX_NODES) {
 					return -ERANGE;
 				}
-				parent_distance = (uint8_t)distance;
+				parent_distance =
+					(picosystem_scene_garden_parent_distance_t)distance;
 			}
 			const struct picosystem_garden_plant *const plant =
 				&garden_world->plants[source->plant_index];
@@ -257,6 +258,9 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 				.growth_progress = source->growth_progress,
 				.style = style,
 			};
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+			garden->leaf_condition[index] = world->garden.leaf_condition[index];
+#endif
 		}
 		return 0;
 	}

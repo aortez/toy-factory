@@ -1,0 +1,1304 @@
+{
+  "candidate_is_frozen_reference": true,
+  "candidate_sha256": "bd9f9c6ba7f5fd17309f917972da5f759c305c077798e1d4ba9a52701e2cd48b",
+  "cases": [
+    {
+      "arms": {
+        "candidate": {
+          "actions": {
+            "decisions": 7,
+            "finish": 0,
+            "root_extend": 0,
+            "shoot_extend": 7,
+            "wait": 0
+          },
+          "budget": {
+            "energy_growth": 56,
+            "energy_income": 371,
+            "energy_overflow": 101,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 22,
+            "extensions": 7,
+            "finishes": 0,
+            "waits": 0,
+            "water_growth": 35,
+            "water_income": 17,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 6
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.20703125,
+            "cause": "water",
+            "terminal_step_budget": null,
+            "tick": 618600
+          },
+          "final_world": {
+            "births": 68,
+            "deaths": 65,
+            "hash": "95ec568f",
+            "living": 8,
+            "tick": 648525
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "water",
+            "day1": "water",
+            "day8": "water"
+          },
+          "live_steps_checked": 53,
+          "peak_active_leaves": 8,
+          "seeds_created": 0
+        },
+        "reference": {
+          "actions": {
+            "decisions": 7,
+            "finish": 0,
+            "root_extend": 0,
+            "shoot_extend": 7,
+            "wait": 0
+          },
+          "budget": {
+            "energy_growth": 56,
+            "energy_income": 371,
+            "energy_overflow": 101,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 22,
+            "extensions": 7,
+            "finishes": 0,
+            "waits": 0,
+            "water_growth": 35,
+            "water_income": 17,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 6
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.20703125,
+            "cause": "water",
+            "terminal_step_budget": null,
+            "tick": 618600
+          },
+          "final_world": {
+            "births": 68,
+            "deaths": 65,
+            "hash": "95ec568f",
+            "living": 8,
+            "tick": 648525
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "water",
+            "day1": "water",
+            "day8": "water"
+          },
+          "live_steps_checked": 53,
+          "peak_active_leaves": 8,
+          "seeds_created": 0
+        },
+        "wait": {
+          "actions": {
+            "decisions": 1174,
+            "finish": 0,
+            "root_extend": 0,
+            "shoot_extend": 0,
+            "wait": 1174
+          },
+          "budget": {
+            "energy_growth": 0,
+            "energy_income": 327,
+            "energy_overflow": 0,
+            "energy_renewal": 18,
+            "energy_seeds": 0,
+            "energy_upkeep": 294,
+            "extensions": 0,
+            "finishes": 0,
+            "waits": 1174,
+            "water_growth": 0,
+            "water_income": 792,
+            "water_overflow": 0,
+            "water_renewal": 10,
+            "water_seeds": 0,
+            "water_upkeep": 294
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 4.58984375,
+            "cause": "patch",
+            "terminal_step_budget": null,
+            "tick": 635430
+          },
+          "final_world": {
+            "births": 67,
+            "deaths": 64,
+            "hash": "6b90e09c",
+            "living": 8,
+            "tick": 648525
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "alive",
+            "day1": "alive",
+            "day8": "patch-censored"
+          },
+          "live_steps_checked": 1176,
+          "peak_active_leaves": 1,
+          "seeds_created": 0
+        },
+        "wet-root": {
+          "actions": {
+            "decisions": 357,
+            "finish": 6,
+            "root_extend": 18,
+            "shoot_extend": 26,
+            "wait": 307
+          },
+          "budget": {
+            "energy_growth": 400,
+            "energy_income": 3809,
+            "energy_overflow": 1468,
+            "energy_renewal": 90,
+            "energy_seeds": 336,
+            "energy_upkeep": 1470,
+            "extensions": 44,
+            "finishes": 6,
+            "waits": 307,
+            "water_growth": 250,
+            "water_income": 1982,
+            "water_overflow": 0,
+            "water_renewal": 50,
+            "water_seeds": 168,
+            "water_upkeep": 1026
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 4.58984375,
+            "cause": "patch",
+            "terminal_step_budget": null,
+            "tick": 635430
+          },
+          "final_world": {
+            "births": 68,
+            "deaths": 65,
+            "hash": "6b647672",
+            "living": 8,
+            "tick": 648525
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "alive",
+            "day1": "alive",
+            "day8": "patch-censored"
+          },
+          "live_steps_checked": 1176,
+          "peak_active_leaves": 27,
+          "seeds_created": 7
+        }
+      },
+      "checkpoint_hash": "4214de03",
+      "matched_reference_rows": 2051,
+      "spec": {
+        "bank": 16,
+        "birth": 617805,
+        "end": 648525,
+        "growth": "reserve",
+        "history_arm": "off",
+        "key": "c7f54e18.reserve.16",
+        "lineage": 65,
+        "name": "wet-root-opportunity",
+        "root_after": 0,
+        "seed": "c7f54e18"
+      }
+    },
+    {
+      "arms": {
+        "candidate": {
+          "actions": {
+            "decisions": 6,
+            "finish": 0,
+            "root_extend": 0,
+            "shoot_extend": 6,
+            "wait": 0
+          },
+          "budget": {
+            "energy_growth": 48,
+            "energy_income": 228,
+            "energy_overflow": 0,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 23,
+            "extensions": 6,
+            "finishes": 0,
+            "waits": 0,
+            "water_growth": 30,
+            "water_income": 12,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 6
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.21875,
+            "cause": "water",
+            "terminal_step_budget": null,
+            "tick": 622320
+          },
+          "final_world": {
+            "births": 93,
+            "deaths": 91,
+            "hash": "839288ed",
+            "living": 7,
+            "tick": 652200
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "water",
+            "day1": "water",
+            "day8": "water"
+          },
+          "live_steps_checked": 56,
+          "peak_active_leaves": 7,
+          "seeds_created": 0
+        },
+        "reference": {
+          "actions": {
+            "decisions": 10,
+            "finish": 0,
+            "root_extend": 1,
+            "shoot_extend": 9,
+            "wait": 0
+          },
+          "budget": {
+            "energy_growth": 80,
+            "energy_income": 282,
+            "energy_overflow": 0,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 27,
+            "extensions": 10,
+            "finishes": 0,
+            "waits": 0,
+            "water_growth": 50,
+            "water_income": 38,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 12
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.25,
+            "cause": "water",
+            "terminal_step_budget": null,
+            "tick": 622440
+          },
+          "final_world": {
+            "births": 92,
+            "deaths": 89,
+            "hash": "6eaa8aca",
+            "living": 8,
+            "tick": 652200
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "water",
+            "day1": "water",
+            "day8": "water"
+          },
+          "live_steps_checked": 64,
+          "peak_active_leaves": 10,
+          "seeds_created": 0
+        },
+        "wait": {
+          "actions": {
+            "decisions": 1121,
+            "finish": 0,
+            "root_extend": 0,
+            "shoot_extend": 0,
+            "wait": 1121
+          },
+          "budget": {
+            "energy_growth": 0,
+            "energy_income": 244,
+            "energy_overflow": 0,
+            "energy_renewal": 9,
+            "energy_seeds": 0,
+            "energy_upkeep": 299,
+            "extensions": 0,
+            "finishes": 0,
+            "waits": 1121,
+            "water_growth": 0,
+            "water_income": 724,
+            "water_overflow": 0,
+            "water_renewal": 5,
+            "water_seeds": 0,
+            "water_upkeep": 306
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 4.796875,
+            "cause": "energy",
+            "terminal_step_budget": null,
+            "tick": 639900
+          },
+          "final_world": {
+            "births": 91,
+            "deaths": 90,
+            "hash": "572f53fd",
+            "living": 6,
+            "tick": 652200
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "alive",
+            "day1": "alive",
+            "day8": "energy"
+          },
+          "live_steps_checked": 1228,
+          "peak_active_leaves": 1,
+          "seeds_created": 0
+        },
+        "wet-root": {
+          "actions": {
+            "decisions": 10,
+            "finish": 0,
+            "root_extend": 1,
+            "shoot_extend": 9,
+            "wait": 0
+          },
+          "budget": {
+            "energy_growth": 80,
+            "energy_income": 282,
+            "energy_overflow": 0,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 27,
+            "extensions": 10,
+            "finishes": 0,
+            "waits": 0,
+            "water_growth": 50,
+            "water_income": 38,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 12
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.25,
+            "cause": "water",
+            "terminal_step_budget": null,
+            "tick": 622440
+          },
+          "final_world": {
+            "births": 92,
+            "deaths": 89,
+            "hash": "6eaa8aca",
+            "living": 8,
+            "tick": 652200
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "water",
+            "day1": "water",
+            "day8": "water"
+          },
+          "live_steps_checked": 64,
+          "peak_active_leaves": 10,
+          "seeds_created": 0
+        }
+      },
+      "checkpoint_hash": "785b13b6",
+      "matched_reference_rows": 2051,
+      "spec": {
+        "bank": 16,
+        "birth": 621480,
+        "end": 652200,
+        "growth": "neural",
+        "history_arm": "on",
+        "key": "b61837dc.neural.16",
+        "lineage": 92,
+        "name": "rooted-water-baseline",
+        "root_after": 614400,
+        "seed": "b61837dc"
+      }
+    },
+    {
+      "arms": {
+        "candidate": {
+          "actions": {
+            "decisions": 8,
+            "finish": 0,
+            "root_extend": 0,
+            "shoot_extend": 7,
+            "wait": 1
+          },
+          "budget": {
+            "energy_growth": 56,
+            "energy_income": 287,
+            "energy_overflow": 19,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 20,
+            "extensions": 7,
+            "finishes": 0,
+            "waits": 1,
+            "water_growth": 35,
+            "water_income": 17,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 6
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.1796875,
+            "cause": "water",
+            "terminal_step_budget": null,
+            "tick": 626100
+          },
+          "final_world": {
+            "births": 64,
+            "deaths": 62,
+            "hash": "70e3434f",
+            "living": 7,
+            "tick": 656130
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "water",
+            "day1": "water",
+            "day8": "water"
+          },
+          "live_steps_checked": 46,
+          "peak_active_leaves": 8,
+          "seeds_created": 0
+        },
+        "reference": {
+          "actions": {
+            "decisions": 15,
+            "finish": 0,
+            "root_extend": 2,
+            "shoot_extend": 12,
+            "wait": 1
+          },
+          "budget": {
+            "energy_growth": 112,
+            "energy_income": 504,
+            "energy_overflow": 160,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 40,
+            "extensions": 14,
+            "finishes": 0,
+            "waits": 1,
+            "water_growth": 70,
+            "water_income": 60,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 14
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.2578125,
+            "cause": "water",
+            "terminal_step_budget": null,
+            "tick": 626400
+          },
+          "final_world": {
+            "births": 64,
+            "deaths": 62,
+            "hash": "d8a7260a",
+            "living": 7,
+            "tick": 656130
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "water",
+            "day1": "water",
+            "day8": "water"
+          },
+          "live_steps_checked": 66,
+          "peak_active_leaves": 13,
+          "seeds_created": 0
+        },
+        "wait": {
+          "actions": {
+            "decisions": 2046,
+            "finish": 0,
+            "root_extend": 0,
+            "shoot_extend": 0,
+            "wait": 2046
+          },
+          "budget": {
+            "energy_growth": 0,
+            "energy_income": 578,
+            "energy_overflow": 0,
+            "energy_renewal": 27,
+            "energy_seeds": 0,
+            "energy_upkeep": 512,
+            "extensions": 0,
+            "finishes": 0,
+            "waits": 2046,
+            "water_growth": 0,
+            "water_income": 1015,
+            "water_overflow": 0,
+            "water_renewal": 15,
+            "water_seeds": 0,
+            "water_upkeep": 512
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": null,
+          "final_world": {
+            "births": 62,
+            "deaths": 60,
+            "hash": "72fd4432",
+            "living": 7,
+            "tick": 656130
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "alive",
+            "day1": "alive",
+            "day8": "alive"
+          },
+          "live_steps_checked": 2049,
+          "peak_active_leaves": 1,
+          "seeds_created": 0
+        },
+        "wet-root": {
+          "actions": {
+            "decisions": 15,
+            "finish": 0,
+            "root_extend": 2,
+            "shoot_extend": 12,
+            "wait": 1
+          },
+          "budget": {
+            "energy_growth": 112,
+            "energy_income": 504,
+            "energy_overflow": 160,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 40,
+            "extensions": 14,
+            "finishes": 0,
+            "waits": 1,
+            "water_growth": 70,
+            "water_income": 60,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 14
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.2578125,
+            "cause": "water",
+            "terminal_step_budget": null,
+            "tick": 626400
+          },
+          "final_world": {
+            "births": 64,
+            "deaths": 62,
+            "hash": "d8a7260a",
+            "living": 7,
+            "tick": 656130
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "water",
+            "day1": "water",
+            "day8": "water"
+          },
+          "live_steps_checked": 66,
+          "peak_active_leaves": 13,
+          "seeds_created": 0
+        }
+      },
+      "checkpoint_hash": "ae828e3f",
+      "matched_reference_rows": 2052,
+      "spec": {
+        "bank": 8,
+        "birth": 625410,
+        "end": 656130,
+        "growth": "reserve",
+        "history_arm": "on",
+        "key": "b61837dc.reserve.8",
+        "lineage": 66,
+        "name": "rooted-water-bank8",
+        "root_after": 614400,
+        "seed": "b61837dc"
+      }
+    },
+    {
+      "arms": {
+        "candidate": {
+          "actions": {
+            "decisions": 322,
+            "finish": 9,
+            "root_extend": 18,
+            "shoot_extend": 30,
+            "wait": 265
+          },
+          "budget": {
+            "energy_growth": 399,
+            "energy_income": 8111,
+            "energy_overflow": 3482,
+            "energy_renewal": 270,
+            "energy_seeds": 720,
+            "energy_upkeep": 3159,
+            "extensions": 48,
+            "finishes": 9,
+            "waits": 265,
+            "water_growth": 285,
+            "water_income": 3115,
+            "water_overflow": 0,
+            "water_renewal": 150,
+            "water_seeds": 360,
+            "water_upkeep": 1832
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": null,
+          "final_world": {
+            "births": 66,
+            "deaths": 63,
+            "hash": "a1c8122a",
+            "living": 8,
+            "tick": 667665
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "alive",
+            "day1": "alive",
+            "day8": "alive"
+          },
+          "live_steps_checked": 2049,
+          "peak_active_leaves": 31,
+          "seeds_created": 15
+        },
+        "reference": {
+          "actions": {
+            "decisions": 12,
+            "finish": 0,
+            "root_extend": 4,
+            "shoot_extend": 8,
+            "wait": 0
+          },
+          "budget": {
+            "energy_growth": 84,
+            "energy_income": 280,
+            "energy_overflow": 0,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 36,
+            "extensions": 12,
+            "finishes": 0,
+            "waits": 0,
+            "water_growth": 60,
+            "water_income": 56,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 20
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.31640625,
+            "cause": "water",
+            "terminal_step_budget": null,
+            "tick": 638160
+          },
+          "final_world": {
+            "births": 68,
+            "deaths": 66,
+            "hash": "47c2e682",
+            "living": 7,
+            "tick": 667665
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "water",
+            "day1": "water",
+            "day8": "water"
+          },
+          "live_steps_checked": 81,
+          "peak_active_leaves": 9,
+          "seeds_created": 0
+        },
+        "wait": {
+          "actions": {
+            "decisions": 2045,
+            "finish": 0,
+            "root_extend": 0,
+            "shoot_extend": 0,
+            "wait": 2045
+          },
+          "budget": {
+            "energy_growth": 0,
+            "energy_income": 763,
+            "energy_overflow": 71,
+            "energy_renewal": 36,
+            "energy_seeds": 0,
+            "energy_upkeep": 512,
+            "extensions": 0,
+            "finishes": 0,
+            "waits": 2045,
+            "water_growth": 0,
+            "water_income": 1017,
+            "water_overflow": 0,
+            "water_renewal": 20,
+            "water_seeds": 0,
+            "water_upkeep": 512
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": null,
+          "final_world": {
+            "births": 67,
+            "deaths": 65,
+            "hash": "2d8a1180",
+            "living": 7,
+            "tick": 667665
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "alive",
+            "day1": "alive",
+            "day8": "alive"
+          },
+          "live_steps_checked": 2049,
+          "peak_active_leaves": 1,
+          "seeds_created": 0
+        },
+        "wet-root": {
+          "actions": {
+            "decisions": 12,
+            "finish": 0,
+            "root_extend": 4,
+            "shoot_extend": 8,
+            "wait": 0
+          },
+          "budget": {
+            "energy_growth": 84,
+            "energy_income": 280,
+            "energy_overflow": 0,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 36,
+            "extensions": 12,
+            "finishes": 0,
+            "waits": 0,
+            "water_growth": 60,
+            "water_income": 56,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 20
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.31640625,
+            "cause": "water",
+            "terminal_step_budget": null,
+            "tick": 638160
+          },
+          "final_world": {
+            "births": 68,
+            "deaths": 66,
+            "hash": "47c2e682",
+            "living": 7,
+            "tick": 667665
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "water",
+            "day1": "water",
+            "day8": "water"
+          },
+          "live_steps_checked": 81,
+          "peak_active_leaves": 9,
+          "seeds_created": 0
+        }
+      },
+      "checkpoint_hash": "e4cbfe0c",
+      "matched_reference_rows": 2051,
+      "spec": {
+        "bank": 16,
+        "birth": 636945,
+        "end": 667665,
+        "growth": "reserve",
+        "history_arm": "on",
+        "key": "b61837dc.reserve.16",
+        "lineage": 68,
+        "name": "rooted-water-bank16",
+        "root_after": 614400,
+        "seed": "b61837dc"
+      }
+    },
+    {
+      "arms": {
+        "candidate": {
+          "actions": {
+            "decisions": 65,
+            "finish": 1,
+            "root_extend": 10,
+            "shoot_extend": 14,
+            "wait": 40
+          },
+          "budget": {
+            "energy_growth": 225,
+            "energy_income": 244,
+            "energy_overflow": 0,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 83,
+            "extensions": 24,
+            "finishes": 1,
+            "waits": 40,
+            "water_growth": 125,
+            "water_income": 674,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 61
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.53125,
+            "cause": "energy",
+            "terminal_step_budget": null,
+            "tick": 620340
+          },
+          "final_world": {
+            "births": 35,
+            "deaths": 32,
+            "hash": "0cb615b2",
+            "living": 8,
+            "tick": 649020
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "energy",
+            "day1": "energy",
+            "day8": "energy"
+          },
+          "live_steps_checked": 136,
+          "peak_active_leaves": 8,
+          "seeds_created": 0
+        },
+        "reference": {
+          "actions": {
+            "decisions": 65,
+            "finish": 1,
+            "root_extend": 10,
+            "shoot_extend": 14,
+            "wait": 40
+          },
+          "budget": {
+            "energy_growth": 225,
+            "energy_income": 244,
+            "energy_overflow": 0,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 83,
+            "extensions": 24,
+            "finishes": 1,
+            "waits": 40,
+            "water_growth": 125,
+            "water_income": 674,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 61
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.53125,
+            "cause": "energy",
+            "terminal_step_budget": null,
+            "tick": 620340
+          },
+          "final_world": {
+            "births": 35,
+            "deaths": 32,
+            "hash": "0cb615b2",
+            "living": 8,
+            "tick": 649020
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "energy",
+            "day1": "energy",
+            "day8": "energy"
+          },
+          "live_steps_checked": 136,
+          "peak_active_leaves": 8,
+          "seeds_created": 0
+        },
+        "wait": {
+          "actions": {
+            "decisions": 2045,
+            "finish": 0,
+            "root_extend": 0,
+            "shoot_extend": 0,
+            "wait": 2045
+          },
+          "budget": {
+            "energy_growth": 0,
+            "energy_income": 927,
+            "energy_overflow": 188,
+            "energy_renewal": 36,
+            "energy_seeds": 0,
+            "energy_upkeep": 512,
+            "extensions": 0,
+            "finishes": 0,
+            "waits": 2045,
+            "water_growth": 0,
+            "water_income": 1019,
+            "water_overflow": 0,
+            "water_renewal": 20,
+            "water_seeds": 0,
+            "water_upkeep": 512
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": null,
+          "final_world": {
+            "births": 34,
+            "deaths": 31,
+            "hash": "4549f5e2",
+            "living": 8,
+            "tick": 649020
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "alive",
+            "day1": "alive",
+            "day8": "alive"
+          },
+          "live_steps_checked": 2049,
+          "peak_active_leaves": 1,
+          "seeds_created": 0
+        },
+        "wet-root": {
+          "actions": {
+            "decisions": 30,
+            "finish": 2,
+            "root_extend": 14,
+            "shoot_extend": 14,
+            "wait": 0
+          },
+          "budget": {
+            "energy_growth": 270,
+            "energy_income": 252,
+            "energy_overflow": 0,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 46,
+            "extensions": 28,
+            "finishes": 2,
+            "waits": 0,
+            "water_growth": 150,
+            "water_income": 681,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 43
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.375,
+            "cause": "energy",
+            "terminal_step_budget": null,
+            "tick": 619740
+          },
+          "final_world": {
+            "births": 35,
+            "deaths": 32,
+            "hash": "1e60f07e",
+            "living": 8,
+            "tick": 649020
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "energy",
+            "day1": "energy",
+            "day8": "energy"
+          },
+          "live_steps_checked": 96,
+          "peak_active_leaves": 8,
+          "seeds_created": 0
+        }
+      },
+      "checkpoint_hash": "734586b6",
+      "matched_reference_rows": 2051,
+      "spec": {
+        "bank": 8,
+        "birth": 618300,
+        "end": 649020,
+        "growth": "neural",
+        "history_arm": "off",
+        "key": "c7f54e18.neural.8",
+        "lineage": 38,
+        "name": "energy-tradeoff",
+        "root_after": 0,
+        "seed": "c7f54e18"
+      }
+    },
+    {
+      "arms": {
+        "candidate": {
+          "actions": {
+            "decisions": 161,
+            "finish": 3,
+            "root_extend": 16,
+            "shoot_extend": 15,
+            "wait": 127
+          },
+          "budget": {
+            "energy_growth": 306,
+            "energy_income": 6676,
+            "energy_overflow": 3811,
+            "energy_renewal": 243,
+            "energy_seeds": 0,
+            "energy_upkeep": 2308,
+            "extensions": 31,
+            "finishes": 3,
+            "waits": 127,
+            "water_growth": 170,
+            "water_income": 2221,
+            "water_overflow": 0,
+            "water_renewal": 135,
+            "water_seeds": 0,
+            "water_upkeep": 1428
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 7.72265625,
+            "cause": "patch",
+            "terminal_step_budget": null,
+            "tick": 655755
+          },
+          "final_world": {
+            "births": 35,
+            "deaths": 33,
+            "hash": "34db2452",
+            "living": 7,
+            "tick": 656820
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "alive",
+            "day1": "alive",
+            "day8": "patch-censored"
+          },
+          "live_steps_checked": 1978,
+          "peak_active_leaves": 9,
+          "seeds_created": 0
+        },
+        "reference": {
+          "actions": {
+            "decisions": 161,
+            "finish": 3,
+            "root_extend": 16,
+            "shoot_extend": 15,
+            "wait": 127
+          },
+          "budget": {
+            "energy_growth": 306,
+            "energy_income": 6676,
+            "energy_overflow": 3811,
+            "energy_renewal": 243,
+            "energy_seeds": 0,
+            "energy_upkeep": 2308,
+            "extensions": 31,
+            "finishes": 3,
+            "waits": 127,
+            "water_growth": 170,
+            "water_income": 2221,
+            "water_overflow": 0,
+            "water_renewal": 135,
+            "water_seeds": 0,
+            "water_upkeep": 1428
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 7.72265625,
+            "cause": "patch",
+            "terminal_step_budget": null,
+            "tick": 655755
+          },
+          "final_world": {
+            "births": 35,
+            "deaths": 33,
+            "hash": "34db2452",
+            "living": 7,
+            "tick": 656820
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "alive",
+            "day1": "alive",
+            "day8": "patch-censored"
+          },
+          "live_steps_checked": 1978,
+          "peak_active_leaves": 9,
+          "seeds_created": 0
+        },
+        "wait": {
+          "actions": {
+            "decisions": 1975,
+            "finish": 0,
+            "root_extend": 0,
+            "shoot_extend": 0,
+            "wait": 1975
+          },
+          "budget": {
+            "energy_growth": 0,
+            "energy_income": 812,
+            "energy_overflow": 138,
+            "energy_renewal": 27,
+            "energy_seeds": 0,
+            "energy_upkeep": 494,
+            "extensions": 0,
+            "finishes": 0,
+            "waits": 1975,
+            "water_growth": 0,
+            "water_income": 997,
+            "water_overflow": 0,
+            "water_renewal": 15,
+            "water_seeds": 0,
+            "water_upkeep": 494
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 7.72265625,
+            "cause": "patch",
+            "terminal_step_budget": null,
+            "tick": 655755
+          },
+          "final_world": {
+            "births": 35,
+            "deaths": 33,
+            "hash": "6f4a1e03",
+            "living": 7,
+            "tick": 656820
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "alive",
+            "day1": "alive",
+            "day8": "patch-censored"
+          },
+          "live_steps_checked": 1978,
+          "peak_active_leaves": 1,
+          "seeds_created": 0
+        },
+        "wet-root": {
+          "actions": {
+            "decisions": 32,
+            "finish": 1,
+            "root_extend": 2,
+            "shoot_extend": 15,
+            "wait": 14
+          },
+          "budget": {
+            "energy_growth": 162,
+            "energy_income": 145,
+            "energy_overflow": 0,
+            "energy_renewal": 0,
+            "energy_seeds": 0,
+            "energy_upkeep": 47,
+            "extensions": 17,
+            "finishes": 1,
+            "waits": 14,
+            "water_growth": 90,
+            "water_income": 535,
+            "water_overflow": 0,
+            "water_renewal": 0,
+            "water_seeds": 0,
+            "water_upkeep": 62
+          },
+          "child_ids": [],
+          "children_germinated": 0,
+          "death": {
+            "age_days": 0.421875,
+            "cause": "energy",
+            "terminal_step_budget": null,
+            "tick": 627720
+          },
+          "final_world": {
+            "births": 36,
+            "deaths": 34,
+            "hash": "b926a8e1",
+            "living": 7,
+            "tick": 656820
+          },
+          "followup": {
+            "birth": "alive",
+            "dawn": "energy",
+            "day1": "energy",
+            "day8": "energy"
+          },
+          "live_steps_checked": 108,
+          "peak_active_leaves": 9,
+          "seeds_created": 0
+        }
+      },
+      "checkpoint_hash": "d749216a",
+      "matched_reference_rows": 2052,
+      "spec": {
+        "bank": 8,
+        "birth": 626100,
+        "end": 656820,
+        "growth": "neural",
+        "history_arm": "off",
+        "key": "c7f54e18.neural.8",
+        "lineage": 39,
+        "name": "established-control",
+        "root_after": 0,
+        "seed": "c7f54e18"
+      }
+    }
+  ],
+  "input_manifest_sha256": "aaf2ebd117045b817822394126c196dae49c0f6f749d684f48003f00f01ab7e8",
+  "manifest_sha256": "a7cb927521ab5188a1a1622cbfda4ffdd9d930843403fcc9b3cbe43774f98738",
+  "role": "development-diagnostic",
+  "rule": "allocation-challenge-v1",
+  "scalar_fitness": null,
+  "telemetry_rerun": {
+    "identical_native_frames": 96,
+    "matching_rows_except_new_children": 49366,
+    "previous_manifest_sha256": "7128cce427f9504320cdb88e2c9d8fa3d36cafa0f735d514fd9912d16c8336b5"
+  }
+}

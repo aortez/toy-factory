@@ -10,10 +10,15 @@ import garden_renewal as renewal
 from garden_resources import require
 
 
-def validate_pair(control: dict, candidate: dict, environment: dict) -> None:
+def validate_pair(control: dict, candidate: dict, environment: dict,
+                  control_environment: dict = experiment.ENVIRONMENT) -> None:
     require(environment in (experiment.WIDE_ENVIRONMENT, experiment.WATER_ENVIRONMENT,
-                            experiment.COMBINED_ENVIRONMENT), "unsupported ecology experiment")
-    require(control["environment"] == experiment.ENVIRONMENT
+                            experiment.COMBINED_ENVIRONMENT, experiment.LARGE_POOL_ENVIRONMENT),
+            "unsupported ecology experiment")
+    require((control_environment == experiment.COMBINED_ENVIRONMENT
+             if environment == experiment.LARGE_POOL_ENVIRONMENT else control_environment == experiment.ENVIRONMENT),
+            "wrong reference environment")
+    require(control["environment"] == control_environment
             and candidate["environment"] == environment, "wrong control/candidate ecology")
     require(control["split"] == candidate["split"] == "exploratory", "use exploratory bundles")
     for field in ("cycles", "seeds", "seed", "trial_count", "roles", "candidate_probe",
@@ -38,9 +43,10 @@ def paired_metrics(control: dict, candidate: dict, left: str = "control", right:
             for k in sorted(a)]
 
 
-def compare(control: Path, candidate: Path, environment: dict, late_cycles: int) -> dict:
+def compare(control: Path, candidate: Path, environment: dict, late_cycles: int,
+            control_environment: dict = experiment.ENVIRONMENT) -> dict:
     manifests = [experiment.read_json(path / "manifest.json") for path in (control, candidate)]
-    validate_pair(*manifests, environment)
+    validate_pair(*manifests, environment, control_environment)
     data = {name: renewal.summarize(path, late_cycles)
             for name, path in (("control", control), ("candidate", candidate))}
     return {"schema_version": 1, "kind": "garden-ecology-comparison",
@@ -54,16 +60,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--control", type=Path, required=True)
     parser.add_argument("--candidate", type=Path, required=True)
-    parser.add_argument("--change", choices=("water-headroom", "wide-dispersal", "combined"), required=True)
+    parser.add_argument("--change", choices=("water-headroom", "wide-dispersal", "combined", "node-capacity"), required=True)
     parser.add_argument("--late-cycles", type=int, default=8)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
         require(not args.output.exists(), "output already exists")
-        environment = (experiment.COMBINED_ENVIRONMENT if args.change == "combined"
+        environment = (experiment.LARGE_POOL_ENVIRONMENT if args.change == "node-capacity"
+                       else experiment.COMBINED_ENVIRONMENT if args.change == "combined"
                        else experiment.WATER_ENVIRONMENT if args.change == "water-headroom"
                        else experiment.WIDE_ENVIRONMENT)
-        result = compare(args.control.resolve(), args.candidate.resolve(), environment, args.late_cycles)
+        result = compare(args.control.resolve(), args.candidate.resolve(), environment, args.late_cycles,
+                         experiment.COMBINED_ENVIRONMENT if args.change == "node-capacity" else experiment.ENVIRONMENT)
         experiment.write_json(args.output, result)
         print(f"Compared {len(result['pairs'])} matched worlds: {args.output}")
     except (OSError, RuntimeError, KeyError, ValueError, TypeError) as error:

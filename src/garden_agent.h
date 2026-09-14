@@ -123,8 +123,16 @@ typedef int (*picosystem_garden_agent_decide_fn)(
 	const struct picosystem_garden_agent_memory *memory,
 	struct picosystem_garden_agent_decision *decision, const void *context);
 
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+struct picosystem_garden_leaf_policy;
+#endif
+
 /* The callback and immutable context are supplied by the caller, never stored in the world. */
 struct picosystem_garden_agent_policy {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	/* Separate typed action space; never changes the legacy neural model ABI. */
+	const struct picosystem_garden_leaf_policy *leaf_policy;
+#endif
 	picosystem_garden_agent_decide_fn decide;
 	const void *context;
 	enum picosystem_garden_agent_arbitration arbitration;

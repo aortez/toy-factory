@@ -20,6 +20,7 @@ class SelectionTests(unittest.TestCase):
         experiment.validate_environment(experiment.WIDE_ENVIRONMENT)
         experiment.validate_environment(experiment.WATER_ENVIRONMENT)
         experiment.validate_environment(experiment.COMBINED_ENVIRONMENT)
+        experiment.validate_environment(experiment.LARGE_POOL_ENVIRONMENT)
         for invalid in ({}, {**experiment.WIDE_ENVIRONMENT, "gardener": True},
                         {**experiment.ENVIRONMENT, "seed_dispersal": "unknown"},
                         {**experiment.COMBINED_ENVIRONMENT, "water_uptake": "unknown"}):

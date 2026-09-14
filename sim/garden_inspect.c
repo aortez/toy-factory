@@ -16,24 +16,64 @@
 #include "garden_light.h"
 #include "garden_model_file.h"
 #include "garden_policy_probe.h"
+#include "garden_reserve_policy.h"
+#include "garden_root_bootstrap.h"
+static const char *growth_policy_name;
+static uint32_t root_bootstrap_after;
+static struct toy_factory_garden_root_bootstrap_context root_bootstrap_context;
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+#include "garden_leaf_policies.h"
+#include "garden_gap.h"
+#include "garden_disturbance.h"
+static const char *leaf_policy_name = "none";
+#endif
 
 #define INSPECTION_CYCLE_TICKS                                                                     \
 	(PICOSYSTEM_GARDEN_SUN_CYCLE_TICKS * PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR)
-#define INSPECTION_CYCLES    24U
+#define INSPECTION_CYCLES 24U
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+#define INSPECTION_MAX_TICKS TOY_FACTORY_GARDEN_DISTURBANCE_MAX_TICKS
+#else
 #define INSPECTION_MAX_TICKS 100000U
+#endif
 
 struct inspection_context {
 	const struct picosystem_garden_world *world;
 	const struct picosystem_garden_agent_policy *policy;
 	const struct picosystem_garden_agent_policy *probe_base;
+	bool reserve_probe;
 	uint32_t previous_births;
 	uint32_t previous_deaths;
 	uint32_t root_first_lineage;
 	uint32_t night_wait_lineage;
 	bool every_ecology;
 	bool seed_sites;
+	bool population_census;
+	uint32_t next_disturbance_tick;
 	uint32_t last_print_tick;
 };
+
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+static int trace_leaf(const struct picosystem_garden_leaf_observation *observation,
+		      const struct picosystem_garden_agent_memory *memory,
+		      struct picosystem_garden_leaf_decision *decision, const void *context)
+{
+	const struct inspection_context *inspection = context;
+	const struct picosystem_garden_leaf_policy *policy = inspection->policy->leaf_policy;
+	const int err = policy->decide(observation, memory, decision, policy->context);
+	if (err == 0) {
+		printf("{\"type\":\"leaf-bid\",\"tick\":%" PRIu32 ",\"id\":%" PRIu32
+		       ",\"site_x\":%d,\"site_y\":%d,\"condition\":%u,\"light\":%u,"
+		       "\"energy\":%u,\"water\":%u,\"mature_leaves\":%u,\"action\":%u}\n",
+		       inspection->world->logic_tick_count,
+		       inspection->world->plants[observation->plant_index].lineage_id,
+		       observation->base_delta_x, observation->base_delta_y, observation->condition,
+		       observation->light, observation->stored_energy, observation->stored_water,
+		       observation->mature_leaf_count, decision->action);
+	}
+	return err;
+}
+#endif
 
 static void print_plant(const struct picosystem_garden_world *world, uint8_t plant_index)
 {
@@ -104,11 +144,48 @@ static void print_plant(const struct picosystem_garden_world *world, uint8_t pla
 		       world->moisture[row * PICOSYSTEM_GARDEN_GRID_COLUMNS + column]);
 		first = false;
 	}
+	printf("]");
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	printf(",\"leaf\":{\"observations\":%" PRIu32 ",\"proposals\":%" PRIu32
+	       ",\"renewals\":%" PRIu32 ",\"restored\":%" PRIu32 ",\"worn\":%" PRIu32
+	       ",\"remainder\":%u,\"conditions\":[",
+	       plant->leaf_telemetry.observations, plant->leaf_telemetry.proposals,
+	       plant->leaf_telemetry.renewals, plant->leaf_telemetry.restored,
+	       plant->leaf_telemetry.worn, plant->leaf_energy_remainder);
+	first = true;
+	for (uint16_t index = 0U; index < world->node_count; ++index) {
+		if ((world->nodes[index].plant_index == plant_index) &&
+		    (world->nodes[index].flags & PICOSYSTEM_GARDEN_NODE_LEAF)) {
+			printf("%s%u", first ? "" : ",", world->leaf_condition[index]);
+			first = false;
+		}
+	}
 	printf("]}");
+#endif
+	printf("}");
 }
 
 static void print_soil_totals(const struct picosystem_garden_world *world)
 {
+	if (root_bootstrap_after != 0U) {
+		printf("\"root_bootstrap_rule\":\"%s\",\"root_bootstrap_after\":%" PRIu32 ",",
+		       TOY_FACTORY_GARDEN_ROOT_BOOTSTRAP_RULE, root_bootstrap_after);
+	}
+#if defined(TOY_FACTORY_GARDEN_SEED_RESERVE)
+	printf("\"seed_reserve_rule\":\"%s\",", PICOSYSTEM_GARDEN_SEED_RESERVE_NAME);
+#endif
+#if defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+	printf("\"seed_capacity\":%u,", PICOSYSTEM_GARDEN_MAX_SEEDS);
+#endif
+	if (growth_policy_name != NULL) {
+		printf("\"growth_policy\":\"%s\",", growth_policy_name);
+	}
+#if defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+	printf("\"drainage_rule\":\"%s\",", PICOSYSTEM_GARDEN_DRAINAGE_NAME);
+#endif
+#if defined(TOY_FACTORY_GARDEN_LARGE_POOL)
+	printf("\"node_capacity\":%u,", PICOSYSTEM_GARDEN_MAX_NODES);
+#endif
 	/* The firmware's uint16 summary saturates; host resource audits need the sum. */
 	uint32_t total = 0U;
 	uint16_t saturated = 0U;
@@ -124,6 +201,10 @@ static void print_soil_totals(const struct picosystem_garden_world *world)
 static int print_world(const struct picosystem_garden_world *world)
 {
 	putchar('{');
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	printf("\"leaf_environment\":\"%s\",\"leaf_policy\":\"%s\",",
+	       PICOSYSTEM_GARDEN_LEAF_ENVIRONMENT, leaf_policy_name);
+#endif
 	print_soil_totals(world);
 	const struct picosystem_garden_sun sun =
 		picosystem_garden_sun_at(world->ecology_tick_count);
@@ -236,7 +317,8 @@ static int observe(const struct picosystem_garden_world *world, bool ecology_sam
 	}
 	struct inspection_context *const inspection = context;
 	bool ready_seed = false;
-	for (uint8_t index = 0U; index < world->seed_count; ++index) {
+	for (uint8_t index = 0U; !inspection->population_census && index < world->seed_count;
+	     ++index) {
 		uint8_t blockers;
 		const int err =
 			picosystem_garden_world_seed_germination_blockers(world, index, &blockers);
@@ -250,6 +332,7 @@ static int observe(const struct picosystem_garden_world *world, bool ecology_sam
 	inspection->previous_births = world->germination_count;
 	inspection->previous_deaths = world->death_count;
 	if (inspection->every_ecology || changed || ready_seed ||
+	    (world->logic_tick_count == inspection->next_disturbance_tick) ||
 	    ((world->logic_tick_count % INSPECTION_CYCLE_TICKS) == 0U)) {
 		inspection->last_print_tick = world->logic_tick_count;
 		return print_sample(world, inspection);
@@ -272,8 +355,16 @@ static int trace_decision(const struct picosystem_garden_agent_observation *obse
 	/* Explicit host-only counterfactuals. Zero IDs leave the real policy untouched.
 	 * Keep the original output visible; these overrides are never model training.
 	 */
-	const int16_t original_priority = decision->proposal.priority;
-	const uint8_t original_action = decision->proposal.action;
+	struct picosystem_garden_agent_decision unmodified = *decision;
+	if (root_bootstrap_after != 0U) {
+		const int base_err = picosystem_garden_agent_decide(
+			root_bootstrap_context.base, observation, memory, &unmodified);
+		if (base_err != 0) {
+			return base_err;
+		}
+	}
+	const int16_t original_priority = unmodified.proposal.priority;
+	const uint8_t original_action = unmodified.proposal.action;
 	if ((plant->lineage_id == inspection->root_first_lineage) && (plant->generation != 0U) &&
 	    (observation->age_ecology_ticks == 1U) &&
 	    (observation->tissue_kind == PICOSYSTEM_GARDEN_NODE_ROOT) &&
@@ -286,11 +377,13 @@ static int trace_decision(const struct picosystem_garden_agent_observation *obse
 		decision->proposal.candidate_count = 0U;
 	}
 	printf("{\"type\":\"bid\",\"tick\":%" PRIu32 ",\"id\":%" PRIu32
-	       ",\"tissue\":%u,\"x\":%u,\"y\":%u,\"depth\":%u,\"tip_flags\":%u,"
+	       ",\"tip_audit_version\":1,\"tip_index\":%u,\"maximum_depth\":%u,"
+	       "\"tissue\":%u,\"x\":%u,\"y\":%u,\"depth\":%u,\"tip_flags\":%u,"
 	       "\"energy\":%u,\"water\":%u,\"priority\":%d,\"action\":%u,"
 	       "\"original_priority\":%d,\"original_action\":%u,\"candidates\":[",
-	       inspection->world->logic_tick_count, plant->lineage_id, observation->tissue_kind,
-	       observation->tip_x, observation->tip_y, observation->depth, observation->tip_flags,
+	       inspection->world->logic_tick_count, plant->lineage_id, observation->tip_index,
+	       observation->maximum_depth, observation->tissue_kind, observation->tip_x,
+	       observation->tip_y, observation->depth, observation->tip_flags,
 	       observation->stored_energy, observation->stored_water, decision->proposal.priority,
 	       decision->proposal.action, original_priority, original_action);
 	for (uint8_t index = 0U; index < observation->candidate_count; ++index) {
@@ -301,8 +394,23 @@ static int trace_decision(const struct picosystem_garden_agent_observation *obse
 		       candidate->light, candidate->flags);
 	}
 	printf("]");
+	if (root_bootstrap_after != 0U) {
+		printf(",\"root_bootstrap\":{\"rule\":\"%s\",\"after\":%" PRIu32
+		       ",\"age\":%u,\"roots\":%u,\"tip_moisture\":%u,\"original_order\":[",
+		       TOY_FACTORY_GARDEN_ROOT_BOOTSTRAP_RULE, root_bootstrap_after,
+		       observation->age_ecology_ticks, observation->root_node_count,
+		       observation->tip_moisture);
+		for (uint8_t i = 0U; i < unmodified.proposal.candidate_count; ++i) {
+			printf("%s%u", i == 0U ? "" : ",", unmodified.proposal.candidate_order[i]);
+		}
+		printf("],\"order\":[");
+		for (uint8_t i = 0U; i < decision->proposal.candidate_count; ++i) {
+			printf("%s%u", i == 0U ? "" : ",", decision->proposal.candidate_order[i]);
+		}
+		printf("]}");
+	}
 	if (inspection->probe_base != NULL) {
-		/* Neural inference is pure: this second observation records the pre-veto
+		/* Both supported base policies are pure: record the pre-veto
 		 * proposal without committing memory or advancing any random stream.
 		 */
 		struct picosystem_garden_agent_decision original;
@@ -314,6 +422,32 @@ static int trace_decision(const struct picosystem_garden_agent_observation *obse
 		printf(",\"probe\":\"%s\",\"probe_original_action\":%u,\"sun_phase\":%u",
 		       TOY_FACTORY_GARDEN_NIGHT_PROBE_NAME, original.proposal.action,
 		       observation->sun_phase);
+		if (inspection->reserve_probe) {
+			const uint8_t pre_action = observation->sun_phase >= 128U
+							   ? PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT
+							   : original.proposal.action;
+			struct toy_factory_garden_reserve_forecast forecast;
+			const int reserve_err = toy_factory_garden_reserve_forecast(
+				observation, pre_action, &forecast);
+			if (reserve_err != 0) {
+				return reserve_err;
+			}
+			printf(",\"reserve\":{\"rule\":\"%s\",\"nodes\":%u,\"species\":%u,"
+			       "\"vigor\":%d,\"income\":%u,\"maintenance_phase\":%u,\"priority\":%"
+			       "d,"
+			       "\"allowed\":%s,\"post_nodes\":%" PRIu32 ",\"growth_cost\":%" PRIu32
+			       ",\"maintenance_cost\":%" PRIu32 ",\"daylight_steps\":%" PRIu32
+			       ",\"daylight_credit\":%" PRIu32 ",\"daylight_upkeep\":%" PRIu32
+			       ",\"night_upkeep\":%" PRIu32 ",\"projected_sunset\":%" PRId32 "}",
+			       TOY_FACTORY_GARDEN_RESERVE_NAME, observation->plant_node_count,
+			       observation->species_id, observation->vigor,
+			       observation->last_energy_income, observation->maintenance_phase,
+			       original.proposal.priority, forecast.allowed ? "true" : "false",
+			       forecast.post_nodes, forecast.growth_cost, forecast.maintenance_cost,
+			       forecast.daylight_steps, forecast.daylight_credit,
+			       forecast.daylight_upkeep, forecast.night_upkeep,
+			       forecast.projected_sunset);
+		}
 	}
 	printf("}\n");
 	return ferror(stdout) ? -EIO : 0;
@@ -332,23 +466,98 @@ static int parse_positive_u32(const char *text, uint32_t *value)
 	return 0;
 }
 
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+static int observe_disturbance(const struct picosystem_garden_world *world,
+			       const struct toy_factory_garden_disturbance_event *event,
+			       void *context)
+{
+	struct inspection_context *inspection = context;
+	struct toy_factory_garden_disturbance_event next;
+	const int planned =
+		toy_factory_garden_disturbance_plan(event->seed, event->index + 1U, &next);
+	if ((planned != 0) && (planned != -ENOENT)) {
+		return planned;
+	}
+	inspection->next_disturbance_tick = planned == 0 ? next.tick : 0U;
+	const int err = toy_factory_garden_disturbance_print(event);
+	return err != 0 ? err : print_sample(world, context);
+}
+#endif
+
 int main(int argc, char **argv)
 {
 	if (argc < 5) {
 		const bool help = (argc == 2) && (strcmp(argv[1], "--help") == 0);
 		fprintf(help ? stdout : stderr,
 			"Usage: %s MODEL SCENARIO POLICY WORLD_SEED [--ecology] "
-			"[--ticks 1-100000] [--root-first ID] [--night-wait ID] [--seed-sites]\n"
+			"[--ticks 1-%u] [--root-first ID] [--night-wait ID] [--seed-sites]\n"
 			"--seed-sites: compact post-step site/seed census every ecology tick; no "
 			"bids.\n"
 			"MODEL may be '-' for baseline, adaptive, or neural-reference.\n"
 			"neural-no-night-growth uses MODEL with the no-night-growth-v1 probe.\n",
-			argv[0]);
+			argv[0], INSPECTION_MAX_TICKS);
+		fprintf(help ? stdout : stderr,
+			"adaptive-no-night-growth uses MODEL '-' and the same night veto.\n");
+		fprintf(help ? stdout : stderr,
+			"neural-reserve-growth uses MODEL with energy-reserve-v1.\n");
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		fprintf(help ? stdout : stderr,
+			"--leaf-policy none|all|selective (default none)\n"
+			"--gap-at TICK: host-only one-time largest-adult "
+			"export; ecology boundary\n"
+			"--disturbance-seed SEED: recurring host-only patch deaths\n"
+			"--root-bootstrap-after TICK: explicit wet-root bootstrap for later "
+			"offspring\n"
+			"--population: birth/death, daily and disturbance census; no bids\n");
+#endif
 		return help ? 0 : 2;
 	}
 	struct inspection_context inspection = {0};
 	uint32_t tick_count = 0U;
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	uint32_t gap_tick = 0U;
+	uint32_t disturbance_seed = 0U;
+#endif
 	for (int index = 5; index < argc; ++index) {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		if (strcmp(argv[index], "--root-bootstrap-after") == 0) {
+			if ((root_bootstrap_after != 0U) || (++index >= argc) ||
+			    (parse_positive_u32(argv[index], &root_bootstrap_after) != 0)) {
+				return 2;
+			}
+			continue;
+		}
+		if (strcmp(argv[index], "--population") == 0) {
+			if (inspection.population_census) {
+				return 2;
+			}
+			inspection.population_census = true;
+			continue;
+		}
+		if (strcmp(argv[index], "--disturbance-seed") == 0) {
+			if ((disturbance_seed != 0U) || (++index >= argc) ||
+			    (parse_positive_u32(argv[index], &disturbance_seed) != 0)) {
+				return 2;
+			}
+			continue;
+		}
+		if (strcmp(argv[index], "--gap-at") == 0) {
+			if ((gap_tick != 0U) || (++index >= argc) ||
+			    (parse_positive_u32(argv[index], &gap_tick) != 0)) {
+				return 2;
+			}
+			inspection.every_ecology = true;
+			continue;
+		}
+		if (strcmp(argv[index], "--leaf-policy") == 0) {
+			if ((++index >= argc) ||
+			    (toy_factory_garden_leaf_policy(argv[index]) == NULL)) {
+				return 2;
+			}
+			leaf_policy_name = argv[index];
+			continue;
+		}
+#endif
 		if ((strcmp(argv[index], "--seed-sites") == 0) && !inspection.seed_sites) {
 			inspection.seed_sites = true;
 			inspection.every_ecology = true;
@@ -385,7 +594,48 @@ int main(int argc, char **argv)
 	if (tick_count == 0U) {
 		tick_count = INSPECTION_CYCLES * INSPECTION_CYCLE_TICKS;
 	}
-	if (inspection.every_ecology &&
+	if (root_bootstrap_after != 0U) {
+#if defined(TOY_FACTORY_GARDEN_LARGE_POOL) && defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) &&      \
+	!defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+		if ((root_bootstrap_after > tick_count) ||
+		    ((root_bootstrap_after % PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR) != 0U) ||
+		    (disturbance_seed == 0U) || (gap_tick != 0U) || inspection.seed_sites ||
+		    (inspection.root_first_lineage != 0U) ||
+		    (inspection.night_wait_lineage != 0U) ||
+		    ((strcmp(argv[3], TOY_FACTORY_GARDEN_NIGHT_PROBE_POLICY) != 0) &&
+		     (strcmp(argv[3], TOY_FACTORY_GARDEN_RESERVE_POLICY) != 0))) {
+			return 2;
+		}
+#else
+		return 2;
+#endif
+	}
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	if (inspection.population_census && inspection.every_ecology) {
+		fprintf(stderr, "population census cannot be combined with other trace modes or "
+				"overrides\n");
+		return 2;
+	}
+	if (disturbance_seed != 0U) {
+		struct toy_factory_garden_disturbance_event first;
+		if (toy_factory_garden_disturbance_plan(disturbance_seed, 0U, &first) != 0) {
+			return 2;
+		}
+		inspection.next_disturbance_tick = first.tick;
+		inspection.every_ecology = !inspection.population_census;
+	}
+	if ((disturbance_seed != 0U) &&
+	    ((gap_tick != 0U) || (inspection.root_first_lineage != 0U) ||
+	     (inspection.night_wait_lineage != 0U))) {
+		return 2;
+	}
+	if ((gap_tick > tick_count) || (gap_tick % PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR != 0U) ||
+	    ((gap_tick != 0U) &&
+	     ((inspection.root_first_lineage != 0U) || (inspection.night_wait_lineage != 0U)))) {
+		return 2;
+	}
+#endif
+	if ((inspection.every_ecology || inspection.population_census) &&
 	    ((tick_count % PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR) != 0U)) {
 		fprintf(stderr, "ecology traces require a multiple of 15 ticks\n");
 		return 2;
@@ -415,15 +665,20 @@ int main(int argc, char **argv)
 	struct picosystem_garden_neural_model model;
 	struct picosystem_garden_agent_policy neural_policy;
 	struct picosystem_garden_agent_policy probe_policy;
+	struct picosystem_garden_agent_policy reserve_policy;
 	const struct picosystem_garden_agent_policy *policy;
 	int err = 0;
-	const bool probe = strcmp(argv[3], TOY_FACTORY_GARDEN_NIGHT_PROBE_POLICY) == 0;
+	const bool adaptive_probe = strcmp(argv[3], TOY_FACTORY_GARDEN_ADAPTIVE_NIGHT_POLICY) == 0;
+	const bool reserve_probe = strcmp(argv[3], TOY_FACTORY_GARDEN_RESERVE_POLICY) == 0;
+	const bool neural_probe =
+		(strcmp(argv[3], TOY_FACTORY_GARDEN_NIGHT_PROBE_POLICY) == 0) || reserve_probe;
+	const bool probe = neural_probe || adaptive_probe;
 	if (probe &&
 	    ((inspection.root_first_lineage != 0U) || (inspection.night_wait_lineage != 0U))) {
 		fprintf(stderr, "cannot combine policy probe with lineage overrides\n");
 		return 2;
 	}
-	if ((strcmp(argv[3], "neural-candidate") == 0) || probe) {
+	if ((strcmp(argv[3], "neural-candidate") == 0) || neural_probe) {
 		err = toy_factory_garden_model_read(argv[1], &model, NULL);
 		if (err == 0) {
 			err = picosystem_garden_neural_policy_init(&model, &neural_policy);
@@ -435,6 +690,20 @@ int main(int argc, char **argv)
 			policy = &probe_policy;
 			inspection.probe_base = &neural_policy;
 		}
+		if ((err == 0) && reserve_probe) {
+			err = toy_factory_garden_reserve_init(&probe_policy, &reserve_policy);
+			policy = &reserve_policy;
+			inspection.reserve_probe = true;
+			growth_policy_name = TOY_FACTORY_GARDEN_RESERVE_POLICY;
+		}
+	} else if (adaptive_probe) {
+		if (strcmp(argv[1], "-") != 0) {
+			return 2;
+		}
+		inspection.probe_base = picosystem_garden_agent_adaptive_policy();
+		err = toy_factory_garden_no_night_growth_init(inspection.probe_base, &probe_policy);
+		policy = &probe_policy;
+		growth_policy_name = TOY_FACTORY_GARDEN_ADAPTIVE_NIGHT_POLICY;
 	} else if (strcmp(argv[3], "adaptive") == 0) {
 		policy = picosystem_garden_agent_adaptive_policy();
 	} else if (strcmp(argv[3], "baseline") == 0) {
@@ -445,9 +714,30 @@ int main(int argc, char **argv)
 		return 2;
 	}
 	struct picosystem_garden_world world;
+	struct picosystem_garden_agent_policy root_policy;
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	struct picosystem_garden_agent_policy maintained_policy = {0};
+	if (err == 0) {
+		maintained_policy = *policy;
+		maintained_policy.leaf_policy = toy_factory_garden_leaf_policy(leaf_policy_name);
+		policy = &maintained_policy;
+	}
+#endif
+	if ((err == 0) && (root_bootstrap_after != 0U)) {
+		err = toy_factory_garden_root_bootstrap_init(policy, &world, root_bootstrap_after,
+							     &root_bootstrap_context, &root_policy);
+		policy = &root_policy;
+	}
 	inspection.world = &world;
 	inspection.policy = policy;
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	const struct picosystem_garden_leaf_policy traced_leaf = {.decide = trace_leaf,
+								  .context = &inspection};
+#endif
 	const struct picosystem_garden_agent_policy traced_policy = {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		.leaf_policy = (err == 0) ? &traced_leaf : NULL,
+#endif
 		.decide = trace_decision,
 		.context = &inspection,
 		.arbitration = (err == 0) ? policy->arbitration
@@ -460,12 +750,46 @@ int main(int argc, char **argv)
 		err = print_sample(&world, &inspection);
 	}
 	if (err == 0) {
-		err = toy_factory_garden_evaluation_advance(
-			&world, scenario,
+		uint32_t first_ticks = tick_count;
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		if (gap_tick != 0U) {
+			first_ticks = gap_tick;
+		}
+#endif
+		const struct picosystem_garden_agent_policy *active_policy =
 			(inspection.every_ecology && !inspection.seed_sites) ? &traced_policy
-									     : policy,
-			tick_count, observe, &inspection);
+									     : policy;
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		if (disturbance_seed != 0U) {
+			struct toy_factory_garden_disturbance_totals totals = {0};
+			err = toy_factory_garden_disturbance_advance(
+				&world, scenario, active_policy, tick_count, disturbance_seed,
+				observe, observe_disturbance, &inspection, &totals);
+		} else
+#endif
+		{
+			err = toy_factory_garden_evaluation_advance(
+				&world, scenario, active_policy, first_ticks, observe, &inspection);
+		}
 	}
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	if ((err == 0) && (gap_tick != 0U)) {
+		struct toy_factory_garden_gap gap;
+		err = toy_factory_garden_gap_apply(&world, &gap);
+		if (err == 0) {
+			err = toy_factory_garden_gap_print(&gap);
+		}
+		if (err == 0) {
+			/* A second sample at the same tick is explicitly bracketed by the event. */
+			err = print_sample(&world, &inspection);
+		}
+		if (err == 0) {
+			err = toy_factory_garden_evaluation_advance(
+				&world, scenario, inspection.seed_sites ? policy : &traced_policy,
+				tick_count - gap_tick, observe, &inspection);
+		}
+	}
+#endif
 	if ((err == 0) && (inspection.last_print_tick != world.logic_tick_count)) {
 		err = print_sample(&world, &inspection);
 	}

@@ -1,0 +1,6380 @@
+{
+  "aggregate_components": [
+    "minimum_terminal_tier",
+    "terminal_tier",
+    "renewing_child_live_ticks",
+    "descendant_live_ticks",
+    "renewing_parents",
+    "new_establishments"
+  ],
+  "baseline_manifest_sha256": "3229d3962af2298a303a9b68cfe43a390112a185c3edad7a5091f1fd64fcb3e8",
+  "cases": [
+    {
+      "case": "256.44.fresh-4.off.neural",
+      "condition": "256.b61837dc.fresh-4",
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 738795,
+          "new_establishments": 7,
+          "renewing_child_live_ticks": 323400,
+          "renewing_parents": 5,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 737280,
+        "key": [
+          1,
+          323400,
+          738795,
+          5,
+          7
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 738795,
+            "new_establishments": 7,
+            "renewing_parents": 5,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 2,
+              "patch": 4
+            },
+            "closing_purchases": 260,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 7,
+              "natural-failure": 1
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 31,
+              "confirmation_tick": 629130,
+              "parent": 23,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "patch-dead"
+            },
+            {
+              "child": 32,
+              "confirmation_tick": 629580,
+              "parent": 29,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 33,
+              "confirmation_tick": 633510,
+              "parent": 26,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 35,
+              "confirmation_tick": 706200,
+              "parent": 31,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 36,
+              "confirmation_tick": 725490,
+              "parent": 26,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 37,
+              "confirmation_tick": 725490,
+              "parent": 22,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 38,
+              "confirmation_tick": 725640,
+              "parent": 26,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            5,
+            7,
+            738795
+          ],
+          "occupancy": [
+            {
+              "first_sample": 606735,
+              "id": 22,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 23,
+              "last_sample": 624375,
+              "live_ticks": 17655,
+              "samples": 1177
+            },
+            {
+              "first_sample": 606735,
+              "id": 26,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 27,
+              "last_sample": 628785,
+              "live_ticks": 22065,
+              "samples": 1471
+            },
+            {
+              "first_sample": 606735,
+              "id": 28,
+              "last_sample": 644895,
+              "live_ticks": 38175,
+              "samples": 2545
+            },
+            {
+              "first_sample": 606735,
+              "id": 29,
+              "last_sample": 698460,
+              "live_ticks": 91740,
+              "samples": 6116
+            },
+            {
+              "first_sample": 629130,
+              "id": 31,
+              "last_sample": 720735,
+              "live_ticks": 91620,
+              "samples": 6108
+            },
+            {
+              "first_sample": 629580,
+              "id": 32,
+              "last_sample": 729600,
+              "live_ticks": 100035,
+              "samples": 6669
+            },
+            {
+              "first_sample": 633510,
+              "id": 33,
+              "last_sample": 729600,
+              "live_ticks": 96105,
+              "samples": 6407
+            },
+            {
+              "first_sample": 706200,
+              "id": 35,
+              "last_sample": 729600,
+              "live_ticks": 23415,
+              "samples": 1561
+            },
+            {
+              "first_sample": 725490,
+              "id": 36,
+              "last_sample": 729600,
+              "live_ticks": 4125,
+              "samples": 275
+            },
+            {
+              "first_sample": 725490,
+              "id": 37,
+              "last_sample": 729600,
+              "live_ticks": 4125,
+              "samples": 275
+            },
+            {
+              "first_sample": 725640,
+              "id": 38,
+              "last_sample": 729600,
+              "live_ticks": 3975,
+              "samples": 265
+            }
+          ],
+          "renewing_parent_ids": [
+            22,
+            23,
+            26,
+            29,
+            31
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              22,
+              26,
+              32,
+              33,
+              35,
+              36,
+              37,
+              38
+            ],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 8,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "observed_end": 737280,
+        "pending_seed_followup": [
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 730320,
+            "outcome": "expired",
+            "parent": 22,
+            "purchase_tick": 726480
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733140,
+            "outcome": "expired",
+            "parent": 22,
+            "purchase_tick": 729300
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733380,
+            "outcome": "expired",
+            "parent": 22,
+            "purchase_tick": 729540
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729660,
+            "outcome": "expired",
+            "parent": 26,
+            "purchase_tick": 725820
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 730080,
+            "outcome": "expired",
+            "parent": 26,
+            "purchase_tick": 726240
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733200,
+            "outcome": "expired",
+            "parent": 26,
+            "purchase_tick": 729360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729720,
+            "outcome": "expired",
+            "parent": 32,
+            "purchase_tick": 725880
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733260,
+            "outcome": "expired",
+            "parent": 33,
+            "purchase_tick": 729420
+          }
+        ],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 629130,
+            "id": 31,
+            "last_sample": 720735,
+            "live_ticks": 91620,
+            "samples": 6108
+          },
+          {
+            "first_sample": 629580,
+            "id": 32,
+            "last_sample": 729600,
+            "live_ticks": 100035,
+            "samples": 6669
+          },
+          {
+            "first_sample": 633510,
+            "id": 33,
+            "last_sample": 729600,
+            "live_ticks": 96105,
+            "samples": 6407
+          },
+          {
+            "first_sample": 706200,
+            "id": 35,
+            "last_sample": 729600,
+            "live_ticks": 23415,
+            "samples": 1561
+          },
+          {
+            "first_sample": 725490,
+            "id": 36,
+            "last_sample": 729600,
+            "live_ticks": 4125,
+            "samples": 275
+          },
+          {
+            "first_sample": 725490,
+            "id": 37,
+            "last_sample": 729600,
+            "live_ticks": 4125,
+            "samples": 275
+          },
+          {
+            "first_sample": 725640,
+            "id": 38,
+            "last_sample": 729600,
+            "live_ticks": 3975,
+            "samples": 265
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            22,
+            26,
+            32,
+            33,
+            35,
+            36,
+            37,
+            38
+          ],
+          "living_founders": 0,
+          "pending_seeds": 8,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      },
+      "final_hash": "9a533226",
+      "original_v1": [
+        1,
+        5,
+        7,
+        754155
+      ],
+      "policy": "neural"
+    },
+    {
+      "case": "256.44.fresh-4.off.reserve",
+      "condition": "256.b61837dc.fresh-4",
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 725190,
+          "new_establishments": 1,
+          "renewing_child_live_ticks": 100290,
+          "renewing_parents": 1,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 737280,
+        "key": [
+          1,
+          100290,
+          725190,
+          1,
+          1
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 725190,
+            "new_establishments": 1,
+            "renewing_parents": 1,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "patch": 3
+            },
+            "closing_purchases": 254,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 1
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 27,
+              "confirmation_tick": 629325,
+              "parent": 19,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "patch-dead"
+            }
+          ],
+          "key": [
+            1,
+            1,
+            1,
+            725190
+          ],
+          "occupancy": [
+            {
+              "first_sample": 606735,
+              "id": 18,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 19,
+              "last_sample": 624375,
+              "live_ticks": 17655,
+              "samples": 1177
+            },
+            {
+              "first_sample": 606735,
+              "id": 20,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 21,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 23,
+              "last_sample": 608430,
+              "live_ticks": 1710,
+              "samples": 114
+            },
+            {
+              "first_sample": 606735,
+              "id": 24,
+              "last_sample": 720735,
+              "live_ticks": 114015,
+              "samples": 7601
+            },
+            {
+              "first_sample": 606735,
+              "id": 25,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 629325,
+              "id": 27,
+              "last_sample": 729600,
+              "live_ticks": 100290,
+              "samples": 6686
+            }
+          ],
+          "renewing_parent_ids": [
+            19
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              18,
+              20,
+              21,
+              25,
+              27
+            ],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 8,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "observed_end": 737280,
+        "pending_seed_followup": [
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729720,
+            "outcome": "expired",
+            "parent": 18,
+            "purchase_tick": 725880
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733260,
+            "outcome": "expired",
+            "parent": 18,
+            "purchase_tick": 729420
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733140,
+            "outcome": "expired",
+            "parent": 20,
+            "purchase_tick": 729300
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733380,
+            "outcome": "expired",
+            "parent": 20,
+            "purchase_tick": 729540
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733200,
+            "outcome": "expired",
+            "parent": 21,
+            "purchase_tick": 729360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733440,
+            "outcome": "expired",
+            "parent": 21,
+            "purchase_tick": 729600
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729660,
+            "outcome": "expired",
+            "parent": 25,
+            "purchase_tick": 725820
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733260,
+            "outcome": "expired",
+            "parent": 25,
+            "purchase_tick": 729420
+          }
+        ],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 629325,
+            "id": 27,
+            "last_sample": 729600,
+            "live_ticks": 100290,
+            "samples": 6686
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            18,
+            20,
+            21,
+            25,
+            27
+          ],
+          "living_founders": 0,
+          "pending_seeds": 8,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      },
+      "final_hash": "d0070b76",
+      "original_v1": [
+        1,
+        1,
+        1,
+        715800
+      ],
+      "policy": "reserve"
+    },
+    {
+      "case": "256.44.fresh-1.off.neural",
+      "condition": "256.b61837dc.fresh-1",
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 744075,
+          "new_establishments": 4,
+          "renewing_child_live_ticks": 214095,
+          "renewing_parents": 2,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 737280,
+        "key": [
+          1,
+          214095,
+          744075,
+          2,
+          4
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 744075,
+            "new_establishments": 4,
+            "renewing_parents": 2,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "patch": 5
+            },
+            "closing_purchases": 259,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 4
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 34,
+              "confirmation_tick": 621645,
+              "parent": 24,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 35,
+              "confirmation_tick": 640740,
+              "parent": 24,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 36,
+              "confirmation_tick": 641085,
+              "parent": 29,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 37,
+              "confirmation_tick": 660480,
+              "parent": 24,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            2,
+            4,
+            744075
+          ],
+          "occupancy": [
+            {
+              "first_sample": 606735,
+              "id": 24,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 26,
+              "last_sample": 635415,
+              "live_ticks": 28695,
+              "samples": 1913
+            },
+            {
+              "first_sample": 606735,
+              "id": 29,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 30,
+              "last_sample": 616485,
+              "live_ticks": 9765,
+              "samples": 651
+            },
+            {
+              "first_sample": 606735,
+              "id": 31,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 33,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 621645,
+              "id": 34,
+              "last_sample": 655740,
+              "live_ticks": 34110,
+              "samples": 2274
+            },
+            {
+              "first_sample": 640740,
+              "id": 35,
+              "last_sample": 729600,
+              "live_ticks": 88875,
+              "samples": 5925
+            },
+            {
+              "first_sample": 641085,
+              "id": 36,
+              "last_sample": 711435,
+              "live_ticks": 70365,
+              "samples": 4691
+            },
+            {
+              "first_sample": 660480,
+              "id": 37,
+              "last_sample": 681210,
+              "live_ticks": 20745,
+              "samples": 1383
+            }
+          ],
+          "renewing_parent_ids": [
+            24,
+            29
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              24,
+              29,
+              31,
+              33,
+              35
+            ],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 8,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "observed_end": 737280,
+        "pending_seed_followup": [
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733080,
+            "outcome": "expired",
+            "parent": 24,
+            "purchase_tick": 729240
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733440,
+            "outcome": "expired",
+            "parent": 24,
+            "purchase_tick": 729600
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729660,
+            "outcome": "expired",
+            "parent": 29,
+            "purchase_tick": 725820
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733200,
+            "outcome": "expired",
+            "parent": 29,
+            "purchase_tick": 729360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729780,
+            "outcome": "expired",
+            "parent": 31,
+            "purchase_tick": 725940
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733200,
+            "outcome": "expired",
+            "parent": 31,
+            "purchase_tick": 729360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733260,
+            "outcome": "expired",
+            "parent": 33,
+            "purchase_tick": 729420
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733260,
+            "outcome": "expired",
+            "parent": 35,
+            "purchase_tick": 729420
+          }
+        ],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 621645,
+            "id": 34,
+            "last_sample": 655740,
+            "live_ticks": 34110,
+            "samples": 2274
+          },
+          {
+            "first_sample": 640740,
+            "id": 35,
+            "last_sample": 729600,
+            "live_ticks": 88875,
+            "samples": 5925
+          },
+          {
+            "first_sample": 641085,
+            "id": 36,
+            "last_sample": 711435,
+            "live_ticks": 70365,
+            "samples": 4691
+          },
+          {
+            "first_sample": 660480,
+            "id": 37,
+            "last_sample": 681210,
+            "live_ticks": 20745,
+            "samples": 1383
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            24,
+            29,
+            31,
+            33,
+            35
+          ],
+          "living_founders": 0,
+          "pending_seeds": 8,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      },
+      "final_hash": "4851366a",
+      "original_v1": [
+        1,
+        2,
+        4,
+        736395
+      ],
+      "policy": "neural"
+    },
+    {
+      "case": "256.44.fresh-1.off.reserve",
+      "condition": "256.b61837dc.fresh-1",
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 731310,
+          "new_establishments": 8,
+          "renewing_child_live_ticks": 330360,
+          "renewing_parents": 5,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 737280,
+        "key": [
+          1,
+          330360,
+          731310,
+          5,
+          8
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 731310,
+            "new_establishments": 8,
+            "renewing_parents": 5,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 2,
+              "patch": 5
+            },
+            "closing_purchases": 257,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 8
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 33,
+              "confirmation_tick": 621570,
+              "parent": 21,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 34,
+              "confirmation_tick": 640740,
+              "parent": 30,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 35,
+              "confirmation_tick": 640920,
+              "parent": 21,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 36,
+              "confirmation_tick": 660510,
+              "parent": 30,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 37,
+              "confirmation_tick": 686925,
+              "parent": 21,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 38,
+              "confirmation_tick": 699000,
+              "parent": 33,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 39,
+              "confirmation_tick": 699000,
+              "parent": 36,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 40,
+              "confirmation_tick": 717480,
+              "parent": 25,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            5,
+            8,
+            731310
+          ],
+          "occupancy": [
+            {
+              "first_sample": 606735,
+              "id": 21,
+              "last_sample": 694245,
+              "live_ticks": 87525,
+              "samples": 5835
+            },
+            {
+              "first_sample": 606735,
+              "id": 25,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 26,
+              "last_sample": 616485,
+              "live_ticks": 9765,
+              "samples": 651
+            },
+            {
+              "first_sample": 606735,
+              "id": 29,
+              "last_sample": 635415,
+              "live_ticks": 28695,
+              "samples": 1913
+            },
+            {
+              "first_sample": 606735,
+              "id": 30,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 31,
+              "last_sample": 635925,
+              "live_ticks": 29205,
+              "samples": 1947
+            },
+            {
+              "first_sample": 621570,
+              "id": 33,
+              "last_sample": 711435,
+              "live_ticks": 89880,
+              "samples": 5992
+            },
+            {
+              "first_sample": 640740,
+              "id": 34,
+              "last_sample": 655740,
+              "live_ticks": 15015,
+              "samples": 1001
+            },
+            {
+              "first_sample": 640920,
+              "id": 35,
+              "last_sample": 681210,
+              "live_ticks": 40305,
+              "samples": 2687
+            },
+            {
+              "first_sample": 660510,
+              "id": 36,
+              "last_sample": 729600,
+              "live_ticks": 69105,
+              "samples": 4607
+            },
+            {
+              "first_sample": 686925,
+              "id": 37,
+              "last_sample": 729600,
+              "live_ticks": 42690,
+              "samples": 2846
+            },
+            {
+              "first_sample": 699000,
+              "id": 38,
+              "last_sample": 729600,
+              "live_ticks": 30615,
+              "samples": 2041
+            },
+            {
+              "first_sample": 699000,
+              "id": 39,
+              "last_sample": 729600,
+              "live_ticks": 30615,
+              "samples": 2041
+            },
+            {
+              "first_sample": 717480,
+              "id": 40,
+              "last_sample": 729600,
+              "live_ticks": 12135,
+              "samples": 809
+            }
+          ],
+          "renewing_parent_ids": [
+            21,
+            25,
+            30,
+            33,
+            36
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              25,
+              30,
+              36,
+              37,
+              38,
+              39,
+              40
+            ],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 8,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "observed_end": 737280,
+        "pending_seed_followup": [
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729660,
+            "outcome": "expired",
+            "parent": 25,
+            "purchase_tick": 725820
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729900,
+            "outcome": "expired",
+            "parent": 25,
+            "purchase_tick": 726060
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 730200,
+            "outcome": "expired",
+            "parent": 25,
+            "purchase_tick": 726360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733020,
+            "outcome": "expired",
+            "parent": 25,
+            "purchase_tick": 729180
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729720,
+            "outcome": "expired",
+            "parent": 30,
+            "purchase_tick": 725880
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729720,
+            "outcome": "expired",
+            "parent": 36,
+            "purchase_tick": 725880
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729780,
+            "outcome": "expired",
+            "parent": 37,
+            "purchase_tick": 725940
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733080,
+            "outcome": "expired",
+            "parent": 37,
+            "purchase_tick": 729240
+          }
+        ],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 621570,
+            "id": 33,
+            "last_sample": 711435,
+            "live_ticks": 89880,
+            "samples": 5992
+          },
+          {
+            "first_sample": 640740,
+            "id": 34,
+            "last_sample": 655740,
+            "live_ticks": 15015,
+            "samples": 1001
+          },
+          {
+            "first_sample": 640920,
+            "id": 35,
+            "last_sample": 681210,
+            "live_ticks": 40305,
+            "samples": 2687
+          },
+          {
+            "first_sample": 660510,
+            "id": 36,
+            "last_sample": 729600,
+            "live_ticks": 69105,
+            "samples": 4607
+          },
+          {
+            "first_sample": 686925,
+            "id": 37,
+            "last_sample": 729600,
+            "live_ticks": 42690,
+            "samples": 2846
+          },
+          {
+            "first_sample": 699000,
+            "id": 38,
+            "last_sample": 729600,
+            "live_ticks": 30615,
+            "samples": 2041
+          },
+          {
+            "first_sample": 699000,
+            "id": 39,
+            "last_sample": 729600,
+            "live_ticks": 30615,
+            "samples": 2041
+          },
+          {
+            "first_sample": 717480,
+            "id": 40,
+            "last_sample": 729600,
+            "live_ticks": 12135,
+            "samples": 809
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            25,
+            30,
+            36,
+            37,
+            38,
+            39,
+            40
+          ],
+          "living_founders": 0,
+          "pending_seeds": 8,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      },
+      "final_hash": "5feda2de",
+      "original_v1": [
+        1,
+        5,
+        8,
+        738990
+      ],
+      "policy": "reserve"
+    },
+    {
+      "case": "512.44.fresh-1.off.neural",
+      "condition": "512.b61837dc.fresh-1",
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 734460,
+          "new_establishments": 14,
+          "renewing_child_live_ticks": 389640,
+          "renewing_parents": 7,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 737280,
+        "key": [
+          1,
+          389640,
+          734460,
+          7,
+          14
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 734460,
+            "new_establishments": 14,
+            "renewing_parents": 7,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 13,
+              "patch": 3
+            },
+            "closing_purchases": 265,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 14,
+              "natural-failure": 4
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 84,
+              "confirmation_tick": 617880,
+              "parent": 77,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 86,
+              "confirmation_tick": 640755,
+              "parent": 73,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 88,
+              "confirmation_tick": 652620,
+              "parent": 81,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 89,
+              "confirmation_tick": 656580,
+              "parent": 44,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 90,
+              "confirmation_tick": 660495,
+              "parent": 44,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 91,
+              "confirmation_tick": 660540,
+              "parent": 88,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 92,
+              "confirmation_tick": 664200,
+              "parent": 77,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 93,
+              "confirmation_tick": 675120,
+              "parent": 44,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 94,
+              "confirmation_tick": 675480,
+              "parent": 44,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 95,
+              "confirmation_tick": 679560,
+              "parent": 77,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 96,
+              "confirmation_tick": 683160,
+              "parent": 44,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "natural-dead"
+            },
+            {
+              "child": 97,
+              "confirmation_tick": 687000,
+              "parent": 89,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 100,
+              "confirmation_tick": 717570,
+              "parent": 77,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 101,
+              "confirmation_tick": 721800,
+              "parent": 93,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            7,
+            14,
+            734460
+          ],
+          "occupancy": [
+            {
+              "first_sample": 606735,
+              "id": 44,
+              "last_sample": 682725,
+              "live_ticks": 76005,
+              "samples": 5067
+            },
+            {
+              "first_sample": 606735,
+              "id": 57,
+              "last_sample": 628785,
+              "live_ticks": 22065,
+              "samples": 1471
+            },
+            {
+              "first_sample": 606735,
+              "id": 70,
+              "last_sample": 632625,
+              "live_ticks": 25905,
+              "samples": 1727
+            },
+            {
+              "first_sample": 606735,
+              "id": 73,
+              "last_sample": 655665,
+              "live_ticks": 48945,
+              "samples": 3263
+            },
+            {
+              "first_sample": 606735,
+              "id": 77,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 81,
+              "last_sample": 655740,
+              "live_ticks": 49020,
+              "samples": 3268
+            },
+            {
+              "first_sample": 617880,
+              "id": 84,
+              "last_sample": 621105,
+              "live_ticks": 3240,
+              "samples": 216
+            },
+            {
+              "first_sample": 640755,
+              "id": 86,
+              "last_sample": 663345,
+              "live_ticks": 22605,
+              "samples": 1507
+            },
+            {
+              "first_sample": 652620,
+              "id": 88,
+              "last_sample": 667245,
+              "live_ticks": 14640,
+              "samples": 976
+            },
+            {
+              "first_sample": 656580,
+              "id": 89,
+              "last_sample": 711435,
+              "live_ticks": 54870,
+              "samples": 3658
+            },
+            {
+              "first_sample": 660495,
+              "id": 90,
+              "last_sample": 663405,
+              "live_ticks": 2925,
+              "samples": 195
+            },
+            {
+              "first_sample": 660540,
+              "id": 91,
+              "last_sample": 729600,
+              "live_ticks": 69075,
+              "samples": 4605
+            },
+            {
+              "first_sample": 664200,
+              "id": 92,
+              "last_sample": 667245,
+              "live_ticks": 3060,
+              "samples": 204
+            },
+            {
+              "first_sample": 675120,
+              "id": 93,
+              "last_sample": 729600,
+              "live_ticks": 54495,
+              "samples": 3633
+            },
+            {
+              "first_sample": 675480,
+              "id": 94,
+              "last_sample": 681210,
+              "live_ticks": 5745,
+              "samples": 383
+            },
+            {
+              "first_sample": 679560,
+              "id": 95,
+              "last_sample": 729600,
+              "live_ticks": 50055,
+              "samples": 3337
+            },
+            {
+              "first_sample": 683160,
+              "id": 96,
+              "last_sample": 729600,
+              "live_ticks": 46455,
+              "samples": 3097
+            },
+            {
+              "first_sample": 687000,
+              "id": 97,
+              "last_sample": 729600,
+              "live_ticks": 42615,
+              "samples": 2841
+            },
+            {
+              "first_sample": 717570,
+              "id": 100,
+              "last_sample": 729600,
+              "live_ticks": 12045,
+              "samples": 803
+            },
+            {
+              "first_sample": 721800,
+              "id": 101,
+              "last_sample": 729600,
+              "live_ticks": 7815,
+              "samples": 521
+            }
+          ],
+          "renewing_parent_ids": [
+            44,
+            73,
+            77,
+            81,
+            88,
+            89,
+            93
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              77,
+              91,
+              93,
+              95,
+              96,
+              97,
+              100,
+              101
+            ],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 8,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "observed_end": 737280,
+        "pending_seed_followup": [
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 730320,
+            "outcome": "expired",
+            "parent": 77,
+            "purchase_tick": 726480
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733320,
+            "outcome": "expired",
+            "parent": 77,
+            "purchase_tick": 729480
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729720,
+            "outcome": "expired",
+            "parent": 91,
+            "purchase_tick": 725880
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733200,
+            "outcome": "expired",
+            "parent": 91,
+            "purchase_tick": 729360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733200,
+            "outcome": "expired",
+            "parent": 93,
+            "purchase_tick": 729360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729660,
+            "outcome": "expired",
+            "parent": 95,
+            "purchase_tick": 725820
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733320,
+            "outcome": "expired",
+            "parent": 95,
+            "purchase_tick": 729480
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729660,
+            "outcome": "expired",
+            "parent": 97,
+            "purchase_tick": 725820
+          }
+        ],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 617880,
+            "id": 84,
+            "last_sample": 621105,
+            "live_ticks": 3240,
+            "samples": 216
+          },
+          {
+            "first_sample": 640755,
+            "id": 86,
+            "last_sample": 663345,
+            "live_ticks": 22605,
+            "samples": 1507
+          },
+          {
+            "first_sample": 652620,
+            "id": 88,
+            "last_sample": 667245,
+            "live_ticks": 14640,
+            "samples": 976
+          },
+          {
+            "first_sample": 656580,
+            "id": 89,
+            "last_sample": 711435,
+            "live_ticks": 54870,
+            "samples": 3658
+          },
+          {
+            "first_sample": 660495,
+            "id": 90,
+            "last_sample": 663405,
+            "live_ticks": 2925,
+            "samples": 195
+          },
+          {
+            "first_sample": 660540,
+            "id": 91,
+            "last_sample": 729600,
+            "live_ticks": 69075,
+            "samples": 4605
+          },
+          {
+            "first_sample": 664200,
+            "id": 92,
+            "last_sample": 667245,
+            "live_ticks": 3060,
+            "samples": 204
+          },
+          {
+            "first_sample": 675120,
+            "id": 93,
+            "last_sample": 729600,
+            "live_ticks": 54495,
+            "samples": 3633
+          },
+          {
+            "first_sample": 675480,
+            "id": 94,
+            "last_sample": 681210,
+            "live_ticks": 5745,
+            "samples": 383
+          },
+          {
+            "first_sample": 679560,
+            "id": 95,
+            "last_sample": 729600,
+            "live_ticks": 50055,
+            "samples": 3337
+          },
+          {
+            "first_sample": 683160,
+            "id": 96,
+            "last_sample": 729600,
+            "live_ticks": 46455,
+            "samples": 3097
+          },
+          {
+            "first_sample": 687000,
+            "id": 97,
+            "last_sample": 729600,
+            "live_ticks": 42615,
+            "samples": 2841
+          },
+          {
+            "first_sample": 717570,
+            "id": 100,
+            "last_sample": 729600,
+            "live_ticks": 12045,
+            "samples": 803
+          },
+          {
+            "first_sample": 721800,
+            "id": 101,
+            "last_sample": 729600,
+            "live_ticks": 7815,
+            "samples": 521
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            77,
+            91,
+            93,
+            95,
+            97,
+            100,
+            101
+          ],
+          "living_founders": 0,
+          "pending_seeds": 8,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      },
+      "final_hash": "03f853dc",
+      "original_v1": [
+        1,
+        7,
+        14,
+        749325
+      ],
+      "policy": "neural"
+    },
+    {
+      "case": "512.44.fresh-1.off.reserve",
+      "condition": "512.b61837dc.fresh-1",
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 832020,
+          "new_establishments": 7,
+          "renewing_child_live_ticks": 436305,
+          "renewing_parents": 4,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 737280,
+        "key": [
+          1,
+          436305,
+          832020,
+          4,
+          7
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 832020,
+            "new_establishments": 7,
+            "renewing_parents": 4,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 6,
+              "patch": 5
+            },
+            "closing_purchases": 261,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 7,
+              "natural-failure": 4,
+              "patch-censored": 1
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 64,
+              "confirmation_tick": 617880,
+              "parent": 55,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 65,
+              "confirmation_tick": 617970,
+              "parent": 60,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 67,
+              "confirmation_tick": 625230,
+              "parent": 43,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 71,
+              "confirmation_tick": 648900,
+              "parent": 60,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 72,
+              "confirmation_tick": 649140,
+              "parent": 64,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 74,
+              "confirmation_tick": 664140,
+              "parent": 43,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 75,
+              "confirmation_tick": 687000,
+              "parent": 43,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            4,
+            7,
+            832020
+          ],
+          "occupancy": [
+            {
+              "first_sample": 606735,
+              "id": 38,
+              "last_sample": 609585,
+              "live_ticks": 2865,
+              "samples": 191
+            },
+            {
+              "first_sample": 606735,
+              "id": 43,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 55,
+              "last_sample": 621165,
+              "live_ticks": 14445,
+              "samples": 963
+            },
+            {
+              "first_sample": 606735,
+              "id": 56,
+              "last_sample": 616485,
+              "live_ticks": 9765,
+              "samples": 651
+            },
+            {
+              "first_sample": 606735,
+              "id": 57,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 60,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 617880,
+              "id": 64,
+              "last_sample": 711435,
+              "live_ticks": 93570,
+              "samples": 6238
+            },
+            {
+              "first_sample": 617970,
+              "id": 65,
+              "last_sample": 635415,
+              "live_ticks": 17460,
+              "samples": 1164
+            },
+            {
+              "first_sample": 625230,
+              "id": 67,
+              "last_sample": 729600,
+              "live_ticks": 104385,
+              "samples": 6959
+            },
+            {
+              "first_sample": 648900,
+              "id": 71,
+              "last_sample": 681210,
+              "live_ticks": 32325,
+              "samples": 2155
+            },
+            {
+              "first_sample": 649140,
+              "id": 72,
+              "last_sample": 729600,
+              "live_ticks": 80475,
+              "samples": 5365
+            },
+            {
+              "first_sample": 664140,
+              "id": 74,
+              "last_sample": 729600,
+              "live_ticks": 65475,
+              "samples": 4365
+            },
+            {
+              "first_sample": 687000,
+              "id": 75,
+              "last_sample": 729600,
+              "live_ticks": 42615,
+              "samples": 2841
+            }
+          ],
+          "renewing_parent_ids": [
+            43,
+            55,
+            60,
+            64
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              43,
+              57,
+              60,
+              67,
+              72,
+              74,
+              75
+            ],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 8,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "observed_end": 737280,
+        "pending_seed_followup": [
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729780,
+            "outcome": "expired",
+            "parent": 43,
+            "purchase_tick": 725940
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 730260,
+            "outcome": "expired",
+            "parent": 43,
+            "purchase_tick": 726420
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733080,
+            "outcome": "expired",
+            "parent": 43,
+            "purchase_tick": 729240
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733380,
+            "outcome": "expired",
+            "parent": 43,
+            "purchase_tick": 729540
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733200,
+            "outcome": "expired",
+            "parent": 57,
+            "purchase_tick": 729360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733260,
+            "outcome": "expired",
+            "parent": 60,
+            "purchase_tick": 729420
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733140,
+            "outcome": "expired",
+            "parent": 67,
+            "purchase_tick": 729300
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733260,
+            "outcome": "expired",
+            "parent": 72,
+            "purchase_tick": 729420
+          }
+        ],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 617880,
+            "id": 64,
+            "last_sample": 711435,
+            "live_ticks": 93570,
+            "samples": 6238
+          },
+          {
+            "first_sample": 617970,
+            "id": 65,
+            "last_sample": 635415,
+            "live_ticks": 17460,
+            "samples": 1164
+          },
+          {
+            "first_sample": 625230,
+            "id": 67,
+            "last_sample": 729600,
+            "live_ticks": 104385,
+            "samples": 6959
+          },
+          {
+            "first_sample": 648900,
+            "id": 71,
+            "last_sample": 681210,
+            "live_ticks": 32325,
+            "samples": 2155
+          },
+          {
+            "first_sample": 649140,
+            "id": 72,
+            "last_sample": 729600,
+            "live_ticks": 80475,
+            "samples": 5365
+          },
+          {
+            "first_sample": 664140,
+            "id": 74,
+            "last_sample": 729600,
+            "live_ticks": 65475,
+            "samples": 4365
+          },
+          {
+            "first_sample": 687000,
+            "id": 75,
+            "last_sample": 729600,
+            "live_ticks": 42615,
+            "samples": 2841
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            57,
+            60,
+            67,
+            72,
+            74,
+            75
+          ],
+          "living_founders": 0,
+          "pending_seeds": 8,
+          "young_descendants": [
+            76
+          ]
+        },
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      },
+      "final_hash": "38ed81c0",
+      "original_v1": [
+        1,
+        4,
+        7,
+        844020
+      ],
+      "policy": "reserve"
+    },
+    {
+      "case": "512.45.fresh-1.off.neural",
+      "condition": "512.c7f54e18.fresh-1",
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 967035,
+          "new_establishments": 3,
+          "renewing_child_live_ticks": 152040,
+          "renewing_parents": 3,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 737280,
+        "key": [
+          1,
+          152040,
+          967035,
+          3,
+          3
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 967035,
+            "new_establishments": 3,
+            "renewing_parents": 3,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "patch": 3
+            },
+            "closing_purchases": 256,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 3
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 40,
+              "confirmation_tick": 640890,
+              "parent": 32,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 41,
+              "confirmation_tick": 660540,
+              "parent": 36,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 42,
+              "confirmation_tick": 686985,
+              "parent": 29,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            3,
+            3,
+            967035
+          ],
+          "occupancy": [
+            {
+              "first_sample": 606735,
+              "id": 22,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 26,
+              "last_sample": 635415,
+              "live_ticks": 28695,
+              "samples": 1913
+            },
+            {
+              "first_sample": 606735,
+              "id": 29,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 32,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 34,
+              "last_sample": 655740,
+              "live_ticks": 49020,
+              "samples": 3268
+            },
+            {
+              "first_sample": 606735,
+              "id": 35,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 36,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 39,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 640890,
+              "id": 40,
+              "last_sample": 681210,
+              "live_ticks": 40335,
+              "samples": 2689
+            },
+            {
+              "first_sample": 660540,
+              "id": 41,
+              "last_sample": 729600,
+              "live_ticks": 69075,
+              "samples": 4605
+            },
+            {
+              "first_sample": 686985,
+              "id": 42,
+              "last_sample": 729600,
+              "live_ticks": 42630,
+              "samples": 2842
+            }
+          ],
+          "renewing_parent_ids": [
+            29,
+            32,
+            36
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              22,
+              29,
+              32,
+              35,
+              36,
+              39,
+              41,
+              42
+            ],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 8,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "observed_end": 737280,
+        "pending_seed_followup": [
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729960,
+            "outcome": "expired",
+            "parent": 22,
+            "purchase_tick": 726120
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733140,
+            "outcome": "expired",
+            "parent": 22,
+            "purchase_tick": 729300
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733440,
+            "outcome": "expired",
+            "parent": 22,
+            "purchase_tick": 729600
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729660,
+            "outcome": "expired",
+            "parent": 32,
+            "purchase_tick": 725820
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733140,
+            "outcome": "expired",
+            "parent": 32,
+            "purchase_tick": 729300
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733200,
+            "outcome": "expired",
+            "parent": 35,
+            "purchase_tick": 729360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733200,
+            "outcome": "expired",
+            "parent": 36,
+            "purchase_tick": 729360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733320,
+            "outcome": "expired",
+            "parent": 39,
+            "purchase_tick": 729480
+          }
+        ],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 640890,
+            "id": 40,
+            "last_sample": 681210,
+            "live_ticks": 40335,
+            "samples": 2689
+          },
+          {
+            "first_sample": 660540,
+            "id": 41,
+            "last_sample": 729600,
+            "live_ticks": 69075,
+            "samples": 4605
+          },
+          {
+            "first_sample": 686985,
+            "id": 42,
+            "last_sample": 729600,
+            "live_ticks": 42630,
+            "samples": 2842
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            22,
+            32,
+            35,
+            36,
+            39,
+            41,
+            42
+          ],
+          "living_founders": 0,
+          "pending_seeds": 8,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      },
+      "final_hash": "873c88e3",
+      "original_v1": [
+        1,
+        3,
+        3,
+        966540
+      ],
+      "policy": "neural"
+    },
+    {
+      "case": "512.45.fresh-1.off.reserve",
+      "condition": "512.c7f54e18.fresh-1",
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 915255,
+          "new_establishments": 8,
+          "renewing_child_live_ticks": 194970,
+          "renewing_parents": 4,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 737280,
+        "key": [
+          1,
+          194970,
+          915255,
+          4,
+          8
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 915255,
+            "new_establishments": 8,
+            "renewing_parents": 4,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 6,
+              "patch": 3
+            },
+            "closing_purchases": 260,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 8,
+              "natural-failure": 2
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 32,
+              "confirmation_tick": 610230,
+              "parent": 15,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 33,
+              "confirmation_tick": 640935,
+              "parent": 15,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 34,
+              "confirmation_tick": 660105,
+              "parent": 28,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 35,
+              "confirmation_tick": 663720,
+              "parent": 22,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 36,
+              "confirmation_tick": 668535,
+              "parent": 15,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 38,
+              "confirmation_tick": 690840,
+              "parent": 15,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 39,
+              "confirmation_tick": 710040,
+              "parent": 20,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 41,
+              "confirmation_tick": 721425,
+              "parent": 22,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            4,
+            8,
+            915255
+          ],
+          "occupancy": [
+            {
+              "first_sample": 606735,
+              "id": 15,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 18,
+              "last_sample": 663585,
+              "live_ticks": 56865,
+              "samples": 3791
+            },
+            {
+              "first_sample": 606735,
+              "id": 20,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 22,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 27,
+              "last_sample": 655740,
+              "live_ticks": 49020,
+              "samples": 3268
+            },
+            {
+              "first_sample": 606735,
+              "id": 28,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 606735,
+              "id": 31,
+              "last_sample": 729600,
+              "live_ticks": 122880,
+              "samples": 8192
+            },
+            {
+              "first_sample": 610230,
+              "id": 32,
+              "last_sample": 629025,
+              "live_ticks": 18810,
+              "samples": 1254
+            },
+            {
+              "first_sample": 640935,
+              "id": 33,
+              "last_sample": 648225,
+              "live_ticks": 7305,
+              "samples": 487
+            },
+            {
+              "first_sample": 660105,
+              "id": 34,
+              "last_sample": 711435,
+              "live_ticks": 51345,
+              "samples": 3423
+            },
+            {
+              "first_sample": 663720,
+              "id": 35,
+              "last_sample": 729600,
+              "live_ticks": 65895,
+              "samples": 4393
+            },
+            {
+              "first_sample": 668535,
+              "id": 36,
+              "last_sample": 681210,
+              "live_ticks": 12690,
+              "samples": 846
+            },
+            {
+              "first_sample": 690840,
+              "id": 38,
+              "last_sample": 701985,
+              "live_ticks": 11160,
+              "samples": 744
+            },
+            {
+              "first_sample": 710040,
+              "id": 39,
+              "last_sample": 729600,
+              "live_ticks": 19575,
+              "samples": 1305
+            },
+            {
+              "first_sample": 721425,
+              "id": 41,
+              "last_sample": 729600,
+              "live_ticks": 8190,
+              "samples": 546
+            }
+          ],
+          "renewing_parent_ids": [
+            15,
+            20,
+            22,
+            28
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              15,
+              20,
+              22,
+              28,
+              31,
+              35,
+              39,
+              41
+            ],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 8,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "observed_end": 737280,
+        "pending_seed_followup": [
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 729660,
+            "outcome": "expired",
+            "parent": 15,
+            "purchase_tick": 725820
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733260,
+            "outcome": "expired",
+            "parent": 15,
+            "purchase_tick": 729420
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733140,
+            "outcome": "expired",
+            "parent": 20,
+            "purchase_tick": 729300
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733440,
+            "outcome": "expired",
+            "parent": 20,
+            "purchase_tick": 729600
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733380,
+            "outcome": "expired",
+            "parent": 22,
+            "purchase_tick": 729540
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733200,
+            "outcome": "expired",
+            "parent": 28,
+            "purchase_tick": 729360
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733260,
+            "outcome": "expired",
+            "parent": 31,
+            "purchase_tick": 729420
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 733260,
+            "outcome": "expired",
+            "parent": 35,
+            "purchase_tick": 729420
+          }
+        ],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 610230,
+            "id": 32,
+            "last_sample": 629025,
+            "live_ticks": 18810,
+            "samples": 1254
+          },
+          {
+            "first_sample": 640935,
+            "id": 33,
+            "last_sample": 648225,
+            "live_ticks": 7305,
+            "samples": 487
+          },
+          {
+            "first_sample": 660105,
+            "id": 34,
+            "last_sample": 711435,
+            "live_ticks": 51345,
+            "samples": 3423
+          },
+          {
+            "first_sample": 663720,
+            "id": 35,
+            "last_sample": 729600,
+            "live_ticks": 65895,
+            "samples": 4393
+          },
+          {
+            "first_sample": 668535,
+            "id": 36,
+            "last_sample": 681210,
+            "live_ticks": 12690,
+            "samples": 846
+          },
+          {
+            "first_sample": 690840,
+            "id": 38,
+            "last_sample": 701985,
+            "live_ticks": 11160,
+            "samples": 744
+          },
+          {
+            "first_sample": 710040,
+            "id": 39,
+            "last_sample": 729600,
+            "live_ticks": 19575,
+            "samples": 1305
+          },
+          {
+            "first_sample": 721425,
+            "id": 41,
+            "last_sample": 729600,
+            "live_ticks": 8190,
+            "samples": 546
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            15,
+            20,
+            28,
+            31,
+            35,
+            39,
+            41
+          ],
+          "living_founders": 0,
+          "pending_seeds": 8,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      },
+      "final_hash": "824603d4",
+      "original_v1": [
+        1,
+        4,
+        7,
+        918255
+      ],
+      "policy": "reserve"
+    }
+  ],
+  "checks": {
+    "exact_attempt_checkpoints": 65544,
+    "live_resource_steps": 2601285,
+    "seed_lifetimes": 12386,
+    "site_world_checkpoints": 393224
+  },
+  "components": [
+    "terminal_tier",
+    "renewing_child_live_ticks",
+    "descendant_live_ticks",
+    "renewing_parents",
+    "new_establishments"
+  ],
+  "fixtures": {
+    "brief-established-offspring": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 15420,
+          "new_establishments": 4,
+          "renewing_child_live_ticks": 60,
+          "renewing_parents": 1,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          1,
+          60,
+          15420,
+          1,
+          4
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 15420,
+            "new_establishments": 4,
+            "renewing_parents": 1,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 4
+            },
+            "closing_purchases": 4,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 4
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 3,
+              "confirmation_tick": 27060,
+              "parent": 2,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 4,
+              "confirmation_tick": 27120,
+              "parent": 2,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 5,
+              "confirmation_tick": 27180,
+              "parent": 2,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 6,
+              "confirmation_tick": 27240,
+              "parent": 2,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            1,
+            4,
+            15420
+          ],
+          "occupancy": [
+            {
+              "first_sample": 15375,
+              "id": 2,
+              "last_sample": 30720,
+              "live_ticks": 15360,
+              "samples": 1024
+            },
+            {
+              "first_sample": 27060,
+              "id": 3,
+              "last_sample": 27060,
+              "live_ticks": 15,
+              "samples": 1
+            },
+            {
+              "first_sample": 27120,
+              "id": 4,
+              "last_sample": 27120,
+              "live_ticks": 15,
+              "samples": 1
+            },
+            {
+              "first_sample": 27180,
+              "id": 5,
+              "last_sample": 27180,
+              "live_ticks": 15,
+              "samples": 1
+            },
+            {
+              "first_sample": 27240,
+              "id": 6,
+              "last_sample": 27240,
+              "live_ticks": 15,
+              "samples": 1
+            }
+          ],
+          "renewing_parent_ids": [
+            2
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              2
+            ],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 27060,
+            "id": 3,
+            "last_sample": 27060,
+            "live_ticks": 15,
+            "samples": 1
+          },
+          {
+            "first_sample": 27120,
+            "id": 4,
+            "last_sample": 27120,
+            "live_ticks": 15,
+            "samples": 1
+          },
+          {
+            "first_sample": 27180,
+            "id": 5,
+            "last_sample": 27180,
+            "live_ticks": 15,
+            "samples": 1
+          },
+          {
+            "first_sample": 27240,
+            "id": 6,
+            "last_sample": 27240,
+            "live_ticks": 15,
+            "samples": 1
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            2
+          ],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 0,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 3840,
+          "column": 2,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 4,
+          "parent": 1,
+          "seeds_created": 4
+        },
+        {
+          "birth_tick": 23220,
+          "column": 3,
+          "death_tick": 27075,
+          "environmental_death": false,
+          "generation": 2,
+          "id": 3,
+          "late_seeds_created": 0,
+          "parent": 2,
+          "seeds_created": 0
+        },
+        {
+          "birth_tick": 23280,
+          "column": 4,
+          "death_tick": 27135,
+          "environmental_death": false,
+          "generation": 3,
+          "id": 4,
+          "late_seeds_created": 0,
+          "parent": 2,
+          "seeds_created": 0
+        },
+        {
+          "birth_tick": 23340,
+          "column": 5,
+          "death_tick": 27195,
+          "environmental_death": false,
+          "generation": 4,
+          "id": 5,
+          "late_seeds_created": 0,
+          "parent": 2,
+          "seeds_created": 0
+        },
+        {
+          "birth_tick": 23400,
+          "column": 6,
+          "death_tick": 27255,
+          "environmental_death": false,
+          "generation": 5,
+          "id": 6,
+          "late_seeds_created": 0,
+          "parent": 2,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 3720,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 3840,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 23100,
+          "child_id": 3,
+          "column": 3,
+          "end_tick": 23220,
+          "generation": 2,
+          "outcome": "germinated",
+          "parent": 2
+        },
+        {
+          "birth_tick": 23160,
+          "child_id": 4,
+          "column": 4,
+          "end_tick": 23280,
+          "generation": 3,
+          "outcome": "germinated",
+          "parent": 2
+        },
+        {
+          "birth_tick": 23220,
+          "child_id": 5,
+          "column": 5,
+          "end_tick": 23340,
+          "generation": 4,
+          "outcome": "germinated",
+          "parent": 2
+        },
+        {
+          "birth_tick": 23280,
+          "child_id": 6,
+          "column": 6,
+          "end_tick": 23400,
+          "generation": 5,
+          "outcome": "germinated",
+          "parent": 2
+        }
+      ]
+    },
+    "brief-multiple-renewing-parents": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 61500,
+          "new_establishments": 4,
+          "renewing_child_live_ticks": 60,
+          "renewing_parents": 4,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          1,
+          60,
+          61500,
+          4,
+          4
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 61500,
+            "new_establishments": 4,
+            "renewing_parents": 4,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 4
+            },
+            "closing_purchases": 4,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 4
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 6,
+              "confirmation_tick": 27000,
+              "parent": 2,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 7,
+              "confirmation_tick": 27060,
+              "parent": 3,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 8,
+              "confirmation_tick": 27120,
+              "parent": 4,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 9,
+              "confirmation_tick": 27180,
+              "parent": 5,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            4,
+            4,
+            61500
+          ],
+          "occupancy": [
+            {
+              "first_sample": 15375,
+              "id": 2,
+              "last_sample": 30720,
+              "live_ticks": 15360,
+              "samples": 1024
+            },
+            {
+              "first_sample": 15375,
+              "id": 3,
+              "last_sample": 30720,
+              "live_ticks": 15360,
+              "samples": 1024
+            },
+            {
+              "first_sample": 15375,
+              "id": 4,
+              "last_sample": 30720,
+              "live_ticks": 15360,
+              "samples": 1024
+            },
+            {
+              "first_sample": 15375,
+              "id": 5,
+              "last_sample": 30720,
+              "live_ticks": 15360,
+              "samples": 1024
+            },
+            {
+              "first_sample": 27000,
+              "id": 6,
+              "last_sample": 27000,
+              "live_ticks": 15,
+              "samples": 1
+            },
+            {
+              "first_sample": 27060,
+              "id": 7,
+              "last_sample": 27060,
+              "live_ticks": 15,
+              "samples": 1
+            },
+            {
+              "first_sample": 27120,
+              "id": 8,
+              "last_sample": 27120,
+              "live_ticks": 15,
+              "samples": 1
+            },
+            {
+              "first_sample": 27180,
+              "id": 9,
+              "last_sample": 27180,
+              "live_ticks": 15,
+              "samples": 1
+            }
+          ],
+          "renewing_parent_ids": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 27000,
+            "id": 6,
+            "last_sample": 27000,
+            "live_ticks": 15,
+            "samples": 1
+          },
+          {
+            "first_sample": 27060,
+            "id": 7,
+            "last_sample": 27060,
+            "live_ticks": 15,
+            "samples": 1
+          },
+          {
+            "first_sample": 27120,
+            "id": 8,
+            "last_sample": 27120,
+            "live_ticks": 15,
+            "samples": 1
+          },
+          {
+            "first_sample": 27180,
+            "id": 9,
+            "last_sample": 27180,
+            "live_ticks": 15,
+            "samples": 1
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 0,
+          "parent": 0,
+          "seeds_created": 4
+        },
+        {
+          "birth_tick": 4080,
+          "column": 2,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 1,
+          "parent": 1,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 4200,
+          "column": 3,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 2,
+          "id": 3,
+          "late_seeds_created": 1,
+          "parent": 1,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 4320,
+          "column": 4,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 3,
+          "id": 4,
+          "late_seeds_created": 1,
+          "parent": 1,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 4440,
+          "column": 5,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 4,
+          "id": 5,
+          "late_seeds_created": 1,
+          "parent": 1,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 23160,
+          "column": 6,
+          "death_tick": 27015,
+          "environmental_death": false,
+          "generation": 5,
+          "id": 6,
+          "late_seeds_created": 0,
+          "parent": 2,
+          "seeds_created": 0
+        },
+        {
+          "birth_tick": 23220,
+          "column": 7,
+          "death_tick": 27075,
+          "environmental_death": false,
+          "generation": 6,
+          "id": 7,
+          "late_seeds_created": 0,
+          "parent": 3,
+          "seeds_created": 0
+        },
+        {
+          "birth_tick": 23280,
+          "column": 8,
+          "death_tick": 27135,
+          "environmental_death": false,
+          "generation": 7,
+          "id": 8,
+          "late_seeds_created": 0,
+          "parent": 4,
+          "seeds_created": 0
+        },
+        {
+          "birth_tick": 23340,
+          "column": 9,
+          "death_tick": 27195,
+          "environmental_death": false,
+          "generation": 8,
+          "id": 9,
+          "late_seeds_created": 0,
+          "parent": 5,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 3960,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 4080,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 4080,
+          "child_id": 3,
+          "column": 3,
+          "end_tick": 4200,
+          "generation": 2,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 4200,
+          "child_id": 4,
+          "column": 4,
+          "end_tick": 4320,
+          "generation": 3,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 4320,
+          "child_id": 5,
+          "column": 5,
+          "end_tick": 4440,
+          "generation": 4,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 23040,
+          "child_id": 6,
+          "column": 6,
+          "end_tick": 23160,
+          "generation": 5,
+          "outcome": "germinated",
+          "parent": 2
+        },
+        {
+          "birth_tick": 23100,
+          "child_id": 7,
+          "column": 7,
+          "end_tick": 23220,
+          "generation": 6,
+          "outcome": "germinated",
+          "parent": 3
+        },
+        {
+          "birth_tick": 23160,
+          "child_id": 8,
+          "column": 8,
+          "end_tick": 23280,
+          "generation": 7,
+          "outcome": "germinated",
+          "parent": 4
+        },
+        {
+          "birth_tick": 23220,
+          "child_id": 9,
+          "column": 9,
+          "end_tick": 23340,
+          "generation": 8,
+          "outcome": "germinated",
+          "parent": 5
+        }
+      ]
+    },
+    "descendants-lost-founder-remains": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 3960,
+          "new_establishments": 2,
+          "renewing_child_live_ticks": 60,
+          "renewing_parents": 1,
+          "terminal_tier": 0
+        },
+        "followup_deadline": 38400,
+        "key": [
+          0,
+          60,
+          3960,
+          1,
+          2
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 3960,
+            "new_establishments": 2,
+            "renewing_parents": 1,
+            "terminal_tier": 0
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 2
+            },
+            "closing_purchases": 2,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 2
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 2,
+              "confirmation_tick": 23040,
+              "parent": 1,
+              "parent_established": true,
+              "parent_is_founder": true,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 3,
+              "confirmation_tick": 26880,
+              "parent": 2,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            0,
+            1,
+            2,
+            3960
+          ],
+          "occupancy": [
+            {
+              "first_sample": 23040,
+              "id": 2,
+              "last_sample": 26925,
+              "live_ticks": 3900,
+              "samples": 260
+            },
+            {
+              "first_sample": 26880,
+              "id": 3,
+              "last_sample": 26925,
+              "live_ticks": 60,
+              "samples": 4
+            }
+          ],
+          "renewing_parent_ids": [
+            2
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 26880,
+            "id": 3,
+            "last_sample": 26925,
+            "live_ticks": 60,
+            "samples": 4
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "living-unestablished",
+          "established_descendants": [],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 1,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 19200,
+          "column": 2,
+          "death_tick": 26940,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 1,
+          "parent": 1,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 23040,
+          "column": 3,
+          "death_tick": 26940,
+          "environmental_death": false,
+          "generation": 2,
+          "id": 3,
+          "late_seeds_created": 0,
+          "parent": 2,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 19080,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 19200,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 22920,
+          "child_id": 3,
+          "column": 3,
+          "end_tick": 23040,
+          "generation": 2,
+          "outcome": "germinated",
+          "parent": 2
+        }
+      ]
+    },
+    "endpoint-descendant-death": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 15345,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": 0
+        },
+        "followup_deadline": 38400,
+        "key": [
+          0,
+          0,
+          15345,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 15345,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": 0
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 1
+            },
+            "closing_purchases": 0,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": [
+            0,
+            0,
+            0,
+            15345
+          ],
+          "occupancy": [
+            {
+              "first_sample": 15375,
+              "id": 2,
+              "last_sample": 30705,
+              "live_ticks": 15345,
+              "samples": 1023
+            }
+          ],
+          "renewing_parent_ids": [],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "living-unestablished",
+          "established_descendants": [],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 0,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 3840,
+          "column": 2,
+          "death_tick": 30720,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 0,
+          "parent": 1,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 3720,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 3840,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        }
+      ]
+    },
+    "extinct-reproductive-burst": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 3960,
+          "new_establishments": 2,
+          "renewing_child_live_ticks": 60,
+          "renewing_parents": 1,
+          "terminal_tier": -1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          -1,
+          60,
+          3960,
+          1,
+          2
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 3960,
+            "new_establishments": 2,
+            "renewing_parents": 1,
+            "terminal_tier": -1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 3
+            },
+            "closing_purchases": 2,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 2
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 2,
+              "confirmation_tick": 23040,
+              "parent": 1,
+              "parent_established": true,
+              "parent_is_founder": true,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 3,
+              "confirmation_tick": 26880,
+              "parent": 2,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            -1,
+            1,
+            2,
+            3960
+          ],
+          "occupancy": [
+            {
+              "first_sample": 23040,
+              "id": 2,
+              "last_sample": 26925,
+              "live_ticks": 3900,
+              "samples": 260
+            },
+            {
+              "first_sample": 26880,
+              "id": 3,
+              "last_sample": 26925,
+              "live_ticks": 60,
+              "samples": 4
+            }
+          ],
+          "renewing_parent_ids": [
+            2
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 0,
+            "observed_extinct": true,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 26880,
+            "id": 3,
+            "last_sample": 26925,
+            "live_ticks": 60,
+            "samples": 4
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "observed-extinct",
+          "established_descendants": [],
+          "living_founders": 0,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": 26940,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 1,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 19200,
+          "column": 2,
+          "death_tick": 26940,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 1,
+          "parent": 1,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 23040,
+          "column": 3,
+          "death_tick": 26940,
+          "environmental_death": false,
+          "generation": 2,
+          "id": 3,
+          "late_seeds_created": 0,
+          "parent": 2,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 19080,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 19200,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 22920,
+          "child_id": 3,
+          "column": 3,
+          "end_tick": 23040,
+          "generation": 2,
+          "outcome": "germinated",
+          "parent": 2
+        }
+      ]
+    },
+    "founder-only": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 0,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": 0
+        },
+        "followup_deadline": 38400,
+        "key": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 0,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": 0
+          },
+          "diagnostics": {
+            "closing_deaths": {},
+            "closing_purchases": 0,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "occupancy": [],
+          "renewing_parent_ids": [],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "living-unestablished",
+          "established_descendants": [],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 0,
+          "parent": 0,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": []
+    },
+    "late-seed-burst": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 0,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": 0
+        },
+        "followup_deadline": 38400,
+        "key": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 0,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": 0
+          },
+          "diagnostics": {
+            "closing_deaths": {},
+            "closing_purchases": 2,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "occupancy": [],
+          "renewing_parent_ids": [],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 2,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 34530,
+            "outcome": "expired",
+            "parent": 1,
+            "purchase_tick": 30690
+          },
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 34545,
+            "outcome": "expired",
+            "parent": 1,
+            "purchase_tick": 30705
+          }
+        ],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "living-unestablished",
+          "established_descendants": [],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 2,
+          "parent": 0,
+          "seeds_created": 2
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 30690,
+          "child_id": null,
+          "column": 1,
+          "end_tick": 34530,
+          "generation": 1,
+          "outcome": "expired",
+          "parent": 1
+        },
+        {
+          "birth_tick": 30705,
+          "child_id": null,
+          "column": 1,
+          "end_tick": 34545,
+          "generation": 1,
+          "outcome": "expired",
+          "parent": 1
+        }
+      ]
+    },
+    "old-sterile-descendant": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 15360,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          1,
+          0,
+          15360,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 15360,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {},
+            "closing_purchases": 0,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": [
+            1,
+            0,
+            0,
+            15360
+          ],
+          "occupancy": [
+            {
+              "first_sample": 15375,
+              "id": 2,
+              "last_sample": 30720,
+              "live_ticks": 15360,
+              "samples": 1024
+            }
+          ],
+          "renewing_parent_ids": [],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              2
+            ],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            2
+          ],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 0,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 3840,
+          "column": 2,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 0,
+          "parent": 1,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 3720,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 3840,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        }
+      ]
+    },
+    "productive-lineage": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 11550,
+          "new_establishments": 2,
+          "renewing_child_live_ticks": 3855,
+          "renewing_parents": 1,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          1,
+          3855,
+          11550,
+          1,
+          2
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 11550,
+            "new_establishments": 2,
+            "renewing_parents": 1,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {},
+            "closing_purchases": 2,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 2
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 2,
+              "confirmation_tick": 23040,
+              "parent": 1,
+              "parent_established": true,
+              "parent_is_founder": true,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 3,
+              "confirmation_tick": 26880,
+              "parent": 2,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            1,
+            2,
+            11550
+          ],
+          "occupancy": [
+            {
+              "first_sample": 23040,
+              "id": 2,
+              "last_sample": 30720,
+              "live_ticks": 7695,
+              "samples": 513
+            },
+            {
+              "first_sample": 26880,
+              "id": 3,
+              "last_sample": 30720,
+              "live_ticks": 3855,
+              "samples": 257
+            }
+          ],
+          "renewing_parent_ids": [
+            2
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              2,
+              3
+            ],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 26880,
+            "id": 3,
+            "last_sample": 30720,
+            "live_ticks": 3855,
+            "samples": 257
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            2,
+            3
+          ],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 1,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 19200,
+          "column": 2,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 1,
+          "parent": 1,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 23040,
+          "column": 3,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 2,
+          "id": 3,
+          "late_seeds_created": 0,
+          "parent": 2,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 19080,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 19200,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 22920,
+          "child_id": 3,
+          "column": 3,
+          "end_tick": 23040,
+          "generation": 2,
+          "outcome": "germinated",
+          "parent": 2
+        }
+      ]
+    },
+    "productive-parent-later-dies": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 7710,
+          "new_establishments": 2,
+          "renewing_child_live_ticks": 3855,
+          "renewing_parents": 1,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          1,
+          3855,
+          7710,
+          1,
+          2
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 7710,
+            "new_establishments": 2,
+            "renewing_parents": 1,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 1
+            },
+            "closing_purchases": 2,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 2
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 2,
+              "confirmation_tick": 23040,
+              "parent": 1,
+              "parent_established": true,
+              "parent_is_founder": true,
+              "parent_state_at_confirmation": "alive"
+            },
+            {
+              "child": 3,
+              "confirmation_tick": 26880,
+              "parent": 2,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            1,
+            2,
+            7710
+          ],
+          "occupancy": [
+            {
+              "first_sample": 23040,
+              "id": 2,
+              "last_sample": 26880,
+              "live_ticks": 3855,
+              "samples": 257
+            },
+            {
+              "first_sample": 26880,
+              "id": 3,
+              "last_sample": 30720,
+              "live_ticks": 3855,
+              "samples": 257
+            }
+          ],
+          "renewing_parent_ids": [
+            2
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              3
+            ],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 26880,
+            "id": 3,
+            "last_sample": 30720,
+            "live_ticks": 3855,
+            "samples": 257
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            3
+          ],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 1,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 19200,
+          "column": 2,
+          "death_tick": 26895,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 1,
+          "parent": 1,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 23040,
+          "column": 3,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 2,
+          "id": 3,
+          "late_seeds_created": 0,
+          "parent": 2,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 19080,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 19200,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 22920,
+          "child_id": 3,
+          "column": 3,
+          "end_tick": 23040,
+          "generation": 2,
+          "outcome": "germinated",
+          "parent": 2
+        }
+      ]
+    },
+    "seed-only-ending": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 0,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": -1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          -1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 0,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": null
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 1
+            },
+            "closing_purchases": 1,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": null,
+          "occupancy": [],
+          "renewing_parent_ids": [],
+          "status": "needs-followup",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 1,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [
+          {
+            "child": null,
+            "child_confirmation": null,
+            "child_terminal": null,
+            "end_tick": 34545,
+            "outcome": "expired",
+            "parent": 1,
+            "purchase_tick": 30705
+          }
+        ],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "observed-extinct",
+          "established_descendants": [],
+          "living_founders": 0,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": 30720,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 1,
+          "parent": 0,
+          "seeds_created": 1
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 30705,
+          "child_id": null,
+          "column": 1,
+          "end_tick": 34545,
+          "generation": 1,
+          "outcome": "expired",
+          "parent": 1
+        }
+      ]
+    },
+    "seed-only-later-collapse": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 0,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": -1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          -1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 0,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": null
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 1
+            },
+            "closing_purchases": 1,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": null,
+          "occupancy": [],
+          "renewing_parent_ids": [],
+          "status": "needs-followup",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 1,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [
+          {
+            "child": 2,
+            "child_confirmation": "confirmed",
+            "child_terminal": "natural-dead",
+            "end_tick": 30810,
+            "outcome": "germinated",
+            "parent": 1,
+            "purchase_tick": 30690
+          }
+        ],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "observed-extinct",
+          "established_descendants": [],
+          "living_founders": 0,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": 30720,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 1,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 30810,
+          "column": 2,
+          "death_tick": 34680,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 0,
+          "parent": 1,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 30690,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 30810,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        }
+      ]
+    },
+    "seed-only-natural-failure": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 0,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": -1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          -1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 0,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": null
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 1
+            },
+            "closing_purchases": 1,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": null,
+          "occupancy": [],
+          "renewing_parent_ids": [],
+          "status": "needs-followup",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 1,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [
+          {
+            "child": 2,
+            "child_confirmation": "natural-failure",
+            "child_terminal": "natural-dead",
+            "end_tick": 30810,
+            "outcome": "germinated",
+            "parent": 1,
+            "purchase_tick": 30690
+          }
+        ],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "observed-extinct",
+          "established_descendants": [],
+          "living_founders": 0,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": 30720,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 1,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 30810,
+          "column": 2,
+          "death_tick": 34650,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 0,
+          "parent": 1,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 30690,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 30810,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        }
+      ]
+    },
+    "seed-only-new-generation-unconfirmed": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 0,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": 0
+        },
+        "followup_deadline": 38400,
+        "key": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 0,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": null
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 1
+            },
+            "closing_purchases": 1,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": null,
+          "occupancy": [],
+          "renewing_parent_ids": [],
+          "status": "needs-followup",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 1,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [
+          {
+            "child": 2,
+            "child_confirmation": "natural-failure",
+            "child_terminal": "natural-dead",
+            "end_tick": 30810,
+            "outcome": "germinated",
+            "parent": 1,
+            "purchase_tick": 30690
+          }
+        ],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "seed-only-unconfirmed",
+          "established_descendants": [],
+          "living_founders": 0,
+          "pending_seeds": 1,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": 30720,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 1,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 30810,
+          "column": 2,
+          "death_tick": 34560,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 1,
+          "parent": 1,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 34650,
+          "column": 3,
+          "death_tick": 38400,
+          "environmental_death": false,
+          "generation": 2,
+          "id": 3,
+          "late_seeds_created": 1,
+          "parent": 2,
+          "seeds_created": 1
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 30690,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 30810,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 34530,
+          "child_id": 3,
+          "column": 3,
+          "end_tick": 34650,
+          "generation": 2,
+          "outcome": "germinated",
+          "parent": 2
+        },
+        {
+          "birth_tick": 38385,
+          "child_id": null,
+          "column": 3,
+          "end_tick": null,
+          "generation": 3,
+          "outcome": "pending",
+          "parent": 3
+        }
+      ]
+    },
+    "seed-only-patch-censored": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 0,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": -1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          -1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 0,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": null
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 1
+            },
+            "closing_purchases": 1,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": null,
+          "occupancy": [],
+          "renewing_parent_ids": [],
+          "status": "needs-followup",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 1,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [
+          {
+            "child": 2,
+            "child_confirmation": "patch-censored",
+            "child_terminal": "patch-dead",
+            "end_tick": 30810,
+            "outcome": "germinated",
+            "parent": 1,
+            "purchase_tick": 30690
+          }
+        ],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "observed-extinct",
+          "established_descendants": [],
+          "living_founders": 0,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": 30720,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 1,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 30810,
+          "column": 2,
+          "death_tick": 34650,
+          "environmental_death": true,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 0,
+          "parent": 1,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 30690,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 30810,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        }
+      ]
+    },
+    "seed-only-recovered": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 0,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 0,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": null
+          },
+          "diagnostics": {
+            "closing_deaths": {
+              "natural": 1
+            },
+            "closing_purchases": 1,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": null,
+          "occupancy": [],
+          "renewing_parent_ids": [],
+          "status": "needs-followup",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 0,
+            "observed_extinct": false,
+            "pending_seeds": 1,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [
+          {
+            "child": 2,
+            "child_confirmation": "confirmed",
+            "child_terminal": "alive",
+            "end_tick": 30810,
+            "outcome": "germinated",
+            "parent": 1,
+            "purchase_tick": 30690
+          }
+        ],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            2
+          ],
+          "living_founders": 0,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": 30720,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 1,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 30810,
+          "column": 2,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 0,
+          "parent": 1,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 30690,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 30810,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        }
+      ]
+    },
+    "steady-offspring": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 23055,
+          "new_establishments": 1,
+          "renewing_child_live_ticks": 7695,
+          "renewing_parents": 1,
+          "terminal_tier": 1
+        },
+        "followup_deadline": 38400,
+        "key": [
+          1,
+          7695,
+          23055,
+          1,
+          1
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 23055,
+            "new_establishments": 1,
+            "renewing_parents": 1,
+            "terminal_tier": 1
+          },
+          "diagnostics": {
+            "closing_deaths": {},
+            "closing_purchases": 1,
+            "confirmation_cohort_outcomes": {
+              "confirmed": 1
+            }
+          },
+          "establishment_events": [
+            {
+              "child": 3,
+              "confirmation_tick": 23040,
+              "parent": 2,
+              "parent_established": true,
+              "parent_is_founder": false,
+              "parent_state_at_confirmation": "alive"
+            }
+          ],
+          "key": [
+            1,
+            1,
+            1,
+            23055
+          ],
+          "occupancy": [
+            {
+              "first_sample": 15375,
+              "id": 2,
+              "last_sample": 30720,
+              "live_ticks": 15360,
+              "samples": 1024
+            },
+            {
+              "first_sample": 23040,
+              "id": 3,
+              "last_sample": 30720,
+              "live_ticks": 7695,
+              "samples": 513
+            }
+          ],
+          "renewing_parent_ids": [
+            2
+          ],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [
+              2,
+              3
+            ],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [
+          {
+            "first_sample": 23040,
+            "id": 3,
+            "last_sample": 30720,
+            "live_ticks": 7695,
+            "samples": 513
+          }
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "established-present",
+          "established_descendants": [
+            2,
+            3
+          ],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 0,
+          "parent": 0,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 3840,
+          "column": 2,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 1,
+          "id": 2,
+          "late_seeds_created": 1,
+          "parent": 1,
+          "seeds_created": 1
+        },
+        {
+          "birth_tick": 19200,
+          "column": 3,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 2,
+          "id": 3,
+          "late_seeds_created": 0,
+          "parent": 2,
+          "seeds_created": 0
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 3720,
+          "child_id": 2,
+          "column": 2,
+          "end_tick": 3840,
+          "generation": 1,
+          "outcome": "germinated",
+          "parent": 1
+        },
+        {
+          "birth_tick": 19080,
+          "child_id": 3,
+          "column": 3,
+          "end_tick": 19200,
+          "generation": 2,
+          "outcome": "germinated",
+          "parent": 2
+        }
+      ]
+    },
+    "sterile-seed-producer": {
+      "evaluation": {
+        "components": {
+          "descendant_live_ticks": 0,
+          "new_establishments": 0,
+          "renewing_child_live_ticks": 0,
+          "renewing_parents": 0,
+          "terminal_tier": 0
+        },
+        "followup_deadline": 38400,
+        "key": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "main_v1": {
+          "components": {
+            "descendant_live_ticks": 0,
+            "new_establishments": 0,
+            "renewing_parents": 0,
+            "terminal_tier": 0
+          },
+          "diagnostics": {
+            "closing_deaths": {},
+            "closing_purchases": 2,
+            "confirmation_cohort_outcomes": {}
+          },
+          "establishment_events": [],
+          "key": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "occupancy": [],
+          "renewing_parent_ids": [],
+          "status": "complete",
+          "terminal": {
+            "established_descendants": [],
+            "living_founders": 1,
+            "observed_extinct": false,
+            "pending_seeds": 0,
+            "young_descendants": []
+          },
+          "window": {
+            "end_inclusive": 30720,
+            "start_exclusive": 15360
+          }
+        },
+        "observed_end": 38400,
+        "pending_seed_followup": [],
+        "renewing_child_occupancy": [],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "terminal": {
+          "classification": "living-unestablished",
+          "established_descendants": [],
+          "living_founders": 1,
+          "pending_seeds": 0,
+          "young_descendants": []
+        },
+        "window": {
+          "end_inclusive": 30720,
+          "start_exclusive": 15360
+        }
+      },
+      "kind": "synthetic-arithmetic-not-native",
+      "lineages": [
+        {
+          "birth_tick": 0,
+          "column": 1,
+          "death_tick": null,
+          "environmental_death": false,
+          "generation": 0,
+          "id": 1,
+          "late_seeds_created": 2,
+          "parent": 0,
+          "seeds_created": 2
+        }
+      ],
+      "seeds": [
+        {
+          "birth_tick": 19200,
+          "child_id": null,
+          "column": 1,
+          "end_tick": 23040,
+          "generation": 1,
+          "outcome": "expired",
+          "parent": 1
+        },
+        {
+          "birth_tick": 23040,
+          "child_id": null,
+          "column": 1,
+          "end_tick": 26880,
+          "generation": 1,
+          "outcome": "expired",
+          "parent": 1
+        }
+      ]
+    }
+  },
+  "manifest_sha256": "e1dc6bf30a6b6df27577d4ea1e55b31a53c13804d8075bb1a1feb8f10ada7b65",
+  "matched_v1": {
+    "aggregate": {
+      "comparison": 1,
+      "neural": {
+        "key": [
+          1,
+          4,
+          17,
+          28,
+          3184365
+        ],
+        "status": "complete",
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      },
+      "reserve": {
+        "key": [
+          1,
+          4,
+          14,
+          24,
+          3203775
+        ],
+        "status": "complete",
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      }
+    },
+    "leave_one_out": {
+      "256.b61837dc.fresh-1": {
+        "comparison": 1,
+        "neural": {
+          "key": [
+            1,
+            3,
+            15,
+            24,
+            2440290
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "key": [
+            1,
+            3,
+            9,
+            16,
+            2472465
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "256.b61837dc.fresh-4": {
+        "comparison": -1,
+        "neural": {
+          "key": [
+            1,
+            3,
+            12,
+            21,
+            2445570
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "key": [
+            1,
+            3,
+            13,
+            23,
+            2478585
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "512.b61837dc.fresh-1": {
+        "comparison": -1,
+        "neural": {
+          "key": [
+            1,
+            3,
+            10,
+            14,
+            2449905
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "key": [
+            1,
+            3,
+            10,
+            17,
+            2371755
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "512.c7f54e18.fresh-1": {
+        "comparison": 1,
+        "neural": {
+          "key": [
+            1,
+            3,
+            14,
+            25,
+            2217330
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "key": [
+            1,
+            3,
+            10,
+            16,
+            2288520
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      }
+    },
+    "paired": {
+      "256.b61837dc.fresh-1": {
+        "comparison": -1,
+        "neural": {
+          "key": [
+            1,
+            1,
+            2,
+            4,
+            744075
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "key": [
+            1,
+            1,
+            5,
+            8,
+            731310
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "256.b61837dc.fresh-4": {
+        "comparison": 1,
+        "neural": {
+          "key": [
+            1,
+            1,
+            5,
+            7,
+            738795
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "key": [
+            1,
+            1,
+            1,
+            1,
+            725190
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "512.b61837dc.fresh-1": {
+        "comparison": 1,
+        "neural": {
+          "key": [
+            1,
+            1,
+            7,
+            14,
+            734460
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "key": [
+            1,
+            1,
+            4,
+            7,
+            832020
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "512.c7f54e18.fresh-1": {
+        "comparison": -1,
+        "neural": {
+          "key": [
+            1,
+            1,
+            3,
+            3,
+            967035
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "key": [
+            1,
+            1,
+            4,
+            8,
+            915255
+          ],
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      }
+    }
+  },
+  "native_runs": 0,
+  "role": "candidate-fitness-offline-not-adopted",
+  "rule": "garden-lineage-persistence-v2",
+  "training_runs": 0,
+  "v2": {
+    "aggregate": {
+      "comparison": 1,
+      "neural": {
+        "followup_deadline": 737280,
+        "key": [
+          1,
+          4,
+          1079175,
+          3184365,
+          17,
+          28
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      },
+      "reserve": {
+        "followup_deadline": 737280,
+        "key": [
+          1,
+          4,
+          1061925,
+          3203775,
+          14,
+          24
+        ],
+        "rule": "garden-lineage-persistence-v2",
+        "status": "complete",
+        "window": {
+          "end_inclusive": 729600,
+          "start_exclusive": 606720
+        }
+      }
+    },
+    "leave_one_out": {
+      "256.b61837dc.fresh-1": {
+        "comparison": 1,
+        "neural": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            3,
+            865080,
+            2440290,
+            15,
+            24
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            3,
+            731565,
+            2472465,
+            9,
+            16
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "256.b61837dc.fresh-4": {
+        "comparison": -1,
+        "neural": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            3,
+            755775,
+            2445570,
+            12,
+            21
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            3,
+            961635,
+            2478585,
+            13,
+            23
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "512.b61837dc.fresh-1": {
+        "comparison": 1,
+        "neural": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            3,
+            689535,
+            2449905,
+            10,
+            14
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            3,
+            625620,
+            2371755,
+            10,
+            17
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "512.c7f54e18.fresh-1": {
+        "comparison": 1,
+        "neural": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            3,
+            927135,
+            2217330,
+            14,
+            25
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            3,
+            866955,
+            2288520,
+            10,
+            16
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      }
+    },
+    "paired": {
+      "256.b61837dc.fresh-1": {
+        "comparison": -1,
+        "neural": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            1,
+            214095,
+            744075,
+            2,
+            4
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            1,
+            330360,
+            731310,
+            5,
+            8
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "256.b61837dc.fresh-4": {
+        "comparison": 1,
+        "neural": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            1,
+            323400,
+            738795,
+            5,
+            7
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            1,
+            100290,
+            725190,
+            1,
+            1
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "512.b61837dc.fresh-1": {
+        "comparison": -1,
+        "neural": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            1,
+            389640,
+            734460,
+            7,
+            14
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            1,
+            436305,
+            832020,
+            4,
+            7
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      },
+      "512.c7f54e18.fresh-1": {
+        "comparison": -1,
+        "neural": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            1,
+            152040,
+            967035,
+            3,
+            3
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "reserve": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            1,
+            194970,
+            915255,
+            4,
+            8
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        }
+      }
+    }
+  }
+}

@@ -16,6 +16,20 @@ horizon, and requires every saved timeline checkpoint to match. It is not a
 new fitness function, placement algorithm, or ecology experiment. Test-labeled
 bundles are rejected for this exploratory workflow.
 
+For storage pressure, the separate [node-ownership audit](../benchmarks/garden-longevity/node-budget.md)
+reuses each bundle's frozen inspector to reconcile live roots/shoots, dead
+tissue, node allocations and whole-plant reclamation. It measures whether
+dead storage alone could remove a node-only seed blocker without changing
+the simulation. This complements the spatial seed census below.
+Both analyses honor the frozen environment's declared node capacity, including
+the explicit combined 512-node host experiment, and reject an inspector with a
+different capacity even when early world hashes match. Older bundles without a
+capacity field remain the original 256-node condition.
+The [tip-lifecycle audit](../benchmarks/garden-longevity/tip-lifecycle.md) extends
+that node workflow with `--tips --inspector ...`: retained bids reconcile actual
+tip creation/termination/death and show when living lineages stop receiving
+growth-policy calls. It does not add maintenance actions or change the ecology.
+
 ## What it observes
 
 `garden-inspect --seed-sites` emits a compact census every ecology step (15

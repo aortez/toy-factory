@@ -1,0 +1,3130 @@
+{
+  "artifact_bytes": 19016173,
+  "artifact_count": 143,
+  "development": [
+    "13579bdf",
+    "2468ace1"
+  ],
+  "followup_deadline": 737280,
+  "main_window": [
+    606720,
+    729600
+  ],
+  "manifest_sha256": "9c9dc94e44cee155b4d8a83276339936d17e97cce4b995259faed4cd31059950",
+  "preflight": [
+    {
+      "case": "512.44.fresh-1.off.neural",
+      "hash": "03f853dc",
+      "key": [
+        1,
+        389640,
+        734460,
+        7,
+        14
+      ],
+      "lineages": 101,
+      "seed_records": 1568
+    },
+    {
+      "case": "512.44.fresh-1.off.reserve",
+      "hash": "38ed81c0",
+      "key": [
+        1,
+        436305,
+        832020,
+        4,
+        7
+      ],
+      "lineages": 76,
+      "seed_records": 1561
+    },
+    {
+      "case": "512.45.fresh-1.off.neural",
+      "hash": "873c88e3",
+      "key": [
+        1,
+        152040,
+        967035,
+        3,
+        3
+      ],
+      "lineages": 42,
+      "seed_records": 1548
+    },
+    {
+      "case": "512.45.fresh-1.off.reserve",
+      "hash": "824603d4",
+      "key": [
+        1,
+        194970,
+        915255,
+        4,
+        8
+      ],
+      "lineages": 41,
+      "seed_records": 1548
+    }
+  ],
+  "protocol_sha256": "c574c75b11b4fa590cd825497b37f1569885707ec2d02a83371df39ee303cc4e",
+  "repeat_equal": true,
+  "review": {
+    "contact_sheet": {
+      "gap": 8,
+      "height": 1496,
+      "rows": [
+        [
+          "g0.6c696665.480",
+          "g0.6c696665.2880",
+          "g0.6c696665.737280"
+        ],
+        [
+          "g0.72657632.480",
+          "g0.72657632.2880",
+          "g0.72657632.737280"
+        ],
+        [
+          "g1.6c696665.480",
+          "g1.6c696665.2880",
+          "g1.6c696665.737280"
+        ],
+        [
+          "g1.72657632.480",
+          "g1.72657632.2880",
+          "g1.72657632.737280"
+        ],
+        [
+          "g2.6c696665.480",
+          "g2.6c696665.2880",
+          "g2.6c696665.737280"
+        ],
+        [
+          "g2.72657632.480",
+          "g2.72657632.2880",
+          "g2.72657632.737280"
+        ]
+      ],
+      "width": 752
+    },
+    "frames": [
+      [
+        {
+          "champion": "initial",
+          "framebuffer": "review/g0.6c696665.480.rgb565",
+          "framebuffer_crc32": "c233859e",
+          "generation": 0,
+          "hash": "67dc9c28",
+          "id": "g0.6c696665.480",
+          "model_crc32": "dc5e849d",
+          "png": "review/g0.6c696665.480.png",
+          "portable_png": "training-pilot-frames/g0.6c696665.480.png",
+          "seed": "6c696665",
+          "tick": 480
+        },
+        {
+          "champion": "initial",
+          "framebuffer": "review/g0.6c696665.2880.rgb565",
+          "framebuffer_crc32": "8077aa28",
+          "generation": 0,
+          "hash": "94e79e73",
+          "id": "g0.6c696665.2880",
+          "model_crc32": "dc5e849d",
+          "png": "review/g0.6c696665.2880.png",
+          "portable_png": "training-pilot-frames/g0.6c696665.2880.png",
+          "seed": "6c696665",
+          "tick": 2880
+        },
+        {
+          "champion": "initial",
+          "framebuffer": "review/g0.6c696665.737280.rgb565",
+          "framebuffer_crc32": "a9ef53a8",
+          "generation": 0,
+          "hash": "3b800c25",
+          "id": "g0.6c696665.737280",
+          "model_crc32": "dc5e849d",
+          "png": "review/g0.6c696665.737280.png",
+          "portable_png": "training-pilot-frames/g0.6c696665.737280.png",
+          "seed": "6c696665",
+          "tick": 737280
+        }
+      ],
+      [
+        {
+          "champion": "initial",
+          "framebuffer": "review/g0.72657632.480.rgb565",
+          "framebuffer_crc32": "b26f1165",
+          "generation": 0,
+          "hash": "de59df29",
+          "id": "g0.72657632.480",
+          "model_crc32": "dc5e849d",
+          "png": "review/g0.72657632.480.png",
+          "portable_png": "training-pilot-frames/g0.72657632.480.png",
+          "seed": "72657632",
+          "tick": 480
+        },
+        {
+          "champion": "initial",
+          "framebuffer": "review/g0.72657632.2880.rgb565",
+          "framebuffer_crc32": "32ec7615",
+          "generation": 0,
+          "hash": "da28b767",
+          "id": "g0.72657632.2880",
+          "model_crc32": "dc5e849d",
+          "png": "review/g0.72657632.2880.png",
+          "portable_png": "training-pilot-frames/g0.72657632.2880.png",
+          "seed": "72657632",
+          "tick": 2880
+        },
+        {
+          "champion": "initial",
+          "framebuffer": "review/g0.72657632.737280.rgb565",
+          "framebuffer_crc32": "d4b212f0",
+          "generation": 0,
+          "hash": "32b33c45",
+          "id": "g0.72657632.737280",
+          "model_crc32": "dc5e849d",
+          "png": "review/g0.72657632.737280.png",
+          "portable_png": "training-pilot-frames/g0.72657632.737280.png",
+          "seed": "72657632",
+          "tick": 737280
+        }
+      ],
+      [
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g1.6c696665.480.rgb565",
+          "framebuffer_crc32": "3babf1f1",
+          "generation": 1,
+          "hash": "c9df9b38",
+          "id": "g1.6c696665.480",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g1.6c696665.480.png",
+          "portable_png": "training-pilot-frames/g1.6c696665.480.png",
+          "seed": "6c696665",
+          "tick": 480
+        },
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g1.6c696665.2880.rgb565",
+          "framebuffer_crc32": "5d235726",
+          "generation": 1,
+          "hash": "cccd6cfe",
+          "id": "g1.6c696665.2880",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g1.6c696665.2880.png",
+          "portable_png": "training-pilot-frames/g1.6c696665.2880.png",
+          "seed": "6c696665",
+          "tick": 2880
+        },
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g1.6c696665.737280.rgb565",
+          "framebuffer_crc32": "f11b87f8",
+          "generation": 1,
+          "hash": "50339138",
+          "id": "g1.6c696665.737280",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g1.6c696665.737280.png",
+          "portable_png": "training-pilot-frames/g1.6c696665.737280.png",
+          "seed": "6c696665",
+          "tick": 737280
+        }
+      ],
+      [
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g1.72657632.480.rgb565",
+          "framebuffer_crc32": "4edf181e",
+          "generation": 1,
+          "hash": "b955eb2a",
+          "id": "g1.72657632.480",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g1.72657632.480.png",
+          "portable_png": "training-pilot-frames/g1.72657632.480.png",
+          "seed": "72657632",
+          "tick": 480
+        },
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g1.72657632.2880.rgb565",
+          "framebuffer_crc32": "ae07e0a8",
+          "generation": 1,
+          "hash": "0ecc0ed5",
+          "id": "g1.72657632.2880",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g1.72657632.2880.png",
+          "portable_png": "training-pilot-frames/g1.72657632.2880.png",
+          "seed": "72657632",
+          "tick": 2880
+        },
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g1.72657632.737280.rgb565",
+          "framebuffer_crc32": "03b27e1a",
+          "generation": 1,
+          "hash": "9ce498c7",
+          "id": "g1.72657632.737280",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g1.72657632.737280.png",
+          "portable_png": "training-pilot-frames/g1.72657632.737280.png",
+          "seed": "72657632",
+          "tick": 737280
+        }
+      ],
+      [
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g2.6c696665.480.rgb565",
+          "framebuffer_crc32": "3babf1f1",
+          "generation": 2,
+          "hash": "c9df9b38",
+          "id": "g2.6c696665.480",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g2.6c696665.480.png",
+          "portable_png": "training-pilot-frames/g2.6c696665.480.png",
+          "seed": "6c696665",
+          "tick": 480
+        },
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g2.6c696665.2880.rgb565",
+          "framebuffer_crc32": "5d235726",
+          "generation": 2,
+          "hash": "cccd6cfe",
+          "id": "g2.6c696665.2880",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g2.6c696665.2880.png",
+          "portable_png": "training-pilot-frames/g2.6c696665.2880.png",
+          "seed": "6c696665",
+          "tick": 2880
+        },
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g2.6c696665.737280.rgb565",
+          "framebuffer_crc32": "f11b87f8",
+          "generation": 2,
+          "hash": "50339138",
+          "id": "g2.6c696665.737280",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g2.6c696665.737280.png",
+          "portable_png": "training-pilot-frames/g2.6c696665.737280.png",
+          "seed": "6c696665",
+          "tick": 737280
+        }
+      ],
+      [
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g2.72657632.480.rgb565",
+          "framebuffer_crc32": "4edf181e",
+          "generation": 2,
+          "hash": "b955eb2a",
+          "id": "g2.72657632.480",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g2.72657632.480.png",
+          "portable_png": "training-pilot-frames/g2.72657632.480.png",
+          "seed": "72657632",
+          "tick": 480
+        },
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g2.72657632.2880.rgb565",
+          "framebuffer_crc32": "ae07e0a8",
+          "generation": 2,
+          "hash": "0ecc0ed5",
+          "id": "g2.72657632.2880",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g2.72657632.2880.png",
+          "portable_png": "training-pilot-frames/g2.72657632.2880.png",
+          "seed": "72657632",
+          "tick": 2880
+        },
+        {
+          "champion": "g1-c3",
+          "framebuffer": "review/g2.72657632.737280.rgb565",
+          "framebuffer_crc32": "03b27e1a",
+          "generation": 2,
+          "hash": "9ce498c7",
+          "id": "g2.72657632.737280",
+          "model_crc32": "fa0c2cd8",
+          "png": "review/g2.72657632.737280.png",
+          "portable_png": "training-pilot-frames/g2.72657632.737280.png",
+          "seed": "72657632",
+          "tick": 737280
+        }
+      ]
+    ],
+    "generations": [
+      {
+        "aggregate": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            2,
+            293130,
+            1742820,
+            5,
+            6
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "champion": "initial",
+        "generation": 0,
+        "worlds": {
+          "6c696665": {
+            "components": {
+              "descendant_live_ticks": 892455,
+              "new_establishments": 2,
+              "renewing_child_live_ticks": 77460,
+              "renewing_parents": 2,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 51,
+              "deaths": 49,
+              "hash": "3b800c25",
+              "living": 7,
+              "nodes": 388,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              77460,
+              892455,
+              2,
+              2
+            ],
+            "lineages": 56,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729840,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 726000
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 39,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733440,
+                "outcome": "expired",
+                "parent": 39,
+                "purchase_tick": 729600
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 42,
+                "purchase_tick": 729540
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 44,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 48,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 54,
+                "purchase_tick": 729300
+              }
+            ],
+            "seed_records": 1558,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                37,
+                39,
+                44,
+                48,
+                49,
+                54,
+                56
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "3": 7
+            },
+            "terminal_species": {
+              "ground-cover": 7
+            }
+          },
+          "72657632": {
+            "components": {
+              "descendant_live_ticks": 850365,
+              "new_establishments": 4,
+              "renewing_child_live_ticks": 215670,
+              "renewing_parents": 3,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 47,
+              "deaths": 46,
+              "hash": "32b33c45",
+              "living": 6,
+              "nodes": 339,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              215670,
+              850365,
+              3,
+              4
+            ],
+            "lineages": 52,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730020,
+                "outcome": "expired",
+                "parent": 25,
+                "purchase_tick": 726180
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 25,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733440,
+                "outcome": "expired",
+                "parent": 25,
+                "purchase_tick": 729600
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 31,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733020,
+                "outcome": "expired",
+                "parent": 39,
+                "purchase_tick": 729180
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 39,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 45,
+                "purchase_tick": 729300
+              }
+            ],
+            "seed_records": 1556,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                25,
+                31,
+                39,
+                45,
+                47,
+                52
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "3": 4,
+              "4": 2
+            },
+            "terminal_species": {
+              "ground-cover": 4,
+              "shrub": 2
+            }
+          }
+        }
+      },
+      {
+        "aggregate": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            2,
+            247050,
+            1934895,
+            4,
+            5
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "champion": "g1-c3",
+        "generation": 1,
+        "worlds": {
+          "6c696665": {
+            "components": {
+              "descendant_live_ticks": 962895,
+              "new_establishments": 3,
+              "renewing_child_live_ticks": 166065,
+              "renewing_parents": 2,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 52,
+              "deaths": 50,
+              "hash": "50339138",
+              "living": 7,
+              "nodes": 314,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              166065,
+              962895,
+              2,
+              3
+            ],
+            "lineages": 57,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729720,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 725880
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730080,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 726240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733080,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 729240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733080,
+                "outcome": "expired",
+                "parent": 41,
+                "purchase_tick": 729240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 50,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 51,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 56,
+                "purchase_tick": 729420
+              }
+            ],
+            "seed_records": 1551,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                36,
+                46,
+                50,
+                51,
+                55,
+                56,
+                57
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 2,
+              "3": 5
+            },
+            "terminal_species": {
+              "flower": 2,
+              "ground-cover": 5
+            }
+          },
+          "72657632": {
+            "components": {
+              "descendant_live_ticks": 972000,
+              "new_establishments": 2,
+              "renewing_child_live_ticks": 80985,
+              "renewing_parents": 2,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 44,
+              "deaths": 42,
+              "hash": "9ce498c7",
+              "living": 7,
+              "nodes": 296,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              80985,
+              972000,
+              2,
+              2
+            ],
+            "lineages": 49,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730020,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 726180
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733440,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 729600
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729720,
+                "outcome": "expired",
+                "parent": 33,
+                "purchase_tick": 725880
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 33,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 34,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733020,
+                "outcome": "expired",
+                "parent": 43,
+                "purchase_tick": 729180
+              }
+            ],
+            "seed_records": 1554,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                30,
+                33,
+                34,
+                43,
+                46,
+                47
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": [
+                49
+              ]
+            },
+            "terminal_families": {
+              "3": 7
+            },
+            "terminal_species": {
+              "ground-cover": 7
+            }
+          }
+        }
+      },
+      {
+        "aggregate": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            2,
+            247050,
+            1934895,
+            4,
+            5
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "champion": "g1-c3",
+        "generation": 2,
+        "worlds": {
+          "6c696665": {
+            "components": {
+              "descendant_live_ticks": 962895,
+              "new_establishments": 3,
+              "renewing_child_live_ticks": 166065,
+              "renewing_parents": 2,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 52,
+              "deaths": 50,
+              "hash": "50339138",
+              "living": 7,
+              "nodes": 314,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              166065,
+              962895,
+              2,
+              3
+            ],
+            "lineages": 57,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729720,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 725880
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730080,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 726240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733080,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 729240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733080,
+                "outcome": "expired",
+                "parent": 41,
+                "purchase_tick": 729240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 50,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 51,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 56,
+                "purchase_tick": 729420
+              }
+            ],
+            "seed_records": 1551,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                36,
+                46,
+                50,
+                51,
+                55,
+                56,
+                57
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 2,
+              "3": 5
+            },
+            "terminal_species": {
+              "flower": 2,
+              "ground-cover": 5
+            }
+          },
+          "72657632": {
+            "components": {
+              "descendant_live_ticks": 972000,
+              "new_establishments": 2,
+              "renewing_child_live_ticks": 80985,
+              "renewing_parents": 2,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 44,
+              "deaths": 42,
+              "hash": "9ce498c7",
+              "living": 7,
+              "nodes": 296,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              80985,
+              972000,
+              2,
+              2
+            ],
+            "lineages": 49,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730020,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 726180
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733440,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 729600
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729720,
+                "outcome": "expired",
+                "parent": 33,
+                "purchase_tick": 725880
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 33,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 34,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733020,
+                "outcome": "expired",
+                "parent": 43,
+                "purchase_tick": 729180
+              }
+            ],
+            "seed_records": 1554,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                30,
+                33,
+                34,
+                43,
+                46,
+                47
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": [
+                49
+              ]
+            },
+            "terminal_families": {
+              "3": 7
+            },
+            "terminal_species": {
+              "ground-cover": 7
+            }
+          }
+        }
+      }
+    ]
+  },
+  "review_seeds": [
+    "6c696665",
+    "72657632"
+  ],
+  "role": "bounded-learning-signal-pilot-not-promoted",
+  "rule": "garden-training-pilot-v1",
+  "search": {
+    "candidates": [
+      {
+        "aggregate": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            2,
+            361560,
+            1866180,
+            6,
+            8
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "id": "initial",
+        "model_crc32": "dc5e849d",
+        "model_sha256": "bd9f9c6ba7f5fd17309f917972da5f759c305c077798e1d4ba9a52701e2cd48b",
+        "mutation": null,
+        "parent": null,
+        "worlds": {
+          "13579bdf": {
+            "components": {
+              "descendant_live_ticks": 914250,
+              "new_establishments": 3,
+              "renewing_child_live_ticks": 185370,
+              "renewing_parents": 2,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 43,
+              "deaths": 41,
+              "hash": "853c319c",
+              "living": 7,
+              "nodes": 405,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              185370,
+              914250,
+              2,
+              3
+            ],
+            "lineages": 48,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729660,
+                "outcome": "expired",
+                "parent": 28,
+                "purchase_tick": 725820
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729900,
+                "outcome": "expired",
+                "parent": 28,
+                "purchase_tick": 726060
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 28,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 29,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733440,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729600
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733440,
+                "outcome": "expired",
+                "parent": 44,
+                "purchase_tick": 729600
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 46,
+                "purchase_tick": 729360
+              }
+            ],
+            "seed_records": 1555,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                28,
+                29,
+                37,
+                39,
+                44,
+                47,
+                48
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "3": 6,
+              "5": 1
+            },
+            "terminal_species": {
+              "flower": 1,
+              "ground-cover": 6
+            }
+          },
+          "2468ace1": {
+            "components": {
+              "descendant_live_ticks": 951930,
+              "new_establishments": 5,
+              "renewing_child_live_ticks": 176190,
+              "renewing_parents": 4,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 51,
+              "deaths": 49,
+              "hash": "0fcb4eea",
+              "living": 7,
+              "nodes": 278,
+              "seeds": 7,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              176190,
+              951930,
+              4,
+              5
+            ],
+            "lineages": 56,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 34,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729660,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 725820
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 42,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 45,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 50,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 51,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 55,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 56,
+                "purchase_tick": 729480
+              }
+            ],
+            "seed_records": 1511,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                34,
+                36,
+                45,
+                50,
+                51,
+                55,
+                56
+              ],
+              "living_founders": 0,
+              "pending_seeds": 7,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 6,
+              "5": 1
+            },
+            "terminal_species": {
+              "flower": 7
+            }
+          }
+        }
+      },
+      {
+        "aggregate": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            2,
+            301500,
+            1874070,
+            5,
+            8
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "id": "g1-c1",
+        "model_crc32": "7914ad1a",
+        "model_sha256": "643e2e660bfd71bd49bc8eabc05c37a3489b7b242c51e9ff42271d7d4284c2a5",
+        "mutation": {
+          "after": "7914ad1a",
+          "before": "dc5e849d",
+          "rng_after": 1547831604,
+          "rng_before": 1885957170
+        },
+        "parent": "initial",
+        "worlds": {
+          "13579bdf": {
+            "components": {
+              "descendant_live_ticks": 925470,
+              "new_establishments": 3,
+              "renewing_child_live_ticks": 110475,
+              "renewing_parents": 2,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 45,
+              "deaths": 43,
+              "hash": "bb8eadf3",
+              "living": 7,
+              "nodes": 403,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              110475,
+              925470,
+              2,
+              3
+            ],
+            "lineages": 50,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729720,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 725880
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730260,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 726420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733080,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 729240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729840,
+                "outcome": "expired",
+                "parent": 33,
+                "purchase_tick": 726000
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 33,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 38,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 46,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 47,
+                "purchase_tick": 729360
+              }
+            ],
+            "seed_records": 1551,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                30,
+                38,
+                39,
+                43,
+                46,
+                47,
+                50
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "3": 4,
+              "4": 3
+            },
+            "terminal_species": {
+              "ground-cover": 4,
+              "shrub": 3
+            }
+          },
+          "2468ace1": {
+            "components": {
+              "descendant_live_ticks": 948600,
+              "new_establishments": 5,
+              "renewing_child_live_ticks": 191025,
+              "renewing_parents": 3,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 41,
+              "deaths": 39,
+              "hash": "50ab6c87",
+              "living": 7,
+              "nodes": 289,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              191025,
+              948600,
+              3,
+              5
+            ],
+            "lineages": 46,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 24,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729960,
+                "outcome": "expired",
+                "parent": 29,
+                "purchase_tick": 726120
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 29,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 35,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733080,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 729240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 42,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 45,
+                "purchase_tick": 729420
+              }
+            ],
+            "seed_records": 1496,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                24,
+                29,
+                35,
+                36,
+                37,
+                45,
+                46
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 1,
+              "5": 6
+            },
+            "terminal_species": {
+              "flower": 7
+            }
+          }
+        }
+      },
+      {
+        "aggregate": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            2,
+            247995,
+            1915515,
+            4,
+            7
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "id": "g1-c2",
+        "model_crc32": "cab5c66e",
+        "model_sha256": "3abb00041727c843369bba934bfd0a39ee3b0183e73f0f7838895bf60ccfcf7b",
+        "mutation": {
+          "after": "cab5c66e",
+          "before": "dc5e849d",
+          "rng_after": 3885267999,
+          "rng_before": 1547831604
+        },
+        "parent": "initial",
+        "worlds": {
+          "13579bdf": {
+            "components": {
+              "descendant_live_ticks": 961365,
+              "new_establishments": 3,
+              "renewing_child_live_ticks": 90675,
+              "renewing_parents": 3,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 56,
+              "deaths": 54,
+              "hash": "baa43419",
+              "living": 7,
+              "nodes": 283,
+              "seeds": 7,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              90675,
+              961365,
+              3,
+              3
+            ],
+            "lineages": 61,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 41,
+                "purchase_tick": 729540
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 45,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 47,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 57,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 60,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729780,
+                "outcome": "expired",
+                "parent": 61,
+                "purchase_tick": 725940
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733440,
+                "outcome": "expired",
+                "parent": 61,
+                "purchase_tick": 729600
+              }
+            ],
+            "seed_records": 1467,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                34,
+                37,
+                45,
+                47,
+                57,
+                60,
+                61
+              ],
+              "living_founders": 0,
+              "pending_seeds": 7,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 4,
+              "5": 3
+            },
+            "terminal_species": {
+              "flower": 7
+            }
+          },
+          "2468ace1": {
+            "components": {
+              "descendant_live_ticks": 954150,
+              "new_establishments": 4,
+              "renewing_child_live_ticks": 157320,
+              "renewing_parents": 1,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 50,
+              "deaths": 48,
+              "hash": "9b5f3a4c",
+              "living": 7,
+              "nodes": 327,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              157320,
+              954150,
+              1,
+              4
+            ],
+            "lineages": 55,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729660,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 725820
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730200,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 726360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729720,
+                "outcome": "expired",
+                "parent": 44,
+                "purchase_tick": 725880
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 44,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733020,
+                "outcome": "expired",
+                "parent": 47,
+                "purchase_tick": 729180
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 47,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 50,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 53,
+                "purchase_tick": 729420
+              }
+            ],
+            "seed_records": 1550,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                36,
+                44,
+                47,
+                50,
+                53,
+                54,
+                55
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "3": 4,
+              "5": 3
+            },
+            "terminal_species": {
+              "flower": 3,
+              "ground-cover": 4
+            }
+          }
+        }
+      },
+      {
+        "aggregate": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            2,
+            449295,
+            1908750,
+            6,
+            9
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "id": "g1-c3",
+        "model_crc32": "fa0c2cd8",
+        "model_sha256": "b68731993ac88b5b3906b068a660283f56e7a0fc220a9f40cfd31e38b49bd6d1",
+        "mutation": {
+          "after": "fa0c2cd8",
+          "before": "dc5e849d",
+          "rng_after": 1865257368,
+          "rng_before": 3885267999
+        },
+        "parent": "initial",
+        "worlds": {
+          "13579bdf": {
+            "components": {
+              "descendant_live_ticks": 947610,
+              "new_establishments": 5,
+              "renewing_child_live_ticks": 263895,
+              "renewing_parents": 4,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 40,
+              "deaths": 38,
+              "hash": "62f79351",
+              "living": 7,
+              "nodes": 330,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              263895,
+              947610,
+              4,
+              5
+            ],
+            "lineages": 45,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 26,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729840,
+                "outcome": "expired",
+                "parent": 27,
+                "purchase_tick": 726000
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730140,
+                "outcome": "expired",
+                "parent": 27,
+                "purchase_tick": 726300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 27,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 34,
+                "purchase_tick": 729540
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733020,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729180
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729540
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 44,
+                "purchase_tick": 729300
+              }
+            ],
+            "seed_records": 1545,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                26,
+                27,
+                34,
+                37,
+                43,
+                44,
+                45
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 3,
+              "3": 4
+            },
+            "terminal_species": {
+              "flower": 3,
+              "ground-cover": 4
+            }
+          },
+          "2468ace1": {
+            "components": {
+              "descendant_live_ticks": 961140,
+              "new_establishments": 4,
+              "renewing_child_live_ticks": 185400,
+              "renewing_parents": 2,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 41,
+              "deaths": 39,
+              "hash": "df27ea02",
+              "living": 7,
+              "nodes": 293,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              185400,
+              961140,
+              2,
+              4
+            ],
+            "lineages": 46,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 25,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 29,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730140,
+                "outcome": "expired",
+                "parent": 39,
+                "purchase_tick": 726300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 41,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 42,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 45,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 46,
+                "purchase_tick": 729480
+              }
+            ],
+            "seed_records": 1480,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                25,
+                29,
+                39,
+                41,
+                42,
+                45,
+                46
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 7
+            },
+            "terminal_species": {
+              "flower": 7
+            }
+          }
+        }
+      },
+      {
+        "aggregate": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            2,
+            333795,
+            1924530,
+            4,
+            6
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "id": "g2-c1",
+        "model_crc32": "1f4461e0",
+        "model_sha256": "0d2c8434fc54a32976af05700b9a30876248d292731e1318dd21eee0aa339b0e",
+        "mutation": {
+          "after": "1f4461e0",
+          "before": "fa0c2cd8",
+          "rng_after": 3066543782,
+          "rng_before": 1865257368
+        },
+        "parent": "g1-c3",
+        "worlds": {
+          "13579bdf": {
+            "components": {
+              "descendant_live_ticks": 955095,
+              "new_establishments": 4,
+              "renewing_child_live_ticks": 179355,
+              "renewing_parents": 2,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 54,
+              "deaths": 52,
+              "hash": "8406d1d3",
+              "living": 7,
+              "nodes": 289,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              179355,
+              955095,
+              2,
+              4
+            ],
+            "lineages": 59,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 44,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 49,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 52,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 53,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 55,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730200,
+                "outcome": "expired",
+                "parent": 58,
+                "purchase_tick": 726360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 58,
+                "purchase_tick": 729540
+              }
+            ],
+            "seed_records": 1533,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                36,
+                49,
+                52,
+                53,
+                55,
+                58,
+                59
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 1,
+              "5": 6
+            },
+            "terminal_species": {
+              "flower": 7
+            }
+          },
+          "2468ace1": {
+            "components": {
+              "descendant_live_ticks": 969435,
+              "new_establishments": 2,
+              "renewing_child_live_ticks": 154440,
+              "renewing_parents": 2,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 42,
+              "deaths": 40,
+              "hash": "f168606e",
+              "living": 7,
+              "nodes": 276,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              154440,
+              969435,
+              2,
+              2
+            ],
+            "lineages": 47,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 27,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 30,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 35,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 39,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733020,
+                "outcome": "expired",
+                "parent": 43,
+                "purchase_tick": 729180
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730080,
+                "outcome": "expired",
+                "parent": 44,
+                "purchase_tick": 726240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 44,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 45,
+                "purchase_tick": 729300
+              }
+            ],
+            "seed_records": 1464,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                27,
+                30,
+                39,
+                43,
+                44,
+                45,
+                47
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 4,
+              "5": 3
+            },
+            "terminal_species": {
+              "flower": 7
+            }
+          }
+        }
+      },
+      {
+        "aggregate": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            2,
+            424455,
+            1816725,
+            8,
+            10
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "id": "g2-c2",
+        "model_crc32": "ef3d33b4",
+        "model_sha256": "07638aacc2a27b10da732fc8accfaff288c814204a3d28767a19589374850131",
+        "mutation": {
+          "after": "ef3d33b4",
+          "before": "fa0c2cd8",
+          "rng_after": 2899018245,
+          "rng_before": 3066543782
+        },
+        "parent": "g1-c3",
+        "worlds": {
+          "13579bdf": {
+            "components": {
+              "descendant_live_ticks": 861360,
+              "new_establishments": 5,
+              "renewing_child_live_ticks": 226665,
+              "renewing_parents": 4,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 40,
+              "deaths": 38,
+              "hash": "98886770",
+              "living": 7,
+              "nodes": 286,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              226665,
+              861360,
+              4,
+              5
+            ],
+            "lineages": 45,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 29,
+                "purchase_tick": 729540
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 38,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 39,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 41,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 43,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 44,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730260,
+                "outcome": "expired",
+                "parent": 45,
+                "purchase_tick": 726420
+              }
+            ],
+            "seed_records": 1356,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                29,
+                37,
+                38,
+                39,
+                43,
+                44,
+                45
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 4,
+              "5": 3
+            },
+            "terminal_species": {
+              "flower": 7
+            }
+          },
+          "2468ace1": {
+            "components": {
+              "descendant_live_ticks": 955365,
+              "new_establishments": 5,
+              "renewing_child_live_ticks": 197790,
+              "renewing_parents": 4,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 45,
+              "deaths": 43,
+              "hash": "52d29e22",
+              "living": 7,
+              "nodes": 275,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              197790,
+              955365,
+              4,
+              5
+            ],
+            "lineages": 50,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 26,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 27,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 31,
+                "purchase_tick": 729540
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 40,
+                "purchase_tick": 729540
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733080,
+                "outcome": "expired",
+                "parent": 43,
+                "purchase_tick": 729240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 48,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 49,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 730020,
+                "outcome": "expired",
+                "parent": 50,
+                "purchase_tick": 726180
+              }
+            ],
+            "seed_records": 1469,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                26,
+                27,
+                40,
+                43,
+                48,
+                49,
+                50
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 5,
+              "5": 2
+            },
+            "terminal_species": {
+              "flower": 7
+            }
+          }
+        }
+      },
+      {
+        "aggregate": {
+          "followup_deadline": 737280,
+          "key": [
+            1,
+            2,
+            328950,
+            1901520,
+            6,
+            7
+          ],
+          "rule": "garden-lineage-persistence-v2",
+          "status": "complete",
+          "window": {
+            "end_inclusive": 729600,
+            "start_exclusive": 606720
+          }
+        },
+        "id": "g2-c3",
+        "model_crc32": "77acfa0d",
+        "model_sha256": "64af2beda875a8219759485e5b59963aed2851b076991c9b600eadd4377dcc0a",
+        "mutation": {
+          "after": "77acfa0d",
+          "before": "fa0c2cd8",
+          "rng_after": 3765139401,
+          "rng_before": 2899018245
+        },
+        "parent": "g1-c3",
+        "worlds": {
+          "13579bdf": {
+            "components": {
+              "descendant_live_ticks": 946695,
+              "new_establishments": 4,
+              "renewing_child_live_ticks": 149865,
+              "renewing_parents": 3,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 43,
+              "deaths": 41,
+              "hash": "4304c317",
+              "living": 7,
+              "nodes": 275,
+              "seeds": 8,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              149865,
+              946695,
+              3,
+              4
+            ],
+            "lineages": 48,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 32,
+                "purchase_tick": 729540
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 34,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 37,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733080,
+                "outcome": "expired",
+                "parent": 41,
+                "purchase_tick": 729240
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 43,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 46,
+                "purchase_tick": 729420
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729840,
+                "outcome": "expired",
+                "parent": 47,
+                "purchase_tick": 726000
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 48,
+                "purchase_tick": 729360
+              }
+            ],
+            "seed_records": 1477,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                32,
+                34,
+                41,
+                43,
+                46,
+                47,
+                48
+              ],
+              "living_founders": 0,
+              "pending_seeds": 8,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "5": 7
+            },
+            "terminal_species": {
+              "flower": 7
+            }
+          },
+          "2468ace1": {
+            "components": {
+              "descendant_live_ticks": 954825,
+              "new_establishments": 3,
+              "renewing_child_live_ticks": 179085,
+              "renewing_parents": 3,
+              "terminal_tier": 1
+            },
+            "final": {
+              "births": 41,
+              "deaths": 39,
+              "hash": "74c35f85",
+              "living": 7,
+              "nodes": 286,
+              "seeds": 7,
+              "tick": 737280
+            },
+            "key": [
+              1,
+              179085,
+              954825,
+              3,
+              3
+            ],
+            "lineages": 46,
+            "pending_seed_followup": [
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733140,
+                "outcome": "expired",
+                "parent": 25,
+                "purchase_tick": 729300
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 33,
+                "purchase_tick": 729540
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 36,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733320,
+                "outcome": "expired",
+                "parent": 38,
+                "purchase_tick": 729480
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733200,
+                "outcome": "expired",
+                "parent": 41,
+                "purchase_tick": 729360
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 729900,
+                "outcome": "expired",
+                "parent": 43,
+                "purchase_tick": 726060
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733380,
+                "outcome": "expired",
+                "parent": 43,
+                "purchase_tick": 729540
+              },
+              {
+                "child": null,
+                "child_confirmation": null,
+                "child_terminal": null,
+                "end_tick": 733260,
+                "outcome": "expired",
+                "parent": 44,
+                "purchase_tick": 729420
+              }
+            ],
+            "seed_records": 1485,
+            "terminal": {
+              "classification": "established-present",
+              "established_descendants": [
+                25,
+                36,
+                38,
+                41,
+                43,
+                44,
+                46
+              ],
+              "living_founders": 0,
+              "pending_seeds": 7,
+              "young_descendants": []
+            },
+            "terminal_families": {
+              "1": 2,
+              "5": 5
+            },
+            "terminal_species": {
+              "flower": 7
+            }
+          }
+        }
+      }
+    ],
+    "champions": [
+      "initial",
+      "g1-c3",
+      "g1-c3"
+    ],
+    "rng_after": 3765139401
+  },
+  "source_dirty": true,
+  "source_head": "4f2618741110bcd2b597e35fc79e319e75def5e7",
+  "timing": {
+    "bundle_wall_seconds": 107.10413706899999,
+    "development_trial_seconds": {
+      "maximum": 3.3803718500003015,
+      "median": 1.723589595500016,
+      "minimum": 1.4722389620001195,
+      "total": 27.043420334000984
+    }
+  }
+}

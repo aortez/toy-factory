@@ -62,6 +62,7 @@ def run_frame(root: Path, frame: dict, framebuffer: Path, timeout: int) -> tuple
                             cwd=root, capture_output=True, text=True, timeout=timeout, check=False)
     require(result.returncode == 0, f"replay failed: {result.stderr.strip()}")
     value = json.loads(result.stdout)
+    require(value.get("node_capacity", 256) == frame.get("node_capacity", 256), "wrong replay node capacity")
     require(value.get("seed_dispersal", "narrow-v1") == frame.get("seed_dispersal", "narrow-v1"),
             "replayer uses a different dispersal rule")
     require(value.get("water_uptake", "legacy-v1") == frame.get("water_uptake", "legacy-v1"),
@@ -196,6 +197,7 @@ def collect(args: argparse.Namespace) -> None:
                              "policy": role["policy"], "tick": tick,
                              "seed_dispersal": manifest["environment"].get("seed_dispersal", "narrow-v1"),
                              "water_uptake": manifest["environment"].get("water_uptake", "legacy-v1"),
+                             "node_capacity": manifest["environment"].get("node_capacity", 256),
                              "model": model["path"] if model else None,
                              "model_crc32": model["crc32"] if model else None,
                              "reference": indexed[tick], "final_trial": trials[key],

@@ -25,9 +25,31 @@
 #define PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS                                                          \
 	(PICOSYSTEM_GARDEN_CANOPY_TOP_PIXELS +                                                     \
 	 (PICOSYSTEM_GARDEN_CANOPY_ROWS * PICOSYSTEM_GARDEN_CELL_PIXELS))
-#define PICOSYSTEM_GARDEN_MAX_PLANTS                8U
-#define PICOSYSTEM_GARDEN_MAX_NODES                 256U
-#define PICOSYSTEM_GARDEN_MAX_SEEDS                 8U
+#define PICOSYSTEM_GARDEN_MAX_PLANTS 8U
+#if defined(TOY_FACTORY_GARDEN_SEED_RESERVE)
+#if defined(__ZEPHYR__) || !defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) ||                        \
+	!defined(TOY_FACTORY_GARDEN_LARGE_POOL) || defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+#error "Seed reserve requires the undrained 512-node host maintenance experiment"
+#endif
+#define PICOSYSTEM_GARDEN_SEED_RESERVE_NAME "sunset-seed-reserve-v1"
+#endif
+#if defined(TOY_FACTORY_GARDEN_LARGE_POOL)
+#if defined(__ZEPHYR__) || !defined(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT)
+#error "Large node pool requires the explicit combined host experiment"
+#endif
+#define PICOSYSTEM_GARDEN_MAX_NODES 512U
+#else
+#define PICOSYSTEM_GARDEN_MAX_NODES 256U
+#endif
+#if defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+#if defined(__ZEPHYR__) || !defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) ||                        \
+	!defined(TOY_FACTORY_GARDEN_LARGE_POOL) || defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+#error "Large seed bank requires the undrained 512-node host maintenance experiment"
+#endif
+#define PICOSYSTEM_GARDEN_MAX_SEEDS 16U
+#else
+#define PICOSYSTEM_GARDEN_MAX_SEEDS 8U
+#endif
 #define PICOSYSTEM_GARDEN_NODE_NONE                 UINT16_MAX
 #define PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR      15U
 #define PICOSYSTEM_GARDEN_NODE_GROWTH_TICKS         12U
@@ -47,6 +69,32 @@
 #define PICOSYSTEM_GARDEN_RAIN_VERSION              1U
 #define PICOSYSTEM_GARDEN_RAIN_WINDOW_TICKS         128U
 #define PICOSYSTEM_GARDEN_RAIN_MAX_RATE             4U
+
+#if defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+#if defined(__ZEPHYR__) || !defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+#error "Bottom drainage requires the explicit host maintenance experiment"
+#endif
+#define PICOSYSTEM_GARDEN_DRAINAGE_NAME   "bottom-drain-v1"
+#define PICOSYSTEM_GARDEN_DRAINAGE_PERIOD 16U
+#endif
+
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+#if defined(__ZEPHYR__) || !defined(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT)
+#error "Leaf maintenance requires the explicit combined host experiment"
+#endif
+#define PICOSYSTEM_GARDEN_LEAF_ENVIRONMENT  "leaf-maintenance-v1"
+#define PICOSYSTEM_GARDEN_LEAF_RENEW_ENERGY 9U
+#define PICOSYSTEM_GARDEN_LEAF_RENEW_WATER  5U
+
+/* Derived diagnostics, not controller inputs or authoritative hash state. */
+struct picosystem_garden_leaf_telemetry {
+	uint32_t observations;
+	uint32_t proposals;
+	uint32_t renewals;
+	uint32_t restored;
+	uint32_t worn;
+};
+#endif
 
 /* Host-only ecology experiment. Normal builds retain the device's scattering rule. */
 #if defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
@@ -190,6 +238,10 @@ struct picosystem_garden_agent_telemetry {
 };
 
 struct picosystem_garden_plant {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	struct picosystem_garden_leaf_telemetry leaf_telemetry;
+	uint8_t leaf_energy_remainder;
+#endif
 	uint32_t random_state;
 	uint32_t lineage_id;
 	uint32_t parent_lineage_id;
@@ -241,6 +293,10 @@ struct picosystem_garden_seed_sites {
 
 /* Caller-owned fixed-capacity state; no garden operation allocates memory. */
 struct picosystem_garden_world {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	uint8_t leaf_condition[PICOSYSTEM_GARDEN_MAX_NODES];
+	struct picosystem_garden_leaf_telemetry leaf_telemetry;
+#endif
 	struct picosystem_garden_node nodes[PICOSYSTEM_GARDEN_MAX_NODES];
 	struct picosystem_garden_plant plants[PICOSYSTEM_GARDEN_MAX_PLANTS];
 	struct picosystem_garden_seed seeds[PICOSYSTEM_GARDEN_MAX_SEEDS];
@@ -288,6 +344,14 @@ struct picosystem_garden_world {
 
 /* Restore an empty, reproducible garden. A zero seed selects a stable default. */
 int picosystem_garden_world_reset(struct picosystem_garden_world *world, uint32_t random_seed);
+
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+/* Host-only environmental death, inclusive ground columns. Retain tissue for ordinary
+ * decomposition; preserve soil, seeds and RNG. Invalid input leaves the world unchanged.
+ */
+int picosystem_garden_world_experimental_kill_patch(struct picosystem_garden_world *world,
+						    uint8_t first_column, uint8_t last_column);
+#endif
 
 /* Query current sites using the same checks as germination and seed dispersal.
  * No seeds are placed and no RNG is consumed. Simultaneously open sites are
@@ -364,6 +428,15 @@ uint8_t picosystem_garden_world_dead_plant_count(const struct picosystem_garden_
 
 /* Hash persistent and presentation-visible state without structure padding. */
 uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *world);
+
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+/* Host assay only: export one living plant and its stores, without natural death/reclamation
+ * counters or soil/seed/RNG changes. Refresh light; preserve survivor state through compaction.
+ * Invalid/missing targets leave the complete world unchanged. Not a gardener action.
+ */
+int picosystem_garden_world_experimental_clear(struct picosystem_garden_world *world,
+					       uint32_t lineage_id);
+#endif
 
 const char *picosystem_garden_species_name(enum picosystem_garden_species_id species_id);
 const char *picosystem_garden_tool_name(enum picosystem_garden_tool tool);

@@ -21,6 +21,10 @@
 #include "garden_policy_probe.h"
 #include "garden_world.h"
 #include "portable_util.h"
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+#include "garden_leaf_policies.h"
+static const char *leaf_policy_name = "none";
+#endif
 
 #define GARDEN_EXPERIMENT_SCHEMA_VERSION       4U
 #define GARDEN_EXPERIMENT_DEFAULT_TRIALS       8U
@@ -87,6 +91,15 @@ struct garden_experiment_policy {
 };
 
 struct garden_experiment_outcome {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	struct picosystem_garden_leaf_telemetry leaf;
+	uint32_t late_start_renewals;
+	uint32_t late_start_births;
+	uint32_t late_start_deaths;
+	uint16_t maximum_mature_leaves;
+	uint64_t leaf_samples;
+	uint64_t condition_sum;
+#endif
 	struct toy_factory_garden_lifetime_report lifetimes;
 	struct picosystem_garden_agent_telemetry agent;
 	struct garden_experiment_death_causes death_causes;
@@ -239,6 +252,10 @@ static void print_usage(FILE *stream, const char *program)
 		"  --no-night-growth  Host-only candidate probe; requires --model and --rainfed\n"
 		"  --rainfed  Evaluate the gardener-free seeded-rain training environments\n",
 		program, GARDEN_EXPERIMENT_MAX_TRIALS, GARDEN_EXPERIMENT_MAX_TICKS);
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	fprintf(stream,
+		"  --leaf-policy none|all|selective  Host leaf-maintenance-v1 (default none)\n");
+#endif
 }
 
 static int parse_u32(const char *text, int base, uint32_t minimum, uint32_t maximum,
@@ -266,6 +283,16 @@ static int parse_options(int argc, char **argv, uint32_t *trial_count, uint32_t 
 	*model_path = NULL;
 	for (int index = 1; index < argc; ++index) {
 		const char *const option = argv[index];
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		if (strcmp(option, "--leaf-policy") == 0) {
+			if ((++index >= argc) ||
+			    (toy_factory_garden_leaf_policy(argv[index]) == NULL)) {
+				return -EINVAL;
+			}
+			leaf_policy_name = argv[index];
+			continue;
+		}
+#endif
 		if ((strcmp(option, "--no-night-growth") == 0) && !no_night_growth) {
 			no_night_growth = true;
 			continue;
@@ -836,6 +863,32 @@ static int observe_trial_tick(const struct picosystem_garden_world *world, bool 
 		outcome->maximum_node_count = world->node_count;
 	}
 	if (ecology_sample) {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		outcome->leaf = world->leaf_telemetry;
+		if (world->logic_tick_count <= 61440U) {
+			outcome->late_start_renewals = world->leaf_telemetry.renewals;
+			outcome->late_start_births = world->germination_count;
+			outcome->late_start_deaths = world->death_count;
+		}
+		uint16_t counts[PICOSYSTEM_GARDEN_MAX_PLANTS] = {0};
+		for (uint16_t index = 0U; index < world->node_count; ++index) {
+			const struct picosystem_garden_node *node = &world->nodes[index];
+			if ((world->plants[node->plant_index].flags &
+			     PICOSYSTEM_GARDEN_PLANT_DEAD) ||
+			    !(node->flags & PICOSYSTEM_GARDEN_NODE_LEAF) ||
+			    (node->growth_progress < PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS)) {
+				continue;
+			}
+			++counts[node->plant_index];
+			++outcome->leaf_samples;
+			outcome->condition_sum += world->leaf_condition[index];
+		}
+		for (uint8_t index = 0U; index < world->plant_count; ++index) {
+			if (counts[index] > outcome->maximum_mature_leaves) {
+				outcome->maximum_mature_leaves = counts[index];
+			}
+		}
+#endif
 		uint32_t energy;
 		uint32_t water;
 		uint32_t stress;
@@ -1195,6 +1248,19 @@ static void print_outcome(const struct garden_experiment_outcome *outcome)
 	       outcome->agent.root_extend_count, outcome->agent.shoot_extend_count);
 	printf(",\"extinction_tick\":");
 	print_nullable_tick(outcome->extinction_tick);
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	printf(",\"leaf\":{\"observations\":%" PRIu32 ",\"proposals\":%" PRIu32
+	       ",\"renewals\":%" PRIu32 ",\"restored\":%" PRIu32 ",\"worn\":%" PRIu32
+	       ",\"late_renewals\":%" PRIu32 ",\"late_births\":%" PRIu32 ",\"late_deaths\":%" PRIu32
+	       ",\"maximum_mature_leaves\":%u,\"samples\":%" PRIu64 ",\"condition_sum\":%" PRIu64
+	       "}",
+	       outcome->leaf.observations, outcome->leaf.proposals, outcome->leaf.renewals,
+	       outcome->leaf.restored, outcome->leaf.worn,
+	       outcome->leaf.renewals - outcome->late_start_renewals,
+	       outcome->germination_count - outcome->late_start_births,
+	       outcome->death_count - outcome->late_start_deaths, outcome->maximum_mature_leaves,
+	       outcome->leaf_samples, outcome->condition_sum);
+#endif
 	printf(",\"death_causes\":");
 	print_death_causes(&outcome->death_causes);
 	printf(",\"seed_germination_blockers\":");
@@ -1217,6 +1283,19 @@ static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t bas
 			 bool has_candidate_model, uint32_t candidate_fingerprint)
 {
 	printf("{\n  \"schema_version\": %u,\n", GARDEN_EXPERIMENT_SCHEMA_VERSION);
+#if defined(TOY_FACTORY_GARDEN_SEED_RESERVE)
+	printf("\"seed_reserve_rule\":\"%s\",\n", PICOSYSTEM_GARDEN_SEED_RESERVE_NAME);
+#endif
+#if defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+	printf("\"drainage_rule\":\"%s\",\n", PICOSYSTEM_GARDEN_DRAINAGE_NAME);
+#endif
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	printf("\"leaf_environment\":\"%s\",\"leaf_policy\":\"%s\",\"node_capacity\":%u,\n",
+	       PICOSYSTEM_GARDEN_LEAF_ENVIRONMENT, leaf_policy_name, PICOSYSTEM_GARDEN_MAX_NODES);
+#endif
+#if defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+	printf("\"seed_capacity\":%u,\n", PICOSYSTEM_GARDEN_MAX_SEEDS);
+#endif
 	printf("  \"trial_count\": %" PRIu32 ",\n", trial_count);
 	printf("  \"tick_count\": %" PRIu32 ",\n", tick_count);
 	printf("  \"base_seed\": \"%08" PRIx32 "\",\n", base_seed);
@@ -1232,6 +1311,16 @@ static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t bas
 #endif
 #if defined(TOY_FACTORY_GARDEN_WATER_HEADROOM)
 		printf(",\"water_uptake\":\"%s\"", PICOSYSTEM_GARDEN_WATER_UPTAKE_NAME);
+#endif
+#if defined(TOY_FACTORY_GARDEN_LARGE_POOL)
+		printf(",\"node_capacity\":%u", PICOSYSTEM_GARDEN_MAX_NODES);
+#endif
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		printf(",\"leaf_maintenance\":\"%s\",\"leaf_policy\":\"%s\"",
+		       PICOSYSTEM_GARDEN_LEAF_ENVIRONMENT, leaf_policy_name);
+#endif
+#if defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+		printf(",\"drainage_rule\":\"%s\"", PICOSYSTEM_GARDEN_DRAINAGE_NAME);
 #endif
 		printf("},\n");
 	}
@@ -1346,8 +1435,14 @@ int main(int argc, char **argv)
 		     ++policy_index) {
 			timeline_scenario = selected_scenarios[scenario_index].name;
 			timeline_policy = policies[policy_index].name;
-			const struct picosystem_garden_agent_policy *const policy =
+			const struct picosystem_garden_agent_policy *policy =
 				policies[policy_index].get_policy();
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+			struct picosystem_garden_agent_policy maintained_policy = *policy;
+			maintained_policy.leaf_policy =
+				toy_factory_garden_leaf_policy(leaf_policy_name);
+			policy = &maintained_policy;
+#endif
 			for (uint32_t trial = 0U; trial < trial_count; ++trial) {
 				const uint32_t random_seed =
 					toy_factory_garden_evaluation_trial_seed(base_seed, trial);
