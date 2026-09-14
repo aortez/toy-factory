@@ -559,6 +559,22 @@ NEW_JSON_PATH` creates a portable copy, and `--verify --check-export JSON_PATH`
 checks it. Event ownership is temporal, not proof of a causal patch effect;
 neither an opportunity-normalized fitness nor new ecology is introduced.
 
+The [founder-independence challenge](../benchmarks/garden-longevity/founder-independence.md)
+adds optional host-only `--founder-exit TICK` to the persistence trial and replay
+tools. It kills only living parent-zero plants through ordinary death, retains
+corpses/soil/seeds/survivors/RNGs, and records killed IDs and before/after hashes.
+Replay requires an existing disturbance schedule; gap/root-bootstrap combinations
+are rejected. Absent the option, native output stays unchanged.
+`python3 -W error sim/garden_founder_independence.py --output artifacts/NEW-founders`
+uses the fixed 32-pair, day-64 exit / day-128 outcome / day-130 follow-up protocol
+and separate optimized `artifacts/founder-independence-build`. It makes 144 native
+calls, including frozen-original controls and 24 independently repeated images.
+Every pair remains in analysis, including no-ops. Founder-bank carry-in is
+separate from new descendant seed purchases, and further generations require
+real confirmed parent-child links. `--verify`, `--verify --export NEW_PREFIX` and
+`--verify --check-export EXISTING_PREFIX` validate frozen evidence and portable
+summary/gallery/PNG copies. This is not a new ecology or training objective.
+
 Use `--split exploratory` (default), `validation`, or `test` to record the purpose.
 For validation/test with external models, pass their saved training reports:
 

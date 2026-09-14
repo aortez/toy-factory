@@ -87,7 +87,8 @@ if(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
 endif()
 if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_LEAF_MAINTENANCE=1)
-	target_sources(toy_factory_simulator_core PRIVATE garden_leaf_policies.c garden_gap.c garden_disturbance.c)
+	target_sources(toy_factory_simulator_core PRIVATE garden_leaf_policies.c garden_gap.c garden_disturbance.c garden_founder_exit.c)
+	set_source_files_properties(garden_founder_exit.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
 endif()
 if(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
 	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_WIDE_DISPERSAL=1)
@@ -401,6 +402,8 @@ add_test(NAME garden-renewal-stalls-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_stalls.py)
 add_test(NAME garden-recruitment-recovery-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_recruitment_recovery.py)
+add_test(NAME garden-founder-independence-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_founder_independence.py)
 add_executable(toy-factory-garden-model-mutate garden_model_mutate.c)
 add_executable(toy-factory-garden-persistence-check garden_persistence_check.c garden_persistence.c)
 set(persistence_targets toy-factory-garden-model-mutate toy-factory-garden-persistence-check)
@@ -409,6 +412,8 @@ if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE AND TOY_FACTORY_GARDEN_LARGE_POOL
 	AND NOT TOY_FACTORY_GARDEN_SEED_RESERVE)
 	add_executable(toy-factory-garden-persistence-trial garden_persistence_trial.c garden_persistence.c)
 	list(APPEND persistence_targets toy-factory-garden-persistence-trial)
+	add_test(NAME garden-founder-independence-native COMMAND ${Python3_EXECUTABLE}
+		-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_founder_independence.py --build ${CMAKE_BINARY_DIR})
 endif()
 foreach(target IN LISTS persistence_targets)
 	target_link_libraries(${target} PRIVATE toy_factory_simulator_core)
@@ -488,6 +493,17 @@ add_test(NAME garden-leaf-competition-unit COMMAND ${Python3_EXECUTABLE}
 	${CMAKE_CURRENT_LIST_DIR}/test_garden_leaf_competition.py)
 
 if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	add_executable(toy-factory-garden-founder-exit-test garden_founder_exit_test.c)
+	target_link_libraries(toy-factory-garden-founder-exit-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-founder-exit-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-founder-exit-test PRIVATE
+			-fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-founder-exit-test PRIVATE
+			-fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+	add_test(NAME garden-founder-exit-unit COMMAND toy-factory-garden-founder-exit-test)
 	add_executable(toy-factory-garden-water-budget garden_water_budget.c)
 	add_executable(toy-factory-garden-water-audit-test garden_water_audit_test.c)
 	add_executable(toy-factory-garden-seed-attempts garden_seed_attempts.c)

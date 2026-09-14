@@ -25,11 +25,14 @@ static uint32_t root_bootstrap_after;
 #include "garden_leaf_policies.h"
 #include "garden_gap.h"
 #include "garden_disturbance.h"
+#include "garden_founder_exit.h"
 static const char *leaf_policy_name = "none";
 static uint32_t gap_tick;
 static struct toy_factory_garden_gap gap_result;
 static uint32_t disturbance_seed;
 static struct toy_factory_garden_disturbance_totals disturbance_totals;
+static uint32_t founder_exit_tick;
+static struct toy_factory_garden_founder_exit founder_exit_result;
 #endif
 
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
@@ -162,6 +165,13 @@ static int print_result(const struct picosystem_garden_world *world, const char 
 		       TOY_FACTORY_GARDEN_DISTURBANCE_PROTOCOL, disturbance_seed,
 		       disturbance_totals.events, disturbance_totals.killed);
 	}
+	if (founder_exit_tick != 0U) {
+		printf(",\"founder_exit\":");
+		const int printed = toy_factory_garden_founder_exit_print(&founder_exit_result);
+		if (printed != 0) {
+			return printed;
+		}
+	}
 #endif
 	printf("}\n");
 	return ((fflush(stdout) == 0) && !ferror(stdout)) ? 0 : -EIO;
@@ -189,6 +199,7 @@ int main(int argc, char **argv)
 			"--gap-at TICK: host-only one-time largest-adult "
 			"export; ecology boundary\n"
 			"--disturbance-seed SEED: recurring host-only patch deaths\n"
+			"--founder-exit TICK: kill living founders once; requires patch schedule\n"
 			"--root-bootstrap-after TICK: explicit wet-root bootstrap for later "
 			"offspring\n");
 #endif
@@ -203,6 +214,15 @@ int main(int argc, char **argv)
 			return 2;
 		}
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		if (strcmp(argv[index], "--founder-exit") == 0) {
+			if ((founder_exit_tick != 0U) ||
+			    (parse_u32(argv[index + 1], GARDEN_REPLAY_MAX_TICKS,
+				       &founder_exit_tick) != 0) ||
+			    (founder_exit_tick == 0U)) {
+				return 2;
+			}
+			continue;
+		}
 		if (strcmp(argv[index], "--root-bootstrap-after") == 0) {
 			if ((root_bootstrap_after != 0U) ||
 			    (parse_u32(argv[index + 1], GARDEN_REPLAY_MAX_TICKS,
@@ -268,6 +288,13 @@ int main(int argc, char **argv)
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 	if ((gap_tick > ticks) || (gap_tick % PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR != 0U) ||
 	    ((gap_tick != 0U) && (disturbance_seed != 0U))) {
+		return 2;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	if ((founder_exit_tick != 0U) &&
+	    ((founder_exit_tick > ticks) || (founder_exit_tick % 15U != 0U) ||
+	     (disturbance_seed == 0U) || (gap_tick != 0U) || (root_bootstrap_after != 0U))) {
 		return 2;
 	}
 #endif
@@ -350,12 +377,15 @@ int main(int argc, char **argv)
 		if (gap_tick != 0U) {
 			first_ticks = gap_tick;
 		}
+		if (founder_exit_tick != 0U) {
+			first_ticks = founder_exit_tick;
+		}
 #endif
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 		if (disturbance_seed != 0U) {
 			err = toy_factory_garden_disturbance_advance(
-				&world, scenario, policy, ticks, disturbance_seed, NULL, NULL, NULL,
-				&disturbance_totals);
+				&world, scenario, policy, first_ticks, disturbance_seed, NULL, NULL,
+				NULL, &disturbance_totals);
 		} else
 #endif
 		{
@@ -364,6 +394,14 @@ int main(int argc, char **argv)
 		}
 	}
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	if ((err == 0) && (founder_exit_tick != 0U)) {
+		err = toy_factory_garden_founder_exit_apply(&world, &founder_exit_result);
+		if (err == 0) {
+			err = toy_factory_garden_disturbance_advance(
+				&world, scenario, policy, ticks, disturbance_seed, NULL, NULL, NULL,
+				&disturbance_totals);
+		}
+	}
 	if ((err == 0) && (gap_tick != 0U)) {
 		err = toy_factory_garden_gap_apply(&world, &gap_result);
 		if (err == 0) {

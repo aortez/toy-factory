@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "garden_disturbance.h"
+#include "garden_founder_exit.h"
 #include "garden_leaf_policies.h"
 #include "garden_model_file.h"
 #include "garden_persistence.h"
@@ -137,7 +138,8 @@ static void print_checkpoint(const struct picosystem_garden_world *world, bool f
 	       world->germination_count, world->death_count, world->node_count);
 }
 
-static int print_ledgers(const struct picosystem_garden_world *world, uint32_t start, uint32_t end)
+static int print_ledgers(const struct picosystem_garden_world *world, uint32_t start, uint32_t end,
+			 const struct toy_factory_garden_founder_exit *exit_result)
 {
 	struct toy_factory_garden_persistence_score score;
 	const int err =
@@ -186,23 +188,41 @@ static int print_ledgers(const struct picosystem_garden_world *world, uint32_t s
 		       : s->outcome == PICOSYSTEM_GARDEN_SEED_GERMINATED ? "germinated"
 									 : "pending");
 	}
-	printf("]}\n");
+	printf("]");
+	if (exit_result != NULL) {
+		printf(",\"founder_exit\":");
+		const int printed = toy_factory_garden_founder_exit_print(exit_result);
+		if (printed != 0) {
+			return printed;
+		}
+	}
+	printf("}\n");
 	return fflush(stdout) == 0 && !ferror(stdout) ? 0 : -EIO;
 }
 
 int main(int argc, char **argv)
 {
 	uint32_t seed, patch, start, end;
-	if ((argc != 7) || (toy_factory_garden_pilot_u32(argv[3], UINT32_MAX, &seed) != 0) ||
-	    (seed == 0U) || (toy_factory_garden_pilot_u32(argv[4], UINT32_MAX, &patch) != 0) ||
-	    (patch == 0U) || (toy_factory_garden_pilot_u32(argv[5], 729600U, &start) != 0) ||
+	uint32_t exit_tick = 0U;
+	if (((argc != 7) && (argc != 9)) ||
+	    (toy_factory_garden_pilot_u32(argv[3], UINT32_MAX, &seed) != 0) || (seed == 0U) ||
+	    (toy_factory_garden_pilot_u32(argv[4], UINT32_MAX, &patch) != 0) || (patch == 0U) ||
+	    (toy_factory_garden_pilot_u32(argv[5], 729600U, &start) != 0) ||
 	    (toy_factory_garden_pilot_u32(argv[6], 729600U, &end) != 0) || (start >= end) ||
 	    ((start % STEP) != 0U) || ((end % STEP) != 0U) ||
 	    ((strcmp(argv[2], "neural") != 0) && (strcmp(argv[2], "reserve") != 0))) {
-		fprintf(stderr, "Usage: %s MODEL neural|reserve WORLD_SEED PATCH_SEED START END\n",
+		fprintf(stderr,
+			"Usage: %s MODEL neural|reserve WORLD_SEED PATCH_SEED START END "
+			"[--founder-exit TICK]\n",
 			argv[0]);
 		return 2;
 	}
+	if ((argc == 9) && ((strcmp(argv[7], "--founder-exit") != 0) ||
+			    (toy_factory_garden_pilot_u32(argv[8], end, &exit_tick) != 0) ||
+			    (exit_tick == 0U) || (exit_tick % STEP != 0U))) {
+		return 2;
+	}
+	struct toy_factory_garden_founder_exit exit_result = {0};
 	const uint32_t stop = end + 2U * DAY;
 	struct picosystem_garden_neural_model model;
 	struct picosystem_garden_agent_policy base, night, policy;
@@ -267,10 +287,17 @@ int main(int argc, char **argv)
 				}
 			}
 		}
+		if ((err == 0) && (exit_tick != 0U) && (world.logic_tick_count == exit_tick)) {
+			err = toy_factory_garden_founder_exit_apply(&world, &exit_result);
+			if (err == 0) {
+				err = census(&world, true);
+			}
+		}
 		if ((err == 0) &&
 		    ((world.logic_tick_count == 480U) || (world.logic_tick_count == 2880U) ||
 		     (world.logic_tick_count == start) || (world.logic_tick_count == end) ||
-		     (world.logic_tick_count == stop))) {
+		     (world.logic_tick_count == stop) ||
+		     ((exit_tick != 0U) && (world.logic_tick_count % DAY == 0U)))) {
 			print_checkpoint(&world, false);
 		}
 	}
@@ -279,7 +306,7 @@ int main(int argc, char **argv)
 		err = -EFAULT;
 	}
 	if (err == 0) {
-		err = print_ledgers(&world, start, end);
+		err = print_ledgers(&world, start, end, exit_tick != 0U ? &exit_result : NULL);
 	}
 	if (err != 0) {
 		fprintf(stderr, "Persistence trial failed (%d)\n", err);

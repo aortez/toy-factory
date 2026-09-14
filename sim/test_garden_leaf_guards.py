@@ -27,6 +27,10 @@ def main():
         result = subprocess.run(command, input='#include "garden_water_audit.h"\n', text=True,
                                 capture_output=True, timeout=30)
         assert (result.returncode == 0) == (leaf and combined and not device), result.stderr
+        result = subprocess.run([*command, "-I", str(source.parent / "sim")],
+                                input='#include "garden_founder_exit.h"\n', text=True,
+                                capture_output=True, timeout=30)
+        assert (result.returncode == 0) == (leaf and combined and not device), result.stderr
         result = subprocess.run(command, input='#include "garden_seed_audit.h"\n', text=True,
                                 capture_output=True, timeout=30)
         assert (result.returncode == 0) == (leaf and combined and not device), result.stderr

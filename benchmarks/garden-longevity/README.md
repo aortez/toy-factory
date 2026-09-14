@@ -299,6 +299,16 @@ no-hits and unsuccessful local refills, remain in the portable data. Keep recove
 as a diagnostic, not an opportunity-normalized score or automatic viability gate;
 no training or ecological adjustment was adopted.
 
+The [founder-exit comparison](founder-independence.md) tests 32 matched pairs:
+16 already have no founders at day 64 and reproduce exactly; 16 lose 37 living
+founders through ordinary death. All actively challenged worlds remain alive
+and produce descendant-born full-day survivors (58 → 137 versus controls);
+14/16 also produce a further generation from those new recruits. This supports
+founder independence within the panel, not indefinite viability or a permanent
+mortality rule. Space, shade and resource competition change together. The
+report includes all paired outcomes, 24 repeat-verified native frames and the
+fixed 144-process protocol. No training, fitness or device change follows.
+
 The first trained neural champion keeps every watered held-out garden alive
 through 24 day/night cycles. Reproduction stops before the end of the test,
 however, and most surviving plants are founders. Survival alone overstates

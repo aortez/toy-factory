@@ -6,7 +6,8 @@ acceptance gates, and design constraints. Update the issue with evidence as
 work lands; it is the authoritative completion checklist.
 
 Status as of 2026-09-13: foundation tools and the saved-model screenshot/gallery
-bridge exist, including uncommitted work on `green-garden`. Environment
+bridge exist, checkpointed locally in `a1c419f` on `green-garden`; the subsequent
+founder-independence experiment is not yet committed. Environment
 qualification is underway. The [nighttime-growth comparison](../benchmarks/garden-longevity/night-growth.md)
 improves early survival with a host-only decision probe, but does not establish
 broad sustained renewal. Per-generation model preservation and screenshots now
@@ -378,6 +379,18 @@ needs a separately discussed fixed replacement challenge. Twelve native
 processes match 65,536 seed steps, 129,028 world/site hashes and 730 old censuses;
 13 new unit cases and ten relevant Python CTests pass. No training, model
 promotion, ecological change or qualification milestone.
+The [founder-independence challenge](../benchmarks/garden-longevity/founder-independence.md)
+now removes the remaining founders at day 64, retaining ordinary decomposition,
+soil, seeds, descendants and ongoing rain/patch schedules. Sixteen pairs are
+exact no-ops because their founders were already gone; the other sixteen lose
+37 founders. All actively challenged worlds retain established descendants and
+produce new descendant-born full-day survivors (58 → 137 versus controls), with
+further-generation links in 14/16 worlds. Removal also frees space and changes
+competition, so this does not isolate those mechanisms or justify a permanent
+death rule. Keep this as a separate diagnostic and return to bounded-renewal
+objective/pilot discussion, not another hard gate. All 144 native processes,
+24 independently repeated images, 54 default and 49 experimental CTests pass.
+No training, model promotion, ecological change or qualification milestone.
 The 16-bit moisture summary
 intentionally saturates, so use actual cell totals. Separately, fix and test the
 unsaturated living-plant age counter before
