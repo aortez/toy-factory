@@ -40,16 +40,17 @@ def lifetime_cohort(records: dict[int, dict], end: int, start: int = -1,
             "recent_dead": sum(r["death_tick"] is not None and r["death_tick"] <= end for r in recent)}
 
 
-def spatial_snapshot(row: dict) -> Counter:
+def spatial_snapshot(row: dict, *, minimum_spacing: int = 3) -> Counter:
+    require(type(minimum_spacing) is int and minimum_spacing in (2, 3), "unsupported spacing")
     masks = [site[0] for site in row["sites"]]
     require(len(masks) == 28 and all(0 <= mask < 64 and not mask & 1 for mask in masks),
             "invalid spatial blocker masks")
     # Check the geometry interpretation against the simulator's query, not instead of it.
     live_coverage = []
     for column, mask in enumerate(masks):
-        covered = any(abs(p["column"] - column) < 3 for p in row["plants"])
+        covered = any(abs(p["column"] - column) < minimum_spacing for p in row["plants"])
         require(bool(mask & 32) == covered, "spacing interpretation disagrees with native query")
-        live_coverage.append(any(not p["dead"] and abs(p["column"] - column) < 3 for p in row["plants"]))
+        live_coverage.append(any(not p["dead"] and abs(p["column"] - column) < minimum_spacing for p in row["plants"]))
     return Counter({"samples": 1, "all_columns_spacing_blocked": int(all(m & 32 for m in masks)),
                     "all_columns_live_spacing_blocked": int(all(live_coverage)),
                     "physically_open_columns": sum(not (m & 6) for m in masks),

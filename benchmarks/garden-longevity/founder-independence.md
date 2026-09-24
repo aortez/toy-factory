@@ -109,7 +109,8 @@ a controller, or make further ecology changes from this result alone.
 ## Reproduction and validation
 
 The accumulated investigation was checkpointed first as **`a1c419f`**, not
-pushed. The new experiment remains uncommitted. Its native helper is host-only,
+pushed. This experiment was subsequently checkpointed as **`bbb6307`** before
+the [bounded-renewal training A/B](renewal-training.md). Its native helper is host-only,
 uses ordinary mortality, checks targeting, and preserves caller state atomically
 on error, following the embedded-C guidance. No `src/` simulation code, default
 ecology, fitness, model weights or device firmware changed.

@@ -89,6 +89,11 @@ benchmark variants; the default uses polling SPI0/PL022.
 
 ## Build
 
+For the current Garden work, start with the
+[A-life checkpoint review guide](docs/garden-merge-checkpoint.md). It separates
+normal host/device behavior from opt-in research and summarizes the remaining
+ecology and training work.
+
 ```sh
 make build
 ```
@@ -126,6 +131,7 @@ make profile-granular GRANULAR_PROFILE_TICKS=1000  # profile a paused Hourglass 
 make profile-sleep  # profile the canonical world settling under neutral input
 make profile-chain  # benchmark deterministic 4/6/8-link chain scaling
 make host-check  # replay every committed device sequence on the host
+make host-research-check  # separately validate opt-in Garden research code
 make host-run SEQUENCE=scripts/sequences/garden-smoke.json  # write a host PNG
 make host-profile-garden  # benchmark initial, growing, and established Gardens
 make host-evaluate-garden  # compare Garden policies over matched deterministic trials

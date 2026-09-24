@@ -16,6 +16,7 @@ import garden_establishment as establishment
 import garden_experiments as experiment
 import garden_tip_audit as tips
 from garden_resources import require
+from garden_plant_slots import plant_capacity
 
 CAPACITY = 256
 SEED_NODES = 4
@@ -35,7 +36,8 @@ def ownership(row: dict, capacity: int = CAPACITY) -> dict:
     plants = row["plants"]
     require(capacity in (256, 512) and row.get("node_capacity", 256) == capacity,
             "wrong node census capacity")
-    require(0 <= row["nodes"] <= capacity and len(plants) <= 8, "invalid capacities")
+    slots = plant_capacity(row)
+    require(0 <= row["nodes"] <= capacity and len(plants) <= slots, "invalid capacities")
     require(len({p["id"] for p in plants}) == len(plants), "duplicate plant identity")
     require(sum(p["nodes"] for p in plants) == row["nodes"], "unowned node storage")
     require(sum(not p["dead"] for p in plants) == row["living"], "wrong living count")
@@ -68,8 +70,8 @@ def ownership(row: dict, capacity: int = CAPACITY) -> dict:
     values["seed_node_gate"] = int(values["free_nodes"] < SEED_NODES)
     values["seed_node_gate_after_dead_reclaim"] = int(values["live_nodes"] > capacity-SEED_NODES)
     values["full_with_live_tips"] = int(values["node_full"] and values["live_tips"] > 0)
-    values["plant_full"] = int(len(plants) == 8)
-    values["live_plant_full"] = int(values["live_plants"] == 8)
+    values["plant_full"] = int(len(plants) == slots)
+    values["live_plant_full"] = int(values["live_plants"] == slots)
     values["dead_present"] = int(values["dead_plants"] > 0)
     values["mature_seed_observations"] = 0
     values["node_only_seed_observations"] = 0
@@ -261,7 +263,7 @@ def collect(args: argparse.Namespace) -> None:
                     "inspector changed while freezing")
         else:
             freeze("bin/garden-inspect", "bin/garden-inspect")
-        for name in ("garden_node_audit.py", "garden_tip_audit.py", "garden_establishment.py", "garden_experiments.py", "garden_resources.py"):
+        for name in ("garden_node_audit.py", "garden_tip_audit.py", "garden_establishment.py", "garden_experiments.py", "garden_resources.py", "garden_plant_slots.py"):
             shutil.copy2(Path(__file__).with_name(name), output / "tools" / name)
         roles = list(manifest["roles"].values())
         if not any(r["policy"] == "adaptive" for r in roles):

@@ -25,7 +25,57 @@
 #define PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS                                                          \
 	(PICOSYSTEM_GARDEN_CANOPY_TOP_PIXELS +                                                     \
 	 (PICOSYSTEM_GARDEN_CANOPY_ROWS * PICOSYSTEM_GARDEN_CELL_PIXELS))
-#define PICOSYSTEM_GARDEN_MAX_PLANTS 8U
+#define PICOSYSTEM_GARDEN_DEFAULT_PLANTS 8U
+#if defined(TOY_FACTORY_GARDEN_FULL_POOL)
+#include "garden_full_pool.h"
+#endif
+#if defined(TOY_FACTORY_GARDEN_PLANT_SLOTS)
+#include "garden_plant_slots.h"
+#define PICOSYSTEM_GARDEN_MAX_PLANTS 16U
+#else
+#define PICOSYSTEM_GARDEN_MAX_PLANTS PICOSYSTEM_GARDEN_DEFAULT_PLANTS
+#endif
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+#include "garden_canopy_transmission.h"
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_SPACING)
+#include "garden_seed_spacing.h"
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+#include "garden_seed_order.h"
+#endif
+#if defined(TOY_FACTORY_GARDEN_DAWN_FINISH)
+#include "garden_dawn_finish.h"
+#endif
+#if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
+#if defined(__ZEPHYR__) || !defined(TOY_FACTORY_GARDEN_NIGHT_CAPACITY)
+#error "Wet germination requires the host-only night-capacity experiment"
+#endif
+#define PICOSYSTEM_GARDEN_WET_GERMINATION_NAME "wet-germination-v1"
+#endif
+#if defined(TOY_FACTORY_GARDEN_NIGHT_CAPACITY)
+#include "garden_night_capacity.h"
+#endif
+#if defined(TOY_FACTORY_GARDEN_PURCHASE_VETO)
+#include "garden_purchase_veto.h"
+#endif
+#if defined(TOY_FACTORY_GARDEN_DARK_GUARD)
+#if defined(__ZEPHYR__) || !defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) ||                        \
+	!defined(TOY_FACTORY_GARDEN_LARGE_POOL) || defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE) ||  \
+	defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK) || defined(TOY_FACTORY_GARDEN_SEED_RESERVE) || \
+	defined(TOY_FACTORY_GARDEN_FOCAL_SEED_VETO)
+#error "Dark guard requires the ordinary undrained eight-seed host maintenance experiment"
+#endif
+#include "garden_dark_guard.h"
+#endif
+#if defined(TOY_FACTORY_GARDEN_FOCAL_SEED_VETO)
+#if defined(__ZEPHYR__) || !defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) ||                        \
+	!defined(TOY_FACTORY_GARDEN_LARGE_POOL) || defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE) ||  \
+	defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK) || defined(TOY_FACTORY_GARDEN_SEED_RESERVE)
+#error "Focal seed veto requires the ordinary undrained eight-seed host maintenance experiment"
+#endif
+#define PICOSYSTEM_GARDEN_FOCAL_SEED_VETO_NAME "founder-2-second-day-three-seeds-v1"
+#endif
 #if defined(TOY_FACTORY_GARDEN_SEED_RESERVE)
 #if defined(__ZEPHYR__) || !defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) ||                        \
 	!defined(TOY_FACTORY_GARDEN_LARGE_POOL) || defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
@@ -293,6 +343,43 @@ struct picosystem_garden_seed_sites {
 
 /* Caller-owned fixed-capacity state; no garden operation allocates memory. */
 struct picosystem_garden_world {
+#if defined(TOY_FACTORY_GARDEN_FULL_POOL)
+	struct picosystem_garden_full_pool_audit full_pool;
+#endif
+#if defined(TOY_FACTORY_GARDEN_PLANT_SLOTS)
+	/* Host-only admission configuration, reset off and outside the physical hash. */
+	bool plant_slots_sixteen;
+#endif
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+	/* Host configuration: reset off, explicit metadata, outside the physical hash. */
+	bool canopy_transmission_enabled;
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_SPACING)
+	/* Host configuration only: reset off and reported separately from the hash. */
+	bool seed_spacing_two;
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+	/* Host run configuration, like dawn_finish: reset off, separately reported,
+	 * not part of the physical world hash or an agent observation.
+	 */
+	bool seed_order_rotating;
+#endif
+#if defined(TOY_FACTORY_GARDEN_DAWN_FINISH)
+	struct picosystem_garden_dawn_finish dawn_finish;
+#endif
+#if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
+	/* Authoritative opt-in state, disabled on reset; not a controller input. */
+	bool wet_germination_enabled;
+#endif
+#if defined(TOY_FACTORY_GARDEN_NIGHT_CAPACITY)
+	struct picosystem_garden_night_audit night_capacity;
+#endif
+#if defined(TOY_FACTORY_GARDEN_PURCHASE_VETO)
+	struct picosystem_garden_purchase_veto purchase_veto;
+#endif
+#if defined(TOY_FACTORY_GARDEN_DARK_GUARD)
+	struct picosystem_garden_dark_audit dark_guard;
+#endif
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 	uint8_t leaf_condition[PICOSYSTEM_GARDEN_MAX_NODES];
 	struct picosystem_garden_leaf_telemetry leaf_telemetry;
@@ -344,6 +431,13 @@ struct picosystem_garden_world {
 
 /* Restore an empty, reproducible garden. A zero seed selects a stable default. */
 int picosystem_garden_world_reset(struct picosystem_garden_world *world, uint32_t random_seed);
+
+#if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
+/* Enable once at an ecology boundary with the gardener off. Change only the
+ * germination light gate and hash identity; leave the world unchanged on error.
+ */
+int picosystem_garden_world_enable_wet_germination(struct picosystem_garden_world *world);
+#endif
 
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 /* Host-only environmental death, inclusive ground columns. Retain tissue for ordinary

@@ -33,6 +33,7 @@ python3 scripts/tests/profile-compare-test.py
 python3 scripts/tests/render-profile-test.py
 python3 scripts/tests/sequence-runner-test.py
 python3 scripts/tests/serial-command-test.py
+python3 scripts/tests/host-garden-defaults-test.py
 git diff --check
 ./scripts/container/host-build.sh --pristine
 ctest --test-dir build-host --output-on-failure

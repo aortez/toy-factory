@@ -41,7 +41,7 @@ def check_sites(masks, nodes, plants, capacity):
                 "site mask disagrees with exact allocation/spacing")
 
 
-def check_step(row, old, world, sites, capacity, *, seed_capacity=8):
+def check_step(row, old, world, sites, capacity, *, seed_capacity=8, light_required=True):
     """Check identities, sequential resource changes and outcomes; never run a policy."""
     stages = row["stages"]
     require(len(stages) == 5 and all(len(s) == 3 and all(type(v) is int for v in s) for s in stages),
@@ -54,6 +54,8 @@ def check_step(row, old, world, sites, capacity, *, seed_capacity=8):
     require(pre == [sum(p["nodes"] for p in retained), len(retained), len(old["seeds"])],
             "decomposition accounting mismatch")
     check_sites(row["sites_before"], pre[0], retained, capacity)
+    require(type(light_required) is bool and (light_required or not any(m & 4 for m in row["sites_before"])),
+            "unexpected light gate in optional-light rule")
     attempts = row["attempts"]
     require(seed_capacity in (8, 16) and len(attempts) == len(old["seeds"]) <= seed_capacity
             and 0 <= final[2] <= seed_capacity, "missing/repeated seed visit or bank overflow")
@@ -80,7 +82,7 @@ def check_step(row, old, world, sites, capacity, *, seed_capacity=8):
         col = a["column"]
         require(0 <= a["moisture"] <= 255 and 0 <= a["light"] <= 255 and
             bool(a["blockers"] & 2) == (a["moisture"] < 12) and
-            bool(a["blockers"] & 4) == (a["light"] < 80), "raw resource threshold mismatch")
+            bool(a["blockers"] & 4) == (light_required and a["light"] < 80), "raw resource threshold mismatch")
         require(a["blockers"] == masks[col] | int(a["age"] < 8), "dormancy/actual-site mismatch")
         require(col not in water or water[col] == a["moisture"], "sequential germination water mismatch")
         require(col not in light or light[col] == a["light"], "light changed within seed checks")

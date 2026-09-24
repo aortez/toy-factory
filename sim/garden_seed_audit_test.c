@@ -102,7 +102,7 @@ int main(void)
 	assert(audit.attempts[1].nodes == PICOSYSTEM_GARDEN_MAX_NODES);
 
 	ready(&world);
-	for (uint8_t i = 1U; i < PICOSYSTEM_GARDEN_MAX_PLANTS; ++i) {
+	for (uint8_t i = 1U; i < PICOSYSTEM_GARDEN_DEFAULT_PLANTS; ++i) {
 		assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER,
 							  (uint8_t)(i * 3U)) == 0);
 	}

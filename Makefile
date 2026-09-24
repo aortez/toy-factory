@@ -65,7 +65,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 
 .PHONY: help image setup build build-fast build-pio build-pio-dma build-pl022-dma \
 	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
-	host-build host-check host-run host-cli host-profile-build host-profile-garden \
+	host-build host-check host-research-check host-run host-cli host-profile-build host-profile-garden \
 	host-evaluate-garden host-train-garden host-experiment-garden host-gallery-garden host-audit-garden \
 	host-image host-player-build host-player-check host-play \
 	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
@@ -160,6 +160,9 @@ host-build: ## Build the deterministic native simulator in Docker
 host-check: ## Pristine-build and test the native simulator against device goldens
 	$(COMPOSE) run --rm firmware ./scripts/container/host-build.sh --pristine
 	$(COMPOSE) run --rm firmware ctest --test-dir build-host --output-on-failure
+
+host-research-check: ## Build and test opt-in Garden research code separately from device defaults
+	$(COMPOSE) run --rm -T firmware bash ./scripts/container/host-research-check.sh
 
 host-run: host-build ## Run SEQUENCE locally and write its final PNG to HOST_OUT
 	$(COMPOSE) run --rm firmware python3 sim/run_sequence.py \

@@ -18,9 +18,33 @@
 #include "garden_policy_probe.h"
 #include "garden_reserve_policy.h"
 #include "garden_root_bootstrap.h"
+#include "garden_focal_policy.h"
 #include "game_snapshot.h"
 #include "graphics_raster.h"
 static uint32_t root_bootstrap_after;
+static uint32_t focal_founder;
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+static bool seed_order_rotating;
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_SPACING)
+static bool seed_spacing_two;
+#endif
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+static bool canopy_transmission_enabled;
+#endif
+#if defined(TOY_FACTORY_GARDEN_FULL_POOL)
+static bool full_pool_enabled;
+#endif
+#if defined(TOY_FACTORY_GARDEN_PLANT_SLOTS)
+static bool plant_slots_sixteen;
+#endif
+#if defined(TOY_FACTORY_GARDEN_DAWN_FINISH)
+static struct picosystem_garden_dawn_finish dawn_finish;
+#endif
+#if defined(TOY_FACTORY_GARDEN_PURCHASE_VETO)
+static enum picosystem_garden_purchase_selection purchase_selection;
+#endif
+static uint32_t focal_model_crc;
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 #include "garden_leaf_policies.h"
 #include "garden_gap.h"
@@ -28,6 +52,7 @@ static uint32_t root_bootstrap_after;
 #include "garden_founder_exit.h"
 static const char *leaf_policy_name = "none";
 static uint32_t gap_tick;
+static uint32_t gap_lineage;
 static struct toy_factory_garden_gap gap_result;
 static uint32_t disturbance_seed;
 static struct toy_factory_garden_disturbance_totals disturbance_totals;
@@ -105,7 +130,68 @@ static int print_result(const struct picosystem_garden_world *world, const char 
 	}
 	const struct picosystem_garden_sun sun =
 		picosystem_garden_sun_at(world->ecology_tick_count);
-	printf("{\"schema_version\":1,\"scenario\":\"%s\",\"policy\":\"%s\","
+	putchar('{');
+#if defined(TOY_FACTORY_GARDEN_FULL_POOL)
+	const int full_pool_err =
+		picosystem_garden_full_pool_print(&world->full_pool, world->logic_tick_count);
+	if (full_pool_err != 0) {
+		return full_pool_err;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_PLANT_SLOTS)
+	const int slots_err = picosystem_garden_plant_slots_print(world->plant_slots_sixteen,
+								  world->logic_tick_count);
+	if (slots_err != 0) {
+		return slots_err;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+	const int transmission_err = picosystem_garden_canopy_transmission_print(
+		world->canopy_transmission_enabled, world->logic_tick_count);
+	if (transmission_err != 0) {
+		return transmission_err;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_SPACING)
+	const int spacing_err = picosystem_garden_seed_spacing_print(world->seed_spacing_two,
+								     world->logic_tick_count);
+	if (spacing_err != 0) {
+		return spacing_err;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+	const int order_err = picosystem_garden_seed_order_print(
+		world->seed_order_rotating, world->logic_tick_count, world->plant_count);
+	if (order_err != 0) {
+		return order_err;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_DAWN_FINISH)
+	const int dawn_err =
+		picosystem_garden_dawn_finish_print(&world->dawn_finish, world->logic_tick_count);
+	if (dawn_err != 0) {
+		return dawn_err;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
+	if (world->wet_germination_enabled) {
+		printf("\"germination_rule\":\"%s\",", PICOSYSTEM_GARDEN_WET_GERMINATION_NAME);
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_NIGHT_CAPACITY)
+	const int capacity_err = picosystem_garden_night_print(&world->night_capacity);
+	if (capacity_err != 0) {
+		return capacity_err;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_PURCHASE_VETO)
+	const int purchase_err =
+		picosystem_garden_purchase_print(&world->purchase_veto, world->logic_tick_count);
+	if (purchase_err != 0) {
+		return purchase_err;
+	}
+#endif
+	printf("\"schema_version\":1,\"scenario\":\"%s\",\"policy\":\"%s\","
 	       "\"seed\":\"%08" PRIx32 "\",\"tick\":%" PRIu32 ",\"hash\":\"%08" PRIx32
 	       "\",\"sun_phase\":%u,\"sun_strength\":%u,\"rain_rate\":%u,"
 	       "\"rain_deposited\":%" PRIu32 ",\"rain_runoff\":%" PRIu32
@@ -130,6 +216,17 @@ static int print_result(const struct picosystem_garden_world *world, const char 
 	} else {
 		printf("null");
 	}
+	if (focal_founder != 0U) {
+		printf(",\"focal_policy\":{\"rule\":\"%s\",\"founder\":%" PRIu32
+		       ",\"model_crc32\":\"%08" PRIx32 "\"}",
+		       TOY_FACTORY_GARDEN_FOCAL_POLICY_RULE, focal_founder, focal_model_crc);
+	}
+#if defined(TOY_FACTORY_GARDEN_FOCAL_SEED_VETO)
+	printf(",\"seed_veto_rule\":\"%s\"", PICOSYSTEM_GARDEN_FOCAL_SEED_VETO_NAME);
+#endif
+#if defined(TOY_FACTORY_GARDEN_DARK_GUARD)
+	printf(",\"dark_guard_rule\":\"%s\"", PICOSYSTEM_GARDEN_DARK_GUARD_NAME);
+#endif
 #if defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
 	printf(",\"seed_dispersal\":\"%s\"", PICOSYSTEM_GARDEN_DISPERSAL_NAME);
 #endif
@@ -157,7 +254,9 @@ static int print_result(const struct picosystem_garden_world *world, const char 
 	       PICOSYSTEM_GARDEN_LEAF_ENVIRONMENT, leaf_policy_name);
 	if (gap_tick != 0U) {
 		printf(",\"gap_protocol\":\"%s\",\"gap_tick\":%" PRIu32 ",\"removed_id\":%" PRIu32,
-		       TOY_FACTORY_GARDEN_GAP_PROTOCOL, gap_tick, gap_result.lineage_id);
+		       gap_result.named ? TOY_FACTORY_GARDEN_NAMED_GAP_PROTOCOL
+					: TOY_FACTORY_GARDEN_GAP_PROTOCOL,
+		       gap_tick, gap_result.lineage_id);
 	}
 	if (disturbance_seed != 0U) {
 		printf(",\"disturbance_protocol\":\"%s\",\"disturbance_seed\":\"%08" PRIx32
@@ -193,25 +292,150 @@ int main(int argc, char **argv)
 			"adaptive-no-night-growth uses MODEL '-' and the same night veto.\n");
 		fprintf(help ? stdout : stderr,
 			"neural-reserve-growth uses MODEL with energy-reserve-v1.\n");
+		fprintf(help ? stdout : stderr,
+			"--focal-model MODEL --focal-founder ID: route only that reset founder; "
+			"requires neural-no-night-growth, no other overrides.\n");
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 		fprintf(help ? stdout : stderr,
 			"--leaf-policy none|all|selective (default none)\n"
 			"--gap-at TICK: host-only one-time largest-adult "
 			"export; ecology boundary\n"
+			"--gap-lineage ID: with --gap-at, export this adult instead; permits focal "
+			"routing\n"
 			"--disturbance-seed SEED: recurring host-only patch deaths\n"
 			"--founder-exit TICK: kill living founders once; requires patch schedule\n"
 			"--root-bootstrap-after TICK: explicit wet-root bootstrap for later "
 			"offspring\n");
 #endif
+#if defined(TOY_FACTORY_GARDEN_PURCHASE_VETO)
+		fprintf(help ? stdout : stderr,
+			"--purchase-veto extension|finish|finish-retry: fixed host diagnostic\n");
+#endif
+#if defined(TOY_FACTORY_GARDEN_DAWN_FINISH)
+		fprintf(help ? stdout : stderr,
+			"--dawn-finish defer|reserve: fixed wet-world seedling diagnostic\n");
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+		fprintf(help ? stdout : stderr,
+			"--seed-order rotating: post-noon purchase rotation; requires reserve\n");
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_SPACING)
+		fprintf(help ? stdout : stderr,
+			"--seed-spacing 2: post-noon spacing; requires rotating seed order\n");
+#endif
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+		fprintf(help ? stdout : stderr,
+			"--canopy-transmission fractional: post-noon optics; requires spacing 2\n");
+#endif
+#if defined(TOY_FACTORY_GARDEN_FULL_POOL)
+		fprintf(help ? stdout : stderr, "--full-pool nonallocating: post-noon full-pool "
+						"actions; requires plant-slots 16\n");
+#endif
+#if defined(TOY_FACTORY_GARDEN_PLANT_SLOTS)
+		fprintf(help ? stdout : stderr,
+			"--plant-slots 16: post-noon admission; requires fractional canopy\n");
+#endif
 		return help ? 0 : 2;
 	}
 	uint32_t ticks = 0U;
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	uint32_t wet_tick = 0U;
+#endif
 	uint32_t seed;
 	bool ticks_seen = false;
 	const char *framebuffer = NULL;
+	const char *focal_model_path = NULL;
 	for (int index = 5; index < argc; index += 2) {
 		if ((index + 1) >= argc) {
 			return 2;
+		}
+#if defined(TOY_FACTORY_GARDEN_FULL_POOL)
+		if (strcmp(argv[index], "--full-pool") == 0) {
+			if (picosystem_garden_full_pool_parse(argv[index + 1],
+							      &full_pool_enabled) != 0) {
+				return 2;
+			}
+			continue;
+		}
+#endif
+#if defined(TOY_FACTORY_GARDEN_PLANT_SLOTS)
+		if (strcmp(argv[index], "--plant-slots") == 0) {
+			if ((picosystem_garden_plant_slots_parse(argv[index + 1],
+								 &plant_slots_sixteen) != 0)) {
+				return 2;
+			}
+			continue;
+		}
+#endif
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+		if (strcmp(argv[index], "--canopy-transmission") == 0) {
+			if (picosystem_garden_canopy_transmission_parse(
+				    argv[index + 1], &canopy_transmission_enabled) != 0) {
+				return 2;
+			}
+			continue;
+		}
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_SPACING)
+		if (strcmp(argv[index], "--seed-spacing") == 0) {
+			if (picosystem_garden_seed_spacing_parse(argv[index + 1],
+								 &seed_spacing_two) != 0) {
+				return 2;
+			}
+			continue;
+		}
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+		if (strcmp(argv[index], "--seed-order") == 0) {
+			if (picosystem_garden_seed_order_parse(argv[index + 1],
+							       &seed_order_rotating) != 0) {
+				return 2;
+			}
+			continue;
+		}
+#endif
+#if defined(TOY_FACTORY_GARDEN_DAWN_FINISH)
+		if (strcmp(argv[index], "--dawn-finish") == 0) {
+			if (picosystem_garden_dawn_finish_parse(argv[index + 1], &dawn_finish) !=
+			    0) {
+				return 2;
+			}
+			continue;
+		}
+#endif
+#if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
+		if (strcmp(argv[index], "--wet-germination-after") == 0) {
+			if ((wet_tick != 0U) ||
+			    (parse_u32(argv[index + 1], GARDEN_REPLAY_MAX_TICKS, &wet_tick) != 0) ||
+			    (wet_tick == 0U)) {
+				return 2;
+			}
+			continue;
+		}
+#endif
+#if defined(TOY_FACTORY_GARDEN_PURCHASE_VETO)
+		if (strcmp(argv[index], "--purchase-veto") == 0) {
+			if (picosystem_garden_purchase_parse(argv[index + 1],
+							     &purchase_selection) != 0) {
+				return 2;
+			}
+			continue;
+		}
+#endif
+		if (strcmp(argv[index], "--focal-model") == 0) {
+			if ((focal_model_path != NULL) || (*argv[index + 1] == '\0')) {
+				return 2;
+			}
+			focal_model_path = argv[index + 1];
+			continue;
+		}
+		if (strcmp(argv[index], "--focal-founder") == 0) {
+			if ((focal_founder != 0U) ||
+			    (parse_u32(argv[index + 1], UINT32_MAX, &focal_founder) != 0) ||
+			    (focal_founder == 0U)) {
+				return 2;
+			}
+			continue;
 		}
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 		if (strcmp(argv[index], "--founder-exit") == 0) {
@@ -236,6 +460,14 @@ int main(int argc, char **argv)
 			if ((disturbance_seed != 0U) ||
 			    (parse_u32(argv[index + 1], UINT32_MAX, &disturbance_seed) != 0) ||
 			    (disturbance_seed == 0U)) {
+				return 2;
+			}
+			continue;
+		}
+		if (strcmp(argv[index], "--gap-lineage") == 0) {
+			if ((gap_lineage != 0U) ||
+			    (parse_u32(argv[index + 1], UINT32_MAX, &gap_lineage) != 0) ||
+			    (gap_lineage == 0U)) {
 				return 2;
 			}
 			continue;
@@ -271,6 +503,52 @@ int main(int argc, char **argv)
 	if (!ticks_seen || (parse_u32(argv[4], UINT32_MAX, &seed) != 0) || (seed == 0U)) {
 		return 2;
 	}
+	if (((focal_model_path != NULL) != (focal_founder != 0U)) ||
+	    ((focal_founder != 0U) &&
+	     ((strcmp(argv[3], TOY_FACTORY_GARDEN_NIGHT_PROBE_POLICY) != 0) ||
+	      (root_bootstrap_after != 0U)))) {
+		return 2;
+	}
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	if (((wet_tick != 0U) && ((wet_tick != gap_tick) || (gap_lineage == 0U))) ||
+	    ((gap_lineage != 0U) && (gap_tick == 0U)) ||
+	    ((focal_founder != 0U) &&
+	     (((gap_tick != 0U) && (gap_lineage == 0U)) || (founder_exit_tick != 0U)))) {
+		return 2;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_DAWN_FINISH)
+	if (dawn_finish.enabled &&
+	    ((wet_tick != 46080U) || (gap_lineage != 1U) || (focal_founder != 5U) ||
+	     (strcmp(leaf_policy_name, "selective") != 0))) {
+		return 2;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+	if (seed_order_rotating && !dawn_finish.reserve_handoff) {
+		return 2;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_SPACING)
+	if (seed_spacing_two && !seed_order_rotating) {
+		return 2;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+	if (canopy_transmission_enabled && !seed_spacing_two) {
+		return 2;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_FULL_POOL)
+	if (full_pool_enabled && !plant_slots_sixteen) {
+		return 2;
+	}
+#endif
+#if defined(TOY_FACTORY_GARDEN_PLANT_SLOTS)
+	if (plant_slots_sixteen && !canopy_transmission_enabled) {
+		return 2;
+	}
+#endif
 	if (root_bootstrap_after != 0U) {
 #if defined(TOY_FACTORY_GARDEN_LARGE_POOL) && defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) &&      \
 	!defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
@@ -371,6 +649,53 @@ int main(int argc, char **argv)
 	if (err == 0) {
 		err = toy_factory_garden_evaluation_reset(&world, scenario, seed);
 	}
+	struct picosystem_garden_neural_model focal_model;
+	struct picosystem_garden_agent_policy focal_neural, focal_probe, routed;
+	struct toy_factory_garden_focal_context focal_context;
+	if ((err == 0) && (focal_founder != 0U)) {
+		err = toy_factory_garden_model_read(focal_model_path, &focal_model,
+						    &focal_model_crc);
+		if (err == 0) {
+			err = picosystem_garden_neural_policy_init(&focal_model, &focal_neural);
+		}
+		if (err == 0) {
+			err = toy_factory_garden_no_night_growth_init(&focal_neural, &focal_probe);
+		}
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		if (err == 0) {
+			focal_probe.leaf_policy = policy->leaf_policy;
+		}
+#endif
+		if (err == 0) {
+			err = toy_factory_garden_focal_policy_init(&world, policy, &focal_probe,
+								   focal_founder, &focal_context,
+								   &routed);
+		}
+		if (err == 0) {
+			policy = &routed;
+		}
+	}
+#if defined(TOY_FACTORY_GARDEN_PURCHASE_VETO)
+	world.purchase_veto.selection = purchase_selection;
+#endif
+#if defined(TOY_FACTORY_GARDEN_DAWN_FINISH)
+	world.dawn_finish = dawn_finish;
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+	world.seed_order_rotating = seed_order_rotating;
+#endif
+#if defined(TOY_FACTORY_GARDEN_SEED_SPACING)
+	world.seed_spacing_two = seed_spacing_two;
+#endif
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+	world.canopy_transmission_enabled = canopy_transmission_enabled;
+#endif
+#if defined(TOY_FACTORY_GARDEN_FULL_POOL)
+	world.full_pool.enabled = full_pool_enabled;
+#endif
+#if defined(TOY_FACTORY_GARDEN_PLANT_SLOTS)
+	world.plant_slots_sixteen = plant_slots_sixteen;
+#endif
 	if (err == 0) {
 		uint32_t first_ticks = ticks;
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
@@ -403,7 +728,14 @@ int main(int argc, char **argv)
 		}
 	}
 	if ((err == 0) && (gap_tick != 0U)) {
-		err = toy_factory_garden_gap_apply(&world, &gap_result);
+		err = gap_lineage != 0U
+			      ? toy_factory_garden_gap_apply_named(&world, gap_lineage, &gap_result)
+			      : toy_factory_garden_gap_apply(&world, &gap_result);
+#if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
+		if ((err == 0) && (wet_tick != 0U)) {
+			err = picosystem_garden_world_enable_wet_germination(&world);
+		}
+#endif
 		if (err == 0) {
 			err = toy_factory_garden_evaluation_advance(&world, scenario, policy,
 								    ticks - gap_tick, NULL, NULL);

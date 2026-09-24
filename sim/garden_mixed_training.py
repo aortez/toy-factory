@@ -30,12 +30,32 @@ class Study:
     protocol: str
     development: tuple[str, ...]
     review: tuple[str, ...]
+    development_patches: tuple[tuple[str, str], ...] = tuple(PATCHES.items())
+    review_patches: tuple[tuple[str, str], ...] = tuple(PATCHES.items())
+    rng: int = RNG
+
+    def __post_init__(self):
+        def seed(value):
+            return isinstance(value, str) and len(value) == 8 and all(c in "0123456789abcdef" for c in value)
+        require(type(self.rng) is int and 0 < self.rng <= 0xFFFFFFFF, "invalid search RNG")
+        for values in (self.development, self.review):
+            require(type(values) is tuple and values and len(set(values)) == len(values) and
+                    all(seed(v) for v in values), "invalid world seeds")
+        require(set(self.development).isdisjoint(self.review), "training/review world overlap")
+        for patches in (self.development_patches, self.review_patches):
+            require(type(patches) is tuple and patches and
+                    all(type(p) is tuple and len(p) == 2 for p in patches), "mutable/invalid schedules")
+            require(len(dict(patches)) == len(patches) and len({v for _, v in patches}) == len(patches) and
+                    all(isinstance(k, str) and k and all(c in "abcdefghijklmnopqrstuvwxyz0123456789-" for c in k)
+                        and seed(v) for k, v in patches), "invalid/duplicate schedules")
 
     def record(self):
         return {"name": self.name, "rule": self.rule, "protocol": self.protocol,
                 "development": list(self.development), "review": list(self.review),
-                "patches": dict(PATCHES), "generations": GENERATIONS, "offspring": OFFSPRING,
-                "mutations": MUTATIONS, "rng": RNG}
+                "patches": dict(self.development_patches), "generations": GENERATIONS, "offspring": OFFSPRING,
+                "mutations": MUTATIONS, "rng": self.rng,
+                **({"review_patches": dict(self.review_patches)}
+                   if self.review_patches != self.development_patches else {})}
 
 
 MIXED = Study("mixed", RULE, PROTOCOL, DEVELOPMENT, REVIEW)
@@ -56,19 +76,19 @@ def review_name(generation):
     return "narrow" if generation == "narrow" else f"g{generation}"
 
 
-def conditions(seeds):
-    return [(f"{a}.{s}", a, s, patch) for a, patch in PATCHES.items() for s in seeds]
+def conditions(seeds, patches=PATCHES):
+    return [(f"{a}.{s}", a, s, patch) for a, patch in patches.items() for s in seeds]
 
 
-def aggregate(worlds, seeds):
-    require(set(worlds) == {c[0] for c in conditions(seeds)}, "missing/extra panel condition")
-    return fitness.aggregate({key: worlds[key]["evaluation"] for key, *_ in conditions(seeds)})
+def aggregate(worlds, seeds, *, patches=PATCHES):
+    require(set(worlds) == {c[0] for c in conditions(seeds, patches)}, "missing/extra panel condition")
+    return fitness.aggregate({key: worlds[key]["evaluation"] for key, *_ in conditions(seeds, patches)})
 
 
-def comparison(control, candidate, seeds):
+def comparison(control, candidate, seeds, *, patches=PATCHES):
     """Diagnostic paired comparisons; only the development aggregate selects models."""
-    aggregate(control, seeds)
-    aggregate(candidate, seeds)
+    aggregate(control, seeds, patches=patches)
+    aggregate(candidate, seeds, patches=patches)
 
     def group(keys):
         a, b = (fitness.aggregate({k: w[k]["evaluation"] for k in keys}) for w in (control, candidate))
@@ -79,9 +99,9 @@ def comparison(control, candidate, seeds):
                 "paired_counts": {label: sum(p["comparison"] == v for p in pairs)
                                   for label, v in (("wins", 1), ("ties", 0), ("losses", -1))}}
 
-    items = conditions(seeds)
+    items = conditions(seeds, patches)
     return {"overall": group([c[0] for c in items]),
-            "schedules": {a: group([k for k, schedule, *_ in items if schedule == a]) for a in PATCHES},
+            "schedules": {a: group([k for k, schedule, *_ in items if schedule == a]) for a in patches},
             "leave_one_world_seed_out": {s: group([k for k, _, seed, _ in items if seed != s]) for s in seeds}}
 
 
@@ -90,27 +110,37 @@ def diversity(worlds):
             for field in ("terminal_species", "terminal_families")}
 
 
-def evaluate(root, folder, name, model, seeds, timings):
+def selection_aggregate(worlds, seeds, objective=None, *, patches=PATCHES):
+    return (aggregate(worlds, seeds, patches=patches) if objective is None else
+            objective.aggregate(worlds, seeds, patches=patches))
+
+
+def evaluate(root, folder, name, model, seeds, timings, *, objective=None, patches=PATCHES):
     worlds = {}
-    for key, _, seed, patch in conditions(seeds):
+    for key, _, seed, patch in conditions(seeds, patches):
         target = folder / f"{name}.{key}.json"
-        value, elapsed = pilot.run_json([root / "bin/garden-persistence-trial", model, "neural",
-                                         "0x" + seed, "0x" + patch, pilot.START, pilot.END], target)
+        command = [root / "bin/garden-persistence-trial", model, "neural",
+                   "0x" + seed, "0x" + patch, pilot.START, pilot.END]
+        value, elapsed = pilot.run_json(command, target)
         worlds[key] = pilot.validate_trial(value, seed, pilot.model_crc(model), patch=patch)
-        timings.append({"artifact": str(target.relative_to(root)), "seconds": elapsed})
+        if objective is not None:
+            worlds[key] = objective.annotate(value, worlds[key])
+        timings.append({"artifact": str(target.relative_to(root)), "seconds": elapsed,
+                        **({"command": [str(v) for v in command]} if objective is not None else {})})
         print(target.relative_to(root), value["key"], f"{elapsed:.2f}s", flush=True)
     return worlds
 
 
-def search(root, folder, timings, on_generation=None, *, study=MIXED):
+def search(root, folder, timings, on_generation=None, *, study=MIXED, objective=None):
     folder.mkdir()
-    candidates, champions, rng = [], [], RNG
+    candidates, champions, rng = [], [], study.rng
+    patches = dict(study.development_patches)
 
     def assess(name, model, parent, mutation):
-        worlds = evaluate(root, folder, name, model, study.development, timings)
+        worlds = evaluate(root, folder, name, model, study.development, timings, objective=objective, patches=patches)
         candidate = {"id": name, "parent": parent, "mutation": mutation,
                      "model_crc32": pilot.model_crc(model), "model_sha256": experiment.digest(model),
-                     "worlds": worlds, "aggregate": aggregate(worlds, study.development)}
+                     "worlds": worlds, "aggregate": selection_aggregate(worlds, study.development, objective, patches=patches)}
         candidates.append(candidate)
         return candidate
 
@@ -124,8 +154,11 @@ def search(root, folder, timings, on_generation=None, *, study=MIXED):
         for child in range(1, OFFSPRING + 1):
             name = f"g{generation}-c{child}"
             model = folder / f"{name}.tgm"
-            mutation, _ = pilot.run_json([root / "bin/garden-model-mutate", folder / f"{parent['id']}.tgm",
-                                          model, rng, MUTATIONS], folder / f"{name}.mutation.json")
+            command = [root / "bin/garden-model-mutate", folder / f"{parent['id']}.tgm", model, rng, MUTATIONS]
+            mutation, elapsed = pilot.run_json(command, folder / f"{name}.mutation.json")
+            if objective is not None:
+                timings.append({"artifact": str((folder / f"{name}.mutation.json").relative_to(root)),
+                                "seconds": elapsed, "command": [str(v) for v in command]})
             require(mutation["before"] == parent["model_crc32"] and mutation["after"] == pilot.model_crc(model)
                     and mutation["rng_before"] == rng, "mutation identity mismatch")
             rng = mutation["rng_after"]
@@ -137,16 +170,17 @@ def search(root, folder, timings, on_generation=None, *, study=MIXED):
     return {"candidates": candidates, "champions": champions, "rng_after": rng}
 
 
-def check_search(result, *, study=MIXED):
+def check_search(result, *, study=MIXED, objective=None):
     names = ["initial"] + [f"g{g}-c{c}" for g in range(1, GENERATIONS + 1) for c in range(1, OFFSPRING + 1)]
     require([c["id"] for c in result["candidates"]] == names, "wrong search order/budget")
     require(len(result["champions"]) == GENERATIONS + 1 and result["champions"][0] == "initial",
             "missing generation/control")
     indexed = {c["id"]: c for c in result["candidates"]}
-    best, rng = indexed["initial"], RNG
+    best, rng = indexed["initial"], study.rng
     require(best["parent"] is None and best["mutation"] is None, "mutated generation zero")
     for c in indexed.values():
-        require(aggregate(c["worlds"], study.development) == c["aggregate"], "candidate aggregate mismatch")
+        require(selection_aggregate(c["worlds"], study.development, objective,
+                                    patches=dict(study.development_patches)) == c["aggregate"], "candidate aggregate mismatch")
     for g in range(1, GENERATIONS + 1):
         children = [indexed[f"g{g}-c{i}"] for i in range(1, OFFSPRING + 1)]
         for c in children:
@@ -161,42 +195,50 @@ def check_search(result, *, study=MIXED):
     require(rng == result["rng_after"], "wrong final RNG")
 
 
-def review_generation(root, generation, champion, timings, *, study=MIXED):
+def review_generation(root, generation, champion, timings, *, study=MIXED, objective=None):
     folder = root / "review"
+    patches = dict(study.review_patches)
     name = review_name(generation)
     model = folder / f"{name}.tgm"
     source = root / "input/narrow.tgm" if generation == "narrow" else root / "search" / f"{champion}.tgm"
     shutil.copyfile(source, model)
-    worlds = evaluate(root, folder, name, model, study.review, timings)
+    worlds = evaluate(root, folder, name, model, study.review, timings, objective=objective, patches=patches)
     frames = []
-    for key, schedule, seed, patch in conditions(study.review):
+    for key, schedule, seed, patch in conditions(study.review, patches):
         identity = f"{name}.{key}"
         raw, png = folder / f"{identity}.rgb565", folder / f"{identity}.png"
-        replay, elapsed = pilot.run_json(pilot.replay_command(root, model, seed, pilot.STOP, raw, patch=patch),
-                                         folder / f"{identity}.replay.json")
+        command = pilot.replay_command(root, model, seed, pilot.STOP, raw, patch=patch)
+        replay, elapsed = pilot.run_json(command, folder / f"{identity}.replay.json")
         pixels = raw.read_bytes()
         trial = experiment.read_json(folder / f"{identity}.json")
         pilot.check_replay(replay, trial, seed, pilot.model_crc(model), pilot.STOP, pixels, patch=patch)
         pilot.gallery.write_png(png, 240, 240, pilot.gallery.rgb565be_to_rgb888(pixels))
         with tempfile.TemporaryDirectory(prefix="mixed-garden-frame-") as temp:
             other_raw, other_json = Path(temp) / "frame.rgb565", Path(temp) / "frame.json"
-            other, repeat_time = pilot.run_json(pilot.replay_command(root, model, seed, pilot.STOP, other_raw,
-                                                                    patch=patch), other_json)
+            repeat_command = pilot.replay_command(root, model, seed, pilot.STOP, other_raw, patch=patch)
+            other, repeat_time = pilot.run_json(repeat_command, other_json)
             require(other == replay and other_raw.read_bytes() == pixels, "independent frame repeat differs")
-        timings.append({"artifact": str(png.relative_to(root)), "seconds": elapsed, "repeat_seconds": repeat_time})
+            if objective is not None:
+                shutil.copyfile(other_raw, folder / f"{identity}.repeat.rgb565")
+                shutil.copyfile(other_json, folder / f"{identity}.repeat.json")
+        timings.append({"artifact": str(png.relative_to(root)), "seconds": elapsed, "repeat_seconds": repeat_time,
+                        **({"command": [str(v) for v in command], "repeat_command": [str(v) for v in repeat_command]}
+                           if objective is not None else {})})
         frames.append({"id": identity, "generation": generation, "condition": key, "schedule": schedule,
                        "seed": seed, "tick": pilot.STOP, "champion": champion, "model_crc32": pilot.model_crc(model),
                        "hash": replay["hash"], "framebuffer_crc32": replay["framebuffer_crc32"],
                        "framebuffer": str(raw.relative_to(root)), "png": str(png.relative_to(root))})
     return {"generation": generation, "champion": champion, "worlds": worlds,
-            "aggregate": aggregate(worlds, study.review), "frames": frames}
+            "aggregate": selection_aggregate(worlds, study.review, objective, patches=patches), "frames": frames}
 
 
 def diagnostics(search_result, reviews, *, study=MIXED):
     candidates = {c["id"]: c for c in search_result["candidates"]}
     return [{"generation": g, "champion": champion,
-             "development": comparison(candidates["initial"]["worlds"], candidates[champion]["worlds"], study.development),
-             "review": comparison(reviews[0]["worlds"], reviews[g]["worlds"], study.review),
+             "development": comparison(candidates["initial"]["worlds"], candidates[champion]["worlds"], study.development,
+                                       patches=dict(study.development_patches)),
+             "review": comparison(reviews[0]["worlds"], reviews[g]["worlds"], study.review,
+                                  patches=dict(study.review_patches)),
              "development_diversity": diversity(candidates[champion]["worlds"]),
              "review_diversity": diversity(reviews[g]["worlds"])}
             for g, champion in enumerate(search_result["champions"])]
@@ -215,23 +257,30 @@ def coverage_diagnostics(search_result, reviews, narrow):
             for g, champion in enumerate(search_result["champions"])]
 
 
-def check_review(root, r, champion, crc, sha, seeds):
+def check_review(root, r, champion, crc, sha, seeds, *, objective=None, patches=PATCHES):
     g = r["generation"]
     name = review_name(g)
     require(r["champion"] == champion and experiment.digest(root / "review" / f"{name}.tgm") == sha,
             "wrong review champion")
-    require(aggregate(r["worlds"], seeds) == r["aggregate"], "wrong review aggregate")
-    require([f["condition"] for f in r["frames"]] == [c[0] for c in conditions(seeds)], "missing/extra frame")
-    for f, (key, schedule, seed, patch) in zip(r["frames"], conditions(seeds), strict=True):
+    require(selection_aggregate(r["worlds"], seeds, objective, patches=patches) == r["aggregate"], "wrong review aggregate")
+    require([f["condition"] for f in r["frames"]] == [c[0] for c in conditions(seeds, patches)], "missing/extra frame")
+    for f, (key, schedule, seed, patch) in zip(r["frames"], conditions(seeds, patches), strict=True):
         identity = f"{name}.{key}"
         require(all(f[k] == v for k, v in {"id": identity, "generation": g, "schedule": schedule,
                 "seed": seed, "tick": pilot.STOP, "champion": champion, "model_crc32": crc,
                 "framebuffer": f"review/{identity}.rgb565", "png": f"review/{identity}.png"}.items()),
                 "wrong frame identity")
         trial = experiment.read_json(root / "review" / f"{identity}.json")
-        require(pilot.validate_trial(trial, seed, crc, patch=patch) == r["worlds"][key], "changed review ledger/score")
+        checked = pilot.validate_trial(trial, seed, crc, patch=patch)
+        if objective is not None:
+            checked = objective.annotate(trial, checked)
+        require(checked == r["worlds"][key], "changed review ledger/score")
         replay = experiment.read_json(root / "review" / f"{identity}.replay.json")
         raw = (root / f["framebuffer"]).read_bytes()
+        if objective is not None:
+            require(raw == (root / "review" / f"{identity}.repeat.rgb565").read_bytes() and
+                    replay == experiment.read_json(root / "review" / f"{identity}.repeat.json"),
+                    "saved independent frame repeat differs")
         pilot.check_replay(replay, trial, seed, crc, pilot.STOP, raw, patch=patch)
         require(f["hash"] == replay["hash"] and f["framebuffer_crc32"] == replay["framebuffer_crc32"],
                 "changed frame attribution")
@@ -241,10 +290,10 @@ def check_review(root, r, champion, crc, sha, seeds):
             require(png.read_bytes() == (root / f["png"]).read_bytes(), "PNG/raw mismatch")
 
 
-def check_results(root, result, *, study=MIXED):
+def check_results(root, result, *, study=MIXED, objective=None):
     require(result["rule"] == study.rule, "wrong result rule")
     search_result = result["search"]
-    check_search(search_result, study=study)
+    check_search(search_result, study=study, objective=objective)
     require(search_result == experiment.read_json(root / "repeat.json"), "capture/no-capture search differs")
     for folder in ("search", "repeat"):
         require((root / folder / "initial.tgm").read_bytes() == (root / "input/initial.tgm").read_bytes(),
@@ -256,15 +305,19 @@ def check_results(root, result, *, study=MIXED):
             if c["mutation"]:
                 require(experiment.read_json(root / folder / f"{c['id']}.mutation.json") == c["mutation"],
                         "changed mutation record")
-            for key, _, seed, patch in conditions(study.development):
+            for key, _, seed, patch in conditions(study.development, dict(study.development_patches)):
                 trial = experiment.read_json(root / folder / f"{c['id']}.{key}.json")
-                require(pilot.validate_trial(trial, seed, c["model_crc32"], patch=patch) == c["worlds"][key],
+                checked = pilot.validate_trial(trial, seed, c["model_crc32"], patch=patch)
+                if objective is not None:
+                    checked = objective.annotate(trial, checked)
+                require(checked == c["worlds"][key],
                         "changed development ledger/score")
     reviews = result["review"]
     require([r["generation"] for r in reviews] == list(range(GENERATIONS + 1)), "missing/duplicate review generation")
     candidates = {c["id"]: c for c in search_result["candidates"]}
     for r, champion in zip(reviews, search_result["champions"], strict=True):
-        check_review(root, r, champion, candidates[champion]["model_crc32"], candidates[champion]["model_sha256"], study.review)
+        check_review(root, r, champion, candidates[champion]["model_crc32"], candidates[champion]["model_sha256"], study.review,
+                     objective=objective, patches=dict(study.review_patches))
     require(result["diagnostics"] == diagnostics(search_result, reviews, study=study), "changed diagnostic comparison")
     views = list(reviews)
     if study == COVERAGE:
@@ -284,7 +337,7 @@ def check_results(root, result, *, study=MIXED):
         require(result["coverage_diagnostics"] == coverage_diagnostics(search_result, reviews, narrow),
                 "changed coverage/reference comparison")
         views.append(narrow)
-    rows = [[r["frames"][i] for r in views] for i in range(len(conditions(study.review)))]
+    rows = [[r["frames"][i] for r in views] for i in range(len(conditions(study.review, dict(study.review_patches))))]
     require(result["gallery"]["rows"] == [[f["id"] for f in row] for row in rows], "wrong gallery layout")
 
 

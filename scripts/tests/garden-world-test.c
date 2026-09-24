@@ -976,8 +976,8 @@ static void make_plant_reproductive(struct picosystem_garden_world *world, uint8
 			continue;
 		}
 		node->flags &=
-			(uint8_t)~(PICOSYSTEM_GARDEN_NODE_TIP | PICOSYSTEM_GARDEN_NODE_PRUNED |
-				   PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
+			(uint8_t) ~(PICOSYSTEM_GARDEN_NODE_TIP | PICOSYSTEM_GARDEN_NODE_PRUNED |
+				    PICOSYSTEM_GARDEN_NODE_BRANCH_PENDING);
 		node->flags |= PICOSYSTEM_GARDEN_NODE_LEAF | PICOSYSTEM_GARDEN_NODE_FLOWER;
 		node->growth_progress = UINT8_MAX;
 		return;

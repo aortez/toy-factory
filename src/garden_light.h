@@ -33,4 +33,11 @@ int picosystem_garden_light_solve(const uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CE
 				  const struct picosystem_garden_sun *sun,
 				  uint8_t light[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT]);
 
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+/* Same ray geometry; shade removes a fraction of the remaining daylight beam. */
+int picosystem_garden_light_solve_transmission(
+	const uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT],
+	const struct picosystem_garden_sun *sun, uint8_t light[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT]);
+#endif
+
 #endif /* PICOSYSTEM_GARDEN_LIGHT_H_ */

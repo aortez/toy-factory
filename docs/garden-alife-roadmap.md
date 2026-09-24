@@ -5,10 +5,404 @@ status and experiment notes. This document records the agreed direction,
 acceptance gates, and design constraints. Update the issue with evidence as
 work lands; it is the authoritative completion checklist.
 
-Status as of 2026-09-13: foundation tools and the saved-model screenshot/gallery
-bridge exist, checkpointed locally in `a1c419f` on `green-garden`; the subsequent
-founder-independence experiment is not yet committed. Environment
-qualification is underway. The [nighttime-growth comparison](../benchmarks/garden-longevity/night-growth.md)
+The [merge checkpoint guide](garden-merge-checkpoint.md) defines the bounded
+review scope, production/research boundary, retained conclusions and outstanding
+limitations. Consolidation does not close this roadmap or qualify the ecology.
+
+Latest checkpoint: the [read-only topology census](../benchmarks/garden-longevity/renewal-topology.md)
+finds only zero or one conservative terminal-shedding candidate at each of eight
+fixed snapshots. At the full endpoint, 136 of 146 exhausted leaf nodes support
+descendants; just one is eligible, and none is eligible and zero for a full day.
+Simple terminal shedding is not a meaningful storage fix here. Close this bounded
+investigation without a pruning policy and consolidate the branch for review;
+substantial structural turnover needs a separate design discussion. Environment
+qualification remains incomplete, not a prerequisite for merging a clearly
+scoped foundation/evidence checkpoint.
+
+Status as of 2026-09-23: foundation tools and the saved-model screenshot/gallery
+bridge exist, checkpointed locally in `a1c419f` on `green-garden`, followed by
+founder-independence in `bbb6307`. The subsequent bounded-renewal training A/B
+and independent replication, followed by frozen-model transfer, 8/16-world
+coverage and frozen-finalist return comparisons, plus the offline cohort audit
+and eight-day startup diagnostic, reciprocal founder-controller swap and
+single-neighbor follow-up, fourth-seed counterfactual, offline seed-forecast audit
+and the fixed phase-aware shadow forecast, exact dark-budget audit and native
+dark-spending-guard comparison, frozen four-world 64-day panel, residual-death audit
+and two isolated purchase vetoes, followed by the retry-aware FINISH diagnostic
+and its saved-trace recruitment and full-night capacity shadow audits, followed
+by the bounded full-night growth-guard A/B, rescued-parent seed audit and
+controlled named-gap comparison, its exact germination-check trace and isolated
+post-gap wet-germination A/B, its saved-trace seedling-budget diagnostic and
+bounded dawn-FINISH deferral, reserve-aware handoff and saved-trace reproductive
+access audit, followed by post-noon rotating purchase-order and spacing A/Bs
+and the saved establishment-light audit, fractional-canopy A/B and saved
+allocation-blocker audit, eight-versus-sixteen admission A/B and saved
+node-pressure/incumbent-death audit, bounded full-pool action A/B and saved
+shedding-feasibility audit and bounded read-only topology census,
+are complete and uncommitted; neither checkpoint was pushed by the agent.
+The replication does not reproduce the initial objective
+advantage. Broader coverage gives modest gains on one review panel but does not
+uniformly repair the earlier failure cross: R1 W/N loses 7.73%, R2 gains 8.89%
+with seed sensitivity, reduced fresh late credit and worse species retention.
+The offline audit separates timing/mortality tradeoffs and early species losses:
+five of R2 W's seven eventual monocultures are present before scoring starts.
+The startup trace now identifies overnight adult energy exhaustion and a separate
+water-starved shrub seedling. N's surviving founder shrub stays below an upkeep
+step that W crosses. The reciprocal swap now shows that only the N/N combination
+survives: N in W has lower sunset reserves despite small size, while W in N dies
+and also changes its neighbors' fates. The single-neighbor follow-up finds
+separate income and automatic-seed-spending paths to early death, plus one
+later failure and one surviving swap. The targeted fourth-seed veto rescues
+the observed shrub through day eight, but transfers the available bank slot
+and 48-energy expense to the ground-cover, which dies earlier. The offline
+forecast audit now finds that the existing gate would allow the shrub purchase:
+it predicts 224 sunset energy versus 187 actual, missing the quantized light
+cutoff. It would reject the ground-cover purchase. Separately, the full
+zero-income interval requires 259/296 upkeep energy for these bodies versus
+256 storage, so transient shortages cannot simply be forbidden. The subsequent
+phase-aware shadow forecast improves sunset estimates across all 112 purchases,
+but later spending breaks 103 windows' assumptions and even unchanged-body
+prefixes have large morning errors. It is not a qualified survival gate. The
+subsequent exact dark-budget audit avoids those estimates: all 66 complete clean
+outcomes match, including shortages that remain survivable through the interval.
+Of nine expense records crossing the local fatal boundary, seven are growth and
+two seeds. The subsequent [host-only dark spending guard](../benchmarks/garden-longevity/renewal-dark-guard.md)
+now changes deaths 12 → 0 in the fixed eight-day comparison and retains all five
+founders and all three species. Births fall 14 → 2, though, and neither guarded
+descendant produces seeds. Only one growth attempt and eight retries of one
+FINISH are rejected; no seed/renewal denials occur. All 637 native forecasts,
+the exact old control and twenty fixed calls/repeats verify. This is a survival
+gain in one selected world, not qualified generational renewal. The subsequent
+[frozen four-world, 64-day panel](../benchmarks/garden-longevity/renewal-dark-panel.md)
+now reduces natural deaths 45 → 21 without patches and 51 → 33 with patches,
+but the patched `abf7af73` pair worsens 13 → 17. Patched closing births improve
+9 → 11 and full-day survivors 7 → 9, while whole-run durable descendant parents
+fall 18 → 11. Both unpatched arms have no closing births despite continuing seed
+production. Guarded three-species endpoints improve 0/4 → 2/4 in each condition,
+not universal coexistence. All 128 fixed native calls, 32,536 guard forecasts,
+48 repeated frames and full repeated analysis verify; 70 default and 67 control
+CTests plus both guard suites pass. Of 397 denials, 184 already have a fatal
+projected budget before spending; all are growth/FINISH, with none for seeds or
+renewal. That [offline mortality audit](../benchmarks/garden-longevity/renewal-dark-failures.md)
+now finds 35 guarded energy deaths already projected fatal at dark entry, 15
+energy deaths just beyond the forecast and four water deaths. All 35 in-window
+death times match exactly; 31 lack reserves that would fit in storage, while
+four bodies cannot survive the interval even at the cap. The adverse patched
+world adds four under-reserved flowers and one post-dawn shrub death after day
+16. Last-daylight receipts isolate a 32 → 33-node extension and a paid FINISH
+as specific mechanisms worth testing, not yet proven rescues. All 7,689 windows,
+1,100,869 valid-prefix comparisons, repeated analysis and 71 host CTests pass;
+no new experimental native calls. The subsequent
+[isolated purchase comparison](../benchmarks/garden-longevity/renewal-purchase-veto.md)
+rescues flower 21 through day 64: its extension is deferred until affordable,
+it makes 34 seeds and has one long-lived child. The FINISH veto only delays
+payment one ecology step; flower 22 dies at the same tick. Extension lowers
+natural deaths 17 → 14 and raises durable descendant parents 5 → 6, but loses
+shrubs (three endpoint species → two), lowers living exposure and adds a late
+natural death. Control and FINISH endpoints match. All 24 declared calls,
+exact prefixes/repeats, 13,405 forecasts, 374,175 live budgets, nine native images
+and 72 default CTests verify. The subsequent
+[retry-aware FINISH diagnostic](../benchmarks/garden-longevity/renewal-finish-retry.md)
+now refuses both remaining uncovered attempts and hands back to the unchanged
+guard. Flower 22 survives through day 64, produces 29 seeds, and has four
+offspring (two die young, two survive a full day and remain alive). FINISH pays
+after dawn at 72,210, and stress recovers to zero at 72,540. Whole-world natural
+deaths rise 17 → 21, full-day survivors 16/25 → 18/31, and durable descendant
+parents 5 → 7. Shrubs disappear, living exposure falls 1.94%, and closing natural
+deaths rise 0 → 1. Neither pre-existing neighbor lifetimes nor the old control/
+one-shot outcomes change. All 24 calls, 13,780 forecasts, 372,464 live budgets,
+nine repeated native images and 73 default CTests verify. The subsequent
+[offline recruitment audit](../benchmarks/garden-longevity/renewal-recruitment.md)
+now accounts for the death delta: one saved old flower versus five additional
+later offspring deaths. Post-intervention births rise 8 → 13, but full-day
+survivors rise only 6/7 → 7/13; all six retry deaths occur before a day and enter
+the dark interval already projected fatal, with exact predicted timing. Four
+are under-reserved; two exceed what full stores can support overnight. All 46
+new shrub seeds expire, and every mature snapshot is spacing-blocked. The
+rescued flower occupies the control replacement shrub's column-20 site;
+the original shrub's patch death is unchanged, and its final seeds expire at
+134,820. Post-step blockers are not decision-stage receipts. All 1,053 seed
+purchases, 249,557 mature observations, 247,501 live budgets and 74 default
+CTests reconcile, with zero new experimental native runs. The subsequent
+[full-night capacity shadow audit](../benchmarks/garden-longevity/renewal-night-capacity.md)
+now covers all 16 panel trajectories and the retry case separately. With 37
+upkeep payments and seven survivable shortages, the 64 → 65-node transition
+raises minimum reserves from 240 to 270, beyond the 256 cap. Four first paid
+crossings identify four guarded energy deaths; one complete lifetime is shared
+between conditions, leaving three distinct histories. Forty-four subsequent
+unsafe extensions are not separate rescue opportunities. Fifty of 54 guarded
+deaths and all 96 control deaths remain unflagged. The retry case flags children
+28 and 34, not the four smaller under-reserved early deaths. All 2,077,277 live
+resource checks, exact repeated analysis, frozen source/capture hashes and 75
+default CTests pass. No rule is enforced or new experimental native run made.
+The subsequent [full-night growth-guard A/B](../benchmarks/garden-longevity/renewal-capacity-guard.md)
+now rescues two targeted plants through day 64, while the third dies six
+simulation seconds later: its 64-node body could survive at full stores, but
+enters night with 237 energy against a 240 minimum. The two survivors make 43
+seeds with no offspring. Across the four selected worlds, natural deaths fall
+32 → 29, births 60 → 57, full-day survivors 43/58 → 40/55, and durable descendant
+parents 9 → 8. Closing births/survivors and species sets do not improve. The
+new guard refuses 7,895 attempts on three plants; those plants never commit
+another EXTEND/FINISH, though the two survivors maintain leaves and reproduce.
+All 64 fixed calls, exact rebuilt controls, isolated prefixes, 964,282 resource
+budgets, repeated analysis and 24 native images verify; 76 default, 73 control
+and 74 treatment CTests pass. The negative control is unchanged throughout.
+The subsequent [rescued-parent seed audit](../benchmarks/garden-longevity/renewal-rescued-seeds.md)
+now finds 40 expired seeds, three pending and no germinations. All 10,171 mature
+observations have a pre-existing living spacing occupant, independently of
+post-step light/water masks. None relies on dead tissue or self-spacing. The
+shrub's entire dispersal support, columns 3–9, is excluded by two surviving
+founders. All 2,060 seeds and 500,004 mature snapshots in the four traces
+reconcile; repeated analysis/portable checks and all 77 default CTests pass.
+No new experimental native calls or behavior changes occurred in that audit.
+The subsequent [controlled named-gap comparison](../benchmarks/garden-longevity/renewal-controlled-gap.md)
+exports founder flower 1 at day 12. It enables one new shrub to germinate and
+survive through day 64, but founder shrub 2 wins the opening, not rescued shrub
+7. The latter produces 20 seeds versus 15 without a child; two reach spacing-free
+columns but expire with light/moisture blockers throughout their mature snapshots.
+Whole births rise 4 → 5 and full-day survivors 3/4 → 4/5, with natural deaths
+unchanged at two and one explicit export. One flower family disappears; closing
+births and durable descendant parents remain zero. All 24 fixed calls, unchanged
+controls/prefixes, 1,025 seeds, 221,701 live budgets, eight repeated native images,
+portable checks and 78/76 default/experimental CTests verify. The subsequent
+[exact germination trace](../benchmarks/garden-longevity/renewal-germination-trace.md)
+confirms no wet-and-lit overlap across the two seeds' 496 mature checks, despite
+free spacing/capacity. Their water-only/light-only/both tallies are 41/91/116 and
+37/96/115; the successful founder seed has moisture 34 and light 97 at its first
+eligible check. One post-step mask differs after growth, without changing the
+failed outcome. Four exact repeated calls, 1,044 saved-state checkpoints, 8,336
+ordered visits, portable verification and 79/77 default/experimental CTests pass.
+The subsequent [post-gap wet-germination A/B](../benchmarks/garden-longevity/renewal-wet-germination.md)
+now removes only the immediate light gate after the same day-12 export. Post-gap
+births rise 1 → 5 and full-day survivors 1/1 → 3/5, but four treatment recruits
+die of energy shortage. Rescued shrub 7 has two children; one lives 2.555 days,
+neither produces seeds. Historical full-day descendant parents with a full-day
+child improve 0 → 1, but there is no enduring new family branch. Both arms
+finish with seven living plants, the same species/family counts and one living
+post-gap recruit. All 31,744 actual mature seed checks in each closing window
+are spacing-blocked; births remain zero. All 28 fixed calls/repeats, 1,027 seed
+lifetimes, 220,984 resource budgets, eight native images, portable verification
+and 80/79 default/experimental CTests pass. The new rule is explicitly host-only,
+disabled on reset and off in normal builds; it is not promoted. Next discuss a
+read-only comparison of the first few nights of all six post-gap recruits,
+separating startup timing/spending from later growth and maintenance failures.
+The [seedling budget diagnostic](../benchmarks/garden-longevity/renewal-seedling-budget.md)
+now finds that both early deaths have zero recorded photosynthetic income:
+64 startup energy becomes 28/36 and 32/32 growth/upkeep, with adequate water.
+Both later deaths survive darkness but fail the first dawn maintenance at
+stress 7. One survivor tolerates an extra shortage; the other earns enough dawn
+income to pay immediately. All six fixed three-day/death histories reconcile,
+including 3,183 live budgets, four unreconstructed terminal steps and 15 dark
+windows. All 25,156 focal live steps through day 64, repeated portable analysis
+and 81/80 default/experimental CTests verify, with zero new experimental native
+calls or rule changes. Next discuss an isolated, retry-aware deferral of child
+12's last eight-energy FINISH through the first dawn maintenance, before any
+general dawn-margin policy or reserve increase. This is not yet a demonstrated
+rescue or a solution to the separate startup/spacing failures.
+The [bounded dawn-FINISH test](../benchmarks/garden-longevity/renewal-dawn-finish.md)
+now postpones death by one maintenance interval, 68,340 → 68,400, rather than
+rescuing the target. Ten refusals keep eight energy through dawn; after release,
+the pending FINISH spends eight of nine energy at stress 7 just before upkeep.
+No target seeds or offspring result, and day-64/closing population counts do
+not improve. All 24 fixed calls, exact old control and transaction prefix,
+221,022 live budgets, eight native images, portable verification and 82/82
+default/experimental CTests pass. Next discuss a bounded reserve-aware handoff
+for this same FINISH: pay only while retaining one maintenance bill, with a
+first-noon endpoint. No resource grants, broader policy, retraining or promotion.
+That [reserve-aware handoff](../benchmarks/garden-longevity/renewal-dawn-reserve.md)
+now rescues shrub 12 through day 64. Three additional refusals retain one upkeep
+bill; FINISH pays eight from 19 at 68,445, leaving 11, and stress recovers at
+68,760. Forty-six later nights still cause survivable stress. Its only seed
+expires without offspring; the two later seedlings in the old runs never appear.
+Births/deaths fall 9/6 → 7/4, full-day survivors 6 → 4 and reproducing-descendant
+credit 1 → 0. Final living/species/family counts and zero closing births remain
+unchanged. All 36 fixed calls, exact historical/prefix/repeat checks, 331,756
+live budgets, twelve native frames, portable verification and 83/83 normal/
+experimental CTests pass. Next discuss a read-only reproductive-opportunity and
+bank-access audit of these saved trajectories. This is one selected causal
+rescue, not a qualified general gate or an ecosystem-renewal improvement.
+The [reproduction-access audit](../benchmarks/garden-longevity/renewal-reproduction-access.md)
+now identifies a separate allocation constraint. On 259 closing checks, rescued
+shrub 12 passes every independently observable prerequisite: 189 start with a
+full seed bank, and on 70 earlier parents take the available slots. The final
+safety guard remains unevaluated on those turns. Every one of 128 closing
+expiries is replaced immediately, with no germination; the target's sole
+lifetime seed is spacing-blocked by established shrub 9. All 331,756 live
+budgets, 1,541 purchases, repeated offline/Docker checks and 84/84 default/
+experimental CTests verify, with zero new experimental native calls or rule
+changes. Next discuss a bounded, deterministic rotating purchase-order A/B
+after first noon, preserving all costs, gates and capacity. Allocation access
+and establishment are separate outcomes; more purchases cannot stand in for
+survival or durable descendants. This proposed ordering change is not yet built.
+That [rotating-order comparison](../benchmarks/garden-longevity/renewal-seed-order.md)
+now raises target purchases 1 → 42 (0 → 13 late), with identical stress/lifetime
+and final stores. Its extra energy cost replaces overflow; extra water uptake
+covers the water fee. Allocation changes, but establishment does not: all 10,405
+mature target-seed observations have stable living spacing blockers. All 28
+columns are spacing-blocked throughout the post-noon window, despite one free
+plant slot. Whole births/deaths remain 7/4 and late births zero; every lineage's
+survival history is unchanged. All 16 fixed calls, historical control, exact
+prefixes/repeats, 221,468 live budgets, four native images, independent portable
+checks and 85/86 default/experimental CTests pass. Next discuss establishment
+and competition mechanics, including what should allow seedlings to challenge
+stable adults. More bank capacity, order tuning or training alone cannot
+create planting space in this saved state. Rotation stays host-only/off by
+default; no broader ecological rule is changed or qualified by this result.
+The subsequently approved [spacing comparison](../benchmarks/garden-longevity/renewal-seed-spacing.md)
+holds rotation and all other rules fixed, reducing minimum distance three → two
+only after the shared noon. It admits 19 new seedlings, six full-day survivors
+among 17 eligible, and ten closing births. But 16 new seedlings and three
+incumbents die, including the only flower; no post-boundary parent has a child
+surviving a day within the horizon. The plant array is full at 93.6% of later
+checkpoints, without node-capacity blockage. There is no shared-root-cell
+exposure in audited live steps; do not attribute mortality to uptake ordering.
+All 20 declared calls, historical control/prefixes/repeats, six native images,
+231,407 live budgets, independent portable checks and 86/88 default/experimental
+CTests verify. One analysis-only recovery canonicalizes historical witness-set
+ordering; no native runs were repeated or observations replaced. Next examine
+seedling light/energy trajectories and flower loss using the saved traces.
+This establishes opportunity in one selected world, not sustainable succession
+or broad environment qualification. The opt-in stays host-only/off by default.
+The subsequent [saved light/spending audit](../benchmarks/garden-longevity/renewal-establishment-light.md)
+now separates zero usable light from fractional income: five seedlings have zero
+live-step numerator; a sixth accumulates only 248/255 of an energy unit. All six
+spend their 64 startup energy on shoots and upkeep, not roots. However, five of
+six first-day survivors also exhaust startup energy before reaching light, so a
+blanket shade-growth veto is not supported. At unchanged body size, flower 5's
+final-day income falls to 280 versus 732 in control; sampled illumination and
+condition decline, 12 otherwise eligible renewal observations lack energy, and
+eight consecutive energy shortages end its life. All 19 seedlings and both
+matched flowers are audited with no terminal-budget invention or new
+experimental captures. Next discuss one bounded canopy-transmission A/B,
+preserving nighttime zero production and judging descendant survival plus
+adult/species losses. That read-only audit itself changes no light rule, model
+or firmware.
+The subsequently approved [fractional-canopy comparison](../benchmarks/garden-longevity/renewal-canopy-transmission.md)
+keeps zero nighttime production and every non-optical rule fixed. Both new
+seedlings survive, and flower 5/shrub 12 survive, but only two seedlings establish
+instead of nineteen. New full-day survivors fall six → two; neither new plant
+has a germinated child. Incumbent deaths fall three → one, endpoint species and
+families rise 1/2 → 2/3, and post-boundary plant-slot occupancy reaches 99.0%.
+The candidate fails both predeclared renewal gates while passing retention gates;
+it is not broader environment qualification. Historical control and prefixes,
+all 20 repeated captures, six native images, 243,005 live budgets and independent
+portable checks pass, along with 88/91 default/experimental CTests. Terminal
+cleared budgets remain unknown. The flag resets off, is explicitly disabled in
+normal builds and rejects firmware. Next audit allocation-only versus overlapping
+spacing/moisture blockers from saved traces before designing a bounded capacity
+or competition comparison. No new capacity, forced deaths, training, promotion,
+commit, push or device flash.
+The subsequent [saved allocation audit](../benchmarks/garden-longevity/renewal-allocation-blockers.md)
+separates post-step queries from narrowly justified no-birth code-order evidence.
+There are 53 distinct candidate seeds with allocation-only rejection: 52 expire,
+one later germinates. Seven belong to the successful new shrub 13 and all expire.
+Of 5,542 confirmed observations, 5,538 have eight living occupants. The candidate's
+other new shrub 14 has no allocation-only evidence: all three seeds are also
+spacing-blocked. All 1,034 lifetimes, 256,010 retained-seed observations and
+247,759 mature observations reconcile; no new experimental native calls, models
+or images. Parent/repeated/new analysis, independent Docker checks and 89/92
+default/experimental CTests pass. A pre-export snapshot/exit-timestamp distinction
+was corrected in the new audit with a regression test; frozen evidence is intact.
+Next proposal: a fixed eight-versus-sixteen host plant-slot diagnostic after the
+shared checkpoint, keeping 512 nodes, eight seeds, light, costs, spacing, weather,
+controllers and horizon unchanged. Test whether descendants establish and renew
+or pressure simply moves to nodes/resources. No capacity change or forced death
+is implemented or promoted; more births alone would not qualify the environment.
+The approved [plant-slot comparison](../benchmarks/garden-longevity/renewal-plant-slots.md)
+now completes that fixed eight-versus-sixteen test. Post-boundary births rise
+2 → 27, full-day survivors 2 → 17 and new full-day parents with a full-day child
+0 → 6; generation four is reached. The trade-off is six incumbent deaths rather
+than one and two surviving founder families rather than three. All other rules,
+512 nodes and eight seeds remain fixed. Plant storage peaks at 12, but nodes
+are full at 65.4% of post-boundary samples, including the final 4.05 days; all
+endpoint nodes are living. Both reproduction gates pass and both incumbent/
+family-retention gates fail, so this remains a mixed selected-world result.
+90/94 default/experimental CTests, exact historical control/prefixes, all 20
+captures, six images, 266,066 live budgets and independent portable checks pass.
+Host storage/diagnostics grow by 2,048 bytes; firmware/default capacity remains
+eight. Next discuss an offline node ownership/denied-growth and incumbent-death
+audit using these saved histories, not a larger node pool or capacity sweep.
+No training, promotion, commit, push or device flash.
+The approved [saved node/death audit](../benchmarks/garden-longevity/renewal-node-pressure.md)
+reconciles 23,552 ownership transitions and 209,462 post-boundary live budgets.
+All 512 endpoint nodes belong to 11 living plants (171 roots, 341 shoots); all
+23 post-boundary dead plants have been reclaimed. Four plants retain 14 tips.
+Code-order reconstruction finds 17,001 full-entry plant-steps with tips,
+immediate resource affordability and no renewal, but these are not rejected
+EXTEND requests: cooldown and the uncalled policy choice remain unknown.
+The pre-policy capacity gate suppresses non-allocating WAIT/FINISH too; leaf
+renewal still works, with 1,978 successes at full occupancy.
+Four incumbent fatal stress episodes start with water shortage and two with
+energy shortage. Terminal flags alone misclassify shrub 7's water-led episode.
+The four water-led plants make no discretionary payments in their final day;
+their old/lit leaf samples all fail the renewal water-reserve threshold, while
+leaf condition decays. Five dead incumbents were already tipless at the split,
+so the growth gate is not their proximate cause. Two energy-led plants buy more
+seeds and enter night with lower energy reserves; no rescue is inferred.
+Parent/repeated/Docker verification, 15 focused cases and 91/95 default/experimental
+CTests pass, with zero new research captures. Next discuss a bounded full-pool
+non-allocating-action A/B with unchanged node capacity, without claiming it
+solves adult water/energy deficits. Body recycling and water rules remain
+separate design questions; no defaults, fitness, training or firmware change.
+The approved [full-pool action comparison](../benchmarks/garden-longevity/renewal-full-pool.md)
+keeps the same sixteen-slot control and 512-node/eight-seed limits. The new
+transaction boundary permits non-allocating actions while refusing allocating
+winners before payment/private-state commit, without a fallback. In the fixed
+world it commits 6,224 WAITs and refuses 6,060 EXTENDs, but selects no FINISH or
+geometrically exhausted EXTEND. The mechanism gate fails; new full-day survivors
+fall 17 → 16, durable new parents stay at six, and the same six incumbents die.
+More births (27 → 29) and generation five do not override those gates; both
+generation-five seedlings are too recent for full-day evaluation. Endpoint
+nodes fall 512 → 417 amid changed turnover and more deaths, not FINISH-driven
+reclamation. The unchanged night-growth wrapper accounts for 6,220 of the WAITs.
+Historical control/prefixes, all 20 captures, six images, 286,700 live budgets,
+1,036 seed lifetimes and independent Docker checks reconcile; 57 terminal budgets
+remain unknown. 92/97 default/experimental CTests pass. Host-only diagnostics
+add 148 bytes per instrumented world, with no device build or performance claim.
+Keep this result negative and off by default. Next discuss living-body turnover:
+identify what saved observations can say about unproductive terminal structure,
+what topology evidence is missing, and whether safe local shedding would reclaim
+meaningful storage. Define safety/costs before implementing it; do not force
+FINISH, add RAM, retrain or treat water shortages as solved. No commit or push.
+The approved [saved shedding-feasibility audit](../benchmarks/garden-longevity/renewal-shedding-audit.md)
+finds 146 zero-condition living leaf nodes at the full control endpoint, including
+110 continuously zero for at least a day; the candidate has 56/46. These are
+optimistic storage bounds, not removable-node counts: parent/child topology and
+leaf/flower/tip overlap are not recorded. Zero condition is not permanent loss:
+268/287 full-day-zero episodes in the two arms later end in paid renewal. Mature
+`active_leaves` must not be mistaken for healthy leaves. Leaf ordinal tracking
+checks 8,738,097 transitions and 6,780 renewals without new native research calls.
+The all-zero-leaf bound covers four-node headroom at every sampled node-blocked
+checkpoint, but guaranteed safe recovery remains zero without topology; no
+rescued births or paid upkeep savings are inferred. Parent/repeated/Docker
+checks, 14 focused cases and 93/98 default/experimental CTests pass. The embedded-C
+review records stable compaction, reference remapping, retained child counts and
+action-stage safety requirements; the existing UI prune tool only tags tips.
+Next proposal: a bounded read-only host topology census on the original sixteen-
+slot control, with identical physical hashes, before choosing a shedding action
+or costs. Do not stack the failed full-pool rule, delete renewing/internal tissue,
+add a persistence buffer, contract stems or prune roots implicitly. No native
+source, ecology, capacity, default, training, firmware, commit or push changes.
+The subsequent [topology census](../benchmarks/garden-longevity/renewal-topology.md)
+now exports node links/roles and base/previous-tip references at eight predeclared
+ticks in the original sixteen-slot control. All 194,270 original trace records
+remain byte-identical with capture off/on; three fixed native calls, repeated
+analysis and independent Docker verification pass. At first full pool and the
+peak 166-zero-leaf snapshot, only one node passes the conservative structural
+filter. At the 146-zero-leaf endpoint, 136 are internal; only one is eligible,
+and it has been zero for less than a day. No sampled full pool recovers the four
+slots needed for germination. 95/100 default/experimental CTests pass; no shared
+world, ecological rules, device defaults or firmware changed. Do not implement
+simple shedding from this result or silently expand into internal contraction.
+The next checkpoint is consolidation/review of the branch, with unresolved
+ecology work explicit rather than waiting for the entire A-life roadmap.
+Removing a neighbor changes light/water/capacity too, not spacing alone.
+Do not adopt a permanent size quota, relax spacing or infer improved renewal
+from adult rescues. Retry handling, dawn recovery and current reserve shortages
+remain separate limitations.
+Keep the rule host-only and off by default; do not promote a policy, change
+fitness or resume training from this diagnosis.
+Environment qualification is underway. The [nighttime-growth comparison](../benchmarks/garden-longevity/night-growth.md)
 improves early survival with a host-only decision probe, but does not establish
 broad sustained renewal. Per-generation model preservation and screenshots now
 work in the bounded [persistence pilot](../benchmarks/garden-longevity/training-pilot.md);
@@ -391,6 +785,181 @@ death rule. Keep this as a separate diagnostic and return to bounded-renewal
 objective/pilot discussion, not another hard gate. All 144 native processes,
 24 independently repeated images, 54 default and 49 experimental CTests pass.
 No training, model promotion, ecological change or qualification milestone.
+The [bounded-renewal training A/B](../benchmarks/garden-longevity/renewal-training.md)
+now compares the unchanged v2 selector with the explicit individual-minimum
+selector, using identical original/first-generation models and a fixed
+three-generation budget. Final B beats final A by 18.2% on the fresh review
+minimum-period component, winning 7/8 worlds, both schedule groups and all four
+blocked seed omissions. B's 9.1% gain over the original is less robust: one
+schedule is slightly worse and one seed omission reverses the gain. B2 reviews
+better than B3 despite B3's training improvement; no retrospective model selection
+is made. Single-species worlds rise from 3/8 original to 6/8 B (7/8 A).
+All 868 declared native processes, full capture-disabled search repeats, 64
+independently repeated frames, 55 default and 50 experimental CTests pass.
+Existing ecology, native fitness, runner defaults and firmware stay unchanged.
+This is evidence to replicate the objective with independent search streams and
+fresh world/schedule combinations, not model promotion or environment qualification.
+The [independent replication](../benchmarks/garden-longevity/renewal-replication.md)
+now uses two new mutation streams, fresh training worlds/schedules and separate
+fresh review worlds with schedule-held-out disturbance seeds. B's final
+minimum-period review credit loses to A by **10.9% / 8.8%** in R1/R2; both schedules
+and all blocked seed omissions agree in each replica. B's training gains over
+original are 18.5% / 17.9%, but review falls 12.1% / 7.9%. R2 B2 reviews better
+than B3; no retrospective selection is made. All finalists retain established
+descendants and positive credit in every period, but single-species worlds rise
+from 1/8 original to 4–5/8. All 1,736 fixed native calls, four full search repeats,
+128 independently repeated images, 56 default and 51 experimental CTests verify.
+The prior advantage is not robust to this fresh panel. Keep defaults unchanged;
+next discuss frozen-model world/schedule cross-evaluation to locate the transfer
+gap before more training. No adoption, model promotion or qualification milestone.
+The [frozen-model world/schedule cross](../benchmarks/garden-longevity/renewal-transfer.md)
+now completes the missing TR/RT cells for the original and all four finalists,
+reusing TT/RR without training. Both B finalists beat the original on training
+worlds under either schedule set, but lose on review worlds under either set.
+Their normalized world-set contrasts stay negative under every paired seed
+omission; individual review losses are not all omission-robust. R1 B/A loses in
+TR/RT by 5.78% / 22.57%; R2 gains 11.15% in TR and nearly ties (−0.27%) in RT.
+Schedule interactions differ, so this is not a schedule-only or weather-only
+explanation. All 300 declared native calls, 120 complete new trial repeats,
+40 independently repeated frames and 100 focused Python tests pass. All scored
+endpoints retain established descendants, without zero-credit periods, but
+variety remains mixed. Discuss a coverage-only training A/B with broader world
+sampling, unchanged score/ecology/search budget and a separate fresh review
+panel; do not promote a model, tune fitness or close qualification milestones.
+The [fixed 8/16-world renewal comparison](../benchmarks/garden-longevity/renewal-coverage.md)
+now reuses both narrow searches and trains matched wide counterparts, keeping
+score, ecology, schedules and mutation budget unchanged. W3/N3 fresh-review
+minimum credit improves **2.75% / 7.54%** in R1/R2. R1's gain reverses under one
+schedule and one omission; R2's holds under both schedules and all omissions.
+Both wide finalists beat the original, but R2 loses 7.97% on the added training
+subset under both schedules and every omission. Species variety does not improve;
+founder-family outcomes differ. All 2,084 new native calls, two full wide-search
+repeats, 256 independently repeated images and 114 focused Python tests pass.
+W uses twice as many training evaluations per candidate, not extra mutants.
+Eight fresh review seeds still form one shared panel; unchanged R1 N3 now gains
+23.57% over original after losing on the prior panel. Discuss a frozen-finalist
+check on that earlier world/schedule cross, reusing original/narrow evidence;
+do not interpret this result as broad transfer, default adoption or qualification.
+The [frozen-finalist return check](../benchmarks/garden-longevity/renewal-return.md)
+now measures both W3 models on the earlier cross, reusing original/N3 controls.
+On old RR, R1 W/N loses **7.73%**, R2 gains **8.89%**; omitting one seed reverses
+each sign. R1 W/original loses 18.92% under both schedules and every omission;
+R2's +0.25% splits by schedule and reverses under two omissions. R1 W/N loses in
+all four cells; R2 gains in TT/RT/RR but loses 12.07% in TR. R2's old RR fresh
+late credit falls 29.15%, offset by more carry-in credit under the age-capped
+rule; single-species endpoints rise from 4/8 N to 7/8 W. Broader sampling does
+not consistently repair transfer or produce a generally richer garden. All
+224 declared native calls, 96 complete new trial repeats, 40 repeated images
+and 126 focused Python tests pass; both source bundles and portable evidence
+verify. No retraining, ecological change or promotion. Discuss a saved-ledger
+audit of paired gains/losses, confirmation timing, mortality and species turnover
+before changing coverage or cross-world aggregation.
+The [offline cohort audit](../benchmarks/garden-longevity/renewal-cohorts.md)
+now reconciles all forty old-RR histories and 160 periods without native runs.
+R1 W has more qualifying late children (30 → 33), but later confirmations reduce
+available credit; R2 W has fewer (40 → 32), offset by stronger carry-in. Minimum
+switching explains why improvement at N's worst period need not improve the new
+minimum. Five of R2 W's seven final monocultures already exist before day 62;
+all shrubs disappear by about day two, while N retains shrubs in two matched
+conditions through day 192. Living-species losses can recover from pending seeds,
+so the audit retains exact loss/recovery times separately from final retention.
+All 219 focused Python tests, frozen native annotations, credit identities,
+timelines, repeated analysis and portable export verify. No new screenshots,
+native calls, training or score/ecology changes. Discuss a first-eight-day
+resource/decision trace on matched `0d983a80` with original and R2 N/W before
+reward changes or more training; causal water/light/energy histories are absent
+from these saved ledgers.
+The [eight-day startup diagnostic](../benchmarks/garden-longevity/renewal-startup.md)
+now reuses the frozen native inspector/replayer and all three fixed models on
+that selected world. W's two founder shrubs exhaust energy on the second night
+despite full water, with no nighttime growth/reproduction/renewal spending.
+N retains one 55-node shrub (seven energy per upkeep charge); W builds 59 nodes
+(eight per charge) and dies before income recovers. N still briefly reaches zero
+energy, using stress tolerance to survive. W's replacement shrub makes seven
+shoot extensions but no root extension, then dies with full energy and zero
+water. Day-eight populations are original 4 across two species, N 8 across three,
+W 6 flowers only. All 244 focused tests, 30 fixed native calls, complete trace
+repeats, saved history prefixes and twelve repeated native images verify.
+An analyzer metadata compatibility error was corrected offline with sealed
+captures and separately retained revised source; no extra native calls or
+invented capture timings. This is an inspected-case explanation, not qualification
+or a fitness change. That motivated the reciprocal founder-controller diagnostic.
+The [reciprocal swap](../benchmarks/garden-longevity/renewal-swap.md) is now complete
+on the same eight-day world: only N on shrub 2 in an N garden survives. Both
+counterfactuals die of energy shortage near day 1.8. N in W has 54 nodes and
+seven-unit upkeep, but 185 rather than 205 sunset energy; its reconciled daytime
+budget includes one extra 48-energy seed purchase. W in N still builds 59 nodes
+and eight-unit upkeep. That one-founder change also pushes the original
+ground-cover from 56 to 57 nodes; it dies, and the endpoint is flowers-only.
+All 58 experimental-host CTests, three focused default-build tests, forty fixed
+native calls, exact full-trace controls/repeats and sixteen repeated native
+frames pass. This is a total controller/background effect with feedback, not
+proof of purely physical cooperation: global node-pool tie ordering can also
+change. This motivated one-neighbor-at-a-time swaps with fixed focal N.
+That [single-neighbor diagnostic](../benchmarks/garden-longevity/renewal-neighbors.md)
+is now complete using the exact saved native tools: changing either ground-cover
+3 or far-right flower 5 alone kills shrub 2 at tick 6,840. Shrub 4's swap causes
+a later tick-26,040 death; flower 1's swap retains the focal shrub at day eight.
+All stay below the eight-unit upkeep step. Ground-cover reduces focal daylight
+income without an extra seed; the far-right-flower world has a spare bank slot
+at 4,260, allowing automatic seed spending blocked in the full-bank control.
+It finishes the second daylight with four purchases and 187 versus 205 energy.
+Equal-recorded-bid-set ordering differences occur in three cases during night
+WAITs, including the survivor; they are not isolated as the cause of death.
+All 128 renewal-family tests, forty new native calls, complete repeats and
+sixteen new/eight copied native checkpoint pairs verify; no C/header or native
+binary change. This motivated the accepted
+[fourth-seed counterfactual](../benchmarks/garden-longevity/renewal-seed-veto.md).
+An explicit host-only/off-by-default option suppresses only founder 2's fourth
+purchase and retries in its second daylight. All 16,775 rebuilt control records
+match saved evidence; the intervention first diverges exactly at tick 4,620.
+The shrub retains 48 energy, has 235 rather than 187 at sunset, survives through
+day eight and has three living direct offspring. No focal growth bids change.
+But founder ground-cover 3 immediately buys a seed in the available bank slot,
+losing 48 energy and dying at tick 6,600 instead of 14,340. The endpoint changes
+from four flowers/three ground-cover to one flower/five shrubs, with six rather
+than seven living plants. This is a scoped causal rescue with feedback, not a
+general ecology improvement. All 61 OFF-build CTests, six focused ON-build
+suites, 65 default-build CTests, twenty fixed native calls and eight repeated
+native checkpoints verify.
+The subsequent [offline forecast audit](../benchmarks/garden-longevity/renewal-seed-forecast.md)
+is complete: at the observed tick-4,620 purchases the general gate approves
+the shrub (224 forecast / 187 actual sunset energy) and rejects the ground-cover
+(209 / 183). Both actually earn only seven further energy; the forecast credits
+44/33. Its half-current-income assumption misses the integer light cutoff;
+no additional spending, overflow or body change explains the error. The rescued
+shrub clears night but incurs stress 1 during dawn recovery, then recovers.
+Thirty-seven guaranteed zero-income payments cost the fixed bodies 259/296
+energy against a 256 cap, so uninterrupted energy sufficiency is not a suitable
+unexamined survival requirement. All 32 focused Python tests, frozen-source
+checks, saved-bundle verification and exact repeated analysis pass; zero new
+native calls. This motivated the
+[fixed phase-aware shadow predictor](../benchmarks/garden-longevity/renewal-phase-forecast.md),
+now evaluated on all 112 saved purchases with no fitted parameters. Sunset mean
+absolute error improves from 28.66 to 15.62 over 101 paired checkpoints; on the
+27 still-assumption-valid sunsets it improves from 16.70 to 3.30. It predicts the
+two known late-purchase death ticks exactly. However, 103 windows have subsequent
+optional spending, 27 have body/mature-leaf changes, and unchanged-body prefixes
+still include a 148-energy morning overestimate. Twenty supported death-labelled
+windows yield two predicted and eighteen missed deaths; they overlap across
+parents and all misses have a prior assumption break. No fully observed,
+assumption-valid survivor controls remain, so the clean subset does not validate
+a survival classifier. Two zero-light anchors are unsupported and nine windows
+right-censored. All 53 focused tests and repeated, hash-verified offline analysis
+pass; no new native calls or rule changes. The subsequent
+[exact dark-budget audit](../benchmarks/garden-longevity/renewal-dark-budget.md)
+covers 170 of 1,525 spending steps plus 68 systematic evening states. All 66
+complete assumption-valid outcomes and every valid-prefix energy/stress sample
+match exactly; 15 clean evening intervals incur shortages but remain alive at
+the boundary. Seven growth and two seed expense records turn local budgets from
+alive to fatal, with shared/repeated events explicitly retained. Five of those
+growth records cross an upkeep tier. Most other spending lies outside the
+immediately guaranteed-dark interval, and later spending/upkeep/water changes
+still invalidate one-time projections. All 87 focused tests, frozen-source
+checks and repeated offline export pass; zero new native calls. Next discuss a
+host-only/off-by-default guard across optional expenses in this interval, without
+claiming morning survival or causal rescues from local arithmetic. No permanent
+quota, broader gate, new training or default change was adopted.
 The 16-bit moisture summary
 intentionally saturates, so use actual cell totals. Separately, fix and test the
 unsaturated living-plant age counter before
@@ -400,11 +969,13 @@ at each event, without retargeting empty hits or assisting recovery. Discuss
 these findings before adopting permanent ecology or expanding the neural contract.
 No default rule, firmware
 capacity change, training run or qualification milestone follows automatically.
-Prior tools/experiments are checkpointed locally in `4f26187`; the node audit,
-capacity/tip audits, maintenance experiment, competition census, gap assay and
-recurring-disturbance experiment, longer-horizon diversity follow-up, water-budget
-audit, bottom-drainage A/B and focused policy/resource comparison are subsequent
-uncommitted work.
+Prior tools/experiments through exact recruitment recovery are checkpointed
+locally in `a1c419f`, and founder independence in `bbb6307`. The new host-only
+bounded-renewal selector, fixed A/B, independent replication, frozen-model transfer,
+8/16-world coverage comparison, frozen-finalist return check, offline cohort
+audit, startup diagnostic, reciprocal swap, single-neighbor follow-up, fourth-seed veto,
+offline seed-forecast audit, phase-aware shadow forecast and
+corresponding notes are the subsequent uncommitted work.
 
 ## Goal and order
 
@@ -442,10 +1013,12 @@ Available building blocks:
   player for existing scenes;
 - serial evolutionary search and portable, CRC-protected final-model artifacts.
 
-The [experiment workflow](garden-experiments.md) collects evidence; it does
-not train. The trainer currently saves only the final model, with per-generation
-fitness and fingerprints in its report. The normal scene player/image runner
-does not yet load an arbitrary saved model under the exact evaluation setup.
+The general [experiment workflow](garden-experiments.md) collects evidence;
+separate bounded pilot runners perform training and preserve every generation's
+model and screenshots. The original general trainer still saves only the final
+model, with per-generation fitness and fingerprints in its report. The normal
+scene player/image runner does not yet load an arbitrary saved model under the
+exact evaluation setup.
 The dedicated [visual-review tool](garden-visual-review.md) now supports exact
 saved-model headless replay and timeline-verified screenshot galleries.
 

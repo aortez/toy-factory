@@ -87,7 +87,7 @@ class SearchTests(unittest.TestCase):
             root = Path(temp)
             (root / "input").mkdir()
             (root / "input/initial.tgm").write_text("initial")
-            with patch.object(mixed, "evaluate", side_effect=lambda *args: copy.deepcopy(a)), \
+            with patch.object(mixed, "evaluate", side_effect=lambda *args, **kwargs: copy.deepcopy(a)), \
                  patch.object(mixed.pilot, "run_json", side_effect=mutate), \
                  patch.object(mixed.pilot, "model_crc", side_effect=lambda p: p.read_text()):
                 captured = mixed.search(root, root / "search", [], lambda g, c: seen.append((g, c)), study=study)

@@ -83,6 +83,7 @@ static void test_selection_and_failures(void)
 	const uint16_t exported_water = world.plants[0].stored_water;
 	assert(toy_factory_garden_gap_apply(&world, &result) == 0);
 	assert(result.lineage_id == 1U && result.nodes == 4U && result.column == 4U);
+	assert(!result.named);
 	assert(result.before_hash == before_hash);
 	assert(result.after_hash == picosystem_garden_world_hash(&world));
 	assert(result.energy == exported_energy && result.water == exported_water);
@@ -148,10 +149,68 @@ static void test_selection_and_failures(void)
 		       &world, picosystem_garden_agent_baseline_policy()) == 0);
 }
 
+static void test_named_selection_and_failures(void)
+{
+	for (uint32_t identity = 1U; identity <= 3U; ++identity) {
+		struct picosystem_garden_world world;
+		setup(&world);
+		const struct picosystem_garden_world before = world;
+		struct picosystem_garden_world expected = world;
+		struct toy_factory_garden_gap result = {0};
+		assert(picosystem_garden_world_experimental_clear(&expected, identity) == 0);
+		assert(toy_factory_garden_gap_apply_named(&world, identity, &result) == 0);
+		assert(result.named && result.lineage_id == identity && result.nodes == 4U);
+		assert(result.before_hash == picosystem_garden_world_hash(&before));
+		assert(result.after_hash == picosystem_garden_world_hash(&expected));
+		assert(memcmp(&world, &expected, sizeof(world)) == 0);
+		assert(toy_factory_garden_gap_apply_named(&world, identity, &result) == -ENOENT);
+		assert(memcmp(&world, &expected, sizeof(world)) == 0);
+	}
+	for (int failure = 0; failure < 9; ++failure) {
+		struct picosystem_garden_world world;
+		setup(&world);
+		uint32_t identity = 2U;
+		if (failure == 0) {
+			identity = 0U;
+		} else if (failure == 1) {
+			identity = UINT32_MAX;
+		} else if (failure == 2) {
+			world.plants[1].age_ecology_ticks = 255U;
+		} else if (failure == 3) {
+			world.plants[1].flags |= PICOSYSTEM_GARDEN_PLANT_DEAD;
+		} else if (failure == 4) {
+			++world.logic_tick_count;
+		} else if (failure == 5) {
+			world.node_count = PICOSYSTEM_GARDEN_MAX_NODES + 1U;
+		} else if (failure == 6) {
+			++world.plants[1].node_count;
+		} else if (failure == 7) {
+			world.random_state = 0U;
+		} else {
+			world.plant_count = PICOSYSTEM_GARDEN_MAX_PLANTS + 1U;
+		}
+		const struct picosystem_garden_world before = world;
+		struct toy_factory_garden_gap result = {.lineage_id = 42U, .named = true};
+		const struct toy_factory_garden_gap old_result = result;
+		assert(toy_factory_garden_gap_apply_named(&world, identity, &result) < 0);
+		assert(memcmp(&world, &before, sizeof(world)) == 0);
+		assert(memcmp(&result, &old_result, sizeof(result)) == 0);
+	}
+	struct picosystem_garden_world world;
+	setup(&world);
+	const struct picosystem_garden_world before = world;
+	struct toy_factory_garden_gap result = {0};
+	assert(toy_factory_garden_gap_apply_named(NULL, 1U, &result) == -EINVAL);
+	assert(toy_factory_garden_gap_apply_named(&world, 1U, NULL) == -EINVAL);
+	assert(memcmp(&world, &before, sizeof(world)) == 0);
+	assert(toy_factory_garden_gap_print(NULL) == -EINVAL);
+}
+
 int main(void)
 {
 	test_remap();
 	test_selection_and_failures();
+	test_named_selection_and_failures();
 	puts("Gap selection/export tests passed");
 	return 0;
 }

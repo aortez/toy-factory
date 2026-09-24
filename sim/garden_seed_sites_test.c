@@ -116,7 +116,7 @@ int main(void)
 		check_query(&world);
 	}
 	assert(picosystem_garden_world_reset(&world, 123U) == 0);
-	for (uint8_t index = 0U; index < PICOSYSTEM_GARDEN_MAX_PLANTS; ++index) {
+	for (uint8_t index = 0U; index < PICOSYSTEM_GARDEN_DEFAULT_PLANTS; ++index) {
 		assert(picosystem_garden_world_plant_seed(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER,
 							  (uint8_t)(index * 3U)) == 0);
 		assert(picosystem_garden_world_seed_sites(&world, &sites) == 0);

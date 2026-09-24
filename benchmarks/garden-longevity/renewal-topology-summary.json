@@ -1,0 +1,508 @@
+{
+  "checkpoints": [
+    {
+      "candidate_node_headroom": {
+        "day_eligible": 492,
+        "eligible": 492
+      },
+      "candidates": [],
+      "counts": {
+        "base": 0,
+        "branch_pending": 0,
+        "day_eligible": 0,
+        "day_zero": 0,
+        "eligible": 0,
+        "flower": 0,
+        "internal": 0,
+        "previous_tip": 0,
+        "root": 0,
+        "terminal_zero": 0,
+        "tip": 0,
+        "unprotected_terminal_positive": 0,
+        "zero": 0
+      },
+      "free_nodes": 492,
+      "hash": "e663996c",
+      "nodes": 20,
+      "overlapping_reason_sets": {},
+      "per_owner": {
+        "1": {},
+        "2": {},
+        "3": {},
+        "4": {},
+        "5": {}
+      },
+      "tick": 0,
+      "upkeep_price_reduction_upper": {
+        "day_eligible": {
+          "energy": 0,
+          "water": 0
+        },
+        "eligible": {
+          "energy": 0,
+          "water": 0
+        }
+      }
+    },
+    {
+      "candidate_node_headroom": {
+        "day_eligible": 234,
+        "eligible": 234
+      },
+      "candidates": [],
+      "counts": {
+        "base": 0,
+        "branch_pending": 2,
+        "day_eligible": 0,
+        "day_zero": 33,
+        "eligible": 0,
+        "flower": 0,
+        "internal": 42,
+        "previous_tip": 0,
+        "root": 0,
+        "terminal_zero": 0,
+        "tip": 0,
+        "unprotected_terminal_positive": 1,
+        "zero": 42
+      },
+      "free_nodes": 234,
+      "hash": "602dc6e6",
+      "nodes": 278,
+      "overlapping_reason_sets": {
+        "internal": 40,
+        "internal+branch_pending": 2
+      },
+      "per_owner": {
+        "2": {},
+        "4": {},
+        "5": {},
+        "6": {},
+        "7": {},
+        "9": {}
+      },
+      "tick": 46095,
+      "upkeep_price_reduction_upper": {
+        "day_eligible": {
+          "energy": 0,
+          "water": 0
+        },
+        "eligible": {
+          "energy": 0,
+          "water": 0
+        }
+      }
+    },
+    {
+      "candidate_node_headroom": {
+        "day_eligible": 134,
+        "eligible": 134
+      },
+      "candidates": [
+        {
+          "day_zero": 1,
+          "id": 7,
+          "leaf_ordinal": 45,
+          "node": 262,
+          "parent": 256,
+          "x": 18,
+          "y": 88,
+          "zero_since": 50400
+        }
+      ],
+      "counts": {
+        "base": 0,
+        "branch_pending": 4,
+        "day_eligible": 1,
+        "day_zero": 82,
+        "eligible": 1,
+        "flower": 1,
+        "internal": 85,
+        "previous_tip": 0,
+        "root": 0,
+        "terminal_zero": 1,
+        "tip": 0,
+        "unprotected_terminal_positive": 0,
+        "zero": 86
+      },
+      "free_nodes": 133,
+      "hash": "1337b3a7",
+      "nodes": 379,
+      "overlapping_reason_sets": {
+        "eligible": 1,
+        "internal": 81,
+        "internal+branch_pending": 3,
+        "internal+branch_pending+flower": 1
+      },
+      "per_owner": {
+        "12": {},
+        "2": {},
+        "4": {},
+        "5": {},
+        "6": {},
+        "7": {
+          "day_eligible": 1,
+          "eligible": 1
+        },
+        "9": {}
+      },
+      "tick": 69120,
+      "upkeep_price_reduction_upper": {
+        "day_eligible": {
+          "energy": 0,
+          "water": 1
+        },
+        "eligible": {
+          "energy": 0,
+          "water": 1
+        }
+      }
+    },
+    {
+      "candidate_node_headroom": {
+        "day_eligible": 99,
+        "eligible": 99
+      },
+      "candidates": [
+        {
+          "day_zero": 1,
+          "id": 7,
+          "leaf_ordinal": 45,
+          "node": 262,
+          "parent": 256,
+          "x": 18,
+          "y": 88,
+          "zero_since": 50400
+        }
+      ],
+      "counts": {
+        "base": 0,
+        "branch_pending": 3,
+        "day_eligible": 1,
+        "day_zero": 69,
+        "eligible": 1,
+        "flower": 1,
+        "internal": 69,
+        "previous_tip": 0,
+        "root": 0,
+        "terminal_zero": 1,
+        "tip": 0,
+        "unprotected_terminal_positive": 0,
+        "zero": 70
+      },
+      "free_nodes": 98,
+      "hash": "d7714f6b",
+      "nodes": 414,
+      "overlapping_reason_sets": {
+        "eligible": 1,
+        "internal": 66,
+        "internal+branch_pending": 2,
+        "internal+branch_pending+flower": 1
+      },
+      "per_owner": {
+        "12": {},
+        "13": {},
+        "14": {},
+        "2": {},
+        "4": {},
+        "5": {},
+        "6": {},
+        "7": {
+          "day_eligible": 1,
+          "eligible": 1
+        },
+        "9": {}
+      },
+      "tick": 72960,
+      "upkeep_price_reduction_upper": {
+        "day_eligible": {
+          "energy": 0,
+          "water": 1
+        },
+        "eligible": {
+          "energy": 0,
+          "water": 1
+        }
+      }
+    },
+    {
+      "candidate_node_headroom": {
+        "day_eligible": 1,
+        "eligible": 1
+      },
+      "candidates": [
+        {
+          "day_zero": 1,
+          "id": 7,
+          "leaf_ordinal": 45,
+          "node": 262,
+          "parent": 256,
+          "x": 18,
+          "y": 88,
+          "zero_since": 50400
+        }
+      ],
+      "counts": {
+        "base": 0,
+        "branch_pending": 4,
+        "day_eligible": 1,
+        "day_zero": 67,
+        "eligible": 1,
+        "flower": 2,
+        "internal": 84,
+        "previous_tip": 0,
+        "root": 0,
+        "terminal_zero": 2,
+        "tip": 0,
+        "unprotected_terminal_positive": 0,
+        "zero": 86
+      },
+      "free_nodes": 0,
+      "hash": "4c2e1f0b",
+      "nodes": 512,
+      "overlapping_reason_sets": {
+        "eligible": 1,
+        "flower": 1,
+        "internal": 80,
+        "internal+branch_pending": 3,
+        "internal+branch_pending+flower": 1
+      },
+      "per_owner": {
+        "12": {},
+        "13": {},
+        "14": {},
+        "15": {},
+        "2": {},
+        "4": {},
+        "5": {},
+        "6": {},
+        "7": {
+          "day_eligible": 1,
+          "eligible": 1
+        },
+        "9": {}
+      },
+      "tick": 80940,
+      "upkeep_price_reduction_upper": {
+        "day_eligible": {
+          "energy": 0,
+          "water": 1
+        },
+        "eligible": {
+          "energy": 0,
+          "water": 1
+        }
+      }
+    },
+    {
+      "candidate_node_headroom": {
+        "day_eligible": 1,
+        "eligible": 1
+      },
+      "candidates": [
+        {
+          "day_zero": 1,
+          "id": 7,
+          "leaf_ordinal": 45,
+          "node": 262,
+          "parent": 256,
+          "x": 18,
+          "y": 88,
+          "zero_since": 50400
+        }
+      ],
+      "counts": {
+        "base": 0,
+        "branch_pending": 8,
+        "day_eligible": 1,
+        "day_zero": 146,
+        "eligible": 1,
+        "flower": 8,
+        "internal": 155,
+        "previous_tip": 2,
+        "root": 0,
+        "terminal_zero": 11,
+        "tip": 0,
+        "unprotected_terminal_positive": 0,
+        "zero": 166
+      },
+      "free_nodes": 0,
+      "hash": "dc584286",
+      "nodes": 512,
+      "overlapping_reason_sets": {
+        "eligible": 1,
+        "flower": 8,
+        "internal": 147,
+        "internal+branch_pending": 8,
+        "previous_tip": 2
+      },
+      "per_owner": {
+        "12": {},
+        "13": {},
+        "14": {},
+        "15": {},
+        "2": {},
+        "4": {},
+        "5": {},
+        "6": {},
+        "7": {
+          "day_eligible": 1,
+          "eligible": 1
+        },
+        "9": {}
+      },
+      "tick": 111000,
+      "upkeep_price_reduction_upper": {
+        "day_eligible": {
+          "energy": 0,
+          "water": 1
+        },
+        "eligible": {
+          "energy": 0,
+          "water": 1
+        }
+      }
+    },
+    {
+      "candidate_node_headroom": {
+        "day_eligible": 0,
+        "eligible": 0
+      },
+      "candidates": [],
+      "counts": {
+        "base": 0,
+        "branch_pending": 5,
+        "day_eligible": 0,
+        "day_zero": 138,
+        "eligible": 0,
+        "flower": 1,
+        "internal": 143,
+        "previous_tip": 1,
+        "root": 0,
+        "terminal_zero": 2,
+        "tip": 0,
+        "unprotected_terminal_positive": 0,
+        "zero": 145
+      },
+      "free_nodes": 0,
+      "hash": "c8f5ea9c",
+      "nodes": 512,
+      "overlapping_reason_sets": {
+        "flower": 1,
+        "internal": 138,
+        "internal+branch_pending": 5,
+        "previous_tip": 1
+      },
+      "per_owner": {
+        "12": {},
+        "13": {},
+        "14": {},
+        "17": {},
+        "19": {},
+        "2": {},
+        "20": {},
+        "4": {},
+        "5": {},
+        "6": {},
+        "9": {}
+      },
+      "tick": 184320,
+      "upkeep_price_reduction_upper": {
+        "day_eligible": {
+          "energy": 0,
+          "water": 0
+        },
+        "eligible": {
+          "energy": 0,
+          "water": 0
+        }
+      }
+    },
+    {
+      "candidate_node_headroom": {
+        "day_eligible": 0,
+        "eligible": 1
+      },
+      "candidates": [
+        {
+          "day_zero": 0,
+          "id": 39,
+          "leaf_ordinal": 19,
+          "node": 497,
+          "parent": 470,
+          "x": 72,
+          "y": 101,
+          "zero_since": 245160
+        }
+      ],
+      "counts": {
+        "base": 0,
+        "branch_pending": 7,
+        "day_eligible": 0,
+        "day_zero": 110,
+        "eligible": 1,
+        "flower": 4,
+        "internal": 136,
+        "previous_tip": 4,
+        "root": 0,
+        "terminal_zero": 10,
+        "tip": 4,
+        "unprotected_terminal_positive": 0,
+        "zero": 146
+      },
+      "free_nodes": 0,
+      "hash": "ac633abd",
+      "nodes": 512,
+      "overlapping_reason_sets": {
+        "eligible": 1,
+        "flower": 3,
+        "flower+previous_tip": 1,
+        "internal": 128,
+        "internal+branch_pending": 7,
+        "internal+previous_tip": 1,
+        "previous_tip": 1,
+        "tip": 3,
+        "tip+previous_tip": 1
+      },
+      "per_owner": {
+        "13": {},
+        "25": {},
+        "26": {},
+        "27": {},
+        "30": {},
+        "34": {},
+        "35": {},
+        "36": {},
+        "38": {},
+        "39": {
+          "day_eligible": 0,
+          "eligible": 1
+        },
+        "5": {}
+      },
+      "tick": 245760,
+      "upkeep_price_reduction_upper": {
+        "day_eligible": {
+          "energy": 0,
+          "water": 0
+        },
+        "eligible": {
+          "energy": 0,
+          "water": 0
+        }
+      }
+    }
+  ],
+  "limits": [
+    "One historical selected world, not generalized ecology qualification.",
+    "Structural eligibility does not establish biological benefit or safe policy choice.",
+    "No pruning, recursive stem contraction, role removal or extra capacity.",
+    "Price/headroom bounds are not actual resource savings or rescued seedlings.",
+    "Zero duration is an observed census interval, not a shedding threshold."
+  ],
+  "manifest_sha256": "9ea83b5cc45d436b232bbb68fe73cec286cbfb5020a7a7732ba9684d4ef9e5c7",
+  "native_calls": 3,
+  "parent_manifest_sha256": "c35c3ab8ec8479312e6bf2b14a9a78867a536b72693a5ce492cc6d64bd03a97a",
+  "rule": "garden-renewal-topology-v1",
+  "shedding_audit_sha256": "59f1d44ff4b9870b8911337b3fc552ad2f254cde404e9475a418e3e6eb58cdc0",
+  "unchanged_original_records": 194270
+}

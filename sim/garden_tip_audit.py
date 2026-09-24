@@ -36,7 +36,7 @@ def analyze(path, end, late_start, capacity):
         return analyze_stream(stream, end, late_start, capacity)
 
 
-def analyze_stream(stream, end, late_start, capacity):
+def analyze_stream(stream, end, late_start, capacity, *, disturbances=None):
     require(capacity in (256, 512) and 0 <= late_start < end and end % 15 == 0,
             "invalid tip audit horizon/capacity")
     prior, records, pending = {}, {}, {}
@@ -44,6 +44,8 @@ def analyze_stream(stream, end, late_start, capacity):
     events = []
     windows = {name: Counter() for name in ("whole", "late")}
     totals = Counter()
+    disturbances = {} if disturbances is None else disturbances
+    seen_disturbances = set()
     for line in stream:
         row = json.loads(line)
         tick = row["tick"]
@@ -141,8 +143,18 @@ def analyze_stream(stream, end, late_start, capacity):
         require(not pending, "bid without a plant in post-step world")
         for identity in prior.keys()-current.keys():
             require(prior[identity]["dead"], "living plant disappeared")
+        if tick in disturbances:
+            from garden_disturbance import validate_boundary
+            boundary = disturbances[tick]
+            require(boundary["before"] == row, "tip boundary differs from ordinary census")
+            validate_boundary(row, boundary["after"], boundary["event"])
+            for identity in boundary["event"]["killed"]:
+                totals["death_tips"] += current[identity]["tips"]
+                records[identity]["death_tick"] = tick
+            current = {p["id"]: p for p in boundary["after"]["plants"]}
+            seen_disturbances.add(tick)
         prior, last_tick = current, tick
-    require(last_tick == end and not pending, "truncated tip census")
+    require(last_tick == end and not pending and seen_disturbances == disturbances.keys(), "truncated tip census")
     totals["final_tips"] = sum(p["tips"] for p in prior.values())
     require(totals["initial_tips"] + totals["newborn_tips"] + totals["branch_tips"]
             - totals["terminated_tips"] - totals["death_tips"] == totals["final_tips"], "tip ledger mismatch")

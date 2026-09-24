@@ -53,7 +53,8 @@ static void production_step(uint16_t count)
 	};
 	assert(picosystem_garden_world_step_with_policy(&world, &policy) == 0);
 	bool allowed = true;
-#if defined(TOY_FACTORY_GARDEN_SEED_RESERVE)
+#if defined(TOY_FACTORY_GARDEN_SEED_RESERVE) || defined(TOY_FACTORY_GARDEN_DARK_GUARD)
+	/* Both reserve policies reject the larger body's late-day seed purchase. */
 	allowed = count == 4U;
 #endif
 	assert(world.seed_creation_count == (allowed ? 1U : 0U));

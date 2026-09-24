@@ -57,6 +57,18 @@ static void test_action(void)
 	expected.plants[0].leaf_telemetry.restored = 155U;
 	expected.leaf_telemetry = expected.plants[0].leaf_telemetry;
 	assert(picosystem_garden_leaf_renew(&world, 0U, 1U) == 0);
+#if defined(TOY_FACTORY_GARDEN_DARK_GUARD)
+	/* Successful daytime renewal records a receipt without changing the purchase. */
+	assert(world.dark_guard.count == 1U && !world.dark_guard.overflow);
+	assert(world.dark_guard.evaluated[PICOSYSTEM_GARDEN_EXPENSE_RENEWAL] == 1U);
+	assert(world.dark_guard.denied[PICOSYSTEM_GARDEN_EXPENSE_RENEWAL] == 0U);
+	const struct picosystem_garden_dark_event *event = &world.dark_guard.events[0];
+	assert(event->kind == PICOSYSTEM_GARDEN_EXPENSE_RENEWAL && event->node_index == 1U);
+	assert(!event->denied && !event->invalid);
+	assert(event->energy == 9U && event->water == 5U);
+	assert(event->energy_cost == 9U && event->water_cost == 5U);
+	expected.dark_guard = world.dark_guard;
+#endif
 	assert(memcmp(&world, &expected, sizeof(world)) == 0);
 	assert(picosystem_garden_leaf_renew(&world, 0U, 1U) == -EALREADY);
 	assert(memcmp(&world, &expected, sizeof(world)) == 0);

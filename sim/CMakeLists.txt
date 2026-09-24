@@ -14,6 +14,57 @@ option(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE "Host-only mature leaf wear and paid 
 option(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE "Host-only bounded bottom-drainage comparison" OFF)
 option(TOY_FACTORY_GARDEN_LARGE_SEED_BANK "Host-only 16-seed bank comparison" OFF)
 option(TOY_FACTORY_GARDEN_SEED_RESERVE "Host-only sunset-aware seed energy check" OFF)
+option(TOY_FACTORY_GARDEN_FOCAL_SEED_VETO "Diagnostic: founder 2 second-daylight three-seed ceiling" OFF)
+option(TOY_FACTORY_GARDEN_DARK_GUARD "Host-only exact dark-interval spending guard" OFF)
+option(TOY_FACTORY_GARDEN_PURCHASE_VETO "Host-only fixed purchase counterfactuals" OFF)
+option(TOY_FACTORY_GARDEN_NIGHT_CAPACITY "Host-only full-night structural growth guard" OFF)
+option(TOY_FACTORY_GARDEN_WET_GERMINATION "Host-only opt-in germination without immediate light" OFF)
+option(TOY_FACTORY_GARDEN_DAWN_FINISH "Host-only fixed seedling FINISH deferral through dawn" OFF)
+option(TOY_FACTORY_GARDEN_SEED_ORDER "Host-only post-noon seed-purchase rotation" OFF)
+option(TOY_FACTORY_GARDEN_SEED_SPACING "Host-only post-noon two-column establishment trial" OFF)
+option(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION "Host-only post-noon fractional canopy transmission" OFF)
+option(TOY_FACTORY_GARDEN_PLANT_SLOTS "Host-only post-noon sixteen-plant admission trial" OFF)
+option(TOY_FACTORY_GARDEN_FULL_POOL "Host-only non-allocating actions at full node capacity" OFF)
+if(TOY_FACTORY_GARDEN_FULL_POOL AND NOT TOY_FACTORY_GARDEN_PLANT_SLOTS)
+	message(FATAL_ERROR "Full-pool actions require the host-only plant-slot experiment")
+endif()
+if(TOY_FACTORY_GARDEN_PLANT_SLOTS AND NOT TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+	message(FATAL_ERROR "Plant slots require the host-only fractional canopy experiment")
+endif()
+if(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION AND NOT TOY_FACTORY_GARDEN_SEED_SPACING)
+	message(FATAL_ERROR "Canopy transmission requires the host-only spacing experiment")
+endif()
+if(TOY_FACTORY_GARDEN_SEED_SPACING AND NOT TOY_FACTORY_GARDEN_SEED_ORDER)
+	message(FATAL_ERROR "Seed spacing requires the host-only rotating-order experiment")
+endif()
+if(TOY_FACTORY_GARDEN_SEED_ORDER AND NOT TOY_FACTORY_GARDEN_DAWN_FINISH)
+	message(FATAL_ERROR "Seed order requires the host-only reserve-handoff experiment")
+endif()
+if(TOY_FACTORY_GARDEN_DAWN_FINISH AND NOT TOY_FACTORY_GARDEN_WET_GERMINATION)
+	message(FATAL_ERROR "Dawn FINISH requires the host-only wet-germination experiment")
+endif()
+if(TOY_FACTORY_GARDEN_WET_GERMINATION AND NOT TOY_FACTORY_GARDEN_NIGHT_CAPACITY)
+	message(FATAL_ERROR "Wet germination requires the host-only night-capacity experiment")
+endif()
+if(TOY_FACTORY_GARDEN_NIGHT_CAPACITY AND
+	(NOT TOY_FACTORY_GARDEN_DARK_GUARD OR TOY_FACTORY_GARDEN_PURCHASE_VETO))
+	message(FATAL_ERROR "Night capacity requires the ordinary dark guard without purchase vetoes")
+endif()
+if(TOY_FACTORY_GARDEN_PURCHASE_VETO AND NOT TOY_FACTORY_GARDEN_DARK_GUARD)
+	message(FATAL_ERROR "Purchase veto requires the unchanged host dark guard")
+endif()
+if(TOY_FACTORY_GARDEN_DARK_GUARD AND
+	(NOT TOY_FACTORY_GARDEN_LEAF_MAINTENANCE OR NOT TOY_FACTORY_GARDEN_LARGE_POOL OR
+	 TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE OR TOY_FACTORY_GARDEN_LARGE_SEED_BANK OR
+	 TOY_FACTORY_GARDEN_SEED_RESERVE OR TOY_FACTORY_GARDEN_FOCAL_SEED_VETO))
+	message(FATAL_ERROR "Dark guard requires the ordinary undrained eight-seed host maintenance experiment")
+endif()
+if(TOY_FACTORY_GARDEN_FOCAL_SEED_VETO AND
+	(NOT TOY_FACTORY_GARDEN_LEAF_MAINTENANCE OR NOT TOY_FACTORY_GARDEN_LARGE_POOL OR
+	 TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE OR TOY_FACTORY_GARDEN_LARGE_SEED_BANK OR
+	 TOY_FACTORY_GARDEN_SEED_RESERVE))
+	message(FATAL_ERROR "Focal seed veto requires the ordinary undrained eight-seed host maintenance experiment")
+endif()
 if(TOY_FACTORY_GARDEN_SEED_RESERVE AND
 	(NOT TOY_FACTORY_GARDEN_LEAF_MAINTENANCE OR NOT TOY_FACTORY_GARDEN_LARGE_POOL OR
 	 TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE))
@@ -70,17 +121,70 @@ set(toy_factory_sources
 	garden_policy_probe.c
 	garden_reserve_policy.c
 	garden_root_bootstrap.c
+	garden_focal_policy.c
 	simulator.c
 )
 
 add_library(toy_factory_simulator_core STATIC ${toy_factory_sources})
+if(TOY_FACTORY_GARDEN_FULL_POOL)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_FULL_POOL=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_full_pool.c)
+	set_source_files_properties(garden_full_pool.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
+endif()
+if(TOY_FACTORY_GARDEN_PLANT_SLOTS)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_PLANT_SLOTS=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_plant_slots.c)
+	set_source_files_properties(garden_plant_slots.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
+endif()
+if(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_canopy_transmission.c)
+	set_source_files_properties(garden_canopy_transmission.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
+endif()
+if(TOY_FACTORY_GARDEN_SEED_SPACING)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_SEED_SPACING=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_seed_spacing.c)
+	set_source_files_properties(garden_seed_spacing.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
+endif()
+if(TOY_FACTORY_GARDEN_SEED_ORDER)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_SEED_ORDER=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_seed_order.c)
+	set_source_files_properties(garden_seed_order.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
+endif()
+if(TOY_FACTORY_GARDEN_DAWN_FINISH)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_DAWN_FINISH=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_dawn_finish.c)
+	set_source_files_properties(garden_dawn_finish.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
+endif()
+if(TOY_FACTORY_GARDEN_WET_GERMINATION)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_WET_GERMINATION=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_wet_germination.c)
+endif()
+if(TOY_FACTORY_GARDEN_NIGHT_CAPACITY)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_NIGHT_CAPACITY=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_night_capacity.c)
+	set_source_files_properties(garden_night_capacity.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
+endif()
+if(TOY_FACTORY_GARDEN_PURCHASE_VETO)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_PURCHASE_VETO=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_purchase_veto.c)
+	set_source_files_properties(garden_purchase_veto.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
+endif()
+if(TOY_FACTORY_GARDEN_DARK_GUARD)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_DARK_GUARD=1)
+	target_sources(toy_factory_simulator_core PRIVATE garden_dark_guard.c)
+	set_source_files_properties(garden_dark_guard.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
+endif()
+if(TOY_FACTORY_GARDEN_FOCAL_SEED_VETO)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_FOCAL_SEED_VETO=1)
+endif()
 if(TOY_FACTORY_GARDEN_SEED_RESERVE)
 	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_SEED_RESERVE=1)
 endif()
 if(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
 	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_LARGE_SEED_BANK=1)
 endif()
-set_source_files_properties(garden_reserve_policy.c garden_root_bootstrap.c garden_model_mutation.c PROPERTIES
+set_source_files_properties(garden_reserve_policy.c garden_root_bootstrap.c garden_focal_policy.c garden_model_mutation.c PROPERTIES
 	COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
 if(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
 	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE=1)
@@ -143,7 +247,7 @@ target_compile_options(toy-factory-garden-train PRIVATE
 	-Wsign-conversion
 )
 
-add_executable(toy-factory-garden-inspect garden_inspect.c)
+add_executable(toy-factory-garden-inspect garden_inspect.c garden_topology.c)
 target_link_libraries(toy-factory-garden-inspect PRIVATE toy_factory_simulator_core)
 target_compile_options(toy-factory-garden-inspect PRIVATE
 	-Wall -Wextra -Werror -Wconversion -Wsign-conversion
@@ -213,6 +317,7 @@ target_compile_options(toy-factory-garden-neural-test PRIVATE
 	-Werror
 	-Wconversion
 	-Wsign-conversion
+	-UNDEBUG
 )
 
 if(TOY_FACTORY_SIMULATOR_PROFILING)
@@ -377,6 +482,105 @@ if(TOY_FACTORY_SIMULATOR_PLAYER)
 endif()
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_executable(toy-factory-garden-topology-test garden_topology_test.c garden_topology.c)
+target_link_libraries(toy-factory-garden-topology-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-topology-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(toy-factory-garden-topology-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	target_link_options(toy-factory-garden-topology-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+endif()
+add_test(NAME garden-topology-native COMMAND toy-factory-garden-topology-test)
+add_test(NAME garden-renewal-topology-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_topology.py --build ${CMAKE_BINARY_DIR})
+if(TOY_FACTORY_GARDEN_FULL_POOL)
+	add_executable(toy-factory-garden-full-pool-test garden_full_pool_test.c)
+	target_link_libraries(toy-factory-garden-full-pool-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-full-pool-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	add_test(NAME garden-full-pool-native COMMAND toy-factory-garden-full-pool-test)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-full-pool-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-full-pool-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+endif()
+if(TOY_FACTORY_GARDEN_PLANT_SLOTS)
+	add_executable(toy-factory-garden-plant-slots-test garden_plant_slots_test.c)
+	target_link_libraries(toy-factory-garden-plant-slots-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-plant-slots-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	add_test(NAME garden-plant-slots-native COMMAND toy-factory-garden-plant-slots-test)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-plant-slots-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-plant-slots-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+endif()
+if(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+	add_executable(toy-factory-garden-canopy-transmission-test garden_canopy_transmission_test.c)
+	target_link_libraries(toy-factory-garden-canopy-transmission-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-canopy-transmission-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	add_test(NAME garden-canopy-transmission-native COMMAND toy-factory-garden-canopy-transmission-test)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-canopy-transmission-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-canopy-transmission-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+endif()
+if(TOY_FACTORY_GARDEN_SEED_SPACING)
+	add_executable(toy-factory-garden-seed-spacing-test garden_seed_spacing_test.c)
+	target_link_libraries(toy-factory-garden-seed-spacing-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-seed-spacing-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	add_test(NAME garden-seed-spacing-native COMMAND toy-factory-garden-seed-spacing-test)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-seed-spacing-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-seed-spacing-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+endif()
+if(TOY_FACTORY_GARDEN_SEED_ORDER)
+	add_executable(toy-factory-garden-seed-order-test garden_seed_order_test.c)
+	target_link_libraries(toy-factory-garden-seed-order-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-seed-order-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	add_test(NAME garden-seed-order-native COMMAND toy-factory-garden-seed-order-test)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-seed-order-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-seed-order-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+endif()
+if(TOY_FACTORY_GARDEN_DAWN_FINISH)
+	add_executable(toy-factory-garden-dawn-finish-test garden_dawn_finish_test.c)
+	target_link_libraries(toy-factory-garden-dawn-finish-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-dawn-finish-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	add_test(NAME garden-dawn-finish-native COMMAND toy-factory-garden-dawn-finish-test)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-dawn-finish-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-dawn-finish-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+endif()
+if(TOY_FACTORY_GARDEN_NIGHT_CAPACITY)
+	add_executable(toy-factory-garden-night-capacity-test garden_night_capacity_test.c)
+	target_link_libraries(toy-factory-garden-night-capacity-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-night-capacity-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	add_test(NAME garden-night-capacity-native COMMAND toy-factory-garden-night-capacity-test)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-night-capacity-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-night-capacity-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+endif()
+if(TOY_FACTORY_GARDEN_PURCHASE_VETO)
+	add_executable(toy-factory-garden-purchase-veto-test garden_purchase_veto_test.c)
+	target_link_libraries(toy-factory-garden-purchase-veto-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-purchase-veto-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	add_test(NAME garden-purchase-veto-native COMMAND toy-factory-garden-purchase-veto-test)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-purchase-veto-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-purchase-veto-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+endif()
 enable_testing()
 add_test(NAME garden-allocation-objectives-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_allocation_objectives.py)
@@ -404,6 +608,69 @@ add_test(NAME garden-recruitment-recovery-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_recruitment_recovery.py)
 add_test(NAME garden-founder-independence-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_founder_independence.py)
+add_test(NAME garden-renewal-training-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_training.py)
+add_test(NAME garden-renewal-replication-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_replication.py)
+add_test(NAME garden-renewal-transfer-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_transfer.py)
+add_test(NAME garden-renewal-coverage-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_coverage.py)
+add_test(NAME garden-renewal-return-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_return.py)
+add_test(NAME garden-renewal-cohorts-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_cohorts.py)
+add_test(NAME garden-renewal-startup-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_startup.py)
+add_test(NAME garden-renewal-swap-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_swap.py --build ${CMAKE_BINARY_DIR})
+add_test(NAME garden-renewal-neighbors-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_neighbors.py)
+add_test(NAME garden-renewal-seed-veto-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_seed_veto.py)
+add_test(NAME garden-renewal-seed-forecast-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_seed_forecast.py)
+add_test(NAME garden-renewal-phase-forecast-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_phase_forecast.py)
+add_test(NAME garden-renewal-dark-budget-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_dark_budget.py)
+if(TOY_FACTORY_GARDEN_DARK_GUARD)
+	add_test(NAME garden-renewal-dark-guard-unit COMMAND ${Python3_EXECUTABLE}
+		-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_dark_guard.py --build ${CMAKE_BINARY_DIR})
+else()
+	add_test(NAME garden-renewal-dark-guard-unit COMMAND ${Python3_EXECUTABLE}
+		-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_dark_guard.py)
+endif()
+add_test(NAME garden-renewal-dark-panel-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_dark_panel.py)
+add_test(NAME garden-renewal-dark-failures-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_dark_failures.py)
+add_test(NAME garden-renewal-recruitment-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_recruitment.py)
+add_test(NAME garden-renewal-rescued-seeds-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_rescued_seeds.py)
+add_test(NAME garden-renewal-controlled-gap-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_controlled_gap.py --build ${CMAKE_BINARY_DIR})
+add_test(NAME garden-renewal-night-capacity-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_night_capacity.py)
+if(TOY_FACTORY_GARDEN_NIGHT_CAPACITY)
+	add_test(NAME garden-renewal-capacity-guard-unit COMMAND ${Python3_EXECUTABLE}
+		-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_capacity_guard.py --build ${CMAKE_BINARY_DIR})
+else()
+	add_test(NAME garden-renewal-capacity-guard-unit COMMAND ${Python3_EXECUTABLE}
+		-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_capacity_guard.py)
+endif()
+if(TOY_FACTORY_GARDEN_PURCHASE_VETO)
+	add_test(NAME garden-renewal-purchase-veto-unit COMMAND ${Python3_EXECUTABLE}
+		-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_purchase_veto.py --build ${CMAKE_CURRENT_BINARY_DIR})
+	add_test(NAME garden-renewal-finish-retry-unit COMMAND ${Python3_EXECUTABLE}
+		-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_finish_retry.py --build ${CMAKE_CURRENT_BINARY_DIR})
+else()
+	add_test(NAME garden-renewal-purchase-veto-unit COMMAND ${Python3_EXECUTABLE}
+		-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_purchase_veto.py)
+	add_test(NAME garden-renewal-finish-retry-unit COMMAND ${Python3_EXECUTABLE}
+		-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_finish_retry.py)
+endif()
 add_executable(toy-factory-garden-model-mutate garden_model_mutate.c)
 add_executable(toy-factory-garden-persistence-check garden_persistence_check.c garden_persistence.c)
 set(persistence_targets toy-factory-garden-model-mutate toy-factory-garden-persistence-check)
@@ -452,6 +719,71 @@ if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 	target_link_options(toy-factory-garden-root-bootstrap-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
 endif()
 add_test(NAME garden-root-bootstrap-unit COMMAND toy-factory-garden-root-bootstrap-test)
+add_executable(toy-factory-garden-focal-policy-test garden_focal_policy_test.c)
+target_link_libraries(toy-factory-garden-focal-policy-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-focal-policy-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(toy-factory-garden-focal-policy-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	target_link_options(toy-factory-garden-focal-policy-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+endif()
+add_test(NAME garden-focal-policy-unit COMMAND toy-factory-garden-focal-policy-test)
+if(TOY_FACTORY_GARDEN_WET_GERMINATION)
+	add_executable(toy-factory-garden-wet-germination-test garden_wet_germination_test.c)
+	target_link_libraries(toy-factory-garden-wet-germination-test PRIVATE toy_factory_simulator_core)
+	target_compile_options(toy-factory-garden-wet-germination-test PRIVATE
+		-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+	if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+		target_compile_options(toy-factory-garden-wet-germination-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		target_link_options(toy-factory-garden-wet-germination-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	endif()
+	add_test(NAME garden-wet-germination-native COMMAND toy-factory-garden-wet-germination-test)
+endif()
+add_test(NAME garden-renewal-germination-trace-unit COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_germination_trace.py --build ${CMAKE_BINARY_DIR})
+add_test(NAME garden-renewal-wet-germination-unit COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_wet_germination.py --build ${CMAKE_BINARY_DIR}
+	--cc ${CMAKE_C_COMPILER})
+add_test(NAME garden-renewal-seedling-budget-unit COMMAND ${Python3_EXECUTABLE}
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_seedling_budget.py)
+add_test(NAME garden-renewal-dawn-finish-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_dawn_finish.py --build ${CMAKE_BINARY_DIR})
+add_test(NAME garden-renewal-dawn-reserve-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_dawn_reserve.py --build ${CMAKE_BINARY_DIR})
+add_test(NAME garden-renewal-reproduction-access-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_reproduction_access.py)
+add_test(NAME garden-renewal-seed-order-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_seed_order.py --build ${CMAKE_BINARY_DIR})
+add_test(NAME garden-renewal-seed-spacing-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_seed_spacing.py --build ${CMAKE_BINARY_DIR}
+	--cc ${CMAKE_C_COMPILER})
+add_test(NAME garden-renewal-establishment-light-unit
+	COMMAND ${Python3_EXECUTABLE} -W error
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_establishment_light.py)
+add_test(NAME garden-renewal-canopy-transmission-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_canopy_transmission.py
+	--build ${CMAKE_BINARY_DIR} --cc ${CMAKE_C_COMPILER})
+
+add_test(NAME garden-renewal-allocation-blockers-unit
+	COMMAND ${Python3_EXECUTABLE} -W error
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_allocation_blockers.py)
+
+add_test(NAME garden-renewal-plant-slots-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_plant_slots.py
+	--build ${CMAKE_BINARY_DIR} --cc ${CMAKE_C_COMPILER})
+
+add_test(NAME garden-renewal-node-pressure-unit
+	COMMAND ${Python3_EXECUTABLE} -W error
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_node_pressure.py)
+
+add_test(NAME garden-renewal-full-pool-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_full_pool.py
+	--build ${CMAKE_BINARY_DIR} --cc ${CMAKE_C_COMPILER})
+
+add_test(NAME garden-renewal-shedding-audit-unit
+	COMMAND ${Python3_EXECUTABLE} -W error
+		${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_shedding_audit.py)
+
 add_test(NAME garden-root-bootstrap-audit COMMAND ${Python3_EXECUTABLE}
 	${CMAKE_CURRENT_LIST_DIR}/test_garden_root_bootstrap.py --build ${CMAKE_BINARY_DIR})
 add_test(NAME garden-seedling-water-unit COMMAND ${Python3_EXECUTABLE}
@@ -460,6 +792,18 @@ add_test(NAME garden-seed-reserve-analysis-unit COMMAND ${Python3_EXECUTABLE}
 	${CMAKE_CURRENT_LIST_DIR}/test_garden_seed_reserve.py)
 if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE AND TOY_FACTORY_GARDEN_LARGE_POOL
 	AND NOT TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
+	if(NOT TOY_FACTORY_GARDEN_SEED_RESERVE AND NOT TOY_FACTORY_GARDEN_FOCAL_SEED_VETO
+		AND NOT TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+		add_executable(toy-factory-garden-dark-guard-test garden_dark_guard_test.c)
+		target_link_libraries(toy-factory-garden-dark-guard-test PRIVATE toy_factory_simulator_core)
+		target_compile_options(toy-factory-garden-dark-guard-test PRIVATE
+			-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+		if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+			target_compile_options(toy-factory-garden-dark-guard-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+			target_link_options(toy-factory-garden-dark-guard-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		endif()
+		add_test(NAME garden-dark-guard-unit COMMAND toy-factory-garden-dark-guard-test)
+	endif()
 	add_executable(toy-factory-garden-seed-reserve-test garden_seed_reserve_test.c)
 	target_link_libraries(toy-factory-garden-seed-reserve-test PRIVATE toy_factory_simulator_core)
 	target_compile_options(toy-factory-garden-seed-reserve-test PRIVATE
@@ -469,6 +813,17 @@ if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE AND TOY_FACTORY_GARDEN_LARGE_POOL
 		target_link_options(toy-factory-garden-seed-reserve-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
 	endif()
 	add_test(NAME garden-seed-reserve-unit COMMAND toy-factory-garden-seed-reserve-test)
+	if(NOT TOY_FACTORY_GARDEN_SEED_RESERVE)
+		add_executable(toy-factory-garden-seed-veto-test garden_seed_veto_test.c)
+		target_link_libraries(toy-factory-garden-seed-veto-test PRIVATE toy_factory_simulator_core)
+		target_compile_options(toy-factory-garden-seed-veto-test PRIVATE
+			-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+		if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+			target_compile_options(toy-factory-garden-seed-veto-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+			target_link_options(toy-factory-garden-seed-veto-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		endif()
+		add_test(NAME garden-seed-veto-unit COMMAND toy-factory-garden-seed-veto-test)
+	endif()
 endif()
 add_test(NAME garden-reserve-policy-unit COMMAND toy-factory-garden-reserve-policy-test)
 add_test(NAME garden-policy-panel-unit COMMAND ${Python3_EXECUTABLE}

@@ -12,6 +12,11 @@
 #include "garden_model_file.h"
 #include "garden_policy_probe.h"
 #include "garden_reserve_policy.h"
+#include "garden_focal_policy.h"
+#include "garden_gap.h"
+#if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
+#include "garden_wet_germination.h"
+#endif
 
 static int parse_u32(const char *text, uint32_t *value)
 {
@@ -74,26 +79,73 @@ static int print_step(const struct picosystem_garden_world *world,
 		print_sites(a->sites);
 		putchar('}');
 	}
-	printf("]}\n");
+	putchar(']');
+#if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
+	if (world->wet_germination_enabled) {
+		printf(",\"germination_rule\":\"%s\"", PICOSYSTEM_GARDEN_WET_GERMINATION_NAME);
+	}
+#endif
+	printf("}\n");
 	return ferror(stdout) ? -EIO : 0;
 }
 
 int main(int argc, char **argv)
 {
 	uint32_t seed, schedule, from, ticks;
-	if ((argc != 8) || (parse_u32(argv[4], &seed) != 0) || (seed == 0U) ||
+	if ((argc < 8) || (parse_u32(argv[4], &seed) != 0) || (seed == 0U) ||
 	    (parse_u32(argv[5], &schedule) != 0) || (parse_u32(argv[6], &from) != 0) ||
 	    (parse_u32(argv[7], &ticks) != 0) || (from >= ticks) ||
 	    (ticks > TOY_FACTORY_GARDEN_DISTURBANCE_MAX_TICKS) || ((from % 15U) != 0U) ||
 	    ((ticks % 15U) != 0U)) {
 		fprintf(stderr,
 			"Usage: %s MODEL RAINFED_SCENARIO POLICY WORLD_SEED "
-			"SCHEDULE_OR_ZERO FROM_TICK END_TICK\n",
+			"SCHEDULE_OR_ZERO FROM_TICK END_TICK "
+			"[--focal-model MODEL --focal-founder ID] "
+			"[--gap-at TICK --gap-lineage ID]\n"
+			"In-window exports have explicit post-export snapshots; no recurring "
+			"patches with "
+			"export or focal routing. Focal routing requires neural-no-night-growth.\n",
 			argv[0]);
 		return 2;
 	}
 	const bool reserve = strcmp(argv[3], TOY_FACTORY_GARDEN_RESERVE_POLICY) == 0;
 	if (!reserve && (strcmp(argv[3], TOY_FACTORY_GARDEN_NIGHT_PROBE_POLICY) != 0)) {
+		return 2;
+	}
+	const char *focal_path = NULL;
+	uint32_t focal_founder = 0U, gap_tick = 0U, gap_lineage = 0U, wet_tick = 0U;
+	for (int i = 8; i < argc; ++i) {
+		if (strcmp(argv[i], "--focal-model") == 0) {
+			if ((focal_path != NULL) || (++i >= argc) || (*argv[i] == '\0')) {
+				return 2;
+			}
+			focal_path = argv[i];
+			continue;
+		}
+		uint32_t *value = NULL;
+		if (strcmp(argv[i], "--focal-founder") == 0) {
+			value = &focal_founder;
+		} else if (strcmp(argv[i], "--gap-at") == 0) {
+			value = &gap_tick;
+		} else if (strcmp(argv[i], "--gap-lineage") == 0) {
+			value = &gap_lineage;
+		}
+#if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
+		else if (strcmp(argv[i], "--wet-germination-after") == 0) {
+			value = &wet_tick;
+		}
+#endif
+		if ((value == NULL) || (*value != 0U) || (++i >= argc) ||
+		    (parse_u32(argv[i], value) != 0) || (*value == 0U)) {
+			return 2;
+		}
+	}
+	if (((focal_path != NULL) != (focal_founder != 0U)) ||
+	    ((wet_tick != 0U) && ((wet_tick != gap_tick) || (gap_lineage == 0U))) ||
+	    ((gap_tick != 0U) != (gap_lineage != 0U)) ||
+	    ((focal_founder != 0U) && (reserve || (schedule != 0U))) ||
+	    ((gap_tick != 0U) && ((schedule != 0U) || (gap_tick > ticks) ||
+				  ((gap_tick % PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR) != 0U)))) {
 		return 2;
 	}
 	const struct toy_factory_garden_evaluation_scenario *scenario = NULL;
@@ -127,6 +179,30 @@ int main(int argc, char **argv)
 		policy.leaf_policy = toy_factory_garden_leaf_policy("selective");
 		err = toy_factory_garden_evaluation_reset(&world, scenario, seed);
 	}
+	/* Keep both wrapped policies and their caller-owned routing context alive
+	 * through the entire replay, including slot compaction at the export.
+	 */
+	struct picosystem_garden_neural_model focal_model;
+	struct picosystem_garden_agent_policy focal_base, focal_night, routed;
+	struct toy_factory_garden_focal_context focal_context;
+	const struct picosystem_garden_agent_policy *active_policy = &policy;
+	uint32_t focal_crc = 0U;
+	if ((err == 0) && (focal_founder != 0U)) {
+		err = toy_factory_garden_model_read(focal_path, &focal_model, &focal_crc);
+		if (err == 0) {
+			err = picosystem_garden_neural_policy_init(&focal_model, &focal_base);
+		}
+		if (err == 0) {
+			err = toy_factory_garden_no_night_growth_init(&focal_base, &focal_night);
+		}
+		if (err == 0) {
+			focal_night.leaf_policy = policy.leaf_policy;
+			err = toy_factory_garden_focal_policy_init(&world, &policy, &focal_night,
+								   focal_founder, &focal_context,
+								   &routed);
+		}
+		active_policy = &routed;
+	}
 	if ((err == 0) && (schedule != 0U)) {
 		err = toy_factory_garden_disturbance_plan(schedule, 0U, &event);
 	}
@@ -150,6 +226,19 @@ int main(int argc, char **argv)
 #if defined(TOY_FACTORY_GARDEN_SEED_RESERVE)
 		printf(",\"seed_reserve_rule\":\"%s\"", PICOSYSTEM_GARDEN_SEED_RESERVE_NAME);
 #endif
+		if (focal_founder != 0U) {
+			printf(",\"focal_policy\":{\"rule\":\"%s\",\"founder\":%" PRIu32
+			       ",\"model_crc32\":\"%08" PRIx32 "\"}",
+			       TOY_FACTORY_GARDEN_FOCAL_POLICY_RULE, focal_founder, focal_crc);
+		}
+		if (gap_tick != 0U) {
+			printf(",\"gap\":{\"protocol\":\"%s\",\"tick\":%" PRIu32 ",\"id\":%" PRIu32
+			       "}",
+			       TOY_FACTORY_GARDEN_NAMED_GAP_PROTOCOL, gap_tick, gap_lineage);
+		}
+		if (wet_tick != 0U) {
+			printf(",\"wet_germination_after\":%" PRIu32, wet_tick);
+		}
 		printf("}\n");
 		if (from == 0U) {
 			err = print_step(&world, NULL);
@@ -158,13 +247,32 @@ int main(int argc, char **argv)
 	for (uint32_t i = 0U; (err == 0) && (i < ticks); ++i) {
 		struct picosystem_garden_seed_audit audit;
 		if (i < from) {
-			err = picosystem_garden_world_step_with_policy(&world, &policy);
+			err = picosystem_garden_world_step_with_policy(&world, active_policy);
 		} else {
-			err = picosystem_garden_world_step_seed_audit(&world, &policy, &audit);
+			err = picosystem_garden_world_step_seed_audit(&world, active_policy,
+								      &audit);
 		}
 		if ((err == 0) && (world.logic_tick_count >= from) &&
 		    ((world.logic_tick_count % 15U) == 0U)) {
 			err = print_step(&world, i < from ? NULL : &audit);
+		}
+		if ((err == 0) && (gap_tick != 0U) && (world.logic_tick_count == gap_tick)) {
+			struct toy_factory_garden_gap gap;
+			err = toy_factory_garden_gap_apply_named(&world, gap_lineage, &gap);
+			if (err == 0) {
+				err = toy_factory_garden_gap_print(&gap);
+			}
+			if ((err == 0) && (world.logic_tick_count >= from)) {
+				err = print_step(&world, NULL);
+			}
+#if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
+			if ((err == 0) && (wet_tick != 0U)) {
+				err = toy_factory_garden_wet_germination_activate(&world);
+				if ((err == 0) && (world.logic_tick_count >= from)) {
+					err = print_step(&world, NULL);
+				}
+			}
+#endif
 		}
 		if ((err == 0) && (event.tick != 0U) && (world.logic_tick_count == event.tick)) {
 			err = toy_factory_garden_disturbance_apply(&world, &event);
