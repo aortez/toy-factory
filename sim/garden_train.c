@@ -491,6 +491,10 @@ int main(int argc, char **argv)
 	}
 	print_report(&options, &initial_fitness, input_fingerprint, generations, &champion_fitness,
 		     final_fingerprint);
+	if ((fflush(stdout) != 0) || ferror(stdout)) {
+		fprintf(stderr, "failed to write training report to stdout\n");
+		return 1;
+	}
 	fprintf(stderr, "wrote model %08" PRIx32 " to %s and %s\n", final_fingerprint,
 		options.output_path, options.c_output_path);
 	return 0;

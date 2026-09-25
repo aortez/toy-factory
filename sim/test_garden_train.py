@@ -288,6 +288,43 @@ def validate_corruption_rejected(binary: Path, model: Path, directory: Path) -> 
         raise RuntimeError("Garden trainer accepted a corrupt model")
 
 
+def validate_report_write_failure(binary: Path, directory: Path) -> None:
+    # Buffered output fails on flush; unbuffered output fails earlier and leaves
+    # the stream error flag set even when the final flush succeeds.
+    for mode, prefix in (("buffered", []), ("unbuffered", ["stdbuf", "-o0"])):
+        model = directory / f"failed-report-{mode}.tgm"
+        c_source = directory / f"failed-report-{mode}.c"
+        with Path("/dev/full").open("wb") as output:
+            completed = subprocess.run(
+                [
+                    *prefix,
+                    str(binary.resolve()),
+                    "--generations",
+                    "0",
+                    "--trials",
+                    "1",
+                    "--ticks",
+                    "1",
+                    "--output",
+                    str(model),
+                    "--c-output",
+                    str(c_source),
+                ],
+                check=False,
+                stdout=output,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        if completed.returncode != 1:
+            raise RuntimeError(f"Garden trainer did not reject a {mode} report write failure")
+        if "failed to write training report to stdout" not in completed.stderr:
+            raise RuntimeError(f"Garden trainer did not explain a {mode} report write failure")
+        if "wrote model " in completed.stderr:
+            raise RuntimeError("Garden trainer printed success after a report write failure")
+        if not model.is_file() or not c_source.is_file():
+            raise RuntimeError("Garden report failure test did not reach model output")
+
+
 def main() -> int:
     args = parse_arguments()
     with tempfile.TemporaryDirectory(prefix="toy-factory-garden-train-") as temporary:
@@ -299,6 +336,7 @@ def main() -> int:
         second_dir.mkdir()
         reload_dir.mkdir()
 
+        validate_report_write_failure(args.binary, root)
         first_stdout, first_report, first_model, first_c = run_training(
             args.binary, first_dir
         )
@@ -329,7 +367,7 @@ def main() -> int:
         if reload_model.read_bytes() != first_model.read_bytes():
             raise RuntimeError("Garden model did not survive a load/save round trip")
         validate_corruption_rejected(args.binary, first_model, root)
-    print("Garden trainer determinism and artifact tests passed")
+    print("Garden trainer determinism, artifact and output-failure tests passed")
     return 0
 
 
