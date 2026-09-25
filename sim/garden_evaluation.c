@@ -148,11 +148,11 @@ int toy_factory_garden_evaluation_reset(
 	return err;
 }
 
-int toy_factory_garden_evaluation_advance(
-	struct picosystem_garden_world *world,
-	const struct toy_factory_garden_evaluation_scenario *scenario,
-	const struct picosystem_garden_agent_policy *policy, uint32_t tick_count,
-	toy_factory_garden_evaluation_observer_fn observer, void *observer_context)
+static int advance(struct picosystem_garden_world *world,
+		   const struct toy_factory_garden_evaluation_scenario *scenario,
+		   const struct picosystem_garden_agent_policy *policy, uint32_t tick_count,
+		   toy_factory_garden_evaluation_observer_fn observer, void *observer_context,
+		   toy_factory_garden_death_observer_fn death_observer)
 {
 	if ((world == NULL) || (scenario == NULL) || (policy == NULL)) {
 		return -EINVAL;
@@ -166,9 +166,18 @@ int toy_factory_garden_evaluation_advance(
 				return err;
 			}
 		}
-		int err = picosystem_garden_world_step_with_policy(world, policy);
+		struct picosystem_garden_death_audit audit;
+		int err = death_observer == NULL
+				  ? picosystem_garden_world_step_with_policy(world, policy)
+				  : picosystem_garden_world_step_death_audit(world, policy, &audit);
 		if (err != 0) {
 			return err;
+		}
+		if ((death_observer != NULL) && audit.ecology_step) {
+			err = death_observer(world, &audit, observer_context);
+			if (err != 0) {
+				return err;
+			}
 		}
 		if (observer != NULL) {
 			const bool ecology_sample = (world->logic_tick_count %
@@ -180,6 +189,29 @@ int toy_factory_garden_evaluation_advance(
 		}
 	}
 	return 0;
+}
+
+int toy_factory_garden_evaluation_advance(
+	struct picosystem_garden_world *world,
+	const struct toy_factory_garden_evaluation_scenario *scenario,
+	const struct picosystem_garden_agent_policy *policy, uint32_t tick_count,
+	toy_factory_garden_evaluation_observer_fn observer, void *observer_context)
+{
+	return advance(world, scenario, policy, tick_count, observer, observer_context, NULL);
+}
+
+int toy_factory_garden_evaluation_advance_death_audit(
+	struct picosystem_garden_world *world,
+	const struct toy_factory_garden_evaluation_scenario *scenario,
+	const struct picosystem_garden_agent_policy *policy, uint32_t tick_count,
+	toy_factory_garden_evaluation_observer_fn observer,
+	toy_factory_garden_death_observer_fn death_observer, void *observer_context)
+{
+	if ((death_observer == NULL) || (world == NULL) || world->auto_gardener_enabled) {
+		return -EINVAL;
+	}
+	return advance(world, scenario, policy, tick_count, observer, observer_context,
+		       death_observer);
 }
 
 bool toy_factory_garden_evaluation_plant_is_established(const struct picosystem_garden_world *world,

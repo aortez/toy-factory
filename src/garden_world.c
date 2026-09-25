@@ -22,6 +22,10 @@
 
 struct picosystem_garden_water_audit;
 struct picosystem_garden_seed_audit;
+struct picosystem_garden_death_audit;
+#if !defined(__ZEPHYR__)
+#include "garden_death_audit.h"
+#endif
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 #include "garden_water_audit.h"
 #include "garden_seed_audit.h"
@@ -71,6 +75,7 @@ static void audit_water(const struct picosystem_garden_world *world,
 #define GARDEN_HASH_VERSION                      UINT32_C(5)
 #define GARDEN_AGENT_MEMORY_HASH_TAG             UINT32_C(0x4d454d31)
 #define GARDEN_WEATHER_HASH_TAG                  UINT32_C(0x5241494e)
+#define GARDEN_LONG_AGE_HASH_TAG                 UINT32_C(0x41474531)
 #define GARDEN_DEFAULT_RANDOM_SEED               UINT32_C(0x746f7921)
 #define GARDEN_FNV1A_OFFSET_BASIS                UINT32_C(2166136261)
 #define GARDEN_FNV1A_PRIME                       UINT32_C(16777619)
@@ -803,8 +808,10 @@ static int update_light(struct picosystem_garden_world *world)
 	return picosystem_garden_light_solve(shade, &sun, world->light);
 }
 
-static void absorb_water_and_light(struct picosystem_garden_world *world)
+static void absorb_water_and_light(struct picosystem_garden_world *world,
+				   struct picosystem_garden_death_audit *death_audit)
 {
+	(void)death_audit;
 	for (uint8_t plant_index = 0U; plant_index < world->plant_count; ++plant_index) {
 		struct picosystem_garden_plant *const plant = &world->plants[plant_index];
 		plant->last_energy_income = 0U;
@@ -814,6 +821,10 @@ static void absorb_water_and_light(struct picosystem_garden_world *world)
 		}
 		const struct garden_species_config *const species =
 			&species_configs[plant->species_id];
+		const uint16_t energy_before = plant->stored_energy;
+		const uint16_t water_before = plant->stored_water;
+		(void)energy_before;
+		(void)water_before;
 		uint16_t gathered_energy = 0U;
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 		uint32_t energy_numerator = plant->leaf_energy_remainder;
@@ -870,6 +881,28 @@ static void absorb_water_and_light(struct picosystem_garden_world *world)
 			(gathered_energy > UINT8_MAX) ? UINT8_MAX : (uint8_t)gathered_energy;
 		plant->last_water_income =
 			(gathered_water > UINT8_MAX) ? UINT8_MAX : (uint8_t)gathered_water;
+#if !defined(__ZEPHYR__)
+		if (death_audit != NULL) {
+			/* At most one entry per existing living plant. Reclamation can move
+			 * slots before maintenance, so resolve later by immutable lineage ID.
+			 */
+			death_audit->events[death_audit->count++] =
+				(struct picosystem_garden_death_event){
+					.lineage_id = plant->lineage_id,
+					.stress_before = plant->stress,
+					.energy = {.before = energy_before,
+						   .income = gathered_energy,
+						   .overflow = (uint16_t)(energy_before +
+									  gathered_energy -
+									  plant->stored_energy)},
+					.water = {.before = water_before,
+						  .income = gathered_water,
+						  .overflow =
+							  (uint16_t)(water_before + gathered_water -
+								     plant->stored_water)},
+				};
+		}
+#endif
 	}
 }
 
@@ -1140,8 +1173,10 @@ static void mark_plant_dead(struct picosystem_garden_world *world, uint8_t plant
 	world->death_count = saturating_add_u32(world->death_count, 1U);
 }
 
-static void update_plant_maintenance(struct picosystem_garden_world *world)
+static void update_plant_maintenance(struct picosystem_garden_world *world,
+				     struct picosystem_garden_death_audit *death_audit)
 {
+	(void)death_audit;
 	if ((world->ecology_tick_count % PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR) != 0U) {
 		return;
 	}
@@ -1175,6 +1210,35 @@ static void update_plant_maintenance(struct picosystem_garden_world *world)
 			++plant->stress;
 		}
 		if (plant->stress == PICOSYSTEM_GARDEN_STRESS_DEATH_THRESHOLD) {
+#if !defined(__ZEPHYR__)
+			if (death_audit != NULL) {
+				for (uint8_t index = 0U; index < death_audit->count; ++index) {
+					struct picosystem_garden_death_event *const event =
+						&death_audit->events[index];
+					if (event->lineage_id != plant->lineage_id) {
+						continue;
+					}
+					event->energy.upkeep_due =
+						plant_energy_maintenance_cost(plant);
+					event->water.upkeep_due =
+						plant_water_maintenance_cost(world, plant_index);
+					event->energy.discarded = plant->stored_energy;
+					event->water.discarded = plant->stored_water;
+					event->energy.upkeep_paid =
+						(uint16_t)(event->energy.before +
+							   event->energy.income -
+							   event->energy.overflow -
+							   plant->stored_energy);
+					event->water.upkeep_paid =
+						(uint16_t)(event->water.before +
+							   event->water.income -
+							   event->water.overflow -
+							   plant->stored_water);
+					event->flags = plant->flags | PICOSYSTEM_GARDEN_PLANT_DEAD;
+					break;
+				}
+			}
+#endif
 			mark_plant_dead(world, plant_index);
 		}
 	}
@@ -1457,7 +1521,9 @@ static void build_agent_observation(const struct picosystem_garden_world *world,
 		.tip_index = tip_index,
 		.stored_energy = plant->stored_energy,
 		.stored_water = plant->stored_water,
-		.age_ecology_ticks = plant->age_ecology_ticks,
+		.age_ecology_ticks = (plant->age_ecology_ticks > UINT16_MAX)
+					     ? UINT16_MAX
+					     : (uint16_t)plant->age_ecology_ticks,
 		.plant_node_count = plant->node_count,
 		.version = PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION,
 		.plant_index = plant_index,
@@ -1938,7 +2004,7 @@ static int grow_plants(struct picosystem_garden_world *world,
 		}
 		const struct garden_species_config *const species =
 			&species_configs[plant->species_id];
-		++plant->age_ecology_ticks;
+		plant->age_ecology_ticks = saturating_add_u32(plant->age_ecology_ticks, 1U);
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 		struct picosystem_garden_leaf_decision leaf_decision;
 		const int leaf_result =
@@ -2859,7 +2925,8 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 				  int8_t vertical,
 				  const struct picosystem_garden_agent_policy *policy,
 				  struct picosystem_garden_water_audit *water_audit,
-				  struct picosystem_garden_seed_audit *seed_audit)
+				  struct picosystem_garden_seed_audit *seed_audit,
+				  struct picosystem_garden_death_audit *death_audit)
 {
 	(void)water_audit;
 	(void)seed_audit;
@@ -2880,6 +2947,11 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 	}
 
 	++world->ecology_tick_count;
+#if !defined(__ZEPHYR__)
+	if (death_audit != NULL) {
+		death_audit->ecology_step = true;
+	}
+#endif
 #if defined(TOY_FACTORY_GARDEN_FULL_POOL)
 	world->full_pool.count = 0U;
 	world->full_pool.overflow = false;
@@ -2911,14 +2983,14 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 	if (err != 0) {
 		return err;
 	}
-	absorb_water_and_light(world);
+	absorb_water_and_light(world, death_audit);
 	AUDIT_WATER(UPTAKE);
 	err = update_decomposition(world);
 	if (err != 0) {
 		return err;
 	}
 	AUDIT_WATER(DECOMPOSITION);
-	update_plant_maintenance(world);
+	update_plant_maintenance(world, death_audit);
 	AUDIT_WATER(MAINTENANCE);
 	AUDIT_SEED(BEFORE_CHECKS);
 	err = update_seed_bank(world, seed_audit);
@@ -2948,8 +3020,35 @@ int picosystem_garden_world_step_input_with_policy(
 	struct picosystem_garden_world *world, int8_t horizontal, int8_t vertical,
 	const struct picosystem_garden_agent_policy *policy)
 {
-	return step_input_with_policy(world, horizontal, vertical, policy, NULL, NULL);
+	return step_input_with_policy(world, horizontal, vertical, policy, NULL, NULL, NULL);
 }
+
+#if !defined(__ZEPHYR__)
+int picosystem_garden_world_step_death_audit(struct picosystem_garden_world *world,
+					     const struct picosystem_garden_agent_policy *policy,
+					     struct picosystem_garden_death_audit *audit)
+{
+	if ((audit == NULL) || (world == NULL) || world->auto_gardener_enabled) {
+		return -EINVAL;
+	}
+	struct picosystem_garden_death_audit result = {0};
+	const int err = step_input_with_policy(world, 0, 0, policy, NULL, NULL, &result);
+	if (err == 0) {
+		/* Only deaths escape the private per-living-plant uptake scratch space. */
+		uint8_t count = 0U;
+		for (uint8_t index = 0U; index < result.count; ++index) {
+			if ((result.events[index].flags & PICOSYSTEM_GARDEN_PLANT_DEAD) != 0U) {
+				result.events[count++] = result.events[index];
+			}
+		}
+		memset(&result.events[count], 0,
+		       (PICOSYSTEM_GARDEN_MAX_PLANTS - count) * sizeof(result.events[0]));
+		result.count = count;
+		*audit = result;
+	}
+	return err;
+}
+#endif
 
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 int picosystem_garden_world_step_water_audit(struct picosystem_garden_world *world,
@@ -2960,7 +3059,7 @@ int picosystem_garden_world_step_water_audit(struct picosystem_garden_world *wor
 		return -EINVAL;
 	}
 	struct picosystem_garden_water_audit result = {0};
-	const int err = step_input_with_policy(world, 0, 0, policy, &result, NULL);
+	const int err = step_input_with_policy(world, 0, 0, policy, &result, NULL, NULL);
 	if (err == 0) {
 		*audit = result;
 	}
@@ -2975,7 +3074,7 @@ int picosystem_garden_world_step_seed_audit(struct picosystem_garden_world *worl
 		return -EINVAL;
 	}
 	struct picosystem_garden_seed_audit result = {0};
-	const int err = step_input_with_policy(world, 0, 0, policy, NULL, &result);
+	const int err = step_input_with_policy(world, 0, 0, policy, NULL, &result, NULL);
 	if (err == 0) {
 		*audit = result;
 	}
@@ -3176,7 +3275,7 @@ uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *worl
 		hash = fnv1a_u16(hash, plant->last_root_tip_index);
 		hash = fnv1a_u16(hash, plant->stored_energy);
 		hash = fnv1a_u16(hash, plant->stored_water);
-		hash = fnv1a_u16(hash, plant->age_ecology_ticks);
+		hash = fnv1a_u16(hash, (uint16_t)plant->age_ecology_ticks);
 		hash = fnv1a_u16(hash, plant->node_count);
 		hash = fnv1a_u16(hash, plant->offspring_count);
 		hash = fnv1a_u16(hash, plant->generation);
@@ -3242,6 +3341,18 @@ uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *worl
 			     memory_index < PICOSYSTEM_GARDEN_AGENT_MEMORY_WIDTH; ++memory_index) {
 				hash = fnv1a_byte(hash, (uint8_t)memory->hidden[memory_index]);
 			}
+		}
+	}
+	/* Preserve pre-wrap v5 hashes, but include every high age word once needed. */
+	for (uint8_t index = 0U; index < world->plant_count; ++index) {
+		if (world->plants[index].age_ecology_ticks > UINT16_MAX) {
+			hash = fnv1a_u32(hash, GARDEN_LONG_AGE_HASH_TAG);
+			for (uint8_t owner = 0U; owner < world->plant_count; ++owner) {
+				hash = fnv1a_u16(
+					hash,
+					(uint16_t)(world->plants[owner].age_ecology_ticks >> 16U));
+			}
+			break;
 		}
 	}
 	return hash;

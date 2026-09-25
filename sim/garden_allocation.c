@@ -148,7 +148,8 @@ static int sample(const struct picosystem_garden_world *world, const struct reco
 		}
 	}
 	printf("{\"id\":%" PRIu32 ",\"parent\":%" PRIu32 ",\"species\":\"%s\",\"generation\":%u,"
-	       "\"age_ecology_ticks\":%u,\"column\":%u,\"dead\":%s,\"energy\":%u,\"water\":%u,"
+	       "\"age_ecology_ticks\":%" PRIu32
+	       ",\"column\":%u,\"dead\":%s,\"energy\":%u,\"water\":%u,"
 	       "\"energy_income\":%u,\"water_income\":%u,\"stress\":%u,\"flags\":%u,\"vigor\":%d,"
 	       "\"nodes\":%u,\"roots\":%u,\"active_leaves\":%u,\"tips\":%u,"
 	       "\"offspring\":%u,\"reproduction_cooldown\":%u,\"leaf\":{\"renewals\":%" PRIu32 "},"

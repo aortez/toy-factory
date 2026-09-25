@@ -26,6 +26,7 @@
 static const char *growth_policy_name;
 static uint32_t root_bootstrap_after;
 static uint32_t focal_founder;
+static bool death_audit_enabled;
 #if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
 static bool seed_order_rotating;
 #endif
@@ -136,7 +137,7 @@ static void print_plant(const struct picosystem_garden_world *world, uint8_t pla
 		}
 	}
 	printf("{\"id\":%" PRIu32 ",\"parent\":%" PRIu32 ",\"species\":\"%s\","
-	       "\"generation\":%u,\"age_ecology_ticks\":%u,\"column\":%u,"
+	       "\"generation\":%u,\"age_ecology_ticks\":%" PRIu32 ",\"column\":%u,"
 	       "\"dead\":%s,\"energy\":%u,\"water\":%u,\"stress\":%u,"
 	       "\"nodes\":%u,\"roots\":%u,\"tips\":%u,\"leaves\":%u,"
 	       "\"flowers\":%u,\"spent_flowers\":%u,\"genome\":[%d,%d,%d,%d,%d,%d,%d,%d],"
@@ -291,6 +292,9 @@ static int print_dark_audit(const struct picosystem_garden_dark_audit *audit)
 static int print_world(const struct picosystem_garden_world *world)
 {
 	putchar('{');
+	if (death_audit_enabled) {
+		printf("\"death_audit_version\":%u,", PICOSYSTEM_GARDEN_DEATH_AUDIT_VERSION);
+	}
 #if defined(TOY_FACTORY_GARDEN_FULL_POOL)
 	const int full_pool_err =
 		picosystem_garden_full_pool_print(&world->full_pool, world->logic_tick_count);
@@ -666,6 +670,32 @@ static int trace_decision(const struct picosystem_garden_agent_observation *obse
 	return ferror(stdout) ? -EIO : 0;
 }
 
+static void print_death_resource(const struct picosystem_garden_death_resource *resource)
+{
+	printf("{\"before\":%u,\"income\":%u,\"overflow\":%u,\"upkeep_due\":%u,"
+	       "\"upkeep_paid\":%u,\"discarded\":%u}",
+	       resource->before, resource->income, resource->overflow, resource->upkeep_due,
+	       resource->upkeep_paid, resource->discarded);
+}
+
+static int print_deaths(const struct picosystem_garden_world *world,
+			const struct picosystem_garden_death_audit *audit, void *context)
+{
+	(void)context;
+	for (uint8_t index = 0U; index < audit->count; ++index) {
+		const struct picosystem_garden_death_event *const event = &audit->events[index];
+		printf("{\"type\":\"death\",\"version\":%u,\"tick\":%" PRIu32 ",\"id\":%" PRIu32
+		       ",\"stress_before\":%u,\"flags\":%u,\"energy\":",
+		       PICOSYSTEM_GARDEN_DEATH_AUDIT_VERSION, world->logic_tick_count,
+		       event->lineage_id, event->stress_before, event->flags);
+		print_death_resource(&event->energy);
+		printf(",\"water\":");
+		print_death_resource(&event->water);
+		printf("}\n");
+	}
+	return ferror(stdout) ? -EIO : 0;
+}
+
 static int parse_positive_u32(const char *text, uint32_t *value)
 {
 	errno = 0;
@@ -711,6 +741,9 @@ int main(int argc, char **argv)
 			argv[0], INSPECTION_MAX_TICKS);
 		fprintf(help ? stdout : stderr,
 			"adaptive-no-night-growth uses MODEL '-' and the same night veto.\n");
+		fprintf(help ? stdout : stderr,
+			"--death-audit: exact natural-death receipts and every ecology sample; "
+			"not compatible with patch/gap interventions or compact censuses.\n");
 		fprintf(help ? stdout : stderr,
 			"--topology-at TICK: read-only topology after each census at that tick; "
 			"requires --ecology. Up to 16 increasing distinct ecology ticks, including "
@@ -927,6 +960,11 @@ int main(int argc, char **argv)
 			inspection.every_ecology = true;
 			continue;
 		}
+		if ((strcmp(argv[index], "--death-audit") == 0) && !death_audit_enabled) {
+			death_audit_enabled = true;
+			inspection.every_ecology = true;
+			continue;
+		}
 		if (strcmp(argv[index], "--ecology") == 0) {
 			inspection.every_ecology = true;
 			continue;
@@ -950,6 +988,10 @@ int main(int argc, char **argv)
 	if (tick_count > INSPECTION_MAX_TICKS) {
 		return 2;
 	}
+	if (death_audit_enabled && (inspection.seed_sites || inspection.population_census ||
+				    (inspection.topology_count != 0U))) {
+		return 2;
+	}
 	if (((focal_model_path != NULL) != (focal_founder != 0U)) ||
 	    ((focal_founder != 0U) &&
 	     ((strcmp(argv[3], TOY_FACTORY_GARDEN_NIGHT_PROBE_POLICY) != 0) ||
@@ -958,6 +1000,9 @@ int main(int argc, char **argv)
 		return 2;
 	}
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	if (death_audit_enabled && ((gap_tick != 0U) || (disturbance_seed != 0U))) {
+		return 2;
+	}
 	if (((wet_tick != 0U) && ((wet_tick != gap_tick) || (gap_lineage == 0U))) ||
 	    ((gap_lineage != 0U) && (gap_tick == 0U)) ||
 	    ((focal_founder != 0U) && (gap_tick != 0U) && (gap_lineage == 0U))) {
@@ -1238,8 +1283,15 @@ int main(int argc, char **argv)
 		} else
 #endif
 		{
-			err = toy_factory_garden_evaluation_advance(
-				&world, scenario, active_policy, first_ticks, observe, &inspection);
+			if (death_audit_enabled) {
+				err = toy_factory_garden_evaluation_advance_death_audit(
+					&world, scenario, active_policy, first_ticks, observe,
+					print_deaths, &inspection);
+			} else {
+				err = toy_factory_garden_evaluation_advance(
+					&world, scenario, active_policy, first_ticks, observe,
+					&inspection);
+			}
 		}
 	}
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
