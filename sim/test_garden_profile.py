@@ -10,9 +10,62 @@ import subprocess
 
 
 EXPECTED_CHECKPOINTS = {
-    "initial": (0, "4d2f4270", "c515c869"),
-    "growing": (930, "de69461d", "7cf1bee7"),
-    "mature": (3771, "f5df2b20", "0008203d"),
+    "initial": (0, "42bd6367", "c515c869"),
+    "growing": (930, "28489ef5", "fc95584f"),
+    "mature": (3771, "4345d5b7", "1f128cce"),
+}
+EXPECTED_STATE = {
+    "initial": {
+        "plants": 3,
+        "living": 3,
+        "dead": 0,
+        "nodes": 12,
+        "blooms": 0,
+        "deaths": 0,
+        "reclaimed_plants": 0,
+        "reclaimed_nodes": 0,
+        "seeds": 0,
+        "seeds_created": 0,
+        "germinations": 0,
+        "seeds_expired": 0,
+        "mutations": 0,
+        "max_generation": 0,
+        "moisture": 1536,
+    },
+    "growing": {
+        "plants": 5,
+        "living": 5,
+        "dead": 0,
+        "nodes": 137,
+        "blooms": 4,
+        "deaths": 0,
+        "reclaimed_plants": 0,
+        "reclaimed_nodes": 0,
+        "seeds": 1,
+        "seeds_created": 1,
+        "germinations": 0,
+        "seeds_expired": 0,
+        "mutations": 1,
+        "max_generation": 0,
+        "moisture": 4004,
+    },
+    "mature": {
+        "plants": 5,
+        "living": 5,
+        "dead": 0,
+        "nodes": 188,
+        "blooms": 15,
+        "deaths": 0,
+        "reclaimed_plants": 0,
+        "reclaimed_nodes": 0,
+        "seeds": 6,
+        "seeds_created": 6,
+        "germinations": 0,
+        "seeds_expired": 0,
+        "mutations": 4,
+        "max_generation": 0,
+        "moisture": 3830,
+    },
 }
 TIMING_NAMES = ("ordinary_step", "ecology_step", "snapshot", "raster")
 PRESENTATION_RATES = {30, 10, 4}
@@ -76,6 +129,33 @@ def validate_profile(profile: object) -> None:
             raise RuntimeError(f"{name} state hash changed")
         if scenario.get("framebuffer_crc32") != framebuffer_crc:
             raise RuntimeError(f"{name} framebuffer CRC changed")
+
+        state = scenario.get("state")
+        if not isinstance(state, dict):
+            raise RuntimeError(f"{name} has no state counts")
+        for count_name in (
+            "plants",
+            "living",
+            "dead",
+            "nodes",
+            "blooms",
+            "deaths",
+            "reclaimed_plants",
+            "reclaimed_nodes",
+            "seeds",
+            "seeds_created",
+            "germinations",
+            "seeds_expired",
+            "mutations",
+            "max_generation",
+            "moisture",
+        ):
+            if not isinstance(state.get(count_name), int) or state[count_name] < 0:
+                raise RuntimeError(f"{name} has invalid {count_name} state count")
+        if state["plants"] != state["living"] + state["dead"]:
+            raise RuntimeError(f"{name} plant lifecycle counts do not add up")
+        if state != EXPECTED_STATE[name]:
+            raise RuntimeError(f"{name} state counts changed")
 
         timings = scenario.get("timing_ns")
         if not isinstance(timings, dict):

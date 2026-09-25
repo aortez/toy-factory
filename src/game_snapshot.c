@@ -158,12 +158,14 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 		const struct picosystem_garden_world *const garden_world = &world->garden;
 		struct picosystem_scene_garden_payload *const garden = &snapshot->payload.garden;
 		if ((garden_world->node_count > TOY_FACTORY_ARRAY_SIZE(garden->nodes)) ||
-		    (garden_world->plant_count > PICOSYSTEM_GARDEN_MAX_PLANTS)) {
+		    (garden_world->plant_count > PICOSYSTEM_GARDEN_MAX_PLANTS) ||
+		    (garden_world->seed_count > TOY_FACTORY_ARRAY_SIZE(garden->seeds))) {
 			return -ENOSPC;
 		}
 		garden->node_count = garden_world->node_count;
 		garden->moisture_total = garden_world->moisture_total;
 		garden->plant_count = garden_world->plant_count;
+		garden->seed_count = garden_world->seed_count;
 		garden->cursor_column = garden_world->cursor_column;
 		garden->cursor_row = garden_world->cursor_row;
 		garden->selected_tool = garden_world->selected_tool;
@@ -177,7 +179,36 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 		garden->sun_phase = sun.phase;
 		garden->sun_strength = sun.strength;
 		garden->sun_ray_step_x_q4 = sun.ray_step_x_q4;
+		garden->rain_rate = picosystem_garden_rain_at(garden_world->weather_seed,
+							      garden_world->ecology_tick_count);
 		memcpy(garden->moisture, garden_world->moisture, sizeof(garden->moisture));
+		for (uint8_t index = 0U; index < garden->seed_count; ++index) {
+			const struct picosystem_garden_seed *const source =
+				&garden_world->seeds[index];
+			if ((source->column >= PICOSYSTEM_GARDEN_GRID_COLUMNS) ||
+			    (source->species_id >= PICOSYSTEM_GARDEN_SPECIES_COUNT) ||
+			    (source->visual_offset < PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN) ||
+			    (source->visual_offset > PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX)) {
+				return -ERANGE;
+			}
+			uint8_t style = source->species_id &
+					PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_SPECIES_MASK;
+			if (source->age_ecology_ticks >= PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS) {
+				style |= PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_DORMANCY_COMPLETE;
+			}
+			const int16_t x =
+				(int16_t)(PICOSYSTEM_GARDEN_ORIGIN_X_PIXELS +
+					  (source->column * PICOSYSTEM_GARDEN_CELL_PIXELS) +
+					  (PICOSYSTEM_GARDEN_CELL_PIXELS / 2U)) +
+				source->visual_offset;
+			if ((x < 0) || (x >= PICOSYSTEM_GRAPHICS_WIDTH)) {
+				return -ERANGE;
+			}
+			garden->seeds[index] = (struct picosystem_scene_garden_seed){
+				.x = (uint8_t)x,
+				.style = style,
+			};
+		}
 		for (uint16_t index = 0U; index < garden->node_count; ++index) {
 			const struct picosystem_garden_node *const source =
 				&garden_world->nodes[index];
@@ -186,19 +217,22 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 			     PICOSYSTEM_GARDEN_SPECIES_COUNT)) {
 				return -ERANGE;
 			}
-			uint8_t parent_distance = 0U;
+			picosystem_scene_garden_parent_distance_t parent_distance = 0U;
 			if (source->parent_index != PICOSYSTEM_GARDEN_NODE_NONE) {
 				if (source->parent_index >= index) {
 					return -ERANGE;
 				}
 				const uint16_t distance = (uint16_t)(index - source->parent_index);
-				if (distance > UINT8_MAX) {
+				if (distance >= PICOSYSTEM_GARDEN_MAX_NODES) {
 					return -ERANGE;
 				}
-				parent_distance = (uint8_t)distance;
+				parent_distance =
+					(picosystem_scene_garden_parent_distance_t)distance;
 			}
-			uint8_t style = garden_world->plants[source->plant_index].species_id &
-					PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK;
+			const struct picosystem_garden_plant *const plant =
+				&garden_world->plants[source->plant_index];
+			uint8_t style =
+				plant->species_id & PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK;
 			if (source->kind == PICOSYSTEM_GARDEN_NODE_ROOT) {
 				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_ROOT;
 			}
@@ -211,8 +245,11 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 			if ((source->flags & PICOSYSTEM_GARDEN_NODE_PRUNED) != 0U) {
 				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_PRUNED;
 			}
-			if ((source->flags & PICOSYSTEM_GARDEN_NODE_TIP) != 0U) {
-				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_TIP;
+			if (plant->stress > 0U) {
+				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_STRESSED;
+			}
+			if ((plant->flags & PICOSYSTEM_GARDEN_PLANT_DEAD) != 0U) {
+				style |= PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD;
 			}
 			garden->nodes[index] = (struct picosystem_scene_garden_node){
 				.x = source->x,
@@ -221,6 +258,9 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 				.growth_progress = source->growth_progress,
 				.style = style,
 			};
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+			garden->leaf_condition[index] = world->garden.leaf_condition[index];
+#endif
 		}
 		return 0;
 	}

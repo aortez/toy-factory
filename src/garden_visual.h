@@ -13,8 +13,7 @@
 #include "garden_light.h"
 #include "scene_renderer.h"
 
-#define PICOSYSTEM_GARDEN_LEAF_VISIBLE_PROGRESS 96U
-#define PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS     4U
+#define PICOSYSTEM_GARDEN_SUN_RADIUS_PIXELS 4U
 
 enum picosystem_garden_moisture_band {
 	PICOSYSTEM_GARDEN_MOISTURE_DRY,
@@ -83,12 +82,32 @@ picosystem_garden_sun_visual_bounds(const struct picosystem_scene_garden_payload
 	return true;
 }
 
+static inline void
+picosystem_garden_seed_visual_bounds(const struct picosystem_scene_garden_seed *seed,
+				     struct picosystem_rect *bounds)
+{
+	const uint16_t left = (seed->x == 0U) ? 0U : (uint16_t)(seed->x - 1U);
+	const uint16_t right = (seed->x >= (PICOSYSTEM_GRAPHICS_WIDTH - 1U))
+				       ? (PICOSYSTEM_GRAPHICS_WIDTH - 1U)
+				       : (uint16_t)(seed->x + 1U);
+	*bounds = (struct picosystem_rect){
+		.x = left,
+		.y = PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS + 1U,
+		.width = (uint16_t)(right - left + 1U),
+		.height = 3U,
+	};
+}
+
 /* Return conservative bounds covering every pixel this node can currently draw. */
 static inline bool
 picosystem_garden_node_visual_bounds(const struct picosystem_scene_garden_payload *garden,
 				     uint16_t index, struct picosystem_rect *bounds)
 {
 	const struct picosystem_scene_garden_node *const node = &garden->nodes[index];
+	const bool dead = (node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD) != 0U;
+	if (dead && (node->growth_progress == 0U)) {
+		return false;
+	}
 	int32_t left = node->x;
 	int32_t right = node->x;
 	int32_t top = node->y;
@@ -107,10 +126,11 @@ picosystem_garden_node_visual_bounds(const struct picosystem_scene_garden_payloa
 
 	int32_t margin = 0;
 	if (((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_LEAF) != 0U) &&
-	    (node->growth_progress >= PICOSYSTEM_GARDEN_LEAF_VISIBLE_PROGRESS)) {
+	    (node->growth_progress >= (dead ? 1U : PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS))) {
 		margin = 3;
 	}
-	if ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_FLOWER) != 0U) {
+	if (((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_FLOWER) != 0U) &&
+	    (node->growth_progress >= (dead ? 1U : PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS))) {
 		margin = 3;
 	}
 	if ((node->style & PICOSYSTEM_SCENE_GARDEN_STYLE_PRUNED) != 0U) {

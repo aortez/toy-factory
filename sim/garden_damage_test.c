@@ -226,6 +226,41 @@ int main(void)
 	CHECK(expect_region(&iterator, &plan, 8U, 144U, 8U, 16U) == 0);
 	CHECK(picosystem_garden_damage_next_region(&plan, &iterator, &region) == 0);
 
+	/* Dormancy, readiness, and germination damage only the seed's soil tile. */
+	presented = empty_garden_snapshot();
+	current = presented;
+	current.payload.garden.seed_count = 1U;
+	current.payload.garden.seeds[0] = (struct picosystem_scene_garden_seed){
+		.x = 20U,
+		.style = PICOSYSTEM_GARDEN_SPECIES_FLOWER,
+	};
+	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == 0);
+	CHECK(plan.dirty_tile_count == 1U);
+	CHECK(picosystem_garden_damage_iterator_init(&iterator) == 0);
+	CHECK(expect_region(&iterator, &plan, 16U, 144U, 8U, 8U) == 0);
+	CHECK(picosystem_garden_damage_next_region(&plan, &iterator, &region) == 0);
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	presented = current;
+	current.payload.garden.seeds[0].style |=
+		PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_DORMANCY_COMPLETE;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	presented = current;
+	current.payload.garden.seed_count = 0U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	current = empty_garden_snapshot();
+	current.payload.garden.seed_count = 1U;
+	current.payload.garden.seeds[0].x = 20U;
+	current.payload.garden.seeds[0].style = UINT8_MAX;
+	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == -ERANGE);
+	presented = empty_garden_snapshot();
+	current = presented;
+	current.payload.garden.seed_count = 1U;
+	current.payload.garden.seeds[0].x = 0U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	presented = current;
+	current.payload.garden.seeds[0].x = PICOSYSTEM_GRAPHICS_WIDTH - 1U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+
 	presented = empty_garden_snapshot();
 	current = presented;
 	current.payload.garden.cursor_column = 2U;
@@ -258,6 +293,24 @@ int main(void)
 	CHECK(picosystem_garden_damage_iterator_init(&iterator) == 0);
 	CHECK(expect_region(&iterator, &plan, 8U, 40U, 16U, 8U) == 0);
 	CHECK(picosystem_garden_damage_next_region(&plan, &iterator, &region) == 0);
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+
+	/* Stress, death, and tissue removal all reconstruct from bounded damage. */
+	presented = current;
+	current.payload.garden.nodes[1].growth_progress = UINT8_MAX;
+	current.payload.garden.nodes[1].style |= PICOSYSTEM_SCENE_GARDEN_STYLE_LEAF;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	presented = current;
+	current.payload.garden.nodes[1].style |= PICOSYSTEM_SCENE_GARDEN_STYLE_STRESSED;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	presented = current;
+	current.payload.garden.nodes[1].style &= (uint8_t)~PICOSYSTEM_SCENE_GARDEN_STYLE_STRESSED;
+	current.payload.garden.nodes[1].style |= PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD;
+	current.payload.garden.nodes[1].growth_progress = 48U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	presented = current;
+	current.payload.garden.nodes[1].growth_progress = 0U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
 
 	current.payload.garden.nodes[1].parent_distance = 2U;
 	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == -ERANGE);
@@ -267,5 +320,15 @@ int main(void)
 	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == -ENOTSUP);
 	CHECK(plan.dirty_tile_count == 0U);
 	CHECK(verify_interactive_transitions() == 0);
+	presented = empty_garden_snapshot();
+	current = presented;
+	current.payload.garden.rain_rate = 2U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	CHECK(verify_partial_reconstruction(&current, &presented) == 0);
+	presented = current;
+	current.payload.garden.rain_rate = 4U;
+	CHECK(verify_partial_reconstruction(&presented, &current) == 0);
+	current.payload.garden.rain_rate = PICOSYSTEM_GARDEN_RAIN_MAX_RATE + 1U;
+	CHECK(picosystem_garden_damage_plan_build(&presented, &current, &plan) == -ERANGE);
 	return 0;
 }

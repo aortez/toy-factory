@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "garden_agent.h"
 #include "graphics_raster.h"
 #include "simulator.h"
 
@@ -200,6 +201,25 @@ static int missing_argument(const char *option)
 	return 2;
 }
 
+static const char *garden_agent_action_name(uint8_t action)
+{
+	switch (action) {
+	case PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT:
+		return "wait";
+	case PICOSYSTEM_GARDEN_AGENT_ACTION_EXTEND:
+		return "extend";
+	case PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP:
+		return "finish";
+	default:
+		return "unknown";
+	}
+}
+
+static const char *garden_tissue_name(uint8_t tissue_kind)
+{
+	return (tissue_kind == PICOSYSTEM_GARDEN_NODE_ROOT) ? "root" : "shoot";
+}
+
 int main(int argc, char **argv)
 {
 	struct toy_factory_simulator simulator;
@@ -313,9 +333,82 @@ int main(int argc, char **argv)
 	const uint32_t state_hash = toy_factory_simulator_state_hash(&simulator);
 	const uint32_t framebuffer_crc = toy_factory_simulator_framebuffer_crc32(&simulator);
 	printf("{\"scene\":\"%s\",\"tick\":%" PRIu32 ",\"hash\":\"%08" PRIx32
-	       "\",\"framebuffer_crc32\":\"%08" PRIx32 "\"}\n",
+	       "\",\"framebuffer_crc32\":\"%08" PRIx32 "\"",
 	       picosystem_game_scene_name((enum picosystem_game_scene_id)simulator.world.scene_id),
 	       simulator.world.logic_tick_count, state_hash, framebuffer_crc);
+	if (simulator.world.scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
+		const struct picosystem_garden_world *const garden = &simulator.world.garden;
+		printf(",\"garden\":{\"plants\":%u,\"living\":%u,\"dead\":%u,\"nodes\":%u,"
+		       "\"blooms\":%" PRIu32 ",\"deaths\":%" PRIu32 ",\"reclaimed_plants\":%" PRIu32
+		       ",\"reclaimed_nodes\":%" PRIu32 ",\"seeds\":%u,\"seeds_created\":%" PRIu32
+		       ",\"germinations\":%" PRIu32 ",\"seeds_expired\":%" PRIu32
+		       ",\"mutations\":%" PRIu32 ",\"max_generation\":%u,\"moisture\":%u,"
+		       "\"agent\":{\"decisions\":%" PRIu32 ",\"extend\":%" PRIu32
+		       ",\"wait\":%" PRIu32 ",\"finish\":%" PRIu32 ",\"root\":%" PRIu32
+		       ",\"shoot\":%" PRIu32 ",\"root_extend\":%" PRIu32
+		       ",\"shoot_extend\":%" PRIu32 "}",
+		       garden->plant_count, picosystem_garden_world_living_plant_count(garden),
+		       picosystem_garden_world_dead_plant_count(garden), garden->node_count,
+		       garden->bloom_count, garden->death_count, garden->reclaimed_plant_count,
+		       garden->reclaimed_node_count, garden->seed_count,
+		       garden->seed_creation_count, garden->germination_count,
+		       garden->seed_expiration_count, garden->mutation_count,
+		       garden->maximum_generation, garden->moisture_total,
+		       garden->agent_telemetry.decision_count, garden->agent_telemetry.extend_count,
+		       garden->agent_telemetry.wait_count, garden->agent_telemetry.finish_count,
+		       garden->agent_telemetry.root_decision_count,
+		       garden->agent_telemetry.shoot_decision_count,
+		       garden->agent_telemetry.root_extend_count,
+		       garden->agent_telemetry.shoot_extend_count);
+		printf(",\"weather\":{\"seed\":\"%08" PRIx32 "\",\"rain_rate\":%u,"
+		       "\"deposited\":%" PRIu32 ",\"runoff\":%" PRIu32 "},\"lineages\":[",
+		       garden->weather_seed,
+		       picosystem_garden_rain_at(garden->weather_seed, garden->ecology_tick_count),
+		       garden->rain_deposited, garden->rain_runoff);
+		for (uint8_t index = 0U; index < garden->plant_count; ++index) {
+			const struct picosystem_garden_plant *const plant = &garden->plants[index];
+			printf("%s{\"id\":%" PRIu32 ",\"parent\":%" PRIu32
+			       ",\"generation\":%u,\"offspring\":%u,\"species\":%u,"
+			       "\"traits\":[%d,%d,%d,%d,%d,%d,%d,%d],"
+			       "\"memory\":[%d,%d,%d,%d,%d,%d,%d,%d],"
+			       "\"agent\":{\"decisions\":%" PRIu32 ",\"extend\":%" PRIu32
+			       ",\"wait\":%" PRIu32 ",\"finish\":%" PRIu32 ",\"root\":%" PRIu32
+			       ",\"shoot\":%" PRIu32 ",\"root_extend\":%" PRIu32
+			       ",\"shoot_extend\":%" PRIu32,
+			       (index == 0U) ? "" : ",", plant->lineage_id,
+			       plant->parent_lineage_id, plant->generation, plant->offspring_count,
+			       plant->species_id, plant->genome.growth_rate,
+			       plant->genome.shoot_bias, plant->genome.light_seeking,
+			       plant->genome.water_seeking, plant->genome.branching,
+			       plant->genome.stature, plant->genome.reserve_strategy,
+			       plant->genome.dispersal, plant->agent_memory.hidden[0],
+			       plant->agent_memory.hidden[1], plant->agent_memory.hidden[2],
+			       plant->agent_memory.hidden[3], plant->agent_memory.hidden[4],
+			       plant->agent_memory.hidden[5], plant->agent_memory.hidden[6],
+			       plant->agent_memory.hidden[7], plant->agent_telemetry.decision_count,
+			       plant->agent_telemetry.extend_count,
+			       plant->agent_telemetry.wait_count,
+			       plant->agent_telemetry.finish_count,
+			       plant->agent_telemetry.root_decision_count,
+			       plant->agent_telemetry.shoot_decision_count,
+			       plant->agent_telemetry.root_extend_count,
+			       plant->agent_telemetry.shoot_extend_count);
+			if (plant->agent_telemetry.decision_count == 0U) {
+				printf(",\"last\":null}}");
+			} else {
+				printf(",\"last\":{\"action\":\"%s\",\"tissue\":\"%s\","
+				       "\"tip\":[%u,%u,%u],\"priority\":%d}}}",
+				       garden_agent_action_name(plant->agent_telemetry.last_action),
+				       garden_tissue_name(plant->agent_telemetry.last_tissue_kind),
+				       plant->agent_telemetry.last_tip_x,
+				       plant->agent_telemetry.last_tip_y,
+				       plant->agent_telemetry.last_tip_depth,
+				       plant->agent_telemetry.last_priority);
+			}
+		}
+		printf("]}");
+	}
+	puts("}");
 
 	if (output_path != NULL) {
 		err = write_ppm(output_path);

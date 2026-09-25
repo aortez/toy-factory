@@ -14,7 +14,9 @@ elif [[ $# -ne 0 ]]; then
 	exit 2
 fi
 
+source "$app_dir/scripts/container/host-garden-defaults.sh"
 cmake -S sim -B "$build_dir" -G Ninja \
+	"${garden_default_cmake_options[@]}" \
 	-DTOY_FACTORY_SIMULATOR_SANITIZERS=ON \
 	-DTOY_FACTORY_SIMULATOR_PROFILING=ON
 cmake --build "$build_dir"

@@ -66,14 +66,15 @@ one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
 updates crossed the 16.667 ms budget. The 320-grain population remains normal
 to preserve headroom for additional gameplay.
 
-The current image, including Garden, uses 255,172 bytes of the 255 KiB Zephyr
-RAM region and 253,812 bytes of flash, leaving 5,948 bytes of linker RAM plus
-the separately reserved 8 KiB core-1 mailbox/stack area. The conservative image
-uses 222,868 bytes of Zephyr RAM and 247,844 bytes of flash. The fixed granular
-capacity is 512 particles, the fixed Garden capacity is eight plants and 256
-nodes, the immutable render snapshot is 1,640 bytes, and the tagged game-world
-and snapshot unions avoid allocating inactive scene alternatives. Full
-Hourglass results are in the
+The current image, including the adaptive Garden policy, uses 255,612 bytes of
+the 255 KiB Zephyr RAM region and 261,588 bytes of flash, leaving 5,508 bytes of
+linker RAM plus the separately reserved 8 KiB core-1 mailbox/stack area. The
+conservative image uses 222,988 bytes of Zephyr RAM and 255,812 bytes of flash.
+The fixed granular capacity is 512 particles, the fixed Garden capacity is
+eight plants, 256 nodes, and eight dormant seeds, and the 4,340-byte Garden
+world includes bounded per-plant and cumulative policy telemetry. The immutable
+render snapshot is 1,664 bytes, and the tagged game-world and snapshot unions
+avoid allocating inactive scene alternatives. Full Hourglass results are in the
 [Hourglass report](../benchmarks/hourglass/README.md).
 
 Native tests retain exact replay and complete-drain checks for the 96-, 192-,
@@ -85,18 +86,46 @@ Exact USB-controlled replay reproduced tick 360 at hash `a0919f8b` and
 framebuffer CRC-32 `41e4cdd1` after a directional/flip sequence. A 600-tick
 neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
 
-## Current Garden validation
+## Garden validation
 
-With moving directional light, the native mixed manual/automatic sequence
-reaches tick 930 at state hash `de69461d` and framebuffer CRC-32 `7cf1bee7`.
-Continuing the exact replay to a mature 225-node garden reaches tick 3,771 at
-hash `f5df2b20` and CRC-32 `0008203d`. Host full and damage-region rendering
-reproduce those pixels exactly, and the PIM559 reproduces both revised
-checkpoints exactly over USB.
+The renewable-flower lifecycle uses Garden hash version 5. Its updated sequence
+goldens and full/damage rendering are host-verified, and the firmware builds
+with unchanged static RAM usage. These new goldens have not yet been replayed
+on the PIM559; current values are in the
+[Garden design](garden-simulator.md#presentation-and-validation).
 
-An ensuing 5,698-tick real-time device window with 236 nodes held 60.0 Hz with
-no skipped or over-budget updates. Complete updates averaged 0.686 ms and
-peaked at 5.923 ms; world/model work averaged 0.305 ms and peaked at 5.154 ms.
+The device measurements and hashes below describe the preceding version-4
+lifecycle, before renewable flowers and attainable reproduction reserves.
+
+With adaptive recurrent allocation and plant-level all-tip arbitration, the
+mixed manual/automatic sequence reaches tick 930 with five plants, 137 nodes,
+four blooms, and one dormant seed at state hash `dc82ca95` and framebuffer
+CRC-32 `c96704e4`. Continuing the exact replay to tick 3,771 reaches five
+healthy plants, 189 nodes, 15 blooms, and five dormant seeds at hash `3da95d0b`
+and CRC-32 `37bcf2aa`. An unattended lifecycle replay reaches tick 4,530 with
+two living plants, one visibly decomposing plant, two cumulative deaths, and
+one reclaimed 25-node plant at hash `43930afa` and CRC-32 `5c1d934a`.
+
+A longer fixture delays intervention until ecological pressure has caused
+turnover, then enables automation. At tick 8,430 it has six living plants,
+seven produced seeds, one germination, three expirations, six bounded mutations,
+and one current generation-one offspring at hash `cf48b126` and CRC-32
+`c836f83a`. UBSan host full/damage rendering reproduces all four checkpoints;
+the PIM559 also reproduced the mixed and complete generation fixtures' final
+hashes and framebuffer CRCs exactly.
+
+After that device replay, a 412-tick live reproduction window held 60.0 Hz with
+no skipped or over-budget updates. Complete updates averaged 0.890 ms and peaked
+at 10.851 ms; world/model work averaged 0.452 ms and peaked at 10.268 ms.
+Full-frame presentation held 29.3 fps with 11.742/12.055 ms last/maximum core-1
+raster time and an 18.372 ms display transfer. Main and renderer stack
+high-water marks were 3,836/5,120 and 3,196/5,120 bytes.
+
+A live device window after the earlier lifecycle replay held 60.0 Hz with no
+skipped or over-budget updates. Complete updates averaged 0.653 ms and peaked
+at 6.277 ms; world/model work averaged 0.258 ms and peaked at 5.838 ms. Main, renderer, and
+core-1 stack high-water marks were 3,764/5,120, 3,172/5,120, and 296/4,096
+bytes after reclamation ran.
 
 The preceding vertical-light firmware was also replayed exactly on both cores.
 Its 2,467-tick full-capacity window held 60.0 Hz simulation and 29.6 fps
@@ -262,7 +291,7 @@ three updates and 10,000 ticks for 60 updates. A native host test checks this
 pattern, catch-up boundaries, validation, and the constant-time due-count result
 against an iterative reference.
 
-Simulation publishes a 1,640-byte scene-tagged immutable snapshot. Its rigid
+Simulation publishes a 1,664-byte scene-tagged immutable snapshot. Its rigid
 payload covers up to 12 circle, oriented-box, or capsule bodies, eight physical
 static segments, 16 render-only guide segments, two ropes with up to 12
 particles each, eight render records each for distance and revolute joints, and

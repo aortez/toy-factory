@@ -90,8 +90,19 @@ struct garden_profile_result {
 	uint32_t state_hash;
 	uint32_t framebuffer_crc32;
 	uint32_t plant_count;
+	uint32_t living_plant_count;
+	uint32_t dead_plant_count;
 	uint32_t node_count;
 	uint32_t bloom_count;
+	uint32_t death_count;
+	uint32_t reclaimed_plant_count;
+	uint32_t reclaimed_node_count;
+	uint32_t seed_count;
+	uint32_t seed_creation_count;
+	uint32_t germination_count;
+	uint32_t seed_expiration_count;
+	uint32_t mutation_count;
+	uint32_t maximum_generation;
 	uint32_t moisture_total;
 	struct timing_summary ordinary_step;
 	struct timing_summary ecology_step;
@@ -115,21 +126,21 @@ static const struct garden_profile_checkpoint checkpoints[] = {
 	{
 		.name = "initial",
 		.tick = 0U,
-		.expected_hash = UINT32_C(0x4d2f4270),
+		.expected_hash = UINT32_C(0x42bd6367),
 		.expected_framebuffer_crc32 = UINT32_C(0xc515c869),
 	},
 	{
 		.name = "growing",
 		.tick = 930U,
-		.expected_hash = UINT32_C(0xde69461d),
-		.expected_framebuffer_crc32 = UINT32_C(0x7cf1bee7),
+		.expected_hash = UINT32_C(0x28489ef5),
+		.expected_framebuffer_crc32 = UINT32_C(0xfc95584f),
 		.apply_smoke_setup = true,
 	},
 	{
 		.name = "mature",
 		.tick = 3771U,
-		.expected_hash = UINT32_C(0xf5df2b20),
-		.expected_framebuffer_crc32 = UINT32_C(0x0008203d),
+		.expected_hash = UINT32_C(0x4345d5b7),
+		.expected_framebuffer_crc32 = UINT32_C(0x1f128cce),
 		.apply_smoke_setup = true,
 	},
 };
@@ -790,8 +801,21 @@ static int profile_checkpoint(const struct garden_profile_checkpoint *checkpoint
 		.tick = simulator.world.logic_tick_count,
 		.state_hash = toy_factory_simulator_state_hash(&simulator),
 		.plant_count = simulator.world.garden.plant_count,
+		.living_plant_count =
+			picosystem_garden_world_living_plant_count(&simulator.world.garden),
+		.dead_plant_count =
+			picosystem_garden_world_dead_plant_count(&simulator.world.garden),
 		.node_count = simulator.world.garden.node_count,
 		.bloom_count = simulator.world.garden.bloom_count,
+		.death_count = simulator.world.garden.death_count,
+		.reclaimed_plant_count = simulator.world.garden.reclaimed_plant_count,
+		.reclaimed_node_count = simulator.world.garden.reclaimed_node_count,
+		.seed_count = simulator.world.garden.seed_count,
+		.seed_creation_count = simulator.world.garden.seed_creation_count,
+		.germination_count = simulator.world.garden.germination_count,
+		.seed_expiration_count = simulator.world.garden.seed_expiration_count,
+		.mutation_count = simulator.world.garden.mutation_count,
+		.maximum_generation = simulator.world.garden.maximum_generation,
 		.moisture_total = simulator.world.garden.moisture_total,
 	};
 	err = profile_model_steps(&simulator.world, repetitions, &result->ordinary_step,
@@ -874,9 +898,18 @@ static void print_result(const struct garden_profile_result *result, bool traili
 	printf("      \"tick\": %" PRIu32 ",\n", result->tick);
 	printf("      \"state_hash\": \"%08" PRIx32 "\",\n", result->state_hash);
 	printf("      \"framebuffer_crc32\": \"%08" PRIx32 "\",\n", result->framebuffer_crc32);
-	printf("      \"state\": {\"plants\": %" PRIu32 ", \"nodes\": %" PRIu32
-	       ", \"blooms\": %" PRIu32 ", \"moisture\": %" PRIu32 "},\n",
-	       result->plant_count, result->node_count, result->bloom_count,
+	printf("      \"state\": {\"plants\": %" PRIu32 ", \"living\": %" PRIu32
+	       ", \"dead\": %" PRIu32 ", \"nodes\": %" PRIu32 ", \"blooms\": %" PRIu32
+	       ", \"deaths\": %" PRIu32 ", \"reclaimed_plants\": %" PRIu32
+	       ", \"reclaimed_nodes\": %" PRIu32 ", \"seeds\": %" PRIu32
+	       ", \"seeds_created\": %" PRIu32 ", \"germinations\": %" PRIu32
+	       ", \"seeds_expired\": %" PRIu32 ", \"mutations\": %" PRIu32
+	       ", \"max_generation\": %" PRIu32 ", \"moisture\": %" PRIu32 "},\n",
+	       result->plant_count, result->living_plant_count, result->dead_plant_count,
+	       result->node_count, result->bloom_count, result->death_count,
+	       result->reclaimed_plant_count, result->reclaimed_node_count, result->seed_count,
+	       result->seed_creation_count, result->germination_count,
+	       result->seed_expiration_count, result->mutation_count, result->maximum_generation,
 	       result->moisture_total);
 	printf("      \"timing_ns\": {\n");
 	print_timing_summary("ordinary_step", &result->ordinary_step, true);

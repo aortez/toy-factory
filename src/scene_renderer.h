@@ -15,19 +15,23 @@
 #include "granular_world.h"
 #include "physics_world.h"
 
-#define PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT 3U
-#define PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS      3U
-#define PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT       16U
-#define PICOSYSTEM_SCENE_MAX_BOX_SENSORS            1U
-#define PICOSYSTEM_SCENE_JOINT_SPRING_FLAG          UINT16_C(0x8000)
-#define PICOSYSTEM_SCENE_JOINT_TARGET_RADIUS_MASK   UINT16_C(0x7fff)
-#define PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK  UINT8_C(0x03)
-#define PICOSYSTEM_SCENE_GARDEN_STYLE_ROOT          UINT8_C(0x04)
-#define PICOSYSTEM_SCENE_GARDEN_STYLE_LEAF          UINT8_C(0x08)
-#define PICOSYSTEM_SCENE_GARDEN_STYLE_FLOWER        UINT8_C(0x10)
-#define PICOSYSTEM_SCENE_GARDEN_STYLE_PRUNED        UINT8_C(0x20)
-#define PICOSYSTEM_SCENE_GARDEN_STYLE_TIP           UINT8_C(0x40)
-#define PICOSYSTEM_SCENE_GARDEN_STYLE_VALID_MASK    UINT8_C(0x7f)
+#define PICOSYSTEM_SCENE_JOINT_DAMAGE_SEGMENT_COUNT          3U
+#define PICOSYSTEM_SCENE_REVOLUTE_JOINT_RADIUS               3U
+#define PICOSYSTEM_SCENE_CONVEYOR_PHASE_COUNT                16U
+#define PICOSYSTEM_SCENE_MAX_BOX_SENSORS                     1U
+#define PICOSYSTEM_SCENE_JOINT_SPRING_FLAG                   UINT16_C(0x8000)
+#define PICOSYSTEM_SCENE_JOINT_TARGET_RADIUS_MASK            UINT16_C(0x7fff)
+#define PICOSYSTEM_SCENE_GARDEN_STYLE_SPECIES_MASK           UINT8_C(0x03)
+#define PICOSYSTEM_SCENE_GARDEN_STYLE_ROOT                   UINT8_C(0x04)
+#define PICOSYSTEM_SCENE_GARDEN_STYLE_LEAF                   UINT8_C(0x08)
+#define PICOSYSTEM_SCENE_GARDEN_STYLE_FLOWER                 UINT8_C(0x10)
+#define PICOSYSTEM_SCENE_GARDEN_STYLE_PRUNED                 UINT8_C(0x20)
+#define PICOSYSTEM_SCENE_GARDEN_STYLE_STRESSED               UINT8_C(0x40)
+#define PICOSYSTEM_SCENE_GARDEN_STYLE_DEAD                   UINT8_C(0x80)
+#define PICOSYSTEM_SCENE_GARDEN_STYLE_VALID_MASK             UINT8_MAX
+#define PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_SPECIES_MASK      UINT8_C(0x03)
+#define PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_DORMANCY_COMPLETE UINT8_C(0x04)
+#define PICOSYSTEM_SCENE_GARDEN_SEED_STYLE_VALID_MASK        UINT8_C(0x07)
 #define PICOSYSTEM_SCENE_MAX_SEGMENTS                                                              \
 	(PICOSYSTEM_PHYSICS_MAX_STATIC_SEGMENTS + (2U * PICOSYSTEM_PHYSICS_MAX_PRISMATIC_JOINTS))
 
@@ -104,20 +108,36 @@ struct picosystem_scene_granular_payload {
 };
 
 /* A zero parent distance marks a plant base; every other parent precedes its child. */
+#if defined(TOY_FACTORY_GARDEN_LARGE_POOL)
+typedef uint16_t picosystem_scene_garden_parent_distance_t;
+#else
+typedef uint8_t picosystem_scene_garden_parent_distance_t;
+#endif
+
 struct picosystem_scene_garden_node {
 	uint8_t x;
 	uint8_t y;
-	uint8_t parent_distance;
+	picosystem_scene_garden_parent_distance_t parent_distance;
 	uint8_t growth_progress;
 	uint8_t style;
 };
 
+struct picosystem_scene_garden_seed {
+	uint8_t x;
+	uint8_t style;
+};
+
 struct picosystem_scene_garden_payload {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	uint8_t leaf_condition[PICOSYSTEM_GARDEN_MAX_NODES];
+#endif
 	struct picosystem_scene_garden_node nodes[PICOSYSTEM_GARDEN_MAX_NODES];
+	struct picosystem_scene_garden_seed seeds[PICOSYSTEM_GARDEN_MAX_SEEDS];
 	uint8_t moisture[PICOSYSTEM_GARDEN_SOIL_CELL_COUNT];
 	uint16_t node_count;
 	uint16_t moisture_total;
 	uint8_t plant_count;
+	uint8_t seed_count;
 	uint8_t cursor_column;
 	uint8_t cursor_row;
 	uint8_t selected_tool;
@@ -129,6 +149,7 @@ struct picosystem_scene_garden_payload {
 	uint8_t sun_phase;
 	uint8_t sun_strength;
 	int8_t sun_ray_step_x_q4;
+	uint8_t rain_rate;
 };
 
 /* Immutable, self-contained input copied to the auxiliary core before rasterization. */

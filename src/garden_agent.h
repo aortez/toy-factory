@@ -7,11 +7,12 @@
 #ifndef PICOSYSTEM_GARDEN_AGENT_H_
 #define PICOSYSTEM_GARDEN_AGENT_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "garden_world.h"
 
-#define PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION 2U
+#define PICOSYSTEM_GARDEN_AGENT_OBSERVATION_VERSION 4U
 #define PICOSYSTEM_GARDEN_AGENT_MAX_CANDIDATES      5U
 #define PICOSYSTEM_GARDEN_AGENT_CANDIDATE_NONE      UINT8_MAX
 
@@ -33,6 +34,14 @@ enum picosystem_garden_agent_action {
 	PICOSYSTEM_GARDEN_AGENT_ACTION_EXTEND,
 	PICOSYSTEM_GARDEN_AGENT_ACTION_FINISH_TIP,
 	PICOSYSTEM_GARDEN_AGENT_ACTION_COUNT,
+};
+
+enum picosystem_garden_agent_arbitration {
+	/* Preserve the original root/shoot cadence and round-robin tip selection. */
+	PICOSYSTEM_GARDEN_AGENT_ARBITRATION_PHASED,
+	/* Evaluate every active tip against one memory snapshot and choose one winner. */
+	PICOSYSTEM_GARDEN_AGENT_ARBITRATION_ALL_TIPS,
+	PICOSYSTEM_GARDEN_AGENT_ARBITRATION_COUNT,
 };
 
 /* One canonical growth direction and the resources available at its endpoint. */
@@ -83,6 +92,14 @@ struct picosystem_garden_agent_observation {
 	uint8_t sun_phase;
 	uint8_t sun_strength;
 	int8_t sun_ray_step_x_q4;
+	uint8_t stress;
+	uint8_t maintenance_energy_cost;
+	uint8_t maintenance_water_cost;
+	uint8_t maintenance_phase;
+	uint8_t last_energy_income;
+	uint8_t last_water_income;
+	uint8_t plant_flags;
+	struct picosystem_garden_genome genome;
 	struct picosystem_garden_agent_candidate candidates[PICOSYSTEM_GARDEN_AGENT_MAX_CANDIDATES];
 };
 
@@ -95,6 +112,36 @@ struct picosystem_garden_agent_proposal {
 	uint8_t candidate_order[PICOSYSTEM_GARDEN_AGENT_MAX_CANDIDATES];
 };
 
+/* A policy proposes both an action and the lifetime memory committed with it. */
+struct picosystem_garden_agent_decision {
+	struct picosystem_garden_agent_proposal proposal;
+	struct picosystem_garden_agent_memory next_memory;
+};
+
+typedef int (*picosystem_garden_agent_decide_fn)(
+	const struct picosystem_garden_agent_observation *observation,
+	const struct picosystem_garden_agent_memory *memory,
+	struct picosystem_garden_agent_decision *decision, const void *context);
+
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+struct picosystem_garden_leaf_policy;
+#endif
+
+/* The callback and immutable context are supplied by the caller, never stored in the world. */
+struct picosystem_garden_agent_policy {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+	/* Separate typed action space; never changes the legacy neural model ABI. */
+	const struct picosystem_garden_leaf_policy *leaf_policy;
+#endif
+	picosystem_garden_agent_decide_fn decide;
+	const void *context;
+	enum picosystem_garden_agent_arbitration arbitration;
+};
+
+/* Validate the complete, versioned observation contract without mutating it. */
+bool picosystem_garden_agent_observation_is_valid(
+	const struct picosystem_garden_agent_observation *observation);
+
 /* Observe one active tip without mutating the world. */
 int picosystem_garden_agent_observe_tip(const struct picosystem_garden_world *world,
 					uint8_t plant_index, uint16_t tip_index,
@@ -105,5 +152,26 @@ int picosystem_garden_agent_observe_tip(const struct picosystem_garden_world *wo
 int picosystem_garden_agent_baseline_propose(
 	const struct picosystem_garden_agent_observation *observation,
 	struct picosystem_garden_agent_proposal *proposal);
+
+/* Evaluate one policy without exposing mutable world state. */
+int picosystem_garden_agent_decide(const struct picosystem_garden_agent_policy *policy,
+				   const struct picosystem_garden_agent_observation *observation,
+				   const struct picosystem_garden_agent_memory *memory,
+				   struct picosystem_garden_agent_decision *decision);
+
+/* Preserve the original hand-authored proposal and carry lifetime memory unchanged. */
+int picosystem_garden_agent_baseline_decide(
+	const struct picosystem_garden_agent_observation *observation,
+	const struct picosystem_garden_agent_memory *memory,
+	struct picosystem_garden_agent_decision *decision, const void *context);
+
+/* Balance resource pressure, plant form, and recent choices across every active tip. */
+int picosystem_garden_agent_adaptive_decide(
+	const struct picosystem_garden_agent_observation *observation,
+	const struct picosystem_garden_agent_memory *memory,
+	struct picosystem_garden_agent_decision *decision, const void *context);
+
+const struct picosystem_garden_agent_policy *picosystem_garden_agent_baseline_policy(void);
+const struct picosystem_garden_agent_policy *picosystem_garden_agent_adaptive_policy(void);
 
 #endif /* PICOSYSTEM_GARDEN_AGENT_H_ */

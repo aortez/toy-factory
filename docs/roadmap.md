@@ -103,6 +103,11 @@ enough to mark hardware-dependent acceptance items complete.
 
 ## 7. Playable toys
 
+The original Garden prototype is complete. Its environment-validation,
+visual-review, and training follow-ups are tracked in the dedicated
+[Garden A-life roadmap](garden-alife-roadmap.md) and
+[issue #30](https://github.com/aortez/toy-factory/issues/30).
+
 - [x] Separate reusable game-world control from flash-resident scene builders.
 - [x] Build and physically verify the Clockwork kinetic sculpture.
 - [x] Preserve Machine Lab as a deterministic profiling fixture.
@@ -112,8 +117,11 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Build and physically verify the deterministic Garden and auto-gardener.
 - [x] Route baseline growth through a bounded Garden observation/proposal contract.
 - [x] Add deterministic moving directional light over the canopy grid.
-- [ ] Add resource maintenance, mortality, decomposition, and node reclamation.
-- [ ] Add reproduction and a replaceable recurrent plant policy.
+- [x] Add resource maintenance, mortality, decomposition, and node reclamation.
+- [x] Add bounded heritable reproduction, seed dormancy, germination, and lineage.
+- [x] Add fixed lifetime memory and a replaceable pure plant-policy callback.
+- [x] Add an adaptive recurrent plant policy and plant-level action arbitration.
+- [x] Add a versioned fixed-point neural policy ABI, reference model, and matched-seed control.
 
 ## 8. Host simulation
 
@@ -124,6 +132,10 @@ enough to mark hardware-dependent acceptance items complete.
 - [x] Add a Docker-built SDL3 player with real-time, pause, and exact-step controls.
 - [x] Add deterministic Garden checkpoints, raster work counts, and frame-delta profiling.
 - [x] Prove bounded semantic Garden damage against exact full renders on the host.
+- [x] Add matched-seed Garden policy evaluation, gated lineage outcomes, and bounded decision
+      telemetry.
+- [x] Add deterministic Garden neural-policy search and portable, CRC-protected model artifacts.
+- [x] Make mature reproduction reserves attainable and renew living flowers each Garden day.
 - [ ] Measure adaptive Garden partial/full presentation on the PIM559.
 - [ ] Evaluate overlapping core-1 strip rasterization with display DMA.
 - [ ] Add browser/Wasm presentation over the same portable simulation boundary.

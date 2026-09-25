@@ -1194,13 +1194,36 @@ int picosystem_game_demo_get_stats(const struct picosystem_game_demo_state *stat
 	if (state->world.scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
 		const struct picosystem_garden_world *const garden = &state->world.garden;
 		stats->garden_ecology_tick_count = garden->ecology_tick_count;
+		stats->garden_weather_seed = garden->weather_seed;
+		stats->garden_rain_deposited = garden->rain_deposited;
+		stats->garden_rain_runoff = garden->rain_runoff;
 		stats->garden_manual_action_count = garden->manual_action_count;
 		stats->garden_auto_decision_count = garden->auto_decision_count;
 		stats->garden_auto_action_count = garden->auto_action_count;
 		stats->garden_bloom_count = garden->bloom_count;
+		stats->garden_death_count = garden->death_count;
+		stats->garden_reclaimed_plant_count = garden->reclaimed_plant_count;
+		stats->garden_reclaimed_node_count = garden->reclaimed_node_count;
+		stats->garden_seed_creation_count = garden->seed_creation_count;
+		stats->garden_germination_count = garden->germination_count;
+		stats->garden_seed_expiration_count = garden->seed_expiration_count;
+		stats->garden_mutation_count = garden->mutation_count;
+		stats->garden_agent_decision_count = garden->agent_telemetry.decision_count;
+		stats->garden_agent_extend_count = garden->agent_telemetry.extend_count;
+		stats->garden_agent_wait_count = garden->agent_telemetry.wait_count;
+		stats->garden_agent_finish_count = garden->agent_telemetry.finish_count;
+		stats->garden_agent_root_count = garden->agent_telemetry.root_decision_count;
+		stats->garden_agent_shoot_count = garden->agent_telemetry.shoot_decision_count;
+		stats->garden_agent_root_extend_count = garden->agent_telemetry.root_extend_count;
+		stats->garden_agent_shoot_extend_count = garden->agent_telemetry.shoot_extend_count;
 		stats->garden_node_count = garden->node_count;
 		stats->garden_moisture_total = garden->moisture_total;
+		stats->garden_maximum_generation = garden->maximum_generation;
 		stats->garden_plant_count = garden->plant_count;
+		stats->garden_seed_count = garden->seed_count;
+		stats->garden_living_plant_count =
+			picosystem_garden_world_living_plant_count(garden);
+		stats->garden_dead_plant_count = picosystem_garden_world_dead_plant_count(garden);
 		stats->garden_selected_tool = garden->selected_tool;
 		stats->garden_auto_gardener_enabled = garden->auto_gardener_enabled;
 		return 0;

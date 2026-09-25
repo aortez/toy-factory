@@ -38,6 +38,9 @@ jobs:
       - name: Run native tests and build default firmware
         run: make check
 
+      - name: Build and test opt-in Garden research configuration
+        run: make host-research-check
+
       - name: Build and smoke-test interactive host player
         run: make host-player-check
 

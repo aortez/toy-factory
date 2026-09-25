@@ -1,0 +1,2 @@
+# Keep generated evidence available, but focus the initial PR diff on source and reports.
+benchmarks/garden-longevity/*-summary.json linguist-generated=true

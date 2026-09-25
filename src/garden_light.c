@@ -7,6 +7,7 @@
 #include "garden_light.h"
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -62,10 +63,13 @@ struct picosystem_garden_sun picosystem_garden_sun_at(uint32_t ecology_tick_coun
 	};
 }
 
-int picosystem_garden_light_solve(const uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT],
-				  const struct picosystem_garden_sun *sun,
-				  uint8_t light[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT])
+static int solve_light(const uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT],
+		       const struct picosystem_garden_sun *sun,
+		       uint8_t light[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT], bool fractional)
 {
+#if !defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+	(void)fractional;
+#endif
 	if ((shade == NULL) || (sun == NULL) || (light == NULL) || (shade == light)) {
 		return -EINVAL;
 	}
@@ -97,7 +101,22 @@ int picosystem_garden_light_solve(const uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CE
 					(uint16_t)(((uint16_t)source_row *
 						    PICOSYSTEM_GARDEN_GRID_COLUMNS) +
 						   (uint16_t)source_column);
-				reduction += shade[source_index];
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+				if (fractional) {
+					/* Keep the ambient floor out of both attenuation and
+					 * income. */
+					const uint32_t beam = maximum_reduction - reduction;
+					const uint32_t transmission =
+						(uint32_t)UINT8_MAX - shade[source_index];
+					const uint32_t transmitted =
+						(beam * transmission + (UINT8_MAX / 2U)) /
+						UINT8_MAX;
+					reduction = (uint16_t)(maximum_reduction - transmitted);
+				} else
+#endif
+				{
+					reduction += shade[source_index];
+				}
 				if (reduction >= maximum_reduction) {
 					reduction = maximum_reduction;
 					break;
@@ -111,3 +130,19 @@ int picosystem_garden_light_solve(const uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CE
 	}
 	return 0;
 }
+
+int picosystem_garden_light_solve(const uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT],
+				  const struct picosystem_garden_sun *sun,
+				  uint8_t light[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT])
+{
+	return solve_light(shade, sun, light, false);
+}
+
+#if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
+int picosystem_garden_light_solve_transmission(
+	const uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT],
+	const struct picosystem_garden_sun *sun, uint8_t light[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT])
+{
+	return solve_light(shade, sun, light, true);
+}
+#endif

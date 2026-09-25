@@ -389,15 +389,39 @@ static void print_garden_stats(const struct shell *shell,
 		return;
 	}
 	shell_print(shell,
-		    "garden: plants=%u, nodes=%u/%u, blooms=%u, moisture=%u, ecology=%u, "
+		    "garden: plants=%u (%u living/%u dead), nodes=%u/%u, blooms=%u, "
+		    "deaths=%u, reclaimed=%u plants/%u nodes, moisture=%u, ecology=%u, "
 		    "tool=%s, auto=%s (%u actions/%u decisions), manual=%u actions",
-		    game->garden_plant_count, game->garden_node_count, PICOSYSTEM_GARDEN_MAX_NODES,
-		    game->garden_bloom_count, game->garden_moisture_total,
-		    game->garden_ecology_tick_count,
+		    game->garden_plant_count, game->garden_living_plant_count,
+		    game->garden_dead_plant_count, game->garden_node_count,
+		    PICOSYSTEM_GARDEN_MAX_NODES, game->garden_bloom_count, game->garden_death_count,
+		    game->garden_reclaimed_plant_count, game->garden_reclaimed_node_count,
+		    game->garden_moisture_total, game->garden_ecology_tick_count,
 		    picosystem_garden_tool_name(game->garden_selected_tool),
 		    game->garden_auto_gardener_enabled ? "on" : "off",
 		    game->garden_auto_action_count, game->garden_auto_decision_count,
 		    game->garden_manual_action_count);
+	shell_print(shell,
+		    "garden weather: seed=%08x, rain=%u units/column/ecology-step, "
+		    "deposited=%u, runoff=%u",
+		    game->garden_weather_seed,
+		    picosystem_garden_rain_at(game->garden_weather_seed,
+					      game->garden_ecology_tick_count),
+		    game->garden_rain_deposited, game->garden_rain_runoff);
+	shell_print(shell,
+		    "garden heredity: seeds=%u/%u, created=%u, germinated=%u, expired=%u, "
+		    "mutations=%u, max-generation=%u",
+		    game->garden_seed_count, PICOSYSTEM_GARDEN_MAX_SEEDS,
+		    game->garden_seed_creation_count, game->garden_germination_count,
+		    game->garden_seed_expiration_count, game->garden_mutation_count,
+		    game->garden_maximum_generation);
+	shell_print(shell,
+		    "garden agent: decisions=%u (%u extend/%u wait/%u finish), "
+		    "winners=%u root/%u shoot, extensions=%u root/%u shoot",
+		    game->garden_agent_decision_count, game->garden_agent_extend_count,
+		    game->garden_agent_wait_count, game->garden_agent_finish_count,
+		    game->garden_agent_root_count, game->garden_agent_shoot_count,
+		    game->garden_agent_root_extend_count, game->garden_agent_shoot_extend_count);
 }
 
 static void print_game_runtime_stats(const struct shell *shell,

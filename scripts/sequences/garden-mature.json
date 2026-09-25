@@ -1,5 +1,5 @@
 {
-  "name": "garden-mature-capacity",
+  "name": "garden-established-lifecycle",
   "scene": "garden",
   "steps": [
     {"action": "use-tool"},
@@ -11,7 +11,7 @@
     {"input": "none", "ticks": 3741}
   ],
   "expect": {
-    "hash": "f5df2b20",
-    "framebuffer_crc32": "0008203d"
+    "hash": "4345d5b7",
+    "framebuffer_crc32": "1f128cce"
   }
 }

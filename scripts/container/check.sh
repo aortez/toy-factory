@@ -11,6 +11,7 @@ bash -n scripts/*.sh scripts/container/*.sh scripts/tests/*.sh
 ./scripts/tests/game-scene-selector-test.sh
 ./scripts/tests/physics-world-test.sh
 ./scripts/tests/granular-world-test.sh
+./scripts/tests/garden-neural-test.sh
 ./scripts/tests/garden-world-test.sh
 ./scripts/tests/game-world-test.sh
 ./scripts/tests/mount-uf2-volume-test.sh
@@ -32,6 +33,7 @@ python3 scripts/tests/profile-compare-test.py
 python3 scripts/tests/render-profile-test.py
 python3 scripts/tests/sequence-runner-test.py
 python3 scripts/tests/serial-command-test.py
+python3 scripts/tests/host-garden-defaults-test.py
 git diff --check
 ./scripts/container/host-build.sh --pristine
 ctest --test-dir build-host --output-on-failure

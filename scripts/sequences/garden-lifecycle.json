@@ -1,0 +1,16 @@
+{
+  "name": "garden-death-decomposition-reclamation",
+  "scene": "garden",
+  "steps": [
+    {"action": "use-tool"},
+    {"action": "cycle-tool"},
+    {"action": "cycle-tool"},
+    {"input": "left", "ticks": 30},
+    {"action": "use-tool"},
+    {"input": "none", "ticks": 18000}
+  ],
+  "expect": {
+    "hash": "a9cbbc66",
+    "framebuffer_crc32": "283abd58"
+  }
+}

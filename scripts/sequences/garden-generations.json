@@ -1,0 +1,18 @@
+{
+  "name": "garden-heritable-reproduction",
+  "scene": "garden",
+  "steps": [
+    {"action": "use-tool"},
+    {"action": "cycle-tool"},
+    {"action": "cycle-tool"},
+    {"input": "left", "ticks": 30},
+    {"action": "use-tool"},
+    {"input": "none", "ticks": 4500},
+    {"action": "primary"},
+    {"input": "none", "ticks": 3900}
+  ],
+  "expect": {
+    "hash": "08d270fc",
+    "framebuffer_crc32": "bd42bea8"
+  }
+}

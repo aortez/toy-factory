@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+readonly test_dir=$(mktemp -d)
+trap 'rm -rf -- "$test_dir"' EXIT
+
+gcc -std=c11 -Wall -Wextra -Werror -Wconversion -Wsign-conversion \
+	-fsanitize=undefined -fno-sanitize-recover=undefined -Isrc \
+	src/garden_agent.c src/garden_agent_neural.c src/garden_agent_neural_codec.c \
+	scripts/tests/garden-neural-test.c \
+	-o "$test_dir/garden-neural-test"
+"$test_dir/garden-neural-test"
