@@ -9,7 +9,13 @@ The [merge checkpoint guide](garden-merge-checkpoint.md) defines the bounded
 review scope, production/research boundary, retained conclusions and outstanding
 limitations. Consolidation does not close this roadmap or qualify the ecology.
 
-Latest checkpoint: the [read-only topology census](../benchmarks/garden-longevity/renewal-topology.md)
+PR #31 merged the foundation/research checkpoint. The immediate correctness
+follow-up addresses age wrap and natural-death resource receipts; see
+[long-run correctness](garden-long-run-correctness.md). The next ecology design
+discussion is deterministic winter/hazard/resource scarcity as a source of
+turnover, not an implicit new branch-pruning action. Qualification remains open.
+
+Research checkpoint: the [read-only topology census](../benchmarks/garden-longevity/renewal-topology.md)
 finds only zero or one conservative terminal-shedding candidate at each of eight
 fixed snapshots. At the full endpoint, 136 of 146 exhausted leaf nodes support
 descendants; just one is eligible, and none is eligible and zero for a full day.
@@ -1055,9 +1061,10 @@ Acceptance evidence must address:
   tradeoffs rather than an always-winning scripted action.
 - **Accounting:** rainfall, runoff, uptake, photosynthesis, upkeep, growth,
   reproduction, death, and reclamation have consistent declared semantics.
-  Audit reset/seed-bank loopholes and capacity saturation. Current live-step
-  resource checks do not reconstruct terminal budgets after death clears
-  telemetry; close or explicitly bound that diagnostic gap.
+  Audit reset/seed-bank loopholes and capacity saturation. Opt-in
+  [natural-death receipts](garden-long-run-correctness.md) now reconcile the
+  terminal resource clear; legacy live-step analyzers and forced patch/gap
+  deaths retain their separate accounting boundaries.
 - **Generalization:** conclusions use more than one fortunate seed/layout.
   Paired layouts sharing a seed are not independent statistical replicates.
 

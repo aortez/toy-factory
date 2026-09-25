@@ -482,6 +482,19 @@ if(TOY_FACTORY_SIMULATOR_PLAYER)
 endif()
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_executable(toy-factory-garden-long-run-test garden_long_run_test.c)
+target_link_libraries(toy-factory-garden-long-run-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-long-run-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(toy-factory-garden-long-run-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	target_link_options(toy-factory-garden-long-run-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+endif()
+add_test(NAME garden-long-run-native COMMAND toy-factory-garden-long-run-test)
+add_test(NAME garden-death-audit-smoke COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_deaths.py
+	--inspector $<TARGET_FILE:toy-factory-garden-inspect>)
+
 add_executable(toy-factory-garden-topology-test garden_topology_test.c garden_topology.c)
 target_link_libraries(toy-factory-garden-topology-test PRIVATE toy_factory_simulator_core)
 target_compile_options(toy-factory-garden-topology-test PRIVATE

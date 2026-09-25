@@ -62,6 +62,7 @@ struct picosystem_garden_agent_observation {
 	uint16_t tip_index;
 	uint16_t stored_energy;
 	uint16_t stored_water;
+	/* Compact observation saturates at UINT16_MAX; world age remains 32-bit. */
 	uint16_t age_ecology_ticks;
 	uint16_t plant_node_count;
 	uint16_t shoot_node_count;

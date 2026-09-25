@@ -150,6 +150,11 @@ change exactly one trait by one bounded step. Every plant has a monotonic
 lineage ID, parent lineage, generation, and offspring count; cumulative seed,
 germination, expiration, and mutation counters survive parent reclamation.
 
+Living plant age uses a saturating 32-bit ecology counter; the compact policy
+observation caps age at 65,535 without changing its layout. Host-only natural
+death receipts capture terminal resources before live telemetry is cleared.
+See [long-run correctness and the death-audit workflow](garden-long-run-correctness.md).
+
 Each one-second maintenance event costs one energy unit per eight total nodes
 and one water unit per eight shoot nodes, rounded up. A failed payment records
 which resource was short and increments plant stress; a successful event heals

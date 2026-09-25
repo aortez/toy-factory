@@ -295,12 +295,13 @@ struct picosystem_garden_plant {
 	uint32_t random_state;
 	uint32_t lineage_id;
 	uint32_t parent_lineage_id;
+	/* Monotonic lifetime age; saturates only at UINT32_MAX. */
+	uint32_t age_ecology_ticks;
 	uint16_t base_node_index;
 	uint16_t last_shoot_tip_index;
 	uint16_t last_root_tip_index;
 	uint16_t stored_energy;
 	uint16_t stored_water;
-	uint16_t age_ecology_ticks;
 	uint16_t node_count;
 	uint16_t offspring_count;
 	uint16_t generation;
