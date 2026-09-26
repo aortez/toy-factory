@@ -11,9 +11,11 @@ limitations. Consolidation does not close this roadmap or qualify the ecology.
 
 PR #31 merged the foundation/research checkpoint. The immediate correctness
 follow-up addresses age wrap and natural-death resource receipts; see
-[long-run correctness](garden-long-run-correctness.md). The next ecology design
-discussion is deterministic winter/hazard/resource scarcity as a source of
-turnover, not an implicit new branch-pruning action. Qualification remains open.
+[long-run correctness](garden-long-run-correctness.md). The next implementation
+adds [deterministic winter/drought and longer seed viability](garden-seasons.md),
+with matched host controls and recovery checks. It supplies resource-driven
+turnover, not a new branch-pruning action. Environmental qualification, seasonal
+training objectives and durable diversity remain open.
 
 Research checkpoint: the [read-only topology census](../benchmarks/garden-longevity/renewal-topology.md)
 finds only zero or one conservative terminal-shedding candidate at each of eight

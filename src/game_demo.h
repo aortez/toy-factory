@@ -125,6 +125,9 @@ struct picosystem_game_demo_stats {
 	uint32_t granular_passage_count;
 	uint32_t garden_ecology_tick_count;
 	uint32_t garden_weather_seed;
+	uint8_t garden_climate_mode;
+	uint8_t garden_rain_rate;
+	struct picosystem_garden_climate garden_climate;
 	uint32_t garden_rain_deposited;
 	uint32_t garden_rain_runoff;
 	uint32_t garden_manual_action_count;

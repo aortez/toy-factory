@@ -104,6 +104,7 @@ set(toy_factory_sources
 	${toy_factory_root}/src/garden_agent_neural.c
 	${toy_factory_root}/src/garden_agent_neural_codec.c
 	${toy_factory_root}/src/garden_light.c
+	${toy_factory_root}/src/garden_climate.c
 	${toy_factory_root}/src/garden_world.c
 	${toy_factory_root}/src/game_scene_clockwork.c
 	${toy_factory_root}/src/game_scene_hourglass.c
@@ -116,6 +117,7 @@ set(toy_factory_sources
 	${toy_factory_root}/src/physics_world.c
 	${toy_factory_root}/src/scene_renderer.c
 	garden_evaluation.c
+	garden_climate_cli.c
 	garden_model_file.c
 	garden_model_mutation.c
 	garden_policy_probe.c
@@ -482,6 +484,17 @@ if(TOY_FACTORY_SIMULATOR_PLAYER)
 endif()
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_executable(toy-factory-garden-climate-test garden_climate_test.c)
+target_link_libraries(toy-factory-garden-climate-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-climate-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(toy-factory-garden-climate-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	target_link_options(toy-factory-garden-climate-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+endif()
+add_test(NAME garden-climate-native COMMAND toy-factory-garden-climate-test)
+add_test(NAME garden-climate-replay COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_climate.py --build ${CMAKE_BINARY_DIR})
 add_executable(toy-factory-garden-long-run-test garden_long_run_test.c)
 target_link_libraries(toy-factory-garden-long-run-test PRIVATE toy_factory_simulator_core)
 target_compile_options(toy-factory-garden-long-run-test PRIVATE

@@ -93,7 +93,7 @@ def validate_maximum_duration(binary: Path) -> None:
             "--ticks",
             "100000",
             "--seed",
-            "0x12345678",
+            "1",
         ],
         check=False,
         capture_output=True,
@@ -701,18 +701,18 @@ def validate_report(report: dict[str, object]) -> None:
 
 
 def validate_ready_seed_regression(binary: Path) -> None:
-    # First derived world seed b738f9be exposes a ready seed at tick 7,740
-    # after the final light update, before the next germination pass.
+    # Long-lived-seed fixture exposes a ready seed after the final light update,
+    # before the next germination pass. Keep ready separate from blocked counts.
     completed = subprocess.run(
         [str(binary.resolve()), "--trials", "1", "--ticks", "7800",
-         "--seed", "0xfe893bb8"],
+         "--seed", "0xc9430e16"],
         capture_output=True, text=True, check=True,
     )
     report = json.loads(completed.stdout)
     scenario = next(s for s in report["scenarios"] if s["name"] == "crowded")
     policy = next(p for p in scenario["policies"] if p["name"] == "baseline")
     trial = policy["trials"][0]
-    if trial["seed"] != "b738f9be":
+    if trial["seed"] != "e9be968f":
         raise RuntimeError("ready-seed regression world seed changed")
     for values in (trial, policy["totals"]):
         blockers = validate_seed_blockers(values["seed_germination_blockers"])

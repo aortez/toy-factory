@@ -43,6 +43,10 @@ def check_sites(masks, nodes, plants, capacity):
 
 def check_step(row, old, world, sites, capacity, *, seed_capacity=8, light_required=True):
     """Check identities, sequential resource changes and outcomes; never run a policy."""
+    lifetime = world.get("seed_lifetime_ecology_ticks", 256)
+    require(type(lifetime) is int and 8 < lifetime <= 65535 and
+            old.get("seed_lifetime_ecology_ticks", 256) == lifetime,
+            "invalid/changing seed lifetime")
     stages = row["stages"]
     require(len(stages) == 5 and all(len(s) == 3 and all(type(v) is int for v in s) for s in stages),
             "missing stage inventory")
@@ -70,13 +74,13 @@ def check_step(row, old, world, sites, capacity, *, seed_capacity=8, light_requi
         require(all(a[k] == seed[k] for k in ("parent", "generation", "species", "column")) and
                 a["age"] == seed["age"] + 1 and a["nodes"] == nodes and a["plants"] == len(plants),
                 "seed visit identity/order mismatch")
-        if a["age"] == 256:
+        if a["age"] == lifetime:
             require(a["outcome"] == 1 and a["child"] == 0 and a["blockers"] == 0
                 and a["moisture"] == a["light"] == 0 and a["sites"] == [0] * 28,
                 "expired seed was checked or has impossible output")
             expired += 1
             continue
-        require(0 < a["age"] < 256 and a["outcome"] in (0, 2), "invalid check age/outcome")
+        require(0 < a["age"] < lifetime and a["outcome"] in (0, 2), "invalid check age/outcome")
         check_sites(a["sites"], nodes, plants, capacity)
         require(a["sites"] == masks, "unexpected change between sequential checks")
         col = a["column"]

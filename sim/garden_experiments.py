@@ -26,7 +26,8 @@ from garden_resources import analyze, require
 ROOT = Path(__file__).resolve().parents[1]
 CYCLE_TICKS = 3840
 SCENARIOS = {"rainfed", "rainfed-crowded"}
-ENVIRONMENT = {"rain_version": 1, "gardener": False, "irrigation": False}
+ENVIRONMENT = {"rain_version": 1, "gardener": False, "irrigation": False,
+               "climate": "steady", "seed_lifetime_ecology_ticks": 8192}
 WIDE_ENVIRONMENT = {**ENVIRONMENT, "seed_dispersal": "wide-v1"}
 WATER_ENVIRONMENT = {**ENVIRONMENT, "water_uptake": "headroom-v1"}
 COMBINED_ENVIRONMENT = {**WIDE_ENVIRONMENT, "water_uptake": "headroom-v1"}
@@ -35,8 +36,11 @@ SELECTION_ORDER = ["viable", "durable_parents", "cycle_survivors", "descendant_p
 
 
 def validate_environment(environment: dict) -> None:
-    require(environment in (ENVIRONMENT, WIDE_ENVIRONMENT, WATER_ENVIRONMENT, COMBINED_ENVIRONMENT,
-                            LARGE_POOL_ENVIRONMENT),
+    current = (ENVIRONMENT, WIDE_ENVIRONMENT, WATER_ENVIRONMENT, COMBINED_ENVIRONMENT,
+               LARGE_POOL_ENVIRONMENT)
+    legacy = tuple({k: v for k, v in e.items() if k not in ("climate", "seed_lifetime_ecology_ticks")}
+                   for e in current)
+    require(environment in (*current, *legacy),
             "unexpected experiment environment")
 
 

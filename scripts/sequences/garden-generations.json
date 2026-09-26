@@ -9,10 +9,10 @@
     {"action": "use-tool"},
     {"input": "none", "ticks": 4500},
     {"action": "primary"},
-    {"input": "none", "ticks": 3900}
+    {"input": "none", "ticks": 54000}
   ],
   "expect": {
-    "hash": "08d270fc",
-    "framebuffer_crc32": "bd42bea8"
+    "hash": "1d6f1e15",
+    "framebuffer_crc32": "c100779e"
   }
 }

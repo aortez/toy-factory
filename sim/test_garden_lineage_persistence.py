@@ -126,6 +126,15 @@ class PersistenceTests(unittest.TestCase):
         f["seeds"][0].update(outcome="pending", end_tick=None)
         with self.assertRaises(RuntimeError): self.rerun("seed-only-ending")
 
+    def test_long_lived_seed_stays_unconfirmed_after_fixed_followup(self):
+        f = self.fixtures["seed-only-ending"]
+        f["seeds"][0].update(outcome="pending", end_tick=None, lifetime_ecology_ticks=8192)
+        result = self.rerun("seed-only-ending")
+        self.assertEqual(result["status"], "complete")
+        self.assertEqual(result["terminal"]["classification"], "seed-only-unconfirmed")
+        self.assertEqual(result["key"][0], 0)
+        self.assertEqual(result["pending_seed_followup"][0]["outcome"], "pending")
+
     def test_fixed_followup_rejects_extra_or_missing_main_time(self):
         f = self.fixtures["founder-only"]
         for stop in (STOP + STEP, END - STEP):

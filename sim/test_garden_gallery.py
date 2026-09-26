@@ -84,7 +84,7 @@ def integration(args):
             command = native.copy()
             command[4] = bad
             run(command, 2)
-        for bad in ("-1", "100001", "4294967296", "1x", ""):
+        for bad in ("-1", "983041", "4294967296", "1x", ""):
             run([*native[:-1], bad], 2)
         run([*native, "--ticks", "17"], 2)
         run([*native, "--unknown", "foo"], 2)

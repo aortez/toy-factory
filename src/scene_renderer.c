@@ -169,6 +169,7 @@ validate_snapshot(const struct picosystem_scene_snapshot *snapshot)
 		    (garden->auto_target_tool >= PICOSYSTEM_GARDEN_TOOL_COUNT) ||
 		    (garden->auto_gardener_enabled > 1U) || (garden->auto_target_valid > 1U) ||
 		    (garden->rain_rate > PICOSYSTEM_GARDEN_RAIN_MAX_RATE) ||
+		    (garden->climate_cold > 1U) || (garden->climate_drought > 1U) ||
 		    (garden->sun_strength < PICOSYSTEM_GARDEN_LIGHT_MINIMUM) ||
 		    (garden->sun_ray_step_x_q4 < -PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4) ||
 		    (garden->sun_ray_step_x_q4 > PICOSYSTEM_GARDEN_SUN_MAX_RAY_STEP_X_Q4)) {
@@ -1236,14 +1237,20 @@ static PICOSYSTEM_RENDER_RAMFUNC int render_header(const struct picosystem_scene
 	if ((err != 0) || (snapshot->scene_id != PICOSYSTEM_GAME_SCENE_GARDEN)) {
 		return err;
 	}
-	if (snapshot->payload.garden.rain_rate != 0U) {
+	const struct picosystem_scene_garden_payload *const garden = &snapshot->payload.garden;
+	const char *const weather_text = garden->climate_cold      ? "COLD"
+					 : garden->climate_drought ? "DRY"
+					 : garden->rain_rate       ? "RAIN"
+								   : NULL;
+	if (weather_text != NULL) {
 		if (clip == NULL) {
 			err = picosystem_graphics_draw_text(GARDEN_RAIN_TEXT_X, GARDEN_AUTO_TEXT_Y,
-							    "RAIN", 1U, PICOSYSTEM_COLOR_CYAN);
+							    weather_text, 1U,
+							    PICOSYSTEM_COLOR_CYAN);
 		} else {
-			err = picosystem_graphics_draw_text_clipped(clip, GARDEN_RAIN_TEXT_X,
-								    GARDEN_AUTO_TEXT_Y, "RAIN", 1U,
-								    PICOSYSTEM_COLOR_CYAN);
+			err = picosystem_graphics_draw_text_clipped(
+				clip, GARDEN_RAIN_TEXT_X, GARDEN_AUTO_TEXT_Y, weather_text, 1U,
+				PICOSYSTEM_COLOR_CYAN);
 		}
 	}
 	if ((err != 0) || (snapshot->payload.garden.auto_gardener_enabled == 0U)) {

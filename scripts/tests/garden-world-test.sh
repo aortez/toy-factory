@@ -8,6 +8,7 @@ trap 'rm -rf -- "$test_dir"' EXIT
 gcc -std=c11 -Wall -Wextra -Werror -Wconversion -Wsign-conversion \
 	-fsanitize=undefined -fno-sanitize-recover=undefined -Isrc \
 	src/garden_agent.c src/garden_agent_neural.c src/garden_light.c src/garden_world.c \
+	src/garden_climate.c \
 	scripts/tests/garden-world-test.c \
 	-o "$test_dir/garden-world-test"
 "$test_dir/garden-world-test"

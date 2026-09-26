@@ -63,6 +63,17 @@ struct picosystem_garden_sun picosystem_garden_sun_at(uint32_t ecology_tick_coun
 	};
 }
 
+struct picosystem_garden_sun
+picosystem_garden_world_sun(const struct picosystem_garden_world *world)
+{
+	struct picosystem_garden_sun sun = picosystem_garden_sun_at(world->ecology_tick_count);
+	const struct picosystem_garden_climate climate = picosystem_garden_world_climate(world);
+	const uint32_t beam = sun.strength - PICOSYSTEM_GARDEN_LIGHT_MINIMUM;
+	sun.strength =
+		(uint8_t)(PICOSYSTEM_GARDEN_LIGHT_MINIMUM + (beam * climate.light_percent) / 100U);
+	return sun;
+}
+
 static int solve_light(const uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT],
 		       const struct picosystem_garden_sun *sun,
 		       uint8_t light[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT], bool fractional)

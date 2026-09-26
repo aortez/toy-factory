@@ -54,6 +54,9 @@ def index_records(lineages, seeds, start, end):
     indexed, children = {}, set()
     counts, closing = Counter(), Counter()
     for s in seeds:
+        lifetime = s.get("lifetime_ecology_ticks", DAY // STEP)
+        require(type(lifetime) is int and 8 < lifetime <= 65535, "invalid seed lifetime")
+        lifetime_ticks = lifetime * STEP
         key = s["parent"], s["birth_tick"]
         require(key not in indexed and s["parent"] in records, "ambiguous seed or missing parent")
         parent, tick = records[s["parent"]], s["birth_tick"]
@@ -64,15 +67,15 @@ def index_records(lineages, seeds, start, end):
         status, finish = s["outcome"], s["end_tick"]
         require(status in ("germinated", "expired", "pending"), "invalid seed outcome")
         if status == "pending":
-            require(finish is None and s["child_id"] is None and tick + DAY > end, "invalid pending seed")
+            require(finish is None and s["child_id"] is None and tick + lifetime_ticks > end, "invalid pending seed")
         else:
-            require(type(finish) is int and tick < finish <= min(tick + DAY, end) and
+            require(type(finish) is int and tick < finish <= min(tick + lifetime_ticks, end) and
                     finish % STEP == 0, "invalid seed end")
             if status == "expired":
-                require(finish == tick + DAY and s["child_id"] is None, "invalid expiry")
+                require(finish == tick + lifetime_ticks and s["child_id"] is None, "invalid expiry")
             else:
                 require(s["child_id"] in records and s["child_id"] not in children and
-                        tick + recruitment.establishment.DORMANCY * STEP <= finish < tick + DAY,
+                        tick + recruitment.establishment.DORMANCY * STEP <= finish < tick + lifetime_ticks,
                         "invalid/duplicate germination")
                 child = records[s["child_id"]]
                 require(child["parent"] == s["parent"] and child["birth_tick"] == finish and
@@ -125,7 +128,7 @@ def outcomes(lineages, seeds, start=START, end=END):
         grandchildren = sorted(c["id"] for c in children[s["child_id"]]
             if status == "confirmed" and confirmation(c, c["birth_tick"], end) == "confirmed")
         events.append({"parent": parent_id, "purchase_tick": tick, "column": s["column"],
-            "full_potential_followup": tick + 2 * DAY <= end,
+            "full_potential_followup": tick + s.get("lifetime_ecology_ticks", DAY // STEP) * STEP + DAY <= end,
             "parent_confirmation": confirmation(parent, tick, end),
             "parent_final": state_at(parent, end), "seed_outcome": s["outcome"],
             "seed_end_tick": s["end_tick"], "child": s["child_id"], "child_confirmation": status,

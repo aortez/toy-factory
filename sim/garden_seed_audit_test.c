@@ -62,12 +62,13 @@ int main(void)
 	assert(memcmp(&audit, &sentinel, sizeof(audit)) == 0);
 
 	ready(&world);
-	world.seeds[0].age_ecology_ticks = 255U;
+	world.seeds[0].age_ecology_ticks = PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS - 1U;
 	world.seeds[1].age_ecology_ticks = 6U;
 	same_step(&world, &policy, &audit);
 	assert(audit.ecology_step && audit.count == PICOSYSTEM_GARDEN_MAX_SEEDS);
 	assert(audit.attempts[0].outcome == PICOSYSTEM_GARDEN_SEED_EXPIRED);
-	assert(audit.attempts[0].age == 256U && audit.attempts[0].child == 0U);
+	assert(audit.attempts[0].age == PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS &&
+	       audit.attempts[0].child == 0U);
 	for (uint8_t c = 0U; c < PICOSYSTEM_GARDEN_GRID_COLUMNS; ++c) {
 		assert(audit.attempts[0].sites[c] == 0U);
 	}

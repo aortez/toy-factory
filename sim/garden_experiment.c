@@ -1304,8 +1304,9 @@ static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t bas
 	}
 	if (selected_scenarios == toy_factory_garden_rainfed_scenarios) {
 		printf("  \"environment\":{\"rain_version\":%u,\"gardener\":false,"
-		       "\"irrigation\":false",
-		       PICOSYSTEM_GARDEN_RAIN_VERSION);
+		       "\"irrigation\":false,\"climate\":\"steady\",\"seed_lifetime_ecology_"
+		       "ticks\":%u",
+		       PICOSYSTEM_GARDEN_RAIN_VERSION, PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS);
 #if defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
 		printf(",\"seed_dispersal\":\"%s\"", PICOSYSTEM_GARDEN_DISPERSAL_NAME);
 #endif

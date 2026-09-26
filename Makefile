@@ -46,6 +46,8 @@ GARDEN_GALLERY_ARGS ?=
 GARDEN_AUDIT_BUNDLE ?= artifacts/garden-experiment
 GARDEN_AUDIT_OUT ?= artifacts/garden-establishment
 GARDEN_AUDIT_ARGS ?=
+GARDEN_SEASONS_OUT ?= artifacts/garden-seasons
+GARDEN_SEASONS_ARGS ?= --days 64 --trials 2 --jobs 2
 GARDEN_TRAIN_GENERATIONS ?= 8
 GARDEN_TRAIN_POPULATION ?= 16
 GARDEN_TRAIN_TRIALS ?= 2
@@ -67,6 +69,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
 	host-build host-check host-research-check host-run host-cli host-profile-build host-profile-garden \
 	host-evaluate-garden host-train-garden host-experiment-garden host-gallery-garden host-audit-garden \
+	host-seasons-garden \
 	host-image host-player-build host-player-check host-play \
 	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
 	bootloader console status game-stats \
@@ -191,6 +194,10 @@ host-evaluate-garden: host-build ## Compare Garden policies over deterministic s
 	@$(COMPOSE) run --rm firmware python3 -m json.tool "$(GARDEN_EVAL_OUT)" >/dev/null
 	@$(COMPOSE) run --rm firmware python3 sim/summarize_garden_experiment.py \
 		"$(GARDEN_EVAL_OUT)"
+
+host-seasons-garden: host-build ## Compare steady, winter, drought, and combined climates (new GARDEN_SEASONS_OUT)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_seasons.py \
+		--out "$(GARDEN_SEASONS_OUT)" $(GARDEN_SEASONS_ARGS)
 
 host-experiment-garden: host-build ## Collect matched rain-fed trials, report, and verified diagnostic replays
 	$(COMPOSE) run --rm firmware python3 sim/garden_experiments.py \

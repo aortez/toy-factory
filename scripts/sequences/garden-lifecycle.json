@@ -7,10 +7,10 @@
     {"action": "cycle-tool"},
     {"input": "left", "ticks": 30},
     {"action": "use-tool"},
-    {"input": "none", "ticks": 18000}
+    {"input": "none", "ticks": 54000}
   ],
   "expect": {
-    "hash": "a9cbbc66",
-    "framebuffer_crc32": "283abd58"
+    "hash": "a2d73157",
+    "framebuffer_crc32": "7b6918c7"
   }
 }

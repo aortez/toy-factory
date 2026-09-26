@@ -72,7 +72,7 @@ static void audit_water(const struct picosystem_garden_world *world,
 	} while (0)
 #endif
 
-#define GARDEN_HASH_VERSION                      UINT32_C(5)
+#define GARDEN_HASH_VERSION                      UINT32_C(6)
 #define GARDEN_AGENT_MEMORY_HASH_TAG             UINT32_C(0x4d454d31)
 #define GARDEN_WEATHER_HASH_TAG                  UINT32_C(0x5241494e)
 #define GARDEN_LONG_AGE_HASH_TAG                 UINT32_C(0x41474531)
@@ -322,6 +322,7 @@ static bool world_is_valid(const struct picosystem_garden_world *world)
 	if ((world == NULL) || (world->node_count > PICOSYSTEM_GARDEN_MAX_NODES) ||
 	    (world->plant_count > plant_capacity(world)) ||
 	    (world->seed_count > PICOSYSTEM_GARDEN_MAX_SEEDS) ||
+	    (world->climate_mode >= PICOSYSTEM_GARDEN_CLIMATE_COUNT) ||
 	    (world->cursor_column >= PICOSYSTEM_GARDEN_GRID_COLUMNS) ||
 	    (world->cursor_row >= PICOSYSTEM_GARDEN_CURSOR_ROWS) ||
 	    (world->selected_tool >= PICOSYSTEM_GARDEN_TOOL_COUNT) ||
@@ -659,10 +660,32 @@ uint8_t picosystem_garden_rain_at(uint32_t weather_seed, uint32_t ecology_tick)
 		       : 0U;
 }
 
+struct picosystem_garden_climate
+picosystem_garden_world_climate(const struct picosystem_garden_world *world)
+{
+	struct picosystem_garden_climate climate =
+		picosystem_garden_climate_at(world->weather_seed, world->ecology_tick_count);
+	if ((world->climate_mode & PICOSYSTEM_GARDEN_CLIMATE_WINTER) == 0U) {
+		climate.light_percent = 100U;
+		climate.cold = false;
+	}
+	if ((world->climate_mode & PICOSYSTEM_GARDEN_CLIMATE_DROUGHT) == 0U) {
+		climate.drought = false;
+	}
+	return climate;
+}
+
+uint8_t picosystem_garden_world_rain(const struct picosystem_garden_world *world)
+{
+	if (picosystem_garden_world_climate(world).drought) {
+		return 0U;
+	}
+	return picosystem_garden_rain_at(world->weather_seed, world->ecology_tick_count);
+}
+
 static void update_rain(struct picosystem_garden_world *world)
 {
-	const uint8_t rate =
-		picosystem_garden_rain_at(world->weather_seed, world->ecology_tick_count);
+	const uint8_t rate = picosystem_garden_world_rain(world);
 	if (rate == 0U) {
 		return;
 	}
@@ -797,8 +820,7 @@ static int update_light(struct picosystem_garden_world *world)
 		}
 	}
 
-	const struct picosystem_garden_sun sun =
-		picosystem_garden_sun_at(world->ecology_tick_count);
+	const struct picosystem_garden_sun sun = picosystem_garden_world_sun(world);
 #if defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION)
 	if (picosystem_garden_canopy_transmission_active(world->canopy_transmission_enabled,
 							 world->logic_tick_count)) {
@@ -1514,8 +1536,7 @@ static void build_agent_observation(const struct picosystem_garden_world *world,
 	const struct picosystem_garden_plant *const plant = &world->plants[plant_index];
 	const struct garden_species_config *const species = &species_configs[plant->species_id];
 	const struct picosystem_garden_node *const tip = &world->nodes[tip_index];
-	const struct picosystem_garden_sun sun =
-		picosystem_garden_sun_at(world->ecology_tick_count);
+	const struct picosystem_garden_sun sun = picosystem_garden_world_sun(world);
 	*observation = (struct picosystem_garden_agent_observation){
 		.decision_nonce = decision_nonce,
 		.tip_index = tip_index,
@@ -2301,8 +2322,7 @@ static bool focal_seed_purchase_vetoed(const struct picosystem_garden_world *wor
 
 static void update_reproduction(struct picosystem_garden_world *world)
 {
-	const struct picosystem_garden_sun sun =
-		picosystem_garden_sun_at(world->ecology_tick_count);
+	const struct picosystem_garden_sun sun = picosystem_garden_world_sun(world);
 	if (sun.phase == 0U) {
 		/* A living flower can fund one seed each day without another growth tip.
 		 * Reuse its existing spent flag; renewal never bypasses the seed debit,
@@ -2418,6 +2438,9 @@ static uint8_t seed_germination_blockers(const struct picosystem_garden_world *w
 					 const struct picosystem_garden_seed *seed)
 {
 	uint8_t blockers = 0U;
+	if (picosystem_garden_world_climate(world).cold) {
+		blockers |= PICOSYSTEM_GARDEN_SEED_BLOCKED_COLD;
+	}
 	if (seed->age_ecology_ticks < PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS) {
 		blockers |= PICOSYSTEM_GARDEN_SEED_BLOCKED_DORMANT;
 	}
@@ -2842,7 +2865,19 @@ int picosystem_garden_world_set_weather(struct picosystem_garden_world *world,
 		return -EINVAL;
 	}
 	world->weather_seed = weather_seed;
-	return 0;
+	return update_light(world);
+}
+
+int picosystem_garden_world_set_climate(struct picosystem_garden_world *world,
+					enum picosystem_garden_climate_mode mode)
+{
+	if (!world_is_valid(world) || (mode < PICOSYSTEM_GARDEN_CLIMATE_STEADY) ||
+	    (mode >= PICOSYSTEM_GARDEN_CLIMATE_COUNT) ||
+	    ((world->logic_tick_count % PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR) != 0U)) {
+		return -EINVAL;
+	}
+	world->climate_mode = (uint8_t)mode;
+	return update_light(world);
 }
 
 int picosystem_garden_world_move_cursor(struct picosystem_garden_world *world, int8_t horizontal,
@@ -3214,6 +3249,11 @@ uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *worl
 	}
 	uint32_t hash = GARDEN_FNV1A_OFFSET_BASIS;
 	hash = fnv1a_u32(hash, GARDEN_HASH_VERSION);
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS);
+	hash = fnv1a_byte(hash, world->climate_mode);
+	if (world->climate_mode != PICOSYSTEM_GARDEN_CLIMATE_STEADY) {
+		hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_CLIMATE_VERSION);
+	}
 #if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
 	if (world->wet_germination_enabled) {
 		hash = fnv1a_u32(hash, UINT32_C(0x57475431)); /* WGT1 active rule identity. */
@@ -3222,7 +3262,7 @@ uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *worl
 #if defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
 	hash = fnv1a_u32(hash, UINT32_C(0x44524e31)); /* DRN1 rule identity. */
 #endif
-	/* Preserve rain-disabled v5 benchmark hashes, as with optional agent memory. */
+	/* Weather has its own identity, independent of plant randomness. */
 	if (world->weather_seed != 0U) {
 		hash = fnv1a_u32(hash, GARDEN_WEATHER_HASH_TAG);
 		hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_RAIN_VERSION);

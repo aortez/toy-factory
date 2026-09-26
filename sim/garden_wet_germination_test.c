@@ -134,7 +134,7 @@ int main(void)
 		world.ecology_tick_count = 63U;
 		world.seed_count = 3U;
 		world.seeds[1] = world.seeds[0];
-		world.seeds[1].age_ecology_ticks = 255U;
+		world.seeds[1].age_ecology_ticks = PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS - 1U;
 		world.seeds[2] = world.seeds[0];
 		struct picosystem_garden_world plain = world;
 		struct picosystem_garden_seed_audit audit;

@@ -35,7 +35,8 @@ def main() -> None:
     first = run(args.binary, 0x12345678)
     assert first == run(args.binary, 0x12345678)
     assert first != run(args.binary, 0x12345679)
-    assert first["environment"] == {"rain_version": 1, "gardener": False, "irrigation": False}
+    assert first["environment"] == {"rain_version": 1, "gardener": False, "irrigation": False,
+                                    "climate": "steady", "seed_lifetime_ecology_ticks": 8192}
     assert [s["name"] for s in first["scenarios"]] == ["rainfed", "rainfed-crowded"]
     schedules = {}
     for scenario in first["scenarios"]:

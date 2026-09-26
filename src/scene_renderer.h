@@ -150,6 +150,8 @@ struct picosystem_scene_garden_payload {
 	uint8_t sun_strength;
 	int8_t sun_ray_step_x_q4;
 	uint8_t rain_rate;
+	uint8_t climate_cold;
+	uint8_t climate_drought;
 };
 
 /* Immutable, self-contained input copied to the auxiliary core before rasterization. */

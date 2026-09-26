@@ -404,10 +404,19 @@ static void print_garden_stats(const struct shell *shell,
 	shell_print(shell,
 		    "garden weather: seed=%08x, rain=%u units/column/ecology-step, "
 		    "deposited=%u, runoff=%u",
-		    game->garden_weather_seed,
-		    picosystem_garden_rain_at(game->garden_weather_seed,
-					      game->garden_ecology_tick_count),
-		    game->garden_rain_deposited, game->garden_rain_runoff);
+		    game->garden_weather_seed, game->garden_rain_rate, game->garden_rain_deposited,
+		    game->garden_rain_runoff);
+	shell_print(shell,
+		    "garden climate: %s v%u, year=%u day=%u/%u, light=%u%%, drought=%s, cold=%s, "
+		    "seed-viability=%u days",
+		    picosystem_garden_climate_name(
+			    (enum picosystem_garden_climate_mode)game->garden_climate_mode),
+		    PICOSYSTEM_GARDEN_CLIMATE_VERSION,
+		    game->garden_ecology_tick_count / PICOSYSTEM_GARDEN_YEAR_TICKS,
+		    game->garden_climate.day, PICOSYSTEM_GARDEN_YEAR_DAYS,
+		    game->garden_climate.light_percent, game->garden_climate.drought ? "yes" : "no",
+		    game->garden_climate.cold ? "yes" : "no",
+		    PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS / PICOSYSTEM_GARDEN_DAY_TICKS);
 	shell_print(shell,
 		    "garden heredity: seeds=%u/%u, created=%u, germinated=%u, expired=%u, "
 		    "mutations=%u, max-generation=%u",

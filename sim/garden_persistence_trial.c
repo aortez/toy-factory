@@ -182,8 +182,9 @@ static int print_ledgers(const struct picosystem_garden_world *world, uint32_t s
 		} else {
 			printf("%" PRIu32, s->child);
 		}
-		printf(",\"generation\":%u,\"column\":%u,\"outcome\":\"%s\"}", s->generation,
-		       s->column,
+		printf(",\"lifetime_ecology_ticks\":%u,\"generation\":%u,\"column\":%u,\"outcome\":"
+		       "\"%s\"}",
+		       PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS, s->generation, s->column,
 		       s->outcome == PICOSYSTEM_GARDEN_SEED_EXPIRED      ? "expired"
 		       : s->outcome == PICOSYSTEM_GARDEN_SEED_GERMINATED ? "germinated"
 									 : "pending");
@@ -254,14 +255,15 @@ int main(int argc, char **argv)
 		err = toy_factory_garden_disturbance_plan(patch, 0U, &event);
 	}
 	if (err == 0) {
-		printf("{\"rule\":\"garden-persistence-trial-v1\",\"seed\":\"%08" PRIx32
+		printf("{\"seed_lifetime_ecology_ticks\":%u,\"climate\":\"steady\","
+		       "\"rule\":\"garden-persistence-trial-v1\",\"seed\":\"%08" PRIx32
 		       "\",\"patch_seed\":\"%08" PRIx32 "\",\"model_crc32\":\"%08" PRIx32
 		       "\",\"policy\":\"%s\",\"start\":%" PRIu32 ",\"end\":%" PRIu32
 		       ",\"stop\":%" PRIu32 ",\"node_capacity\":%u,\"seed_capacity\":%u,"
 		       "\"scenario\":\"rainfed-crowded\",\"gardener\":false,\"drainage\":false,"
 		       "\"seed_reserve\":false,\"leaf_policy\":\"selective\",\"checkpoints\":[",
-		       seed, patch, crc, argv[2], start, end, stop, PICOSYSTEM_GARDEN_MAX_NODES,
-		       PICOSYSTEM_GARDEN_MAX_SEEDS);
+		       PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS, seed, patch, crc, argv[2], start, end,
+		       stop, PICOSYSTEM_GARDEN_MAX_NODES, PICOSYSTEM_GARDEN_MAX_SEEDS);
 		print_checkpoint(&world, true);
 	}
 	for (uint32_t tick = 0U; (err == 0) && (tick < stop); ++tick) {

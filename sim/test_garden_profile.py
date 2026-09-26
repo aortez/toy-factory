@@ -10,9 +10,9 @@ import subprocess
 
 
 EXPECTED_CHECKPOINTS = {
-    "initial": (0, "42bd6367", "c515c869"),
-    "growing": (930, "28489ef5", "fc95584f"),
-    "mature": (3771, "4345d5b7", "1f128cce"),
+    "initial": (0, "d3e53e9c", "c515c869"),
+    "growing": (930, "da79a9d8", "fc95584f"),
+    "mature": (3771, "f7c895f8", "1f128cce"),
 }
 EXPECTED_STATE = {
     "initial": {
