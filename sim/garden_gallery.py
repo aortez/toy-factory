@@ -108,6 +108,7 @@ def gallery_markdown(groups: list[list[dict]], seeds: list[str], ticks: list[int
     lines = ["# Garden visual baseline", "",
              "Fixed manual-review panel, not an untouched test set or a training-generation gallery.",
              "Every frame matches its recorded evaluator state and uses the production renderer.",
+             f"Climate: **{groups[0][0].get('climate', 'steady')}**.",
              "", "Seeds: " + ", ".join(f"`{seed}`" for seed in seeds) + ".",
              "Columns show ticks " + ", ".join(str(t) for t in ticks) + " (60 ticks/second).",
              "Reset starts at noon; first dawn is tick 2880. Rows are identified below.",

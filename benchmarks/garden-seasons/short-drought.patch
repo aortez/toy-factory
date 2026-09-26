@@ -1,0 +1,8 @@
+diff --git a/src/garden_climate.c b/src/garden_climate.c
+index 0863d35..c0e23d8 100644
+--- a/src/garden_climate.c
++++ b/src/garden_climate.c
+@@ -24 +24,2 @@ struct picosystem_garden_climate picosystem_garden_climate_at(uint32_t weather_s
+-	const uint32_t dry_days = 2U + ((dry >> 8U) % (7U - dry_start));
++	/* Isolated diagnostic treatment; not the production climate-v1 contract. */
++	const uint32_t dry_days = 1U + ((dry >> 8U) % 2U);

@@ -9,6 +9,7 @@ import tempfile
 
 import garden_experiments as experiments
 import garden_gallery as gallery
+from test_garden_experiment import validate_seed_blockers
 
 
 def run(command, expected=0):
@@ -49,6 +50,12 @@ def main():
                             "--ticks", "122880", "--climate", mode]
             evaluated = json.loads(run([*eval_command, "--timeline", timeline]))
             assert json.loads(run(eval_command)) == evaluated
+            for scenario in evaluated["scenarios"]:
+                for policy in scenario["policies"]:
+                    totals = validate_seed_blockers(policy["totals"]["seed_germination_blockers"])
+                    values = [validate_seed_blockers(t["seed_germination_blockers"])
+                              for t in policy["trials"]]
+                    assert totals["cold"] == sum(v["cold"] for v in values)
             environment = experiments.requested_environment("narrow-v1", "legacy-v1", False,
                                                            climate=mode)
             assert all(evaluated["environment"][k] == v for k, v in environment.items())

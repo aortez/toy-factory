@@ -375,9 +375,11 @@ def trace_case(output: Path, case: dict, reference: list[dict], timeout: int) ->
                             "terminal_steps_not_reconstructed": diagnostic["terminal_steps_not_reconstructed"]}}
 
 
-def summary_markdown(pairs: list[dict], cases: list[dict], cycles: int, trials: int, roles: dict) -> str:
+def summary_markdown(pairs: list[dict], cases: list[dict], cycles: int, trials: int, roles: dict,
+                     environment: dict | None = None) -> str:
     lines = ["# Garden matched experiment", "",
              f"{trials} seeds × 2 rain-fed layouts × {cycles} day/night cycles per policy.", "",
+             f"Climate: **{(environment or ENVIRONMENT).get('climate', 'steady')}**; identical for both policies.", "",
              f"Candidate: **{roles['candidate']['policy']}** "
              f"(model CRC {roles['candidate']['model_crc32'] or 'built-in'}). "
              f"Control: **{roles['control']['policy']}** "
@@ -577,7 +579,7 @@ def collect(args: argparse.Namespace) -> None:
                 print(f"case {case['id']}: {side} {pair['scenario']}/{pair['seed']} replay verified", flush=True)
         write_json(output / "cases.json", {"cases": cases})
         with (output / "summary.md").open("x") as stream:
-            stream.write(summary_markdown(pairs, cases, args.cycles, args.trials, roles))
+            stream.write(summary_markdown(pairs, cases, args.cycles, args.trials, roles, environment))
         require(source_files() == sources, "source changed during experiment; do not use mixed provenance")
         manifest["status"] = "complete"
         manifest["artifacts"] = {str(p.relative_to(output)): digest(p)

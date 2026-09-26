@@ -2,13 +2,60 @@
 """Seasonal cohort boundaries and native daily/site-audit reconciliation."""
 
 import argparse
+import copy
 from pathlib import Path
 import unittest
 
 import garden_seasons as seasons
+import garden_season_report as reports
 
 
 class LifetimeTests(unittest.TestCase):
+    @staticmethod
+    def panel():
+        daily = [{"day": d, "living": 1, "births": 2, "deaths": 0, "species": ["flower"],
+                  "viable_species": ["flower"]} for d in range(33)]
+        case = {"environment": {}, "daily": daily, "plants": [], "deaths": [], "empty_day": None,
+                "trace_sha256": "unchanged", "lifetimes": {"durable_parents": 1},
+                "closing_lifetimes": {"cycle_survivors": 1, "durable_parents": 1}, "closing_births": 1}
+        return {"protocol": "garden-seasons-v2", "days": 32, "seed_base": "00000001", "seeds": ["seed"],
+                "gardener": False, "irrigation": False, "source_sha256": {}, "inspector_sha256": "x",
+                "replayer_sha256": None, "frames": [],
+                "cases": [copy.deepcopy({**case, "mode": m, "scenario": s, "policy": p, "seed": "seed"})
+                          for m in seasons.MODES for s in ("rainfed", "rainfed-crowded")
+                          for p in ("baseline", "adaptive")]}
+
+    def test_screen_does_not_trade_away_renewal(self):
+        control = self.panel()
+        candidate = copy.deepcopy(control)
+        for c in candidate["cases"]:
+            if c["mode"] == "seasonal":
+                c["daily"][-1]["viable_species"].append("shrub")
+        self.assertTrue(reports.screen(control, candidate)["passes_screen"])
+        focal = next(c for c in candidate["cases"] if c["mode"] == "seasonal")
+        focal["lifetimes"]["durable_parents"] = 0
+        self.assertFalse(reports.screen(control, candidate)["passes_screen"])
+        focal["lifetimes"]["durable_parents"] = 1
+        focal["empty_day"] = 0
+        self.assertFalse(reports.screen(control, candidate)["gates"]["no_new_empty_world"])
+
+    def test_screen_rejects_unmatched_and_changed_controls(self):
+        control = self.panel()
+        for kind in ("missing", "duplicate", "seed", "prefix", "control"):
+            other = copy.deepcopy(control)
+            if kind == "missing":
+                other["cases"].pop()
+            elif kind == "duplicate":
+                other["cases"].append(other["cases"][0])
+            elif kind == "seed":
+                other["seed_base"] = "00000002"
+            elif kind == "prefix":
+                other["cases"][-1]["daily"][1]["living"] = 2
+            else:
+                other["cases"][0]["trace_sha256"] = "changed"
+            with self.assertRaises(RuntimeError):
+                reports.screen(control, other)
+
     def test_full_day_and_censoring(self):
         day = seasons.DAY_TICKS
         plants = {

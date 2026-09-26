@@ -17,6 +17,14 @@ with matched host controls and recovery checks. It supplies resource-driven
 turnover, not a new branch-pruning action. Environmental qualification, seasonal
 training objectives and durable diversity remain open.
 
+The [seasonal v1 follow-up](../benchmarks/garden-seasons/README.md) adds explicit
+seasonal controller evaluation/replay, ancestry and seed-bank diagnostics, a
+fresh eight-year panel and one isolated shorter-drought comparison. The latter
+fails its predeclared renewal-retention gate and is not promoted. Seasons support
+real descendant reproduction, but diversity and spatial recruitment remain
+limitations. This bounded implementation/evidence pass does not close the broader
+qualification gates below; no new fitness or model is adopted.
+
 Research checkpoint: the [read-only topology census](../benchmarks/garden-longevity/renewal-topology.md)
 finds only zero or one conservative terminal-shedding candidate at each of eight
 fixed snapshots. At the full endpoint, 136 of 146 exhausted leaf nodes support

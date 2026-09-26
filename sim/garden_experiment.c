@@ -778,6 +778,7 @@ static bool outcome_totals_are_valid(const struct garden_experiment_outcome *out
 	       (blockers->plant_capacity <= blockers->blocked) &&
 	       (blockers->node_capacity <= blockers->blocked) &&
 	       (blockers->spacing <= blockers->blocked) &&
+	       (blockers->cold <= blockers->blocked) &&
 	       ((outcome->extinction_tick == 0U) != globally_extinct) &&
 	       ((outcome->extinction_tick == 0U) || (outcome->extinction_tick <= tick_count));
 }

@@ -180,20 +180,25 @@ the seed bank. Energy-only / water-only / combined-shortage deaths were
 The pressures have distinct effects, but the combined environment is strongly
 selective and needs further balance/diversity investigation.
 
-Next: examine species/founder persistence and per-season resource/death traces
-over more weather seeds and years, inspect recovery visually, and measure seed
-bank occupancy/blockers. Do not increase severity merely to obtain deaths or
-claim diversity from pooled birth counts. Default small-pool and experimental
-large-pool ecology remain distinct environments.
+The [bounded follow-up](../benchmarks/garden-seasons/README.md) now records ancestry,
+uniform blocker sampling, terminal death receipts and a fresh 128-day panel.
+Combined weather produces late successful descendant parents in some worlds,
+but most endpoints remain single-species and many seeds remain spacing-blocked.
+A shorter-drought test improves some diversity/late-cohort counts while reducing
+historical durable parents; it fails the predeclared screen and is not promoted.
+This pass is complete without changing weather severity or training objectives.
+Default small-pool and experimental large-pool ecology remain distinct environments.
 
 ## Validation
 
-`make check` passed standalone checks, all 99 default host tests and a pristine
-Zephyr firmware build. `make host-research-check` passed all 104 tests in the
+`make check` passed standalone checks, all 100 default host tests and a pristine
+Zephyr firmware build. `make host-research-check` passed all 105 tests in the
 representative 512-node research configuration. Tests cover repeatable schedules,
 mode isolation, year/seed variation, boundaries, rain accounting, cold seed
 deferral, post-drought germination, expiry at the extended deadline, malformed
 CLI options, native replay identity and partial-frame reconstruction of labels.
+The follow-up also covers cohort censoring, failed tuning gates, complete matched
+panels, and seasonal evaluator/saved-model gallery/seed-audit propagation.
 
 The firmware links 257,596 bytes of flash and 223,004 bytes of main RAM: +924
 flash bytes and +8 RAM bytes versus the preceding correctness build. The

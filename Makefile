@@ -102,6 +102,7 @@ help: ## Show this list of targets
 	@printf '                    [GARDEN_PROFILE_OUT=artifacts/garden-host-profile.json]\n'
 	@printf '                    [GARDEN_EVAL_TRIALS=8] [GARDEN_EVAL_TICKS=7680]\n'
 	@printf '                    [GARDEN_EVAL_SEED=0x6576616c]\n'
+	@printf '                    [GARDEN_EVAL_CLIMATE=steady|winter|drought|seasonal]\n'
 	@printf '                    [GARDEN_EVAL_RAINFED=1] (seeded rain, no gardener)\n'
 	@printf '                    [GARDEN_EXPERIMENT_OUT=artifacts/new-run] [GARDEN_EXPERIMENT_ARGS="--cycles 8"]\n'
 	@printf '                    [GARDEN_EVAL_OUT=artifacts/garden-evaluation.json] [GARDEN_EVAL_MODEL=path.tgm]\n'
