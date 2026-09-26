@@ -127,7 +127,105 @@ byte-level provenance even when authoritative world hashes remain unchanged.
 This closes a bounded seasonal-environment implementation and evaluation pass.
 It does not close roadmap #30's environment-qualification or training milestones.
 All 100 default and 105 research host tests pass; standalone checks and a pristine
-Zephyr build also pass. Firmware remains at 257,596 bytes of flash and 223,004
-bytes of main RAM, plus the unchanged separate 8 KiB Core 1 reservation. Host-only
+Zephyr build also pass. The conservative firmware uses 257,596 bytes of flash and
+223,004 bytes of main RAM. The recommended `make build-fast` image uses 263,516
+bytes of flash and 255,772 bytes of its 255 KiB main RAM region (5,348 bytes of
+linker headroom). Both retain the separate 8 KiB Core 1 reservation. Host-only
 evaluation/analysis adds no device storage or model-ABI changes.
-Hardware flashing/playtesting remains pending: no PicoSystem was visible over USB.
+
+## Physical PIM559 check
+
+On 2026-09-25, the device eventually appeared over USB after an interval with no
+host attachment events. Both ROM bootloader and normal application enumeration
+were observed. The running shell then accepted a software bootloader request,
+and the seasonal `build-fast` image flashed and re-enumerated successfully.
+This confirms a working update path, not the cause or resolution of the earlier
+intermittent connection problem.
+
+The PL022/DMA 62.5 MHz, core-1-rendering image is built from `e6c7078`; its UF2
+SHA-256 is `6a7844cd30e4bde113761b465b87020dd95715546e2307e7cf04eda5de3f40d5`.
+Two unchanged canned sequences pass on the device:
+
+| Sequence | Tick | State hash | Framebuffer CRC-32 |
+|---|---:|---|---|
+| `garden-smoke.json` | 930 | `da79a9d8` | `fc95584f` |
+| `garden-mature.json` | 3,771 | `f7c895f8` | `1f128cce` |
+
+The ordinary lifecycle runner stopped after a reply without a parseable state
+line. A read-only state query found tick 4,230 / `aca05c93`; the failure capture's
+CRC `89fd28c0` and that state both match an independent native replay. A local
+continuation harness verifies this checkpoint before resuming bounded steps. It
+logs unexpected replies and reconciles them with a read-only state query, never
+blindly retrying a potentially completed step. USB has remained attached since
+the flash; the original malformed reply's contents were not retained.
+
+At tick 38,310 the continuation captured a premature reply containing a battery
+log followed by `toy-factory:~$ picosystem game step 120`, but no result. The
+read-only query confirmed the completed tick at hash `697eb956`. The original reader
+could mistake an asynchronous log's prompt redraw for command completion before
+the step response arrives. This explains that captured interruption, not the
+earlier USB attachment failure. These checks did not silently retry mutations.
+
+The continued device state also matches the host at drought day 5, tick 19,590 /
+`ed7ea849`, and at the reconciled tick 38,310. Both later endpoints pass state and
+framebuffer assertions:
+
+| Continued lifecycle checkpoint | Tick | State hash | Framebuffer CRC-32 |
+|---|---:|---|---|
+| Winter, year 0 / day 14 | 54,030 | `a2d73157` | `7b6918c7` |
+| First spring, year 1 / day 0 | 61,440 | `1f28bcf4` | `c86ee370` |
+
+Downloaded winter and spring PNGs are also byte-for-byte identical to their
+native reference images. Winter reports light 60% and cold germination blocking;
+spring restores light 100% and clears that blocker. Both endpoints have two
+living plants, eight banked seeds, five deaths/reclaimed plants, three
+germinations and maximum generation one. Seed viability is reported as 32 days.
+The spring reference repeats `garden-lifecycle.json`'s actions but extends its
+final neutral span to 61,410 ticks (61,440 total), covering one full seasonal year.
+
+Continuation from tick 4,230 through spring, including captures/status queries,
+took 637 seconds and required one read-only reply reconciliation. This exercises
+bounded USB stepping, not normal presentation cadence or headless throughput;
+the pause/step window's reported Hz/fps are not live-performance measurements.
+
+After resetting Garden and restoring physical input, a 3,598-tick live window
+held 60.0 Hz simulation and 29.8 fps presentation, with zero skipped or
+over-budget updates and maximum backlog one. Complete updates averaged 0.840 ms
+and peaked at 8.429 ms; display transfer was 18.351 ms. Main/render stack
+high-water marks were 3,932/5,120 and 3,196/5,120 bytes; core 1 reported ready,
+no error, and 296/4,096 bytes of stack. The fresh three-plant Garden is left
+running with the auto-gardener off and physical controls enabled. This short
+live window is a smoke check, not a worst-case scene performance bound.
+
+Local logs, reference JSON, captures, and the continuation harness are retained
+in `artifacts/garden-seasons-device`. These input fixtures test deterministic
+host/device compatibility; their manual/automatic gardener actions are not the
+unassisted rainfed ecology panel above. User playtesting remains separate.
+
+### USB reader follow-up
+
+The host reader now requires an idle prompt at the end of the current terminal
+line. It recognizes Zephyr's cursor-left/erase repaint sequence, retains partial
+ANSI escapes until complete, and revokes a candidate prompt when a later fragment
+adds command text. Existing absolute timeouts and no-retry behavior are unchanged;
+there is no firmware/protocol or simulation change.
+
+Seventeen reader tests cover the captured battery-log race, delayed results,
+fragmented prompts/ANSI escapes, in-place repainting, legacy prompts, bounded
+timeouts, and exactly one command submission on both success and failure.
+The ordinary runner then passed the complete 54,030-tick lifecycle replay without
+the recovery harness or retries:
+
+```sh
+make sim-test SEQUENCE=scripts/sequences/garden-lifecycle.json
+# PASS garden-death-decomposition-reclamation: tick=54030 hash=a2d73157 framebuffer_crc32=7b6918c7
+```
+
+The fixed-reader run is retained as
+`artifacts/garden-seasons-device/reader-fixed-lifecycle.log`. The device was reset
+to a fresh Garden with physical controls and real-time scheduling restored.
+`make check` passed standalone checks, all 100 default host tests and the pristine
+firmware build; `make host-research-check` passed all 105 tests, and
+`make host-player-check` passed its dummy-display smoke test. The focused reader,
+sequence and capture suites passed 17, 15 and six tests respectively. A host-side
+C assertion also received a formatting-only correction during the final checks.

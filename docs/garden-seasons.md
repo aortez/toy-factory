@@ -77,6 +77,14 @@ of historical records without it retain the old 256-step interpretation.
 The persistence pilot's fixed two-day follow-up remains bounded: long-lived
 pending seeds are **unconfirmed**, not extinct or established survivors.
 
+The [physical PIM559 check](../benchmarks/garden-seasons/README.md#physical-pim559-check)
+flashed the fast-display image and reproduced smoke/mature, winter and first-spring
+state/framebuffer checkpoints, including byte-identical winter/spring screenshots.
+It also records an independent shell prompt-redraw parsing race encountered during
+long USB replay. After host-reader hardening and regression tests, the ordinary
+54,030-tick lifecycle replay passes without retries or a recovery harness.
+This is device compatibility evidence, not ecological qualification.
+
 ## Reproduce the comparison
 
 ```sh
