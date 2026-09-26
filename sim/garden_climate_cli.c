@@ -24,17 +24,18 @@ int toy_factory_garden_climate_parse(const char *name, enum picosystem_garden_cl
 	return -EINVAL;
 }
 
-void toy_factory_garden_climate_print(const struct picosystem_garden_world *world)
+void toy_factory_garden_climate_print(FILE *stream, const struct picosystem_garden_world *world)
 {
 	const struct picosystem_garden_climate climate = picosystem_garden_world_climate(world);
 	static const char *const seasons[] = {"spring", "summer", "autumn", "winter"};
-	printf("\"seed_lifetime_ecology_ticks\":%u,\"climate\":{\"version\":%u,"
-	       "\"mode\":\"%s\",\"year\":%" PRIu32 ",\"day\":%u,\"season\":\"%s\","
-	       "\"light_percent\":%u,\"drought\":%s,\"cold\":%s},",
-	       PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS, PICOSYSTEM_GARDEN_CLIMATE_VERSION,
-	       picosystem_garden_climate_name(
-		       (enum picosystem_garden_climate_mode)world->climate_mode),
-	       world->ecology_tick_count / PICOSYSTEM_GARDEN_YEAR_TICKS, climate.day,
-	       seasons[climate.season], climate.light_percent, climate.drought ? "true" : "false",
-	       climate.cold ? "true" : "false");
+	fprintf(stream,
+		"\"seed_lifetime_ecology_ticks\":%u,\"climate\":{\"version\":%u,"
+		"\"mode\":\"%s\",\"year\":%" PRIu32 ",\"day\":%u,\"season\":\"%s\","
+		"\"light_percent\":%u,\"drought\":%s,\"cold\":%s},",
+		PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS, PICOSYSTEM_GARDEN_CLIMATE_VERSION,
+		picosystem_garden_climate_name(
+			(enum picosystem_garden_climate_mode)world->climate_mode),
+		world->ecology_tick_count / PICOSYSTEM_GARDEN_YEAR_TICKS, climate.day,
+		seasons[climate.season], climate.light_percent, climate.drought ? "true" : "false",
+		climate.cold ? "true" : "false");
 }

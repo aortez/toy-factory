@@ -317,6 +317,9 @@ def collect(args: argparse.Namespace) -> None:
                     case_id = f"{len(cases)+1:02d}"
                     command = ["bin/garden-inspect", model, scenario, policy, "0x"+seed,
                                "--seed-sites", "--ticks", str(reference[-1]["tick"])]
+                    climate = manifest["environment"].get("climate", "steady")
+                    if climate != "steady":
+                        command += ["--climate", climate]
                     packed = output / f"traces/{case_id}.jsonl.gz"
                     with tempfile.TemporaryDirectory(prefix="garden-sites-") as temporary:
                         raw = Path(temporary) / "trace.jsonl"

@@ -495,6 +495,8 @@ endif()
 add_test(NAME garden-climate-native COMMAND toy-factory-garden-climate-test)
 add_test(NAME garden-climate-replay COMMAND ${Python3_EXECUTABLE} -W error
 	${CMAKE_CURRENT_LIST_DIR}/test_garden_climate.py --build ${CMAKE_BINARY_DIR})
+add_test(NAME garden-season-analysis COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_seasons.py --build ${CMAKE_BINARY_DIR})
 add_executable(toy-factory-garden-long-run-test garden_long_run_test.c)
 target_link_libraries(toy-factory-garden-long-run-test PRIVATE toy_factory_simulator_core)
 target_compile_options(toy-factory-garden-long-run-test PRIVATE

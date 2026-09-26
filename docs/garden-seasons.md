@@ -57,10 +57,12 @@ not future weather or a new privileged season input.
 
 Bare `garden_world_reset` stays dry and steady. The inspector and replayer
 accept `--climate steady|winter|drought|seasonal`, defaulting to steady; their
-default-build horizon now permits 256 days. The evaluator and trainer retain
-their existing **steady** environments and explicitly report the new seed
-lifetime. Seasonal optimization/training integration is a later decision;
-we have not silently changed their objectives or historical evidence.
+default-build horizon now permits 256 days. The evaluator also accepts an
+explicit `--climate` with `--rainfed`, with a 256-day maximum; its default and
+the trainer remain **steady**. Matched experiment bundles, diagnostic replays,
+seed-site audits and saved-model galleries propagate that setting and check
+climate metadata as well as state hashes. No fitness or model weights change.
+The archived research build retains its separate 192-day inspector limit.
 
 The setter changes climate only at ecology boundaries and refreshes light,
 without resetting clocks, soil, plants, or RNGs. Its single-byte world field
@@ -79,7 +81,7 @@ pending seeds are **unconfirmed**, not extinct or established survivors.
 
 ```sh
 make host-seasons-garden GARDEN_SEASONS_OUT=artifacts/my-seasons \
-  GARDEN_SEASONS_ARGS="--days 64 --trials 2 --jobs 2 --screenshots"
+  GARDEN_SEASONS_ARGS="--days 64 --trials 2 --jobs 2 --seed-audit --screenshots"
 ```
 
 Output must be a new directory. This runs the same two fixed world seeds across
@@ -90,6 +92,51 @@ births, living-plus-seed extinction checks, and source/binary hashes. The
 optional screenshot panel uses the first predeclared seed, not outcome-ranked
 worlds, with days 3, 5, 14 and 16 replayed through the production renderer and
 verified against census hashes and framebuffer CRCs.
+
+Protocol v2 additionally keeps immutable parent/founder histories, living and
+viable-seed species/family counts, full-day offspring cohorts, and descendant
+parents with a full-day-surviving child. Closing cohorts include births strictly
+after the last year's start; births without a full day of possible follow-up
+are censored. Seeds alone are not evidence of successful renewal. `--seed-audit`
+replays every ecology step and summarizes the final year's post-step germination
+blockers, checking every daily hash against the first pass. These are overlapping
+blocker observations, not exact germination-decision receipts or causal rescues.
+Use a predeclared `--seed-base` for a fresh panel. All policies/layouts receive
+the same offered rain for a given seed and climate; the collector checks this.
+
+Evaluate an existing saved model (omit `--candidate-model` for built-in references):
+
+```sh
+make host-experiment-garden GARDEN_EXPERIMENT_OUT=artifacts/seasonal-model \
+  GARDEN_EXPERIMENT_ARGS="--climate seasonal --cycles 32 --trials 2 --trace-pairs 1 --candidate-model artifacts/model.tgm"
+make host-gallery-garden GARDEN_GALLERY_BUNDLE=artifacts/seasonal-model \
+  GARDEN_GALLERY_OUT=artifacts/seasonal-model-gallery \
+  GARDEN_GALLERY_ARGS="--checkpoint 19200 --checkpoint 53760 --checkpoint 61440"
+```
+
+For the lightweight evaluator target, set `GARDEN_EVAL_RAINFED=1` and
+`GARDEN_EVAL_CLIMATE=seasonal`; use `GARDEN_EVAL_TICKS=245760` for 64 days.
+Keep each output distinct. Evaluation is opt-in, not an assertion that the
+seasonal environment or old trained models are qualified for training/deployment.
+
+## Bounded follow-up protocol
+
+The initial 64-day diagnostic panel is repeated without behavior changes; a
+fresh base `0x73656132`, four seeds, both layouts/policies and all climates then
+runs for 128 days. The working default remains 256 nodes and eight seeds.
+One isolated worktree tests drought duration **1–2 days** instead of 2–4,
+leaving onset, winter, rain generator, resource rules and policies unchanged.
+Steady/winter trajectories must remain identical; all arms must match through
+day four. No other candidate is searched in this pass.
+
+Before seeing that treatment, the screen is: no new extinction, more endpoints
+with multiple viable species, and no reduction in the number of worlds with
+closing-year births, closing full-day offspring survivors, or historical durable
+descendant parents. If it passes the original panel, compare the same criteria
+on the fresh 128-day panel, additionally retaining its closing durable parents.
+A failed screen is retained as evidence, not promoted or followed by repeated
+parameter searching. Larger dispersal, allocation or mortality redesigns require
+discussion and are outside this PR.
 
 Single-world diagnostics:
 

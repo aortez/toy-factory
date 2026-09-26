@@ -340,7 +340,7 @@ int main(int argc, char **argv)
 	if (simulator.world.scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
 		const struct picosystem_garden_world *const garden = &simulator.world.garden;
 		printf(",\"garden\":{");
-		toy_factory_garden_climate_print(garden);
+		toy_factory_garden_climate_print(stdout, garden);
 		printf("\"plants\":%u,\"living\":%u,\"dead\":%u,\"nodes\":%u,"
 		       "\"blooms\":%" PRIu32 ",\"deaths\":%" PRIu32 ",\"reclaimed_plants\":%" PRIu32
 		       ",\"reclaimed_nodes\":%" PRIu32 ",\"seeds\":%u,\"seeds_created\":%" PRIu32

@@ -362,7 +362,7 @@ static int print_world(const struct picosystem_garden_world *world)
 		return audit_err;
 	}
 #endif
-	toy_factory_garden_climate_print(world);
+	toy_factory_garden_climate_print(stdout, world);
 	const struct picosystem_garden_sun sun = picosystem_garden_world_sun(world);
 	printf("\"type\":\"world\",\"sun_phase\":%u,\"sun_strength\":%u,"
 	       "\"tick\":%" PRIu32 ",\"hash\":\"%08" PRIx32 "\",\"living\":%u,"
@@ -390,9 +390,11 @@ static int print_world(const struct picosystem_garden_world *world)
 			return err;
 		}
 		printf("%s{\"parent\":%" PRIu32 ",\"generation\":%u,\"column\":%u,\"age\":%u,"
-		       "\"blockers\":%u}",
+		       "\"blockers\":%u,\"species\":\"%s\"}",
 		       (index == 0U) ? "" : ",", seed->parent_lineage_id, seed->generation,
-		       seed->column, seed->age_ecology_ticks, blockers);
+		       seed->column, seed->age_ecology_ticks, blockers,
+		       picosystem_garden_species_name(
+			       (enum picosystem_garden_species_id)seed->species_id));
 	}
 	printf("],\"moisture\":%u,\"weather_seed\":\"%08" PRIx32 "\",\"rain_rate\":%u,"
 	       "\"rain_deposited\":%" PRIu32 ",\"rain_runoff\":%" PRIu32 "}\n",
@@ -452,7 +454,7 @@ static int print_seed_sites(const struct picosystem_garden_world *world)
 	}
 #endif
 	print_soil_totals(world);
-	toy_factory_garden_climate_print(world);
+	toy_factory_garden_climate_print(stdout, world);
 	const struct picosystem_garden_sun sun = picosystem_garden_world_sun(world);
 	printf("\"type\":\"seed-sites\",\"schema_version\":1,\"tick\":%" PRIu32
 	       ",\"hash\":\"%08" PRIx32 "\",\"sun_phase\":%u,\"sun_strength\":%u,"

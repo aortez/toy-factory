@@ -5,6 +5,10 @@ import argparse
 import json
 from pathlib import Path
 import subprocess
+import tempfile
+
+import garden_experiments as experiments
+import garden_gallery as gallery
 
 
 def run(command, expected=0):
@@ -20,6 +24,7 @@ def main():
     args = parser.parse_args()
     inspector = args.build / "toy-factory-garden-inspect"
     replay = args.build / "toy-factory-garden-replay"
+    evaluator = args.build / "toy-factory-garden-eval"
     hashes = set()
     for mode in ("steady", "winter", "drought", "seasonal"):
         command = [inspector, "-", "rainfed", "adaptive", "123", "--ticks", "122880", "--climate", mode]
@@ -38,12 +43,45 @@ def main():
                     "rain_runoff", "births", "deaths", "living", "nodes", "climate"):
             assert result[key] == worlds[-1][key], key
         hashes.add(result["hash"])
+        with tempfile.TemporaryDirectory(prefix="garden-climate-eval-") as temporary:
+            timeline = Path(temporary) / "timeline.jsonl"
+            eval_command = [evaluator, "--rainfed", "--trials", "1", "--seed", "123",
+                            "--ticks", "122880", "--climate", mode]
+            evaluated = json.loads(run([*eval_command, "--timeline", timeline]))
+            assert json.loads(run(eval_command)) == evaluated
+            environment = experiments.requested_environment("narrow-v1", "legacy-v1", False,
+                                                           climate=mode)
+            assert all(evaluated["environment"][k] == v for k, v in environment.items())
+            if "leaf_environment" not in evaluated:
+                experiments.validate_report(evaluated, experiments.trial_seeds(123, 1), 122880,
+                                            None, environment=environment)
+            # Probe actual drought and cold checkpoints, not only spring endpoints.
+            samples = [json.loads(line) for line in timeline.read_text().splitlines()]
+            assert all(row["climate"]["mode"] == mode for row in samples)
+            assert all(row["rain_rate"] == 0 for row in samples if row["climate"]["drought"])
+            for policy in ("baseline", "adaptive", "neural-reference"):
+                for tick in (5 * 3840, 14 * 3840, 122880):
+                    row = next(r for r in samples if r["scenario"] == "rainfed"
+                               and r["policy"] == policy and r["tick"] == tick)
+                    command = [replay, "-", "rainfed", policy, "0x" + row["seed"],
+                               "--ticks", str(tick), "--climate", mode]
+                    picture = Path(temporary) / "frame.rgb565be"
+                    rendered = json.loads(run([*command, "--framebuffer", picture]))
+                    gallery.check_frame(rendered, row, None, picture.read_bytes())
+                    picture.unlink()
     assert len(hashes) == 4
     for binary in (inspector, replay):
         base = [binary, "-", "rainfed", "adaptive", "123", "--ticks", "15"]
         for flags in (["--climate"], ["--climate", "invalid"],
                       ["--climate", "winter", "--climate", "drought"]):
             run([*base, *flags], 2)
+    base = [evaluator, "--rainfed", "--trials", "1", "--ticks", "60"]
+    assert json.loads(run(base)) == json.loads(run([*base, "--climate", "steady"]))
+    for flags in (["--climate"], ["--climate", "invalid"],
+                  ["--climate", "winter", "--climate", "drought"]):
+        run([*base, *flags], 2)
+    run([evaluator, "--climate", "winter"], 2)
+    run([*base, "--ticks", "983041"], 2)
     print("Seasonal CLI/replay checks passed")
 
 

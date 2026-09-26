@@ -38,6 +38,7 @@ GARDEN_EVAL_SEED ?= 0x6576616c
 GARDEN_EVAL_OUT ?= artifacts/garden-evaluation.json
 GARDEN_EVAL_RAINFED ?= 0
 GARDEN_EVAL_MODEL ?=
+GARDEN_EVAL_CLIMATE ?= steady
 GARDEN_EXPERIMENT_OUT ?= artifacts/garden-experiment
 GARDEN_EXPERIMENT_ARGS ?=
 GARDEN_GALLERY_BUNDLE ?= artifacts/garden-experiment
@@ -190,6 +191,7 @@ host-evaluate-garden: host-build ## Compare Garden policies over deterministic s
 		--seed "$(GARDEN_EVAL_SEED)" \
 		$(if $(strip $(GARDEN_EVAL_MODEL)),--model "$(GARDEN_EVAL_MODEL)",) \
 		$(if $(filter 1,$(GARDEN_EVAL_RAINFED)),--rainfed,) \
+		$(if $(filter-out steady,$(GARDEN_EVAL_CLIMATE)),--climate "$(GARDEN_EVAL_CLIMATE)",) \
 		> "$(GARDEN_EVAL_OUT)"
 	@$(COMPOSE) run --rm firmware python3 -m json.tool "$(GARDEN_EVAL_OUT)" >/dev/null
 	@$(COMPOSE) run --rm firmware python3 sim/summarize_garden_experiment.py \

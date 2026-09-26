@@ -91,7 +91,7 @@ def validate_maximum_duration(binary: Path) -> None:
             "--trials",
             "1",
             "--ticks",
-            "100000",
+            "983040",
             "--seed",
             "1",
         ],
@@ -199,6 +199,7 @@ def validate_seed_blockers(value: object) -> dict[str, object]:
             "plant_capacity",
             "node_capacity",
             "spacing",
+            "cold",
         )
     ]
     if samples != dormant + ready + blocked:
@@ -617,6 +618,7 @@ def validate_report(report: dict[str, object]) -> None:
                 "plant_capacity",
                 "node_capacity",
                 "spacing",
+                "cold",
             ):
                 expected = sum(
                     require_nonnegative_integer(trial["seed_germination_blockers"], name)
@@ -763,7 +765,7 @@ def main() -> int:
         ("--trials", "0"),
         ("--trials", "65"),
         ("--ticks", "0"),
-        ("--ticks", "100001"),
+        ("--ticks", "983041"),
         ("--seed", "0"),
         ("--seed", "not-a-number"),
         ("--trials",),

@@ -14,6 +14,7 @@
 
 #include "garden_agent.h"
 #include "garden_agent_neural.h"
+#include "garden_climate_cli.h"
 #include "garden_evaluation.h"
 #include "garden_lifetimes.h"
 #include "garden_light.h"
@@ -30,7 +31,7 @@ static const char *leaf_policy_name = "none";
 #define GARDEN_EXPERIMENT_DEFAULT_TRIALS       8U
 #define GARDEN_EXPERIMENT_MAX_TRIALS           64U
 #define GARDEN_EXPERIMENT_DEFAULT_TICKS        7680U
-#define GARDEN_EXPERIMENT_MAX_TICKS            100000U
+#define GARDEN_EXPERIMENT_MAX_TICKS            (256U * TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS)
 #define GARDEN_EXPERIMENT_DEFAULT_SEED         TOY_FACTORY_GARDEN_EVALUATION_DEFAULT_SEED
 #define GARDEN_EXPERIMENT_MAX_PLANTS           TOY_FACTORY_GARDEN_EVALUATION_MAX_PLANTS
 #define GARDEN_EXPERIMENT_SCENARIO_COUNT       TOY_FACTORY_GARDEN_EVALUATION_SCENARIO_COUNT
@@ -59,6 +60,7 @@ struct garden_experiment_seed_blockers {
 	uint32_t plant_capacity;
 	uint32_t node_capacity;
 	uint32_t spacing;
+	uint32_t cold;
 };
 
 struct garden_experiment_group_metrics {
@@ -180,6 +182,7 @@ struct garden_experiment_summary {
 	uint64_t seed_blocked_plant_capacity;
 	uint64_t seed_blocked_node_capacity;
 	uint64_t seed_blocked_spacing;
+	uint64_t seed_blocked_cold;
 	uint32_t minimum_final_living;
 	uint32_t maximum_final_living;
 	uint32_t minimum_final_nodes;
@@ -193,6 +196,7 @@ static struct picosystem_garden_neural_model candidate_model;
 static struct picosystem_garden_agent_policy candidate_policy;
 static struct picosystem_garden_agent_policy probe_policy;
 static bool no_night_growth;
+static enum picosystem_garden_climate_mode climate_mode = PICOSYSTEM_GARDEN_CLIMATE_STEADY;
 static const struct picosystem_garden_agent_policy *selected_neural_policy;
 static const struct toy_factory_garden_evaluation_scenario *selected_scenarios =
 	toy_factory_garden_evaluation_scenarios;
@@ -249,6 +253,7 @@ static void print_usage(FILE *stream, const char *program)
 	fprintf(stream,
 		"Usage: %s [--trials 1-%u] [--ticks 1-%u] [--seed UINT32] "
 		"[--model PATH] [--rainfed] [--timeline NEW_PATH] [--no-night-growth]\n"
+		"  --climate steady|winter|drought|seasonal  Requires --rainfed; default steady\n"
 		"  --no-night-growth  Host-only candidate probe; requires --model and --rainfed\n"
 		"  --rainfed  Evaluate the gardener-free seeded-rain training environments\n",
 		program, GARDEN_EXPERIMENT_MAX_TRIALS, GARDEN_EXPERIMENT_MAX_TICKS);
@@ -281,8 +286,17 @@ static int parse_options(int argc, char **argv, uint32_t *trial_count, uint32_t 
 	*tick_count = GARDEN_EXPERIMENT_DEFAULT_TICKS;
 	*base_seed = GARDEN_EXPERIMENT_DEFAULT_SEED;
 	*model_path = NULL;
+	bool climate_seen = false;
 	for (int index = 1; index < argc; ++index) {
 		const char *const option = argv[index];
+		if (strcmp(option, "--climate") == 0) {
+			if (climate_seen || (++index >= argc) ||
+			    (toy_factory_garden_climate_parse(argv[index], &climate_mode) != 0)) {
+				return -EINVAL;
+			}
+			climate_seen = true;
+			continue;
+		}
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 		if (strcmp(option, "--leaf-policy") == 0) {
 			if ((++index >= argc) ||
@@ -338,6 +352,10 @@ static int parse_options(int argc, char **argv, uint32_t *trial_count, uint32_t 
 			fprintf(stderr, "invalid value '%s' for %s\n", value, option);
 			return err;
 		}
+	}
+	if (climate_seen && (selected_scenarios != toy_factory_garden_rainfed_scenarios)) {
+		fprintf(stderr, "--climate requires --rainfed\n");
+		return -EINVAL;
 	}
 	return 0;
 }
@@ -542,6 +560,9 @@ static int record_seed_blockers(const struct picosystem_garden_world *world,
 		if ((blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_SPACING) != 0U) {
 			++outcome->seed_blockers.spacing;
 		}
+		if ((blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_COLD) != 0U) {
+			++outcome->seed_blockers.cold;
+		}
 	}
 	return 0;
 }
@@ -720,7 +741,7 @@ static bool outcome_totals_are_valid(const struct garden_experiment_outcome *out
 	const struct garden_experiment_seed_blockers *const blockers = &outcome->seed_blockers;
 	const uint64_t blocker_reasons = (uint64_t)blockers->moisture + blockers->light +
 					 blockers->plant_capacity + blockers->node_capacity +
-					 blockers->spacing;
+					 blockers->spacing + blockers->cold;
 	const bool globally_extinct =
 		(outcome->final_living_count == 0U) && (outcome->final_seed_count == 0U);
 	const struct toy_factory_garden_lifetime_metrics *const lifetimes =
@@ -767,8 +788,7 @@ static int write_timeline(const struct picosystem_garden_world *world,
 	if ((timeline_stream == NULL) || (timeline_last_tick == world->logic_tick_count)) {
 		return 0;
 	}
-	const uint8_t rain =
-		picosystem_garden_rain_at(world->weather_seed, world->ecology_tick_count);
+	const uint8_t rain = picosystem_garden_world_rain(world);
 	const bool event = (timeline_births != world->germination_count) ||
 			   (timeline_deaths != world->death_count) || (timeline_rain != rain);
 	if (!force && !event && ((world->logic_tick_count % 60U) != 0U)) {
@@ -802,10 +822,11 @@ static int write_timeline(const struct picosystem_garden_world *world,
 			++leaves;
 		}
 	}
-	const struct picosystem_garden_sun sun =
-		picosystem_garden_sun_at(world->ecology_tick_count);
+	const struct picosystem_garden_sun sun = picosystem_garden_world_sun(world);
+	fputc('{', timeline_stream);
+	toy_factory_garden_climate_print(timeline_stream, world);
 	fprintf(timeline_stream,
-		"{\"schema_version\":1,\"scenario\":\"%s\",\"policy\":\"%s\",\"seed\":\"%08" PRIx32
+		"\"schema_version\":1,\"scenario\":\"%s\",\"policy\":\"%s\",\"seed\":\"%08" PRIx32
 		"\",\"tick\":%" PRIu32 ",\"hash\":\"%08" PRIx32 "\",\"sun_phase\":%u,"
 		"\"sun_strength\":%u,\"rain_rate\":%u,\"rain_deposited\":%" PRIu32
 		",\"rain_runoff\":%" PRIu32 ",\"living\":%u,\"descendants\":%u,"
@@ -910,6 +931,9 @@ static int run_trial(const struct toy_factory_garden_evaluation_scenario *scenar
 	}
 	struct picosystem_garden_world world;
 	int err = toy_factory_garden_evaluation_reset(&world, scenario, random_seed);
+	if (err == 0) {
+		err = picosystem_garden_world_set_climate(&world, climate_mode);
+	}
 	if (err != 0) {
 		return err;
 	}
@@ -1017,6 +1041,7 @@ summarize_outcomes(const struct garden_experiment_outcome *values, uint32_t coun
 		summary.seed_blocked_plant_capacity += outcome->seed_blockers.plant_capacity;
 		summary.seed_blocked_node_capacity += outcome->seed_blockers.node_capacity;
 		summary.seed_blocked_spacing += outcome->seed_blockers.spacing;
+		summary.seed_blocked_cold += outcome->seed_blockers.cold;
 		if (outcome->extinction_tick != 0U) {
 			++summary.extinction_count;
 		}
@@ -1108,7 +1133,7 @@ static void print_summary(const struct garden_experiment_summary *summary)
 	       ",\"seed_germination_blockers\":{\"samples\":%" PRIu64 ",\"dormant\":%" PRIu64
 	       ",\"ready\":%" PRIu64 ",\"blocked\":%" PRIu64 ",\"moisture\":%" PRIu64
 	       ",\"light\":%" PRIu64 ",\"plant_capacity\":%" PRIu64 ",\"node_capacity\":%" PRIu64
-	       ",\"spacing\":%" PRIu64 "}"
+	       ",\"spacing\":%" PRIu64 ",\"cold\":%" PRIu64 "}"
 	       ",\"agent\":{\"decisions\":%" PRIu64 ",\"extend\":%" PRIu64 ",\"wait\":%" PRIu64
 	       ",\"finish\":%" PRIu64 ",\"root\":%" PRIu64 ",\"shoot\":%" PRIu64
 	       ",\"root_extend\":%" PRIu64 ",\"shoot_extend\":%" PRIu64
@@ -1123,12 +1148,12 @@ static void print_summary(const struct garden_experiment_summary *summary)
 	       summary->seed_dormant, summary->seed_ready, summary->seed_blocked,
 	       summary->seed_blocked_moisture, summary->seed_blocked_light,
 	       summary->seed_blocked_plant_capacity, summary->seed_blocked_node_capacity,
-	       summary->seed_blocked_spacing, summary->agent_decisions, summary->agent_extend,
-	       summary->agent_wait, summary->agent_finish, summary->agent_root,
-	       summary->agent_shoot, summary->agent_root_extend, summary->agent_shoot_extend,
-	       summary->minimum_final_living, summary->maximum_final_living,
-	       summary->minimum_final_nodes, summary->maximum_final_nodes,
-	       summary->maximum_generation, summary->maximum_stress);
+	       summary->seed_blocked_spacing, summary->seed_blocked_cold, summary->agent_decisions,
+	       summary->agent_extend, summary->agent_wait, summary->agent_finish,
+	       summary->agent_root, summary->agent_shoot, summary->agent_root_extend,
+	       summary->agent_shoot_extend, summary->minimum_final_living,
+	       summary->maximum_final_living, summary->minimum_final_nodes,
+	       summary->maximum_final_nodes, summary->maximum_generation, summary->maximum_stress);
 	printf(",\"lifetimes\":");
 	print_lifetimes(&summary->lifetimes);
 	putchar('}');
@@ -1155,10 +1180,10 @@ static void print_seed_blockers(const struct garden_experiment_seed_blockers *bl
 	printf("{\"samples\":%" PRIu32 ",\"dormant\":%" PRIu32 ",\"ready\":%" PRIu32
 	       ",\"blocked\":%" PRIu32 ",\"moisture\":%" PRIu32 ",\"light\":%" PRIu32
 	       ",\"plant_capacity\":%" PRIu32 ",\"node_capacity\":%" PRIu32 ",\"spacing\":%" PRIu32
-	       "}",
+	       ",\"cold\":%" PRIu32 "}",
 	       blockers->samples, blockers->dormant, blockers->ready, blockers->blocked,
 	       blockers->moisture, blockers->light, blockers->plant_capacity,
-	       blockers->node_capacity, blockers->spacing);
+	       blockers->node_capacity, blockers->spacing, blockers->cold);
 }
 
 static void print_group_metric_fields(const struct garden_experiment_group_metrics *metrics)
@@ -1304,9 +1329,13 @@ static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t bas
 	}
 	if (selected_scenarios == toy_factory_garden_rainfed_scenarios) {
 		printf("  \"environment\":{\"rain_version\":%u,\"gardener\":false,"
-		       "\"irrigation\":false,\"climate\":\"steady\",\"seed_lifetime_ecology_"
+		       "\"irrigation\":false,\"climate\":\"%s\",\"seed_lifetime_ecology_"
 		       "ticks\":%u",
-		       PICOSYSTEM_GARDEN_RAIN_VERSION, PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS);
+		       PICOSYSTEM_GARDEN_RAIN_VERSION, picosystem_garden_climate_name(climate_mode),
+		       PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS);
+		if (climate_mode != PICOSYSTEM_GARDEN_CLIMATE_STEADY) {
+			printf(",\"climate_version\":%u", PICOSYSTEM_GARDEN_CLIMATE_VERSION);
+		}
 #if defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
 		printf(",\"seed_dispersal\":\"%s\"", PICOSYSTEM_GARDEN_DISPERSAL_NAME);
 #endif

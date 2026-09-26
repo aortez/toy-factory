@@ -132,7 +132,7 @@ static int print_result(const struct picosystem_garden_world *world, const char 
 	}
 	const struct picosystem_garden_sun sun = picosystem_garden_world_sun(world);
 	putchar('{');
-	toy_factory_garden_climate_print(world);
+	toy_factory_garden_climate_print(stdout, world);
 #if defined(TOY_FACTORY_GARDEN_FULL_POOL)
 	const int full_pool_err =
 		picosystem_garden_full_pool_print(&world->full_pool, world->logic_tick_count);
