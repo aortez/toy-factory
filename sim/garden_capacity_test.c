@@ -50,7 +50,7 @@ static void seed_capacity(void)
 			.parent_lineage_id = 1U,
 			.generation = 1U,
 			.column = i,
-			.age_ecology_ticks = 255U,
+			.age_ecology_ticks = PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS - 1U,
 		};
 	}
 	const uint32_t hash = picosystem_garden_world_hash(world);

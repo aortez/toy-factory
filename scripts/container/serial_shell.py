@@ -9,7 +9,12 @@ import serial
 
 
 PROMPTS = (b"toy-factory:~$ ", b"picosystem:~$ ")
-ANSI_ESCAPE = re.compile(rb"\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-_])")
+# Keep an incomplete CSI escape until its next USB fragment arrives; ESC [ is
+# not a standalone two-byte control sequence.
+ANSI_ESCAPE = re.compile(rb"\x1b(?:\[[0-?]*[ -/]*[@-~]|(?!\[)[@-_])")
+# Zephyr returns to the start of its input line and erases it before repainting
+# a prompt. Treat that specific redraw as a line boundary, not retained text.
+SHELL_LINE_REDRAW = re.compile(rb"\x1b\[[0-9]+D\x1b\[J")
 COMMAND_SETTLE_SECONDS = 0.1
 COMMAND_ECHO_TIMEOUT_SECONDS = 1.0
 COMMAND_ECHO_SETTLE_SECONDS = 0.2
@@ -20,7 +25,11 @@ class SerialShellError(RuntimeError):
 
 
 def find_prompt(data: bytes | bytearray) -> bytes | None:
-    return next((prompt for prompt in PROMPTS if prompt in data), None)
+    """Find an idle prompt on the final line, not a log's redrawn command."""
+    text = ANSI_ESCAPE.sub(b"", SHELL_LINE_REDRAW.sub(b"\n", data))
+    line_start = max(text.rfind(b"\n"), text.rfind(b"\r")) + 1
+    last_line = text[line_start:]
+    return next((prompt for prompt in PROMPTS if last_line == prompt), None)
 
 
 def read_until_prompt(
@@ -37,8 +46,10 @@ def read_until_prompt(
         chunk = connection.read(max(connection.in_waiting, 1))
         if chunk:
             received.extend(chunk)
-            if find_prompt(received) is not None:
-                prompt_seen = True
+            # A later fragment can turn an apparent idle prompt into an echoed
+            # command. Do not retain completion from an earlier stream prefix.
+            prompt_seen = find_prompt(received) is not None
+            if prompt_seen:
                 quiet_deadline = time.monotonic() + settle_seconds
         elif prompt_seen and time.monotonic() >= quiet_deadline:
             break

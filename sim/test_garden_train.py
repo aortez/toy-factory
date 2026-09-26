@@ -112,6 +112,7 @@ def validate_report(report: dict[str, object]) -> None:
         raise RuntimeError("Garden training settings are incorrect")
     if report.get("environment") != {
         "rain_version": 1, "gardener": False, "irrigation": False,
+        "climate": "steady", "seed_lifetime_ecology_ticks": 8192,
         "scenarios": ["rainfed", "rainfed-crowded"],
     }:
         raise RuntimeError("Garden training environmental contract changed")

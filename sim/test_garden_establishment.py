@@ -72,6 +72,23 @@ def synthetic(root):
         assert result["windows"]["whole"]["bright"]["actual_blocker_hist"][1] == 0
         if outcome == "germinated":
             assert seed["child_id"] == 2 and seed["end_tick"] == 135
+        if outcome == "pending":
+            longer = copy.deepcopy(rows)
+            for row in longer:
+                row["seed_lifetime_ecology_ticks"] = 8192
+                row["climate"] = {"mode": "winter"}
+                for site in row["sites"]:
+                    site[0] |= 64
+                for item in row["seeds"]:
+                    item["blockers"] |= 64
+            pack(path, longer)
+            extended = audit.analyze(path, reference, 1)
+            assert extended["seed_lifetime_ecology_ticks"] == 8192
+            assert extended["cohorts"]["whole"]["full_followup"] == 0
+            assert len(extended["windows"]["whole"]["bright"]["site_blocker_hist"]) == 128
+            longer[-1]["seed_lifetime_ecology_ticks"] = 256
+            pack(path, longer)
+            rejects(lambda: audit.analyze(path, reference, 1))
         for mutation in ("hash", "age", "duplicate", "dispersal", "outcome", "truncate"):
             bad = copy.deepcopy(rows)
             if mutation == "hash":

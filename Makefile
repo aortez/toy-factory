@@ -38,6 +38,7 @@ GARDEN_EVAL_SEED ?= 0x6576616c
 GARDEN_EVAL_OUT ?= artifacts/garden-evaluation.json
 GARDEN_EVAL_RAINFED ?= 0
 GARDEN_EVAL_MODEL ?=
+GARDEN_EVAL_CLIMATE ?= steady
 GARDEN_EXPERIMENT_OUT ?= artifacts/garden-experiment
 GARDEN_EXPERIMENT_ARGS ?=
 GARDEN_GALLERY_BUNDLE ?= artifacts/garden-experiment
@@ -46,6 +47,8 @@ GARDEN_GALLERY_ARGS ?=
 GARDEN_AUDIT_BUNDLE ?= artifacts/garden-experiment
 GARDEN_AUDIT_OUT ?= artifacts/garden-establishment
 GARDEN_AUDIT_ARGS ?=
+GARDEN_SEASONS_OUT ?= artifacts/garden-seasons
+GARDEN_SEASONS_ARGS ?= --days 64 --trials 2 --jobs 2
 GARDEN_TRAIN_GENERATIONS ?= 8
 GARDEN_TRAIN_POPULATION ?= 16
 GARDEN_TRAIN_TRIALS ?= 2
@@ -67,6 +70,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
 	host-build host-check host-research-check host-run host-cli host-profile-build host-profile-garden \
 	host-evaluate-garden host-train-garden host-experiment-garden host-gallery-garden host-audit-garden \
+	host-seasons-garden \
 	host-image host-player-build host-player-check host-play \
 	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
 	bootloader console status game-stats \
@@ -98,6 +102,7 @@ help: ## Show this list of targets
 	@printf '                    [GARDEN_PROFILE_OUT=artifacts/garden-host-profile.json]\n'
 	@printf '                    [GARDEN_EVAL_TRIALS=8] [GARDEN_EVAL_TICKS=7680]\n'
 	@printf '                    [GARDEN_EVAL_SEED=0x6576616c]\n'
+	@printf '                    [GARDEN_EVAL_CLIMATE=steady|winter|drought|seasonal]\n'
 	@printf '                    [GARDEN_EVAL_RAINFED=1] (seeded rain, no gardener)\n'
 	@printf '                    [GARDEN_EXPERIMENT_OUT=artifacts/new-run] [GARDEN_EXPERIMENT_ARGS="--cycles 8"]\n'
 	@printf '                    [GARDEN_EVAL_OUT=artifacts/garden-evaluation.json] [GARDEN_EVAL_MODEL=path.tgm]\n'
@@ -187,10 +192,15 @@ host-evaluate-garden: host-build ## Compare Garden policies over deterministic s
 		--seed "$(GARDEN_EVAL_SEED)" \
 		$(if $(strip $(GARDEN_EVAL_MODEL)),--model "$(GARDEN_EVAL_MODEL)",) \
 		$(if $(filter 1,$(GARDEN_EVAL_RAINFED)),--rainfed,) \
+		$(if $(filter-out steady,$(GARDEN_EVAL_CLIMATE)),--climate "$(GARDEN_EVAL_CLIMATE)",) \
 		> "$(GARDEN_EVAL_OUT)"
 	@$(COMPOSE) run --rm firmware python3 -m json.tool "$(GARDEN_EVAL_OUT)" >/dev/null
 	@$(COMPOSE) run --rm firmware python3 sim/summarize_garden_experiment.py \
 		"$(GARDEN_EVAL_OUT)"
+
+host-seasons-garden: host-build ## Compare steady, winter, drought, and combined climates (new GARDEN_SEASONS_OUT)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_seasons.py \
+		--out "$(GARDEN_SEASONS_OUT)" $(GARDEN_SEASONS_ARGS)
 
 host-experiment-garden: host-build ## Collect matched rain-fed trials, report, and verified diagnostic replays
 	$(COMPOSE) run --rm firmware python3 sim/garden_experiments.py \

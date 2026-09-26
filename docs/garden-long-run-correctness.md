@@ -11,7 +11,9 @@ The authoritative plant age is now a saturating 32-bit ecology-step counter.
 Crossing 65,535 no longer makes an old plant appear newborn or unestablished.
 The counter still advances at the same point in the step: germinating seedlings
 start at one, and plants dying during maintenance do not advance on that step.
-Seed-bank age remains 16-bit; seeds expire at 256 steps, well before overflow.
+Seed-bank age remains 16-bit. This fix originally retained 256-step expiry;
+the subsequent [seasonal rules](garden-seasons.md) extend it to 8,192 steps,
+still well before overflow.
 
 The policy observation keeps its 104-byte layout and 16-bit age field, capped
 at 65,535. Existing neural model files and policy interfaces are unchanged;

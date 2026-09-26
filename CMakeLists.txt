@@ -29,6 +29,7 @@ target_sources(app PRIVATE
 	src/garden_agent_neural.c
 	src/garden_agent_neural_codec.c
 	src/garden_light.c
+	src/garden_climate.c
 	src/garden_world.c
 	src/game_scene_clockwork.c
 	src/game_scene_hourglass.c

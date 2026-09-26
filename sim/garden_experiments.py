@@ -26,31 +26,42 @@ from garden_resources import analyze, require
 ROOT = Path(__file__).resolve().parents[1]
 CYCLE_TICKS = 3840
 SCENARIOS = {"rainfed", "rainfed-crowded"}
-ENVIRONMENT = {"rain_version": 1, "gardener": False, "irrigation": False}
+ENVIRONMENT = {"rain_version": 1, "gardener": False, "irrigation": False,
+               "climate": "steady", "seed_lifetime_ecology_ticks": 8192}
 WIDE_ENVIRONMENT = {**ENVIRONMENT, "seed_dispersal": "wide-v1"}
 WATER_ENVIRONMENT = {**ENVIRONMENT, "water_uptake": "headroom-v1"}
 COMBINED_ENVIRONMENT = {**WIDE_ENVIRONMENT, "water_uptake": "headroom-v1"}
 LARGE_POOL_ENVIRONMENT = {**COMBINED_ENVIRONMENT, "node_capacity": 512}
 SELECTION_ORDER = ["viable", "durable_parents", "cycle_survivors", "descendant_plant_ticks"]
+CLIMATES = ("steady", "winter", "drought", "seasonal")
+MAX_TICKS = 256 * CYCLE_TICKS
 
 
 def validate_environment(environment: dict) -> None:
-    require(environment in (ENVIRONMENT, WIDE_ENVIRONMENT, WATER_ENVIRONMENT, COMBINED_ENVIRONMENT,
-                            LARGE_POOL_ENVIRONMENT),
+    current = (ENVIRONMENT, WIDE_ENVIRONMENT, WATER_ENVIRONMENT, COMBINED_ENVIRONMENT,
+               LARGE_POOL_ENVIRONMENT)
+    legacy = tuple({k: v for k, v in e.items() if k not in ("climate", "seed_lifetime_ecology_ticks")}
+                   for e in current)
+    seasonal = tuple({**e, "climate": mode, "climate_version": 1}
+                     for e in current for mode in CLIMATES[1:])
+    require(environment in (*current, *legacy, *seasonal),
             "unexpected experiment environment")
 
 
-def requested_environment(dispersal: str, water_uptake: str, combined: bool, node_capacity: int = 256) -> dict:
+def requested_environment(dispersal: str, water_uptake: str, combined: bool, node_capacity: int = 256,
+                          climate: str = "steady") -> dict:
+    require(climate in CLIMATES, "unknown climate")
     require(dispersal in ("narrow-v1", "wide-v1") and water_uptake in ("legacy-v1", "headroom-v1"),
             "unknown ecology option")
     require(combined == (dispersal == "wide-v1" and water_uptake == "headroom-v1"),
             "combining both rules requires --combined-experiment; opt-in requires both rules")
     require(node_capacity in (256, 512) and (node_capacity == 256 or combined),
             "512 nodes requires the combined experiment")
-    if node_capacity == 512:
-        return LARGE_POOL_ENVIRONMENT
-    return (COMBINED_ENVIRONMENT if combined else WATER_ENVIRONMENT if water_uptake == "headroom-v1"
-            else WIDE_ENVIRONMENT if dispersal == "wide-v1" else ENVIRONMENT)
+    environment = (LARGE_POOL_ENVIRONMENT if node_capacity == 512 else
+                   COMBINED_ENVIRONMENT if combined else WATER_ENVIRONMENT if water_uptake == "headroom-v1"
+                   else WIDE_ENVIRONMENT if dispersal == "wide-v1" else ENVIRONMENT)
+    return (dict(environment) if climate == "steady" else
+            {**environment, "climate": climate, "climate_version": 1})
 
 
 def digest(path: Path) -> str:
@@ -179,6 +190,14 @@ def load_timelines(path: Path, report: dict) -> dict[tuple[str, str, str], list[
                     "timeline is missing samples or not ordered")
             require(tick <= report["tick_count"] and tick % 15 == 0, "invalid timeline cadence")
             require(row["sun_phase"] == (64 + tick // 15) % 256, "invalid sun phase")
+            environment = report["environment"]
+            if environment.get("climate", "steady") != "steady":
+                require(row.get("climate", {}).get("mode") == environment["climate"]
+                        and row["climate"]["version"] == environment["climate_version"]
+                        and row.get("seed_lifetime_ecology_ticks") == environment["seed_lifetime_ecology_ticks"],
+                        "timeline climate contract differs")
+                require(not row["climate"]["drought"] or row["rain_rate"] == 0,
+                        "rain during scheduled drought")
             require(0 <= row["descendants"] <= row["living"] <= row["plant_slots"] <= 8,
                     "invalid population counts")
             require(0 <= row["nodes"] <= capacity and 0 <= row["moisture"] <= 28 * 11 * 255,
@@ -294,6 +313,7 @@ def select_pairs(pairs: list[dict], limit: int) -> list[dict]:
 
 def verify_trace(path: Path, reference: list[dict]) -> int:
     hashes = {row["tick"]: row["hash"] for row in reference}
+    conditions = {row["tick"]: row for row in reference}
     matched = set()
     last_tick = -15
     with gzip.open(path, "rt") as stream:
@@ -306,6 +326,9 @@ def verify_trace(path: Path, reference: list[dict]) -> int:
             last_tick = tick
             if tick in hashes:
                 require(row["hash"] == hashes[tick], f"replay hash mismatch at tick {tick}")
+                for key in ("climate", "seed_lifetime_ecology_ticks"):
+                    if key in conditions[tick]:
+                        require(row.get(key) == conditions[tick][key], f"replay {key} mismatch")
                 matched.add(tick)
     require(last_tick == reference[-1]["tick"] and matched == set(hashes),
             "replay did not cover every timeline hash")
@@ -334,6 +357,8 @@ def trace_case(output: Path, case: dict, reference: list[dict], timeout: int) ->
     destination = output / "traces" / f"{case['id']}.jsonl.gz"
     command = ["bin/garden-inspect", case["model"] or "-", case["scenario"], case["policy"],
                "0x" + case["seed"], "--ecology", "--ticks", str(reference[-1]["tick"])]
+    if case.get("climate", "steady") != "steady":
+        command += ["--climate", case["climate"]]
     with tempfile.TemporaryDirectory(prefix="garden-trace-") as temporary:
         raw = Path(temporary) / "trace.jsonl"
         command_run(command, raw, output, timeout)
@@ -350,9 +375,11 @@ def trace_case(output: Path, case: dict, reference: list[dict], timeout: int) ->
                             "terminal_steps_not_reconstructed": diagnostic["terminal_steps_not_reconstructed"]}}
 
 
-def summary_markdown(pairs: list[dict], cases: list[dict], cycles: int, trials: int, roles: dict) -> str:
+def summary_markdown(pairs: list[dict], cases: list[dict], cycles: int, trials: int, roles: dict,
+                     environment: dict | None = None) -> str:
     lines = ["# Garden matched experiment", "",
              f"{trials} seeds × 2 rain-fed layouts × {cycles} day/night cycles per policy.", "",
+             f"Climate: **{(environment or ENVIRONMENT).get('climate', 'steady')}**; identical for both policies.", "",
              f"Candidate: **{roles['candidate']['policy']}** "
              f"(model CRC {roles['candidate']['model_crc32'] or 'built-in'}). "
              f"Control: **{roles['control']['policy']}** "
@@ -439,7 +466,7 @@ def collect(args: argparse.Namespace) -> None:
     require(not args.candidate_probe or args.candidate_model is not None,
             "candidate probe requires an external candidate model")
     environment = requested_environment(args.dispersal, args.water_uptake, args.combined_experiment,
-                                        args.node_capacity)
+                                        args.node_capacity, args.climate)
     seeds = trial_seeds(args.seed, args.trials)
     models = {}
     for side in ("candidate", "control"):
@@ -498,6 +525,8 @@ def collect(args: argparse.Namespace) -> None:
         def evaluate(job: str) -> tuple[dict, dict]:
             command = ["bin/garden-eval", "--rainfed", "--trials", str(args.trials),
                        "--ticks", str(args.cycles * CYCLE_TICKS), "--seed", hex(args.seed)]
+            if args.climate != "steady":
+                command += ["--climate", args.climate]
             model = models.get(job)
             if model:
                 command.extend(("--model", model["path"]))
@@ -542,6 +571,7 @@ def collect(args: argparse.Namespace) -> None:
             for side, job, policy in (("candidate", "candidate", candidate_policy),
                                       ("control", control_job, control_policy)):
                 case = {**pair, "id": f"{len(cases) + 1:02d}", "side": side, "job": job,
+                        "climate": args.climate,
                         "policy": policy, "model": (models[job]["path"]
                                                      if policy in MODEL_POLICIES else None)}
                 reference = data[job][1][(pair["scenario"], policy, pair["seed"])]
@@ -549,7 +579,7 @@ def collect(args: argparse.Namespace) -> None:
                 print(f"case {case['id']}: {side} {pair['scenario']}/{pair['seed']} replay verified", flush=True)
         write_json(output / "cases.json", {"cases": cases})
         with (output / "summary.md").open("x") as stream:
-            stream.write(summary_markdown(pairs, cases, args.cycles, args.trials, roles))
+            stream.write(summary_markdown(pairs, cases, args.cycles, args.trials, roles, environment))
         require(source_files() == sources, "source changed during experiment; do not use mixed provenance")
         manifest["status"] = "complete"
         manifest["artifacts"] = {str(p.relative_to(output)): digest(p)
@@ -577,12 +607,13 @@ def main() -> int:
     parser.add_argument("--combined-experiment", action="store_true",
                         help="Explicitly validate the wide-dispersal plus capped-uptake condition")
     parser.add_argument("--control-model", type=Path)
+    parser.add_argument("--climate", choices=CLIMATES, default="steady")
     parser.add_argument("--candidate-probe", choices=(NIGHT_PROBE,),
                         help="Host-only intervention on the candidate; weights/environment unchanged")
     parser.add_argument("--training-report", type=Path, action="append", default=[])
     parser.add_argument("--split", choices=("exploratory", "validation", "test"), default="exploratory")
     parser.add_argument("--trials", type=int, choices=range(1, 65), default=8, metavar="1-64")
-    parser.add_argument("--cycles", type=int, choices=range(1, 27), default=8, metavar="1-26")
+    parser.add_argument("--cycles", type=int, choices=range(1, 257), default=8, metavar="1-256")
     parser.add_argument("--trace-pairs", type=int, choices=range(1, 7), default=5, metavar="1-6")
     parser.add_argument("--seed", type=lambda x: int(x, 0), default=0x6D617463)
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=2)

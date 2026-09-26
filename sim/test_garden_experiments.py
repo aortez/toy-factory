@@ -15,6 +15,17 @@ import garden_experiments as experiment
 
 
 class SelectionTests(unittest.TestCase):
+    def test_seasonal_environment_is_explicit_and_versioned(self):
+        for mode in experiment.CLIMATES:
+            value = experiment.requested_environment("narrow-v1", "legacy-v1", False, climate=mode)
+            experiment.validate_environment(value)
+            self.assertEqual(value["climate"], mode)
+            if mode != "steady":
+                for bad in ({k: v for k, v in value.items() if k != "climate_version"},
+                            {**value, "climate_version": 2}, {**value, "climate": "snow"}):
+                    with self.assertRaises(RuntimeError):
+                        experiment.validate_environment(bad)
+
     def test_only_known_environments_are_accepted(self):
         experiment.validate_environment(experiment.ENVIRONMENT)
         experiment.validate_environment(experiment.WIDE_ENVIRONMENT)

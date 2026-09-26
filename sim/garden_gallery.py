@@ -40,9 +40,14 @@ def frame_command(frame: dict) -> list[str]:
             "unsupported replay scenario/policy")
     require(re.fullmatch("[0-9a-f]{8}", frame["seed"]) is not None
             and int(frame["seed"], 16) != 0, "invalid replay seed")
-    require(isinstance(frame["tick"], int) and 0 <= frame["tick"] <= 100000, "invalid replay tick")
-    return ["bin/garden-replay", frame["model"] or "-", frame["scenario"], frame["policy"],
-            "0x" + frame["seed"], "--ticks", str(frame["tick"])]
+    require(isinstance(frame["tick"], int) and 0 <= frame["tick"] <= experiment.MAX_TICKS,
+            "invalid replay tick")
+    climate = frame.get("climate", "steady")
+    require(climate in experiment.CLIMATES, "invalid replay climate")
+    command = ["bin/garden-replay", frame["model"] or "-", frame["scenario"], frame["policy"],
+               "0x" + frame["seed"], "--ticks", str(frame["tick"])]
+    # Historical frozen binaries predate --climate; their default remains steady.
+    return command if climate == "steady" else command + ["--climate", climate]
 
 
 def check_frame(result: dict, reference: dict, model_crc: str | None, raw: bytes) -> None:
@@ -51,6 +56,9 @@ def check_frame(result: dict, reference: dict, model_crc: str | None, raw: bytes
                 "rain_rate", "rain_deposited", "rain_runoff", "living", "descendants",
                 "plant_slots", "nodes", "seed_bank", "births", "deaths", "moisture"):
         require(result[key] == reference[key], f"replay/timeline mismatch: {key}")
+    for key in ("climate", "seed_lifetime_ecology_ticks"):
+        if key in reference:
+            require(result.get(key) == reference[key], f"replay/timeline mismatch: {key}")
     if result["policy"] in experiment.MODEL_POLICIES:
         require(result["model_crc32"] == model_crc, "replay used a different model")
     require(len(raw) == FRAME_BYTES, "wrong framebuffer size")
@@ -100,6 +108,7 @@ def gallery_markdown(groups: list[list[dict]], seeds: list[str], ticks: list[int
     lines = ["# Garden visual baseline", "",
              "Fixed manual-review panel, not an untouched test set or a training-generation gallery.",
              "Every frame matches its recorded evaluator state and uses the production renderer.",
+             f"Climate: **{groups[0][0].get('climate', 'steady')}**.",
              "", "Seeds: " + ", ".join(f"`{seed}`" for seed in seeds) + ".",
              "Columns show ticks " + ", ".join(str(t) for t in ticks) + " (60 ticks/second).",
              "Reset starts at noon; first dawn is tick 2880. Rows are identified below.",
@@ -194,6 +203,7 @@ def collect(args: argparse.Namespace) -> None:
                     frame_id = f"{len(frames) + 1:03d}"
                     model = models.get(side)
                     frame = {"id": frame_id, "side": side, "scenario": scenario, "seed": seed,
+                             "climate": manifest["environment"].get("climate", "steady"),
                              "policy": role["policy"], "tick": tick,
                              "seed_dispersal": manifest["environment"].get("seed_dispersal", "narrow-v1"),
                              "water_uptake": manifest["environment"].get("water_uptake", "legacy-v1"),

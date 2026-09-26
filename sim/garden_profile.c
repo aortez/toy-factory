@@ -126,20 +126,20 @@ static const struct garden_profile_checkpoint checkpoints[] = {
 	{
 		.name = "initial",
 		.tick = 0U,
-		.expected_hash = UINT32_C(0x42bd6367),
+		.expected_hash = UINT32_C(0xd3e53e9c),
 		.expected_framebuffer_crc32 = UINT32_C(0xc515c869),
 	},
 	{
 		.name = "growing",
 		.tick = 930U,
-		.expected_hash = UINT32_C(0x28489ef5),
+		.expected_hash = UINT32_C(0xda79a9d8),
 		.expected_framebuffer_crc32 = UINT32_C(0xfc95584f),
 		.apply_smoke_setup = true,
 	},
 	{
 		.name = "mature",
 		.tick = 3771U,
-		.expected_hash = UINT32_C(0x4345d5b7),
+		.expected_hash = UINT32_C(0xf7c895f8),
 		.expected_framebuffer_crc32 = UINT32_C(0x1f128cce),
 		.apply_smoke_setup = true,
 	},

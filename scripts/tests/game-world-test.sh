@@ -9,6 +9,7 @@ gcc -std=c11 -Wall -Wextra -Werror -Wconversion -Wsign-conversion \
 	-fsanitize=undefined -fno-sanitize-recover=undefined -Isrc \
 	src/physics_world.c src/granular_world.c src/garden_agent.c src/garden_agent_neural.c \
 	src/garden_light.c \
+	src/garden_climate.c \
 	src/garden_world.c \
 	src/game_world.c \
 	src/game_scene_clockwork.c \

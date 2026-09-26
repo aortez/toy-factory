@@ -50,6 +50,19 @@ def visit_rows(s, end=4 * DAY):
 
 
 class DescendantTests(unittest.TestCase):
+    def test_long_seed_viability_and_followup_are_explicit(self):
+        pending = {**seed(pending=True), "lifetime_ecology_ticks": 8192}
+        result = run(seeds=[pending])
+        self.assertEqual(result["all"]["counts"]["pending"], 1)
+        self.assertEqual(result["full_potential"]["counts"]["created"], 0)
+        expired = {**seed(finish=33 * DAY), "lifetime_ecology_ticks": 8192}
+        self.assertEqual(run(seeds=[expired], end=33 * DAY)["all"]["counts"]["expired"], 1)
+        for lifetime in (0, True, 65536):
+            with self.assertRaises(RuntimeError):
+                run(seeds=[{**pending, "lifetime_ecology_ticks": lifetime}])
+        with self.assertRaises(RuntimeError):
+            run(seeds=[{**seed(), "lifetime_ecology_ticks": 8192}])
+
     def test_nonproducing_survivor_is_separate_from_productivity(self):
         result = run()
         p = result["parents"][0]

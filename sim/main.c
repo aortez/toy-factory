@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "garden_agent.h"
+#include "garden_climate_cli.h"
 #include "graphics_raster.h"
 #include "simulator.h"
 
@@ -338,7 +339,9 @@ int main(int argc, char **argv)
 	       simulator.world.logic_tick_count, state_hash, framebuffer_crc);
 	if (simulator.world.scene_id == PICOSYSTEM_GAME_SCENE_GARDEN) {
 		const struct picosystem_garden_world *const garden = &simulator.world.garden;
-		printf(",\"garden\":{\"plants\":%u,\"living\":%u,\"dead\":%u,\"nodes\":%u,"
+		printf(",\"garden\":{");
+		toy_factory_garden_climate_print(stdout, garden);
+		printf("\"plants\":%u,\"living\":%u,\"dead\":%u,\"nodes\":%u,"
 		       "\"blooms\":%" PRIu32 ",\"deaths\":%" PRIu32 ",\"reclaimed_plants\":%" PRIu32
 		       ",\"reclaimed_nodes\":%" PRIu32 ",\"seeds\":%u,\"seeds_created\":%" PRIu32
 		       ",\"germinations\":%" PRIu32 ",\"seeds_expired\":%" PRIu32
@@ -362,8 +365,7 @@ int main(int argc, char **argv)
 		       garden->agent_telemetry.shoot_extend_count);
 		printf(",\"weather\":{\"seed\":\"%08" PRIx32 "\",\"rain_rate\":%u,"
 		       "\"deposited\":%" PRIu32 ",\"runoff\":%" PRIu32 "},\"lineages\":[",
-		       garden->weather_seed,
-		       picosystem_garden_rain_at(garden->weather_seed, garden->ecology_tick_count),
+		       garden->weather_seed, picosystem_garden_world_rain(garden),
 		       garden->rain_deposited, garden->rain_runoff);
 		for (uint8_t index = 0U; index < garden->plant_count; ++index) {
 			const struct picosystem_garden_plant *const plant = &garden->plants[index];

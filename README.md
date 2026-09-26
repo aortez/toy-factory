@@ -501,6 +501,13 @@ nonzero status. Override that path with
 `FAIL_SCREENSHOT=artifacts/another-name.png`. Close `make console` before running
 a sequence because the test owns the serial port for its entire duration.
 
+The USB reader distinguishes an idle prompt from a background log redrawing the
+command being executed, including fragmented ANSI/color sequences. It never
+automatically retries a simulation step or scene action after a timeout: a missing
+reply does not prove the command did not execute. Inspect the current state before
+deciding how to recover. The runner's `--leave-paused` option (when invoked directly)
+skips normal cleanup, preserving an already-paused replay for inspection.
+
 ### Native simulator
 
 The dependency-free native runner compiles the production game world, snapshot

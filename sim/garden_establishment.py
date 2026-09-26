@@ -39,12 +39,12 @@ def verified(root: Path, manifest: dict, name: str) -> Path:
     return path
 
 
-def empty_window() -> dict:
+def empty_window(mask_count: int = 64) -> dict:
     return {"samples": 0, "bank_samples": 0, "mature_bank_samples": 0, "any_open_samples": 0,
             "mature_bank_any_open_samples": 0, "mature_seed_samples": 0,
             "actual_open_seed_samples": 0, "any_open_seed_samples": 0,
-            "reachable_open_seed_samples": 0, "actual_blocker_hist": [0]*64,
-            "site_blocker_hist": [0]*64, "open_column_samples": [0]*COLUMNS,
+            "reachable_open_seed_samples": 0, "actual_blocker_hist": [0]*mask_count,
+            "site_blocker_hist": [0]*mask_count, "open_column_samples": [0]*COLUMNS,
             "seed_column_samples": [0]*COLUMNS}
 
 
@@ -52,9 +52,9 @@ def seed_key(seed: dict, tick: int) -> tuple[int, int]:
     return seed["parent"], tick - seed["age"] * ECOLOGY_TICKS
 
 
-def cohort(records: list[dict], end: int, start: int | None = None) -> dict:
+def cohort(records: list[dict], end: int, start: int | None = None, *, lifetime: int = LIFETIME) -> dict:
     seeds = [s for s in records if start is None or s["birth_tick"] > start]
-    eligible = [s for s in seeds if s["birth_tick"] + LIFETIME*ECOLOGY_TICKS <= end]
+    eligible = [s for s in seeds if s["birth_tick"] + lifetime*ECOLOGY_TICKS <= end]
     result = {"created": len(seeds), "full_followup": len(eligible), "recent": len(seeds)-len(eligible)}
     for scope, group in (("all", seeds), ("full_followup", eligible)):
         for outcome in ("germinated", "expired", "pending"):
@@ -84,9 +84,18 @@ def analyze_stream(stream, reference: list[dict], late_cycles: int, node_capacit
     records, active, seen_plants = {}, {}, set()
     previous = {"tick": -ECOLOGY_TICKS, "births": 0, "seeds_created": 0, "seeds_expired": 0}
     checked = 0
+    lifetime = None
+    mask_count = 64
     for line in stream:
         row = json.loads(line)
         tick = row["tick"]
+        if lifetime is None:
+            lifetime = row.get("seed_lifetime_ecology_ticks", LIFETIME)
+            require(type(lifetime) is int and DORMANCY < lifetime <= 65535, "invalid seed lifetime")
+            mask_count = 128 if row.get("climate", {}).get("mode") in ("winter", "seasonal") else 64
+            windows = {window: {phase: empty_window(mask_count) for phase in ("bright", "twilight", "night")}
+                       for window in ("whole", "late")}
+        require(row.get("seed_lifetime_ecology_ticks", LIFETIME) == lifetime, "seed lifetime changed")
         require(row["schema_version"] == 1 and row["type"] == "seed-sites", "invalid census schema")
         require(row.get("node_capacity", 256) == node_capacity and 0 <= row["nodes"] <= node_capacity,
                 "wrong census node capacity")
@@ -97,7 +106,7 @@ def analyze_stream(stream, reference: list[dict], late_cycles: int, node_capacit
         require(len(row["sites"]) == COLUMNS and len(row["seeds"]) <= seed_capacity and len(row["plants"]) <= 8,
                 "invalid census capacities")
         for mask, water, light in row["sites"]:
-            require(0 <= mask < 64 and not mask & 1 and 0 <= water <= 255 and 0 <= light <= 255,
+            require(0 <= mask < mask_count and not mask & 1 and 0 <= water <= 255 and 0 <= light <= 255,
                     "invalid site observation")
         if tick in expected:
             ref = expected[tick]
@@ -114,7 +123,7 @@ def analyze_stream(stream, reference: list[dict], late_cycles: int, node_capacit
         seen_plants.update(plants)
         current = {}
         for seed in row["seeds"]:
-            require(0 <= seed["age"] < LIFETIME and 0 <= seed["column"] < COLUMNS,
+            require(0 <= seed["age"] < lifetime and 0 <= seed["column"] < COLUMNS,
                     "invalid seed age/column")
             key = seed_key(seed, tick)
             require(key not in current, "ambiguous seed identity")
@@ -131,6 +140,7 @@ def analyze_stream(stream, reference: list[dict], late_cycles: int, node_capacit
                 require(0 < reachable < 1 << COLUMNS and reachable & (1 << seed["column"]),
                         "actual landing outside parent dispersal support")
                 records[key] = {"parent": key[0], "birth_tick": key[1], "column": seed["column"],
+                                "lifetime_ecology_ticks": lifetime,
                                 "generation": seed["generation"], "species": seed["species"],
                                 "reachable_columns": reachable, "outcome": "pending", "end_tick": None,
                                 "child_id": None, "first_actual_open_tick": None,
@@ -143,7 +153,7 @@ def analyze_stream(stream, reference: list[dict], late_cycles: int, node_capacit
         for key in active.keys()-current.keys():
             old, record = active[key], records[key]
             record["end_tick"] = tick
-            if old["age"]+1 == LIFETIME:
+            if old["age"]+1 == lifetime:
                 record["outcome"] = "expired"
                 expired += 1
             else:
@@ -191,15 +201,17 @@ def analyze_stream(stream, reference: list[dict], late_cycles: int, node_capacit
     require(len(seeds) == previous["seeds_created"], "missing lifetime records")
     require(sum(s["outcome"] == "germinated" for s in seeds) == previous["births"], "birth outcome mismatch")
     return {"end_tick": end, "late_start_tick": start, "checkpoints_verified": checked,
-            "windows": windows, "seeds": seeds, "cohorts": {"whole": cohort(seeds, end),
-                                                            "late_born": cohort(seeds, end, start)}}
+            "seed_lifetime_ecology_ticks": lifetime,
+            "windows": windows, "seeds": seeds, "cohorts": {"whole": cohort(seeds, end, lifetime=lifetime),
+                                                            "late_born": cohort(seeds, end, start, lifetime=lifetime)}}
 
 
 def aggregate(cases: list[dict]) -> dict:
     result = {}
     for policy in sorted({case["policy"] for case in cases}):
         group = [c for c in cases if c["policy"] == policy]
-        windows = {w: {p: empty_window() for p in ("bright", "twilight", "night")} for w in ("whole", "late")}
+        mask_count = len(group[0]["analysis"]["windows"]["whole"]["bright"]["actual_blocker_hist"])
+        windows = {w: {p: empty_window(mask_count) for p in ("bright", "twilight", "night")} for w in ("whole", "late")}
         cohorts = {w: Counter() for w in ("whole", "late_born")}
         for case in group:
             for w in windows:
@@ -305,6 +317,9 @@ def collect(args: argparse.Namespace) -> None:
                     case_id = f"{len(cases)+1:02d}"
                     command = ["bin/garden-inspect", model, scenario, policy, "0x"+seed,
                                "--seed-sites", "--ticks", str(reference[-1]["tick"])]
+                    climate = manifest["environment"].get("climate", "steady")
+                    if climate != "steady":
+                        command += ["--climate", climate]
                     packed = output / f"traces/{case_id}.jsonl.gz"
                     with tempfile.TemporaryDirectory(prefix="garden-sites-") as temporary:
                         raw = Path(temporary) / "trace.jsonl"

@@ -388,6 +388,10 @@ static int reset_garden(struct picosystem_game_world *world)
 		err = picosystem_garden_world_set_weather(&world->garden, UINT32_C(0x67617264));
 	}
 	if (err == 0) {
+		err = picosystem_garden_world_set_climate(&world->garden,
+							  PICOSYSTEM_GARDEN_CLIMATE_SEASONAL);
+	}
+	if (err == 0) {
 		err = picosystem_garden_world_plant_seed(&world->garden,
 							 PICOSYSTEM_GARDEN_SPECIES_FLOWER, 4U);
 	}

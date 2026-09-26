@@ -11,6 +11,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "garden_climate.h"
+
 #define PICOSYSTEM_GARDEN_GRID_COLUMNS 28U
 #define PICOSYSTEM_GARDEN_CANOPY_ROWS  14U
 #define PICOSYSTEM_GARDEN_SOIL_ROWS    11U
@@ -109,7 +111,7 @@
 #define PICOSYSTEM_GARDEN_NIGHT_RESERVE_PERIODS     40
 #define PICOSYSTEM_GARDEN_RESERVE_TRAIT_PERIOD_STEP 4
 #define PICOSYSTEM_GARDEN_SEED_DORMANCY_TICKS       8U
-#define PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS       256U
+#define PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS       (2U * PICOSYSTEM_GARDEN_YEAR_TICKS)
 #define PICOSYSTEM_GARDEN_GENOME_TRAIT_MIN          (-2)
 #define PICOSYSTEM_GARDEN_GENOME_TRAIT_MAX          2
 #define PICOSYSTEM_GARDEN_AGENT_MEMORY_WIDTH        8U
@@ -223,12 +225,14 @@ enum picosystem_garden_seed_germination_blocker {
 	PICOSYSTEM_GARDEN_SEED_BLOCKED_PLANT_CAPACITY = 1U << 3,
 	PICOSYSTEM_GARDEN_SEED_BLOCKED_NODE_CAPACITY = 1U << 4,
 	PICOSYSTEM_GARDEN_SEED_BLOCKED_SPACING = 1U << 5,
+	PICOSYSTEM_GARDEN_SEED_BLOCKED_COLD = 1U << 6,
 };
 
 #define PICOSYSTEM_GARDEN_SEED_VALID_BLOCKERS                                                      \
 	(PICOSYSTEM_GARDEN_SEED_BLOCKED_DORMANT | PICOSYSTEM_GARDEN_SEED_BLOCKED_MOISTURE |        \
 	 PICOSYSTEM_GARDEN_SEED_BLOCKED_LIGHT | PICOSYSTEM_GARDEN_SEED_BLOCKED_PLANT_CAPACITY |    \
-	 PICOSYSTEM_GARDEN_SEED_BLOCKED_NODE_CAPACITY | PICOSYSTEM_GARDEN_SEED_BLOCKED_SPACING)
+	 PICOSYSTEM_GARDEN_SEED_BLOCKED_NODE_CAPACITY | PICOSYSTEM_GARDEN_SEED_BLOCKED_SPACING |   \
+	 PICOSYSTEM_GARDEN_SEED_BLOCKED_COLD)
 
 enum picosystem_garden_tool {
 	PICOSYSTEM_GARDEN_TOOL_FLOWER_SEED,
@@ -417,6 +421,7 @@ struct picosystem_garden_world {
 	uint16_t maximum_generation;
 	uint8_t plant_count;
 	uint8_t seed_count;
+	uint8_t climate_mode;
 	uint8_t cursor_column;
 	uint8_t cursor_row;
 	uint8_t selected_tool;
@@ -468,9 +473,22 @@ int picosystem_garden_world_water(struct picosystem_garden_world *world, uint8_t
 /* Pure surface-water units per column per ecology step; seed zero means dry. */
 uint8_t picosystem_garden_rain_at(uint32_t weather_seed, uint32_t ecology_tick);
 
-/* Change only the weather seed. Does not reset time, moisture, or diagnostics. */
+/* Change weather seed and refresh seasonal light. Does not reset time, moisture,
+ * diagnostics, or plant RNGs.
+ */
 int picosystem_garden_world_set_weather(struct picosystem_garden_world *world,
 					uint32_t weather_seed);
+
+/* Reset defaults to steady. Switch only at ecology boundaries; refresh light.
+ * Invalid calls preserve the world. Does not reset time, rain, soil, or RNGs.
+ */
+int picosystem_garden_world_set_climate(struct picosystem_garden_world *world,
+					enum picosystem_garden_climate_mode mode);
+
+/* Effective conditions for a valid world, including disabled climate components. */
+struct picosystem_garden_climate
+picosystem_garden_world_climate(const struct picosystem_garden_world *world);
+uint8_t picosystem_garden_world_rain(const struct picosystem_garden_world *world);
 
 /* Pinch the nearest active shoot tip so its next segment turns and branches. */
 int picosystem_garden_world_prune(struct picosystem_garden_world *world, uint8_t column,

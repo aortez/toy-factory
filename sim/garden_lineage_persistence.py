@@ -67,7 +67,10 @@ def world(lineages, seeds, start, end, observed_end, source_start=None):
         if seed["outcome"] != "pending":
             continue
         s = indexed[seed["parent"], seed["birth_tick"]]
-        require(observed_end < end + FOLLOWUP or s["outcome"] != "pending",
+        # The fixed two-day scoring follow-up is not a seed-expiry deadline.
+        # Longer-lived seeds remain explicitly unconfirmed, including at stop.
+        require(observed_end < s["birth_tick"] + s.get("lifetime_ecology_ticks", DAY // STEP) * STEP
+                or s["outcome"] != "pending",
                 "original seed unresolved after maximum lifetime")
         child = records.get(s["child_id"])
         followup.append({"parent": s["parent"], "purchase_tick": s["birth_tick"],

@@ -174,13 +174,15 @@ int picosystem_game_snapshot_build(const struct picosystem_game_world *world, ui
 		garden->auto_target_tool = garden_world->auto_target_tool;
 		garden->auto_gardener_enabled = garden_world->auto_gardener_enabled ? 1U : 0U;
 		garden->auto_target_valid = garden_world->auto_target_valid ? 1U : 0U;
-		const struct picosystem_garden_sun sun =
-			picosystem_garden_sun_at(garden_world->ecology_tick_count);
+		const struct picosystem_garden_sun sun = picosystem_garden_world_sun(garden_world);
 		garden->sun_phase = sun.phase;
 		garden->sun_strength = sun.strength;
 		garden->sun_ray_step_x_q4 = sun.ray_step_x_q4;
-		garden->rain_rate = picosystem_garden_rain_at(garden_world->weather_seed,
-							      garden_world->ecology_tick_count);
+		garden->rain_rate = picosystem_garden_world_rain(garden_world);
+		const struct picosystem_garden_climate climate =
+			picosystem_garden_world_climate(garden_world);
+		garden->climate_cold = climate.cold ? 1U : 0U;
+		garden->climate_drought = climate.drought ? 1U : 0U;
 		memcpy(garden->moisture, garden_world->moisture, sizeof(garden->moisture));
 		for (uint8_t index = 0U; index < garden->seed_count; ++index) {
 			const struct picosystem_garden_seed *const source =

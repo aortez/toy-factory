@@ -335,8 +335,9 @@ static void print_report(const struct garden_train_options *options,
 	printf("{\n  \"schema_version\": %u,\n", GARDEN_TRAIN_SCHEMA_VERSION);
 	printf("  \"algorithm\": \"deterministic-(1+lambda)\",\n");
 	printf("  \"environment\": {\"rain_version\":%u,\"gardener\":false,"
-	       "\"irrigation\":false,\"scenarios\":[\"rainfed\",\"rainfed-crowded\"]},\n",
-	       PICOSYSTEM_GARDEN_RAIN_VERSION);
+	       "\"irrigation\":false,\"climate\":\"steady\",\"seed_lifetime_ecology_ticks\":%u,"
+	       "\"scenarios\":[\"rainfed\",\"rainfed-crowded\"]},\n",
+	       PICOSYSTEM_GARDEN_RAIN_VERSION, PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS);
 	printf("  \"base_seed\": \"%08" PRIx32 "\",\n", options->base_seed);
 	printf("  \"settings\": {\"generations\":%" PRIu32 ",\"population\":%" PRIu32
 	       ",\"trials_per_scenario\":%" PRIu32 ",\"ticks_per_trial\":%" PRIu32

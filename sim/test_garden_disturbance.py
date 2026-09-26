@@ -40,7 +40,7 @@ def synthetic():
 
 def integration(build):
     horizon = 92160
-    seed = 1  # Fixed test fixture; the production panel keeps its predeclared schedules.
+    seed = 4  # Fixed long-lived-seed fixture; archived panels retain their original schedules.
     base = [str(build / "toy-factory-garden-inspect"), "-", "rainfed", "adaptive", "0x9c530b07",
             "--leaf-policy", "selective"]
     with tempfile.TemporaryDirectory(prefix="disturbance-test-") as temp:

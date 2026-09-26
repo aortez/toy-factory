@@ -66,12 +66,12 @@ one; physics averaged 15.267 ms and peaked at 17.869 ms, although 105 individual
 updates crossed the 16.667 ms budget. The 320-grain population remains normal
 to preserve headroom for additional gameplay.
 
-The current image, including the adaptive Garden policy, uses 255,612 bytes of
-the 255 KiB Zephyr RAM region and 261,588 bytes of flash, leaving 5,508 bytes of
-linker RAM plus the separately reserved 8 KiB core-1 mailbox/stack area. The
-conservative image uses 222,988 bytes of Zephyr RAM and 255,812 bytes of flash.
+The current seasonal image, including the adaptive Garden policy, uses 255,772
+bytes of the 255 KiB Zephyr RAM region and 263,516 bytes of flash, leaving 5,348
+bytes of linker RAM plus the separately reserved 8 KiB core-1 mailbox/stack area.
+The conservative image uses 223,004 bytes of Zephyr RAM and 257,596 bytes of flash.
 The fixed granular capacity is 512 particles, the fixed Garden capacity is
-eight plants, 256 nodes, and eight dormant seeds, and the 4,340-byte Garden
+eight plants, 256 nodes, and eight dormant seeds, and the 4,352-byte Garden
 world includes bounded per-plant and cumulative policy telemetry. The immutable
 render snapshot is 1,664 bytes, and the tagged game-world and snapshot unions
 avoid allocating inactive scene alternatives. Full Hourglass results are in the
@@ -88,11 +88,14 @@ neutral drain reached hash `82da7b6c` and CRC-32 `3e3e0901`.
 
 ## Garden validation
 
-The renewable-flower lifecycle uses Garden hash version 5. Its updated sequence
-goldens and full/damage rendering are host-verified, and the firmware builds
-with unchanged static RAM usage. These new goldens have not yet been replayed
-on the PIM559; current values are in the
-[Garden design](garden-simulator.md#presentation-and-validation).
+The seasonal lifecycle uses Garden hash version 6. The
+[2026-09-25 PIM559 check](../benchmarks/garden-seasons/README.md#physical-pim559-check)
+reproduces smoke/mature, winter and first-spring state/framebuffer checkpoints
+with the 62.5 MHz PL022/DMA image. Winter/spring screenshots match native output
+byte-for-byte. That report gives current firmware memory usage, documents the
+host-side prompt-redraw parsing fix, and records a clean ordinary lifecycle replay.
+The separate `garden-generations.json` fixture remains host-verified for this
+revision; it was not repeated on the device in this pass.
 
 The device measurements and hashes below describe the preceding version-4
 lifecycle, before renewable flowers and attainable reproduction reserves.

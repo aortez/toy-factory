@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "garden_evaluation.h"
+#include "garden_climate_cli.h"
 #include "garden_light.h"
 #include "garden_model_file.h"
 #include "garden_policy_probe.h"
@@ -63,7 +64,8 @@ static struct toy_factory_garden_founder_exit founder_exit_result;
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 #define GARDEN_REPLAY_MAX_TICKS TOY_FACTORY_GARDEN_DISTURBANCE_MAX_TICKS
 #else
-#define GARDEN_REPLAY_MAX_TICKS 100000U
+#define GARDEN_REPLAY_MAX_TICKS                                                                    \
+	(256U * PICOSYSTEM_GARDEN_DAY_TICKS * PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR)
 #endif
 
 static int parse_u32(const char *text, uint32_t maximum, uint32_t *value)
@@ -128,9 +130,9 @@ static int print_result(const struct picosystem_garden_world *world, const char 
 			++descendants;
 		}
 	}
-	const struct picosystem_garden_sun sun =
-		picosystem_garden_sun_at(world->ecology_tick_count);
+	const struct picosystem_garden_sun sun = picosystem_garden_world_sun(world);
 	putchar('{');
+	toy_factory_garden_climate_print(stdout, world);
 #if defined(TOY_FACTORY_GARDEN_FULL_POOL)
 	const int full_pool_err =
 		picosystem_garden_full_pool_print(&world->full_pool, world->logic_tick_count);
@@ -199,12 +201,10 @@ static int print_result(const struct picosystem_garden_world *world, const char 
 	       "\"seed_bank\":%u,\"births\":%" PRIu32 ",\"deaths\":%" PRIu32
 	       ",\"moisture\":%u,\"model_crc32\":",
 	       scenario, policy, seed, world->logic_tick_count, picosystem_garden_world_hash(world),
-	       sun.phase, sun.strength,
-	       picosystem_garden_rain_at(world->weather_seed, world->ecology_tick_count),
-	       world->rain_deposited, world->rain_runoff,
-	       picosystem_garden_world_living_plant_count(world), descendants, world->plant_count,
-	       world->node_count, world->seed_count, world->germination_count, world->death_count,
-	       world->moisture_total);
+	       sun.phase, sun.strength, picosystem_garden_world_rain(world), world->rain_deposited,
+	       world->rain_runoff, picosystem_garden_world_living_plant_count(world), descendants,
+	       world->plant_count, world->node_count, world->seed_count, world->germination_count,
+	       world->death_count, world->moisture_total);
 	if (model_crc != NULL) {
 		printf("\"%08" PRIx32 "\"", *model_crc);
 	} else {
@@ -335,9 +335,13 @@ int main(int argc, char **argv)
 		fprintf(help ? stdout : stderr,
 			"--plant-slots 16: post-noon admission; requires fractional canopy\n");
 #endif
+		fprintf(help ? stdout : stderr,
+			"--climate steady|winter|drought|seasonal (default: steady)\n");
 		return help ? 0 : 2;
 	}
 	uint32_t ticks = 0U;
+	enum picosystem_garden_climate_mode climate_mode = PICOSYSTEM_GARDEN_CLIMATE_STEADY;
+	bool climate_seen = false;
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 	uint32_t wet_tick = 0U;
 #endif
@@ -348,6 +352,14 @@ int main(int argc, char **argv)
 	for (int index = 5; index < argc; index += 2) {
 		if ((index + 1) >= argc) {
 			return 2;
+		}
+		if (strcmp(argv[index], "--climate") == 0) {
+			if (climate_seen || (toy_factory_garden_climate_parse(
+						     argv[index + 1], &climate_mode) != 0)) {
+				return 2;
+			}
+			climate_seen = true;
+			continue;
 		}
 #if defined(TOY_FACTORY_GARDEN_FULL_POOL)
 		if (strcmp(argv[index], "--full-pool") == 0) {
@@ -648,6 +660,9 @@ int main(int argc, char **argv)
 	}
 	if (err == 0) {
 		err = toy_factory_garden_evaluation_reset(&world, scenario, seed);
+	}
+	if (err == 0) {
+		err = picosystem_garden_world_set_climate(&world, climate_mode);
 	}
 	struct picosystem_garden_neural_model focal_model;
 	struct picosystem_garden_agent_policy focal_neural, focal_probe, routed;

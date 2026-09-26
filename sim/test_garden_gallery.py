@@ -52,6 +52,16 @@ def decode_png(path):
 
 
 class UnitTests(unittest.TestCase):
+    def test_climate_command_and_legacy_default(self):
+        frame = {"policy": "adaptive", "scenario": "rainfed", "seed": "00000001",
+                 "tick": 983040, "model": None}
+        self.assertNotIn("--climate", gallery.frame_command(frame))
+        self.assertEqual(gallery.frame_command({**frame, "climate": "winter"})[-2:],
+                         ["--climate", "winter"])
+        for invalid in ({**frame, "climate": "unknown"}, {**frame, "tick": 983041}):
+            with self.assertRaises(RuntimeError):
+                gallery.frame_command(invalid)
+
     def test_checkpoint_bounds(self):
         self.assertEqual(gallery.checkpoints(92160, []), [480, 2880, 92160])
         self.assertEqual(gallery.checkpoints(120, []), [120])
@@ -84,7 +94,7 @@ def integration(args):
             command = native.copy()
             command[4] = bad
             run(command, 2)
-        for bad in ("-1", "100001", "4294967296", "1x", ""):
+        for bad in ("-1", "983041", "4294967296", "1x", ""):
             run([*native[:-1], bad], 2)
         run([*native, "--ticks", "17"], 2)
         run([*native, "--unknown", "foo"], 2)
@@ -192,6 +202,26 @@ def integration(args):
         forbidden = root / "untouched-test"
         run([sys.executable, script, "--bundle", bundle, "--output", forbidden], 1)
         assert not forbidden.exists()
+
+        seasonal = root / "seasonal"
+        run([sys.executable, gallery.ROOT / "sim/garden_experiments.py", "--output", seasonal,
+             "--candidate-model", model, "--cycles", "16", "--trials", "1", "--trace-pairs", "1",
+             "--evaluator", args.evaluator, "--inspector", args.inspector, "--climate", "seasonal"])
+        seasonal_gallery = root / "seasonal-gallery"
+        run([sys.executable, script, "--bundle", seasonal, "--output", seasonal_gallery,
+             "--replayer", args.replayer, "--checkpoint", "19200", "--checkpoint", "53760",
+             "--checkpoint", "61440"])
+        run([sys.executable, seasonal_gallery / "tools/garden_gallery.py", "--verify", seasonal_gallery])
+        seasonal_frames = json.loads((seasonal_gallery / "frames.json").read_text())["frames"]
+        assert all(f["climate"] == f["reference"]["climate"]["mode"] == "seasonal"
+                   for f in seasonal_frames)
+        assert any(f["reference"]["climate"]["cold"] for f in seasonal_frames)
+        for frame in seasonal_frames:
+            changed = copy.deepcopy(frame["reference"])
+            changed["climate"]["mode"] = "steady"
+            with unittest.TestCase().assertRaises(RuntimeError):
+                gallery.check_frame(frame["result"], changed, frame["model_crc32"],
+                                    (seasonal_gallery / frame["framebuffer"]).read_bytes())
 
     print("Saved-model capture, evaluator hashes, exact PNG pixels, frozen replay and failures passed")
 

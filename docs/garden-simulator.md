@@ -95,11 +95,13 @@ policies see moisture and resource income, not privileged weather forecasts.
 
 Bare `garden_world_reset` leaves rain disabled for isolated tests and historical
 benchmarks. `garden_world_set_weather` selects a seed (zero disables rain)
-without changing time, moisture, or plant randomness. Enabled weather contributes
-a tagged version/seed extension to the Garden v5 hash. Rain-disabled worlds
-retain their previous hashes exactly. The snapshot carries only the current
-rain rate; a small `RAIN` header indicator changes only at wet/dry transitions,
-with matching dirty-region invalidation.
+without changing time, moisture, or plant randomness; it refreshes seasonal light.
+The current Garden hash is v6, identifying the longer seed lifetime and climate
+mode as well as the weather seed. The playable scene enables winter and drought;
+bare worlds and existing evaluation/training scenarios default to steady weather.
+The snapshot carries effective rain and cold/drought flags, with `RAIN`, `COLD`,
+or `DRY` header indicators and matching dirty-region invalidation. See
+[seasonal mechanics and comparisons](garden-seasons.md).
 
 Training now uses the `rainfed` and `rainfed-crowded` environments, with three
 and five founders respectively. Both have startup water, seeded rain, no fixed
@@ -142,7 +144,9 @@ decomposing. Tissue aging and structural regrowth are not part of this change.
 
 Seeds disperse a
 bounded horizontal distance, remain dormant for eight ecology ticks (two
-seconds), and expire after 256 ecology ticks (64 seconds). A dormant seed
+seconds), and expire after 8,192 ecology ticks (32 Garden days, or two seasonal
+cycles). Cold-season dormancy delays germination but does not stop seed aging.
+A dormant seed
 germinates only when its surface soil has sufficient moisture, the bottom
 canopy row has sufficient light, plant spacing is valid, and fixed plant/node
 capacity is available. Mutation is deterministic: three quarters of new seeds
@@ -338,21 +342,20 @@ adaptive choices, memory bounds, shared-input all-tip bidding, winner-only
 commit, injected-policy determinism and rejection, and a five-minute automatic
 soak. The mixed sequence fixture waters the plot, plants another flower,
 enables automation, and advances 930 exact ticks to five plants, 137 nodes,
-four blooms, and one dormant seed at hash `28489ef5` and framebuffer CRC-32
+four blooms, and one dormant seed at hash `da79a9d8` and framebuffer CRC-32
 `fc95584f`, during a shower. Continuing the same state to tick 3,771 reaches five
-healthy plants, 188 nodes, 15 blooms, and six dormant seeds at hash `4345d5b7`
+healthy plants, 188 nodes, 15 blooms, and six dormant seeds at hash `f7c895f8`
 and CRC-32 `1f128cce`.
 
-A separate gardener-free lifecycle fixture now runs through tick 18,030:
-rain delays the old dry-plot deaths, so the longer fixture exercises two deaths,
-two reclamations, and one germination, ending with three living plants at hash
-`a9cbbc66` and CRC-32 `283abd58`. The generation fixture enables automation at
-tick 4,530, then continues through tick 8,430 with five living plants, 18 produced
-seeds, one germination, nine expirations, and 16 mutations. It reaches hash
-`08d270fc` and CRC-32 `bd42bea8`. UBSan host runs reproduce all four checkpoints.
-The PIM559 also reproduced the rainy 930-tick and 8,430-tick fixtures, including
-both framebuffers.
-These playable checkpoints use Garden hash v5 with the rain-v1 extension.
+A separate gardener-free lifecycle fixture now runs through tick 54,030,
+including winter: five deaths, five reclamations, and three germinations,
+ending with two living plants at hash `a2d73157` and CRC-32 `7b6918c7`.
+The generation fixture enables automation at tick 4,530, then continues through
+tick 58,530 with five living plants, four deaths/reclamations and one germination.
+It reaches hash `1d6f1e15` and CRC-32 `c100779e`.
+These playable checkpoints use Garden hash v6. The earlier v5 rainy fixtures
+were reproduced on the PIM559; that hardware evidence does not validate the
+new seasonal rules or updated checkpoints.
 The [longevity investigation](../benchmarks/garden-longevity/README.md) retains
 the historical rain-disabled results.
 
