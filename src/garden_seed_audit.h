@@ -4,8 +4,8 @@
 
 #include "garden_world.h"
 
-#if !defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) || defined(__ZEPHYR__)
-#error "Seed accounting is restricted to the host maintenance experiment"
+#if defined(__ZEPHYR__)
+#error "Seed accounting is restricted to host diagnostics"
 #endif
 
 enum picosystem_garden_seed_outcome {
@@ -52,6 +52,10 @@ struct picosystem_garden_seed_audit {
 	bool ecology_step;
 	uint8_t count;
 	uint8_t sites_before[PICOSYSTEM_GARDEN_GRID_COLUMNS];
+	/* Union of living-parent scattering support by species before any checks.
+	 * Geometric reach only: parents need not be fertile or able to afford seeds.
+	 */
+	uint32_t dispersal_columns[PICOSYSTEM_GARDEN_SPECIES_COUNT];
 	struct picosystem_garden_seed_inventory stages[PICOSYSTEM_GARDEN_SEED_STAGE_COUNT];
 	struct picosystem_garden_seed_attempt attempts[PICOSYSTEM_GARDEN_MAX_SEEDS];
 };

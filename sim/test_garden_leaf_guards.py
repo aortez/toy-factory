@@ -33,7 +33,9 @@ def main():
         assert (result.returncode == 0) == (leaf and combined and not device), result.stderr
         result = subprocess.run(command, input='#include "garden_seed_audit.h"\n', text=True,
                                 capture_output=True, timeout=30)
-        assert (result.returncode == 0) == (leaf and combined and not device), result.stderr
+        # Read-only seed tracing now supports normal hosts, while invalid ecology
+        # combinations and all firmware inclusions must still fail.
+        assert (result.returncode == 0) == (not device and (not leaf or combined)), result.stderr
         result = subprocess.run([*command,"-DTOY_FACTORY_GARDEN_BOTTOM_DRAINAGE=1"],
                                 input='#include "garden_world.h"\n',text=True,capture_output=True,timeout=30)
         assert (result.returncode == 0) == (leaf and combined and not device), result.stderr

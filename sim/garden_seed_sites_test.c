@@ -56,6 +56,11 @@ static void check_dispersal_support(struct picosystem_garden_world *world)
 		for (int trait = -2; trait <= 2; ++trait) {
 			world->plants[0].base_column = (uint8_t)base;
 			world->plants[0].genome.dispersal = (int8_t)trait;
+#if defined(TOY_FACTORY_GARDEN_FLOWER_DISPERSAL)
+			world->nodes[0].flags = PICOSYSTEM_GARDEN_NODE_FLOWER;
+			world->nodes[0].growth_progress = UINT8_MAX;
+			world->nodes[0].x = (uint8_t)(8 + base * 8 + 4);
+#endif
 			uint32_t expected = 0U;
 			for (int distance = minimum + trait; distance <= maximum + trait;
 			     ++distance) {

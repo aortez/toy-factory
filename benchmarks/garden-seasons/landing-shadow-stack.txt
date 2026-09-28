@@ -1,0 +1,3 @@
+src/garden_landing.c:15:6:picosystem_garden_landing_cache_is_valid	16	static
+src/garden_landing.c:47:5:picosystem_garden_landing_capture	368	static
+src/garden_landing.c:135:5:picosystem_garden_landing_observe	152	static

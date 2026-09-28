@@ -6,7 +6,9 @@
 
 #include "garden_seed_audit.h"
 #include "garden_evaluation.h"
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 #include "garden_leaf_policies.h"
+#endif
 
 static void ready(struct picosystem_garden_world *world)
 {
@@ -42,7 +44,9 @@ int main(void)
 {
 	struct picosystem_garden_world world;
 	struct picosystem_garden_agent_policy policy = *picosystem_garden_agent_adaptive_policy();
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 	policy.leaf_policy = toy_factory_garden_leaf_policy("selective");
+#endif
 	struct picosystem_garden_seed_audit audit;
 	memset(&audit, 0x5a, sizeof(audit));
 	const struct picosystem_garden_seed_audit sentinel = audit;
@@ -77,6 +81,12 @@ int main(void)
 	assert(audit.attempts[2].outcome == PICOSYSTEM_GARDEN_SEED_GERMINATED);
 	assert(audit.attempts[2].child == 2U && audit.attempts[2].blockers == 0U);
 	assert(audit.sites_before[14] == 0U);
+	struct picosystem_garden_seed_sites supports;
+	assert(picosystem_garden_world_seed_sites(&before, &supports) == 0);
+	assert(audit.dispersal_columns[PICOSYSTEM_GARDEN_SPECIES_FLOWER] ==
+	       supports.dispersal_columns[0]);
+	assert(audit.dispersal_columns[PICOSYSTEM_GARDEN_SPECIES_SHRUB] == 0U);
+	assert(audit.dispersal_columns[PICOSYSTEM_GARDEN_SPECIES_GROUND_COVER] == 0U);
 	for (uint8_t i = 3U; i < audit.count; ++i) {
 		assert(audit.attempts[i].outcome == PICOSYSTEM_GARDEN_SEED_WAIT);
 		assert(audit.attempts[i].blockers == PICOSYSTEM_GARDEN_SEED_BLOCKED_SPACING);
@@ -119,14 +129,36 @@ int main(void)
 	assert((audit.attempts[0].blockers & 6U) == 6U);
 	assert(audit.attempts[0].moisture < 12U && audit.attempts[0].light < 80U);
 
-	assert(toy_factory_garden_evaluation_reset(&world, &toy_factory_garden_rainfed_scenarios[1],
-						   0xb61837dcU) == 0);
+	ready(&world);
+	world.logic_tick_count = 0U;
+	assert(picosystem_garden_world_set_climate(&world, PICOSYSTEM_GARDEN_CLIMATE_WINTER) == 0);
+	world.logic_tick_count = 14U * 3840U - 1U;
+	world.ecology_tick_count = 14U * PICOSYSTEM_GARDEN_DAY_TICKS - 1U;
+	world.seeds[0].age_ecology_ticks = PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS - 1U;
+	world.seeds[1].age_ecology_ticks = 6U;
+	same_step(&world, &policy, &audit);
+	assert(audit.attempts[0].outcome == PICOSYSTEM_GARDEN_SEED_EXPIRED);
+	assert((audit.attempts[1].blockers &
+		(PICOSYSTEM_GARDEN_SEED_BLOCKED_COLD | PICOSYSTEM_GARDEN_SEED_BLOCKED_DORMANT)) ==
+	       (PICOSYSTEM_GARDEN_SEED_BLOCKED_COLD | PICOSYSTEM_GARDEN_SEED_BLOCKED_DORMANT));
+	for (uint8_t i = 1U; i < audit.count; ++i) {
+		assert(audit.attempts[i].outcome == PICOSYSTEM_GARDEN_SEED_WAIT);
+		assert(audit.attempts[i].blockers & PICOSYSTEM_GARDEN_SEED_BLOCKED_COLD);
+	}
+
 	const struct picosystem_garden_seed_audit zero = {0};
-	for (uint32_t tick = 1U; tick <= 18U * 3840U; ++tick) {
-		same_step(&world, &policy, &audit);
-		assert(audit.ecology_step == ((tick % 15U) == 0U));
-		if (!audit.ecology_step) {
-			assert(memcmp(&audit, &zero, sizeof(audit)) == 0);
+	for (int mode = PICOSYSTEM_GARDEN_CLIMATE_STEADY; mode < PICOSYSTEM_GARDEN_CLIMATE_COUNT;
+	     ++mode) {
+		assert(toy_factory_garden_evaluation_reset(
+			       &world, &toy_factory_garden_rainfed_scenarios[1], 0xb61837dcU) == 0);
+		assert(picosystem_garden_world_set_climate(
+			       &world, (enum picosystem_garden_climate_mode)mode) == 0);
+		for (uint32_t tick = 1U; tick <= 18U * 3840U; ++tick) {
+			same_step(&world, &policy, &audit);
+			assert(audit.ecology_step == ((tick % 15U) == 0U));
+			if (!audit.ecology_step) {
+				assert(memcmp(&audit, &zero, sizeof(audit)) == 0);
+			}
 		}
 	}
 	printf("Seed audit state/sequence/boundary checks passed; caller storage=%zu bytes\n",

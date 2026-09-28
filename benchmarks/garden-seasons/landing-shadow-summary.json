@@ -1,0 +1,3982 @@
+{
+  "protocol": "landing-shadow-v1",
+  "prior_sha256": "5d089e00e11e180bb1cb18c7143a05e67c0db0c0bed9c440ac58d61f38b640c2",
+  "frozen": {
+    "sources": {
+      "src/battery.c": "02e702db92987b095e18f054641407e5db02480bc25b420e5541eb2a6b42c161",
+      "src/battery.h": "ffc15df567d2665e95f3a927627807d4d3a72c34c1ae8c8141f598f04af15941",
+      "src/core1_runtime.c": "96ff6e3de157332c04d0c4c909ee0f3a756568d44cf52363a3560dd7d17587aa",
+      "src/core1_runtime.h": "ae5c59793727da2a3a8da0fb51d8509047c9a5059f30f71e97a7d5a9c3404dd2",
+      "src/dense_scene.c": "8016db2167c5d4756b14d659890f2a0a96d2e2b11ea055fdafec2c8ef0a659b6",
+      "src/dense_scene.h": "1e9eaaa77301d01115f5aa0d5c8de807e2a6d9c59f2b19f3533f6aa0fe98d498",
+      "src/diagnostic_shell.c": "99a3aa6f776c4053872b648e12bbeab3626a8664b425439cea3669c06831cf2b",
+      "src/diagnostic_shell.h": "bf0bed7f07751a68f2886ee34a80919bc57e31b8b7a0d598761337d44e0350ab",
+      "src/display_profile.c": "64c797194b4fe7b8065ffc527612cfdffb8bb75da9b9562043abc5e657f8147b",
+      "src/display_profile.h": "79eccc7f02376c6b79ff178adbe73ac44f4f10941615cb270cf3161a92776593",
+      "src/display_sync.c": "c37150c90a6e42ca2badc2a30e9e886586ec52e0af42484228171b514dcafe3f",
+      "src/display_sync.h": "7a94cbf593e57c6ecac3f98060e43685cd5c0d35904e5f44110376e5c1b25123",
+      "src/fixed_rate_scheduler.c": "60892223dac6a3d2c5fd829845fc9286ee9c00a41159be78fcf2f147afbfb654",
+      "src/fixed_rate_scheduler.h": "5b8a453d255519d85d898d1475a6e9ce5a5e78f118dbb73294beaa4d26d4c155",
+      "src/game_control.c": "353cd8360a40c881f6d17f1c15119027552dcfadb8e5f69e713484a5ff7e6819",
+      "src/game_control.h": "74d46717252c2612e2c9ccc55181731e7acfda0303b9268f5354d22ec5735796",
+      "src/game_demo.c": "62647fe197970b6ce790f96508d66b39d99244433de9a796c663338044b29305",
+      "src/game_demo.h": "e2649a62df8842bd8a5bbec91e95ab34589eea64148558a6ace6e33e2e3ad54b",
+      "src/game_scene.h": "ca0a276a09cc4e887691d47aa31a457a5786345f7d281cea43d1b152e2293ca9",
+      "src/game_scene_clockwork.c": "2cf0f240c15c799e4268bf608dc261975e2b2b819a5fafcc193473158de7765d",
+      "src/game_scene_hourglass.c": "971fd63cb80cc5383d3174643501f78e4ea0dee7bb0c93e6f97e7a52b3e7d568",
+      "src/game_scene_machine_lab.c": "0447e3f3468d85a23fa580638263f4c37ad93c0fdec951d5bac6544c5eca1628",
+      "src/game_scene_marble_machine.c": "81e8e856243b273055f39536da57b318fcf27dcedb325869afc64afdf2756bea",
+      "src/game_scene_selector.c": "f13424263560b28081458c8c0e7f02b4242bebeaa74f90876a2ce696597094b7",
+      "src/game_scene_selector.h": "0f712f1ee2010f120ba34ced4f73af8b3a4bec31b12f33513ad4819caaef8f1e",
+      "src/game_snapshot.c": "2de03a7df5a70b8b5a9d85462d60c0e982a983ec1444b0d7a0b8c62ec2e053ce",
+      "src/game_snapshot.h": "5829c171c915dc81c09d9019e6ee0579396e4b11e1ae7542b42077c9351ddf6d",
+      "src/game_world.c": "c59f8b6c736ff296209daf349538b74e2b81bcf697383667709f9def9aa3a933",
+      "src/game_world.h": "99bb44b698b0a284d09e039230d67b47782ddd4b4abd33d689c88808484208f5",
+      "src/garden_agent.c": "165da057b2dd35f8bdd3d4dbb667b3b504878397cb7fb5d1c7cf3a5fe313cb97",
+      "src/garden_agent.h": "6a1e6d9f773a8445140d7ce5294dea1365303a9efb431b2e3255bffc3df7801c",
+      "src/garden_agent_neural.c": "a6dd5dec3e2798980ee6515fe5eee8524b1bcfdae5e1bafd5b36fed4f5b2f89a",
+      "src/garden_agent_neural.h": "ba65a95815e78de40e9f4dcd02faf572d1c5e76eb213e2b29a3ba50375d65eaa",
+      "src/garden_agent_neural_codec.c": "3a29fecf09c4e2a91056f903fc8e746e8ca46fcdf96d8a257eac824ecbbd44dc",
+      "src/garden_canopy_transmission.h": "1d452c80610a5967e7c5258f325b404d3496c66ba6a58e6244dc280a86d87914",
+      "src/garden_climate.c": "523517697ca44a1da9bb372b2353736433ec139867858047bde2d4fd19834bb6",
+      "src/garden_climate.h": "faf6608fa9e245b2cfe4e6003b91fe636fbaff15432245308ef0ffac4e87beb1",
+      "src/garden_damage.c": "54f4f91e5946ea8f4af8c746c7be6f59cd2932fb2bd7c6b191e8e44f431369cf",
+      "src/garden_damage.h": "6783e3991e875ec684ce4b33fac4d9923c04733422b85fd43a89c517c3809abe",
+      "src/garden_dark_guard.h": "7f8d84fe85e0e26f6774a98c0706f2e82f012df11cc5cdc242215f343835bdae",
+      "src/garden_dawn_finish.h": "2d54d7dd27b0d0526f6374d2e3703dad868aead0bb9760755d1e91f6694ba092",
+      "src/garden_death_audit.h": "9f66497186809b84e1ad37d21208ec1b35dee2c665e3b7f3367ed3d76336407b",
+      "src/garden_dispersal.h": "a9de8f4b97f3264c70ecf3ae45482d714ab81593bb207123ac797a6cf33f0286",
+      "src/garden_flower_audit.h": "76e35126d659274fb6cbd256e446739c9ce11d2e5cbfaa0624a9b466df9a18ac",
+      "src/garden_full_pool.h": "263e6376df17fce43be206540ea7639db5ed3cff18dab15bbd606f4b3dac1162",
+      "src/garden_landing.c": "4615d8561887a810f04eabed4471ebf6a23ffc3e205277e192af4ce3a624017c",
+      "src/garden_landing.h": "a2129de4c94e135dabbd1f588c5339765b57e1d8cbe0f89647b85869085e8869",
+      "src/garden_landing_internal.h": "dbfd188e1b8a8b188242b9f4ce3f3f70295d5621305401964cdbbd07bc14ff48",
+      "src/garden_leaf.h": "a32e2781ac487bf95d27307325c5a5c0d65dfb22fe204b630fe53cc7d589def3",
+      "src/garden_light.c": "5f5cf18c5f9079976ffce06e8b39627dd2a4f5ccf78dad31338f7e3fbff7e3bb",
+      "src/garden_light.h": "12addc14869705cfdf4db128a4ff32ee92ff8cde76f06e5a63175e67cd694e73",
+      "src/garden_night_capacity.h": "d1fb64a98787d241f5f4a1a27c1f5d19d59923e21fd6a3b176c2ded4568b4f77",
+      "src/garden_plant_slots.h": "b52deb065b2be5a76e4d968ab70de77eec1d80e382270e61285beac05706ca62",
+      "src/garden_purchase_veto.h": "20f8f0c6218d96991f9d41a7d61c2853efbb725100cbdf0fc3d6cf60bb5142b6",
+      "src/garden_reproduction_audit.h": "1e57b3cab9071cc2aa8b5e54fe9d8dc46fe4216cc555d3e444ce66c439ca15fb",
+      "src/garden_seed_audit.h": "51f57dd5d8021336286635c20dbb1de392617987cc740ec399361e0578cf6cd3",
+      "src/garden_seed_order.h": "a62cbe874d6ef5673b0c2c50db9225a71a8fab0ef5023b7426eab8357a7ff0e8",
+      "src/garden_seed_reserve.h": "76e27685e91d91dd90aa0b44e15d18d67a3480f9e68a0a4afb88f938cf3bba69",
+      "src/garden_seed_spacing.h": "47223981c5a790b6272727799a557bd50d38d5836374a53c5d78df09a40fd4cc",
+      "src/garden_visual.h": "b43c2bb5c0346afe3082762ae2122748eff2bffbe95acd3ff094e9c2e4c61637",
+      "src/garden_water_audit.h": "2ccca5fb854aa967d62f0133b0943a57a518f5f0dfac7a943b1cceb65ac41f98",
+      "src/garden_world.c": "925c40d8cce39e8f71ba57c6e7027fff7e15541f4037068de82373f417a3db58",
+      "src/garden_world.h": "f4efb3a138521be48c8d1f353b85df612864e3bca95c09b89d9c629c78e5339d",
+      "src/granular_world.c": "7e7d85fd74bbf10d353747c437f84d4231f5ff3148ba76590584a8e559373032",
+      "src/granular_world.h": "e7d11f99b89da939e357b5393205abee1c27afaa1824d25db561357646a0d2ad",
+      "src/graphics.c": "0d1abd060759d38c58a4cc7107526ca0a555de0dff137e2723d43a6f1a014b9d",
+      "src/graphics.h": "2226ecda52335b7eeb31ba276e719fcb9de80d5b622e4158fb6d257529113f7f",
+      "src/graphics_raster.c": "2b25cd20b66938d017cf488da1c71e96a391a01d8c3900e7caf022933112a608",
+      "src/graphics_raster.h": "878d308c8d88fdd2030fff24de3723fe2d5ea9b89595d6c04b7e32bd3f96b86e",
+      "src/main.c": "9d15c8845997904ddd1be56451eb32d59b197ceed75e54f71f19bcf157d31069",
+      "src/physics_chain_fixture.c": "a656f7874ba6984d9f151ea12fd6f01dbf34d86496b159c25f9a27c5aca6e1fa",
+      "src/physics_chain_fixture.h": "b6cbe78bccfeea98bf8f81698555f2f9ee267ba6ead2a01b54e853c280d6dde9",
+      "src/physics_profile.c": "f14f63121ce68632d6066bec8096c7d28d81fcefd1f9912a6fac42352b80df2c",
+      "src/physics_profile.h": "2166ca5c6ba16c0a3d37a9d4cb93e94ac444055ee225f6b215eb81f237e12acb",
+      "src/physics_world.c": "805ab4590b6c5b606e684553459ed404ea9617a3ba7e54c3242401c86239dc0c",
+      "src/physics_world.h": "25565b34d4691b789ca258bc0d9d45e4f784db0e8b8126ceab6fa7e01caf8b3f",
+      "src/piezo.c": "b020d9807fd6600fbf07c3bafbd40342eef5313f5af0d60f582cd4fc3c5bff73",
+      "src/piezo.h": "ffa40f18bfd7dbaa578ac6021b36a875235b3e9f26018f43409ee090c8a5c978",
+      "src/portable_util.h": "d54feab0ca13a0e6c767e3a3eed10925bbf2926a8ea9f7376a5b526c311220f8",
+      "src/power_status.c": "4aca2098c6dcda83243fca1e7a46cab29916ca637d687caf519ae8706dda1d0a",
+      "src/power_status.h": "73b13e701488299b09335c40d6de8237bcefca7ec05154c5a0d5d24e7dee5d0d",
+      "src/render_placement.h": "553b12932955326e8b8a4822c0eac15ee104cfd56392d05bffb9357aeb0a16d1",
+      "src/scene_renderer.c": "66817fc5bae256e44d4f34070f531ac2c79661702196154ab1a59256da790431",
+      "src/scene_renderer.h": "0320dfb4ae03d522b471858dd2a50c1c3933055df809c13a5b21d771ae1ada3b",
+      "sim/garden_allocation.c": "70882c58d904a0208f325a4be437a85bff3670d0da9b38ef1608a868aa91be25",
+      "sim/garden_allocation_policy.c": "1c36ffa00ea094c6e130346851bb0d7460dceea83461d4c8461f1da74df691dd",
+      "sim/garden_allocation_policy.h": "3725744d1ad042fa0c5bf439df7668fc23637950c387d7534971b7fec1f2fd80",
+      "sim/garden_allocation_policy_test.c": "65d60d241242caff95e704d67f406fa2b21d19261488c58aa0dd7941947f5c99",
+      "sim/garden_canopy_transmission.c": "02993ff511ee47b2a84644b44373a52db0cdee2d10f14210e1c61c59fbe6c12e",
+      "sim/garden_canopy_transmission_test.c": "d0079d0af8be2a5ed7a3cd5bfd62586af5e0a888afe4627428ecf6671c2ff61a",
+      "sim/garden_capacity_test.c": "a507c81d973e26a04fa46e10c7e66b18e60f072508311f09f7a84a4aaf869a0d",
+      "sim/garden_climate_cli.c": "e225697b222b00b988bb461f5a460cf52467b9abf1e997aa18c02667822f5444",
+      "sim/garden_climate_cli.h": "c102de3b93b2f4b37d03866c79c664f1c1fb0c41a3a99dfb3cc14c99e75c6db1",
+      "sim/garden_climate_test.c": "b11ada0c22f6452796dca599727fc8335b11cc82f1becebdb714e9703df40b5b",
+      "sim/garden_damage_test.c": "ea9d6b5a7b81c61ac904bf6a3d539984e5ff7fb2fb8154a7866e3f60b50aa72c",
+      "sim/garden_dark_guard.c": "4cfbc2e782857d1d0b516ee37e383cca8c0f34dea00f4566a3c365f315925298",
+      "sim/garden_dark_guard_test.c": "f2af835eb99ee3d0b2ea28db0c1804f0bac153f65bc497154d2f7561b8956746",
+      "sim/garden_dawn_finish.c": "ccbbb1383722c6bd18ddd92c6b7ef91e9379092d57537c537848c3bb0ca8bc24",
+      "sim/garden_dawn_finish_test.c": "75e2e16ea11d8503954718709cc7505e360c5130d1ae5def1fdfef0992b9046e",
+      "sim/garden_dispersal_test.c": "fe221c582ef7242a7d5047283a007766aa07c7898d3bf2bc27ebde1746e4d1a3",
+      "sim/garden_disturbance.c": "193e29a00859e7d599beb6ef94057521b9437ae1678596ddec9e1b1dfc52343b",
+      "sim/garden_disturbance.h": "faec42d04bd4cc2c2fa91d2bcbf327c62c31f353a75d2abcd535b57e5ce91e9a",
+      "sim/garden_disturbance_test.c": "256fbb761eab7559f55f6349bde1b67a0d721589be63d5b16db6cf52212a787d",
+      "sim/garden_evaluation.c": "7468c136eb67ab3bb33ff97ddcddba2b278ee930628ab098152f1e9d116da5da",
+      "sim/garden_evaluation.h": "e7324c77dea498f06d0dc8bf64595604393a23dea9cbbfcef87c7c833552a366",
+      "sim/garden_experiment.c": "137711a9cc0f948dde7c77a00faaa2b0fdc5bf89f7e833ff0c5f5b20734c36ce",
+      "sim/garden_flower_audit_test.c": "b9d64ecba937ca60307c6d91bbb9423cad6081433cbe5289ceb0a9a8406fb09c",
+      "sim/garden_focal_policy.c": "f186cf2e3931f68308f563a49b424acf0a96f262a982a0b4bad590183f0f83fa",
+      "sim/garden_focal_policy.h": "c051385152f9a6cb56a3d0880e4a10e8d8bc38792b69f14220d5027355475553",
+      "sim/garden_focal_policy_test.c": "a0348cb4ec416bc60431285de28843ceb9a699ec01cc3e7fe36092b6e5ef01ba",
+      "sim/garden_founder_exit.c": "cb9c5fa8c5a994f319897c6576df5107d455e1db24bb83386223200c4428c332",
+      "sim/garden_founder_exit.h": "5e8716aac6966037dc131c29ab1ba58aea8f9e896666660f4e9e83e6f062f08a",
+      "sim/garden_founder_exit_test.c": "db0f78167a4a574a39eee588043fb48935cdac4fd84c8e98166c99bb4b505fdf",
+      "sim/garden_full_pool.c": "dae7b403c0833236470ee6402be0649001e820e56e977b648fb6d45f353cdca9",
+      "sim/garden_full_pool_test.c": "fd9882ce782a72633d955ff7d98a22a5ac2bcf227be9ef123b172f208374697d",
+      "sim/garden_gap.c": "d5237f7004fc361920bc24c1341be79d5aa0a93de95b2f2ff7e1077449c5c49c",
+      "sim/garden_gap.h": "84ee0b1caaa4a1849ca03ebc4e474d6a0ca584427f1d12dc4aa78ca6c9bd4365",
+      "sim/garden_gap_test.c": "5b85618bc10db0d4c0faed64e4066aab10b0062fe75dee20eba52f6b2a192967",
+      "sim/garden_inspect.c": "e840aebec8bb39e5593823ff9d26d8d11aed997e04c75e1e330c063d16ef59ba",
+      "sim/garden_landing_audit.c": "ec26521a9758a16134fe6faaa08f8e52e58f7c3add3a58e85442c993fcf768a4",
+      "sim/garden_landing_test.c": "35a38065b0dcfda3d9e398ec738c3cd609e30a2547c70f51842900811476b3da",
+      "sim/garden_leaf_policies.c": "2a11efdeb97b373494d75a4f31332f0a0d1d011fef0ebb0753aa3216b55c7bd3",
+      "sim/garden_leaf_policies.h": "397e3520dbe7772fafb0c66754ad585a1df7f0c808ac4cd911fdeb725b06527b",
+      "sim/garden_leaf_test.c": "fb7569c7b7293abbf888c8682807670287c50d760646a2297334fa0b873dcdb4",
+      "sim/garden_lifetimes.c": "25ebfcd211df55f096907989ea8311307c1dd10bb52ba7365b3c20cad117b567",
+      "sim/garden_lifetimes.h": "4fe72839b36038ab69add77c4617e79e89daebc5d10d07074431b6c1fdc33564",
+      "sim/garden_lifetimes_test.c": "f3a38fbd701f94c5068360bfc8ef1c3c379de04f029898ca64f3f8f199cf3e00",
+      "sim/garden_long_run_test.c": "6fbc1a6de1801819e2199246976e05a4702ff8af5c8f22c4a957543dab6a3079",
+      "sim/garden_model_file.c": "bdf4c61281499cb4a9dc87de2163e12471aae2207b309d5e1484a036c2967859",
+      "sim/garden_model_file.h": "5a23a8f34379d3fddb4e165aaf288b8da7f0bd6e232818674a5afe9f81aed84e",
+      "sim/garden_model_mutate.c": "4046be516b0cd5f1acc296ad066ab4b144919dca95118294ec9b8c0f23d21d61",
+      "sim/garden_model_mutation.c": "44e5788851f9edd0d930fd3baf3048c894a5a1f5c0c6acb1eef4cd2ceaea0844",
+      "sim/garden_model_mutation.h": "203c89fb4af495ace6099e5ceb098f5238dad9dc0f13352da906641ad31344be",
+      "sim/garden_night_capacity.c": "2292f8957ae462663369f28f89b12271bf595d2d98cd3234370888790de29903",
+      "sim/garden_night_capacity_test.c": "fc07994fd677bcc390482cd7421e5436e220ab85da66d67ea96adea3f8f41400",
+      "sim/garden_persistence.c": "71c236d368a40b2f57e63b36ec9d5f54f58ecae0368915517d5de4b57c71efde",
+      "sim/garden_persistence.h": "1b1571dcc9562f00d068c7bee9bf92bb78238715d3bfac6e22f1cdc25bcad6fa",
+      "sim/garden_persistence_check.c": "6d343f848035409e9e5c871431ae5707d2a423db4064c161530b5e73304d1be2",
+      "sim/garden_persistence_trial.c": "c95d036d2292cb64654c1bb3db3e69653b9b9e662895877361c633748d959276",
+      "sim/garden_pilot_parse.h": "fee01cc25cd19a833e3e73b99077058c0054257aa877ea283a3e5a8a8c1cda3f",
+      "sim/garden_plant_slots.c": "ad9d3de6a52b9c24bf9ba19d66117156e0cac9dd84bfa03132135d141169d1c7",
+      "sim/garden_plant_slots_test.c": "57cd44b6836c2a6a19663150bb0d9219a068ca09cc8191b15746bb0576a0a461",
+      "sim/garden_policy_probe.c": "3e24ec8768365a773517a2cf9f6c830d58e4b0f5e7701bc1d1a4f715ce81233d",
+      "sim/garden_policy_probe.h": "f438f4248410fdc9ce17eb871c79443e6461e4b0a4ea0a19bc44b738fc50fc50",
+      "sim/garden_policy_probe_test.c": "1e9945adda7f1e0ad522dabe137baefbaac7cb3870c9d1ba65d5b2da38329058",
+      "sim/garden_production_audit.c": "f566d00bb315a1b7f2f65750caa63c050667edf8b891f2aad1287707e53df89b",
+      "sim/garden_profile.c": "7d2b35e8354d95e3fecae4478f95270905ffaa7c23c61a4f9298d01b10dbe206",
+      "sim/garden_purchase_veto.c": "eb5f35b2675f87ff48d682fd45cb1a002bf54b51ccfb945fabd48891cdec583d",
+      "sim/garden_purchase_veto_test.c": "37f71ddea9971730f8645c686d583682a62c269ec5bbdbae2251ba140a4c8d00",
+      "sim/garden_recruitment_audit.c": "9449d839e31446d80963b46bc630af13df5931f394aecb072069ff0121a50c65",
+      "sim/garden_replay.c": "f07f77795fabbe4589055d47bc0abc1c8ee31dae3e6ae5b8237f29cbaa46d8d7",
+      "sim/garden_reproduction_audit_test.c": "1b37ace8436201ce98e014f97b3964c48b9700de6bf36bf45c258aa9fbbfbfa7",
+      "sim/garden_reserve_policy.c": "1ae99133e08b0f94fec6c88ec7be03cb941e6e956e387806305452e906f4f97f",
+      "sim/garden_reserve_policy.h": "4505776c29be3d5e6455ea5a3271d74018a4e087359e82ed59b89bc491093d74",
+      "sim/garden_reserve_policy_test.c": "bf52026d3d7c90770f3fe3a2dbb3a6023583e58ee12860cfdb86417cc80ac337",
+      "sim/garden_root_bootstrap.c": "96928b33488b297ce78393c2b0f14df61e04fa309f3833fe9dfb19f21aa91938",
+      "sim/garden_root_bootstrap.h": "f93e660b4207383b0486b59eb1178cdfde5f8f41471b91fb58e9066a718f6f81",
+      "sim/garden_root_bootstrap_test.c": "bb4ca1ff3d0d003a8597740a28814bb6d7bd92e15eba603c16e6c8c0dc07e516",
+      "sim/garden_seed_attempts.c": "bd9741940f178c40bd52a1d777d66671148bfb2f66b98a9197957a695c10951c",
+      "sim/garden_seed_audit_test.c": "a544585a4392fa315600bdf96718e2006bdca26850ece50ee3372a231fcecd7f",
+      "sim/garden_seed_order.c": "a54dae0317c83924d8cda12b2f12fb0329c7ae77da7c4b8a9e13e57f82ebb38f",
+      "sim/garden_seed_order_test.c": "2c5718d708ea1f879c7fcab917820279800c79a6c305907e79e9911cb779cdff",
+      "sim/garden_seed_reserve_test.c": "048289f04d07c2dc36dad6296236cbeacdf6b203c95a292d288c3f668a3706a4",
+      "sim/garden_seed_sites_test.c": "d2d5e03d360d6ff3c1820efc8316add98ad54f838310b2e5ab7386e0df1e41b7",
+      "sim/garden_seed_spacing.c": "cb19782b6740369fd1b15d055fcfa82711a8862b66a3be681eaa8d0f490817ed",
+      "sim/garden_seed_spacing_test.c": "1f225b661d86897c7a2cd2ffa9c5bc876de28ed0df3e12d7b0331e420eeee84b",
+      "sim/garden_seed_veto_test.c": "0d646c584c29a6e385742ca01e1c19fef2975c58f8e176aeaad4567796aac330",
+      "sim/garden_seedling_reserve.c": "912aec851cc13033c8d38b29f6f4f5d29a5ef8fafab9b0230f6beedadd066639",
+      "sim/garden_seedling_reserve.h": "30176c2f0c2f3f724ac3b28af617124e109be4525c26e226bd2f197952611cad",
+      "sim/garden_seedling_reserve_test.c": "419ae1c6826b44aa2000b17cd978fab12a1f73e2905a194c6eab720db1510c8d",
+      "sim/garden_topology.c": "95d6d2da35c96398c7007959ae820c66f31daa31313dee3929cf14f13df88bc8",
+      "sim/garden_topology.h": "70f322a05aa5dfb3c3d4fdbe76fbb400b310dbc1550ba9e19f71165970284319",
+      "sim/garden_topology_test.c": "327afbfe62298a8aa8aad974b02a13211b96853168b069880cd1c7a4a8045005",
+      "sim/garden_train.c": "41441dfa1ad5338e08b794868c7de9fde33ca95c8c10f9800c7b578d0929c6a4",
+      "sim/garden_water_audit_test.c": "762bfd9d58b103ff9d98f51dc9f32762244ce12e22e84822fc81310ea523dc20",
+      "sim/garden_water_budget.c": "1b93d32de083c285b82f52aeb70b1339628bcddbb0de3d0428f12f23d0ccb311",
+      "sim/garden_water_uptake_test.c": "d8c49fe0cec4f3ab24eeded708b287adb3be6c993fce0a54f8e78982acbb13a7",
+      "sim/garden_wet_germination.c": "bb70411490a4fbb93ea9069646c7072485bf818a669f186c57af6ab127372a3e",
+      "sim/garden_wet_germination.h": "6796748481c330529610665ed23a860a1727f1d4015332bc6a3fc370127c4c90",
+      "sim/garden_wet_germination_test.c": "8a72df9e8e2295a75a703383091b409693909bda9d9629cc8f2d5d0bce542383",
+      "sim/main.c": "00127d995e93a7a759e0db4618f54554e64912daf9dc1cbd319af21e64c3f282",
+      "sim/player.c": "65d476d1da49cf0cf7608c91019a2856a9cfb36e1d1ec466ed84526e69175a76",
+      "sim/simulator.c": "96935629fe458d8c9f9bbe7ef1ec6df1ed070daa20090284b56e5368f240cc33",
+      "sim/simulator.h": "28228ce004328a609c146c481d3832e82cf9752d8772ee9fee7bc4b2ac368075",
+      "sim/garden_seasons.py": "8bfa9f1e34a9e580546b446dd1b69bce6de07c777446fe04b96604c98d3225e9",
+      "benchmarks/garden-seasons/landing-shadow-protocol.md": "6ef70f1b0c65b6312bd3ba3af61adf74af38ff2930acf9ace74054e808f0eadf",
+      "sim/garden_landing_shadow.py": "f1bb34061f972692e2a3c23ccb3d8932b25852369d63c9b6a725e411f6a9af29",
+      "sim/test_garden_season_seed_bank_capacity.py": "67dc334d5e774b064155e21ae3c2f138f184c8323369022fde04b15a071f8bf0",
+      "sim/CMakeLists.txt": "21f4472dfdc22eb574641c5273881a32bd8598bd246da9e6bbd8f9dfb9eb15a6",
+      "benchmarks/garden-seasons/flower-origin-protocol.md": "34f7a6f1649b2ec8f9e3bf9b5707de774919a5751acc206153f94e8df0060fa6",
+      "docs/garden-landing-observation.md": "477be8b3cd904c017f48ee9ad8adf6511cfc3350f65d0e7bce41b9bbf537ccc6",
+      "sim/garden_season_flower_sites.py": "d87f38fa492169033936ac8cd116aa4b715ea18d218fbc0cc07a6a94ee068f27",
+      "sim/garden_season_seedling_population.py": "2e64af7d1f228751996eda82e64a0890c51d0a7360a785bb2565bd7ea3395aee",
+      "benchmarks/garden-seasons/reproduction-funnel-protocol.md": "4aeec89bef58570c920b2731b70b37eab36b58722c465628ed6ea89b820b1f3b",
+      "benchmarks/garden-seasons/flower-sites-protocol.md": "487b46afe43a3a87d3b58059b9a8769f20d57e9b1bd33ead8f290dbb03d27a13",
+      "sim/test_garden_landing_contract.py": "6c6764b0450b62ddc96ce8b26c994324a9e028b8437a20313b38be4df7425f2f",
+      "benchmarks/garden-seasons/seed-waits-summary.json": "5d089e00e11e180bb1cb18c7143a05e67c0db0c0bed9c440ac58d61f38b640c2",
+      "benchmarks/garden-seasons/seed-bank-capacity-protocol.md": "c45319c389ec448940e7b7798ff0c1d0c94cbf9b7f1447bae781d4759fb90758",
+      "sim/garden_season_seed_waits.py": "e087a6fcaff0aa1edee9285941ccd24861250610ce483d215da31a7ac009cf1a",
+      "sim/garden_season_production_gates.py": "941b5de27c63dc65884e37baa731933ac9f01575cb8e91d5b1759cdda3ad61d8",
+      "sim/garden_season_seed_bank_diagnosis.py": "4e41b8d07ec7f1d3b428dc38262392e78fcf84257cdb91d7eed7f69b3c05c450",
+      "sim/test_garden_season_production_gates.py": "1198d9a05104fd036ce9eeee88333a627221b7c6cf4ad582cc31d01c2f168f5f",
+      "sim/garden_season_reproduction_funnel.py": "467106617f21807779769889d6925ba66a0e9234cf84e7dc86ab6d73628b1e04",
+      "sim/garden_season_seedling_confirmation.py": "a1ca0696d7222f1cf447232730de2859fa715c4b0a0dc00746831431ccb81226",
+      "sim/garden_season_flower_origin.py": "1b53ecce9233bf0cb6c87eecd674c6bd01975e289b2cadb564a2fad05051f7e5",
+      "sim/test_garden_season_flower_origin.py": "862d8309caf58b8461abc3697b7e79603b24822a7059c3d539260b02eba66b8f",
+      "sim/test_garden_season_flower_sites.py": "a097b3ba7cd4e341a80e27cd505ffbda92e79ee33d8948e41fa8ec3e478136a5",
+      "sim/test_garden_season_seed_bank_diagnosis.py": "de6ebb8ab1afcca9e854298fbc4f2605d26a9807dd85483e78ba6bee88d05a1c",
+      "sim/garden_season_seedling_reserve.py": "d5611236d35b2ad7823000ceed9d2f997004b80a4db657613597c19cb6757b75",
+      "scripts/container/host-garden-defaults.sh": "2a28ad0b5d4716a62f30b66cae126627ddf1692b1703dc74bbfac33b4d2e0afe",
+      "sim/test_garden_season_seed_waits.py": "5223a610ee9b84c2cbec022a5dc6288593d84a6fd089feeb5f4b8f3243c0a149",
+      "sim/garden_landing_contract.py": "d80d3a057585c13b9e4537e30b85a098dc3a20dcf5133fa4340da9eaad7bbd06",
+      "sim/garden_season_offspring.py": "f86504261edde4b0ac0b223a5ffa4aa95628a2c77d058c7fea957ea277813117",
+      "benchmarks/garden-seasons/seed-waits-protocol.md": "4d3fcc3cce25e414ac5056c48e19d65963cacdaa2432289dda44c5d8346aa8da",
+      "sim/garden_season_seed_bank_capacity.py": "c9f8e71f001ad2eabb9618709d81aa033c2d04af32c662616d263b8004ffe854",
+      "benchmarks/garden-seasons/production-gates-protocol.md": "fd5a1b5184d3fafc83d5d7084c1b5a5bfbf15a7c1922022f0b5a5b43ffd3683d",
+      "sim/test_garden_season_reproduction_funnel.py": "8e0a7bea510406b6938e75381539c721de143225cea9b0f2d19b57cb605ce1cf",
+      "sim/test_garden_landing_shadow.py": "5530d1582e21264e2f246f7afce7ea72c46ef884a3aaaea1126e7a1b86d1f75b"
+    },
+    "builds": {
+      "base": {
+        "flags": {
+          "TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_DARK_GUARD:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_DAWN_FINISH:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_FLOWER_DISPERSAL:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_FOCAL_SEED_VETO:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_FULL_POOL:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_LARGE_POOL:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_LARGE_SEED_BANK:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_LEAF_MAINTENANCE:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_NIGHT_CAPACITY:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_PLANT_SLOTS:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_PURCHASE_VETO:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_SEED_ORDER:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_SEED_RESERVE:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_SEED_SPACING:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_WATER_HEADROOM:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_WET_GERMINATION:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_WIDE_DISPERSAL:BOOL": "ON"
+        },
+        "cache_sha256": "c23466838d4eb9d88838bb2a8d9848444375c70ab1d0eea2852ddeeaa75fd7d3",
+        "observer_sha256": "e581325eaffe61aa1873a05d0db9e0e2f600e75b9e040c13f984eb2e6e647a82",
+        "sizes": {
+          "seed_capacity": 8,
+          "world": 4352,
+          "garden_snapshot": 1624,
+          "seed": 20,
+          "snapshot_seed": 2,
+          "scene_snapshot": 1664
+        }
+      },
+      "flower": {
+        "flags": {
+          "TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_DARK_GUARD:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_DAWN_FINISH:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_FLOWER_DISPERSAL:BOOL": "ON",
+          "TOY_FACTORY_GARDEN_FOCAL_SEED_VETO:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_FULL_POOL:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_LARGE_POOL:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_LARGE_SEED_BANK:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_LEAF_MAINTENANCE:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_NIGHT_CAPACITY:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_PLANT_SLOTS:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_PURCHASE_VETO:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_SEED_ORDER:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_SEED_RESERVE:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_SEED_SPACING:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_WATER_HEADROOM:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_WET_GERMINATION:BOOL": "OFF",
+          "TOY_FACTORY_GARDEN_WIDE_DISPERSAL:BOOL": "ON"
+        },
+        "cache_sha256": "4b31d895d532654ce6af6984a446cc985fa7c294384de889ad22ba3e2e07dca4",
+        "observer_sha256": "d7e36240c4c1489ce0b13a45c37b0f0d1a0a490058943a58fbc0ed882a3391fe",
+        "sizes": {
+          "seed_capacity": 8,
+          "world": 4352,
+          "garden_snapshot": 1624,
+          "seed": 20,
+          "snapshot_seed": 2,
+          "scene_snapshot": 1664
+        }
+      }
+    }
+  },
+  "analysis": {
+    "groups": {
+      "whole": {
+        "base": {
+          "queries": 86980,
+          "stems": 62087,
+          "roots": 24893,
+          "sources": 366141,
+          "choices": 43690,
+          "variable": 0,
+          "in_bounds_choices": 62087,
+          "in_bounds_variable": 0,
+          "joint_below_marginals": 345217,
+          "max_origins": 1,
+          "field_variation": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "fields": {
+            "space_free": {
+              "values": 15,
+              "min": 0,
+              "max": 255,
+              "zero": 43626,
+              "sum": 26713135
+            },
+            "dead_only": {
+              "values": 12,
+              "min": 0,
+              "max": 255,
+              "zero": 361539,
+              "sum": 348402
+            },
+            "water_now": {
+              "values": 44,
+              "min": 0,
+              "max": 44,
+              "zero": 190877,
+              "sum": 1250764
+            },
+            "light_now": {
+              "values": 224,
+              "min": 24,
+              "max": 254,
+              "zero": 0,
+              "sum": 16877977
+            },
+            "wet_ema": {
+              "values": 130,
+              "min": 0,
+              "max": 129,
+              "zero": 72,
+              "sum": 11409748
+            },
+            "light_ema": {
+              "values": 121,
+              "min": 1,
+              "max": 122,
+              "zero": 0,
+              "sum": 19210400
+            },
+            "wet_light_ema": {
+              "values": 44,
+              "min": 0,
+              "max": 43,
+              "zero": 168,
+              "sum": 2191674
+            },
+            "open_wet_light_ema": {
+              "values": 40,
+              "min": 0,
+              "max": 39,
+              "zero": 131119,
+              "sum": 1216132
+            }
+          }
+        },
+        "flower": {
+          "queries": 73497,
+          "stems": 54340,
+          "roots": 19157,
+          "sources": 323913,
+          "choices": 39049,
+          "variable": 29513,
+          "in_bounds_choices": 54340,
+          "in_bounds_variable": 52822,
+          "joint_below_marginals": 302561,
+          "max_origins": 3,
+          "field_variation": [
+            16974,
+            256,
+            8664,
+            10593,
+            23953,
+            25121,
+            18378,
+            12806
+          ],
+          "fields": {
+            "space_free": {
+              "values": 15,
+              "min": 0,
+              "max": 255,
+              "zero": 53140,
+              "sum": 22549881
+            },
+            "dead_only": {
+              "values": 12,
+              "min": 0,
+              "max": 219,
+              "zero": 321798,
+              "sum": 137051
+            },
+            "water_now": {
+              "values": 38,
+              "min": 0,
+              "max": 37,
+              "zero": 167321,
+              "sum": 1135726
+            },
+            "light_now": {
+              "values": 225,
+              "min": 24,
+              "max": 251,
+              "zero": 0,
+              "sum": 14753493
+            },
+            "wet_ema": {
+              "values": 173,
+              "min": 0,
+              "max": 195,
+              "zero": 104,
+              "sum": 10665702
+            },
+            "light_ema": {
+              "values": 122,
+              "min": 1,
+              "max": 123,
+              "zero": 0,
+              "sum": 17406241
+            },
+            "wet_light_ema": {
+              "values": 65,
+              "min": 0,
+              "max": 67,
+              "zero": 292,
+              "sum": 2221169
+            },
+            "open_wet_light_ema": {
+              "values": 59,
+              "min": 0,
+              "max": 63,
+              "zero": 108860,
+              "sum": 1177584
+            }
+          }
+        }
+      },
+      "warmed": {
+        "base": {
+          "queries": 74527,
+          "stems": 53068,
+          "roots": 21459,
+          "sources": 312662,
+          "choices": 36730,
+          "variable": 0,
+          "in_bounds_choices": 53068,
+          "in_bounds_variable": 0,
+          "joint_below_marginals": 311393,
+          "max_origins": 1,
+          "field_variation": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "fields": {
+            "space_free": {
+              "values": 15,
+              "min": 0,
+              "max": 255,
+              "zero": 32886,
+              "sum": 22931813
+            },
+            "dead_only": {
+              "values": 12,
+              "min": 0,
+              "max": 255,
+              "zero": 308330,
+              "sum": 333240
+            },
+            "water_now": {
+              "values": 44,
+              "min": 0,
+              "max": 44,
+              "zero": 163371,
+              "sum": 1085459
+            },
+            "light_now": {
+              "values": 220,
+              "min": 24,
+              "max": 254,
+              "zero": 0,
+              "sum": 14718518
+            },
+            "wet_ema": {
+              "values": 129,
+              "min": 1,
+              "max": 129,
+              "zero": 0,
+              "sum": 10906723
+            },
+            "light_ema": {
+              "values": 120,
+              "min": 1,
+              "max": 122,
+              "zero": 0,
+              "sum": 17802983
+            },
+            "wet_light_ema": {
+              "values": 44,
+              "min": 0,
+              "max": 43,
+              "zero": 96,
+              "sum": 1978679
+            },
+            "open_wet_light_ema": {
+              "values": 40,
+              "min": 0,
+              "max": 39,
+              "zero": 77640,
+              "sum": 1216132
+            }
+          }
+        },
+        "flower": {
+          "queries": 61044,
+          "stems": 45321,
+          "roots": 15723,
+          "sources": 270434,
+          "choices": 32089,
+          "variable": 24777,
+          "in_bounds_choices": 45321,
+          "in_bounds_variable": 44379,
+          "joint_below_marginals": 269641,
+          "max_origins": 3,
+          "field_variation": [
+            14902,
+            229,
+            7552,
+            9153,
+            20731,
+            21466,
+            15457,
+            12806
+          ],
+          "fields": {
+            "space_free": {
+              "values": 15,
+              "min": 0,
+              "max": 255,
+              "zero": 39997,
+              "sum": 19289098
+            },
+            "dead_only": {
+              "values": 12,
+              "min": 0,
+              "max": 219,
+              "zero": 268476,
+              "sum": 131756
+            },
+            "water_now": {
+              "values": 38,
+              "min": 0,
+              "max": 37,
+              "zero": 140087,
+              "sum": 971562
+            },
+            "light_now": {
+              "values": 225,
+              "min": 24,
+              "max": 251,
+              "zero": 0,
+              "sum": 12560130
+            },
+            "wet_ema": {
+              "values": 172,
+              "min": 1,
+              "max": 195,
+              "zero": 0,
+              "sum": 10156119
+            },
+            "light_ema": {
+              "values": 119,
+              "min": 4,
+              "max": 123,
+              "zero": 0,
+              "sum": 15989857
+            },
+            "wet_light_ema": {
+              "values": 65,
+              "min": 0,
+              "max": 67,
+              "zero": 188,
+              "sum": 2000450
+            },
+            "open_wet_light_ema": {
+              "values": 59,
+              "min": 0,
+              "max": 63,
+              "zero": 55381,
+              "sum": 1177584
+            }
+          }
+        }
+      },
+      "closing": {
+        "base": {
+          "queries": 2964,
+          "stems": 1338,
+          "roots": 1626,
+          "sources": 7970,
+          "choices": 1278,
+          "variable": 0,
+          "in_bounds_choices": 1338,
+          "in_bounds_variable": 0,
+          "joint_below_marginals": 7970,
+          "max_origins": 1,
+          "field_variation": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "fields": {
+            "space_free": {
+              "values": 9,
+              "min": 0,
+              "max": 146,
+              "zero": 1378,
+              "sum": 381906
+            },
+            "dead_only": {
+              "values": 1,
+              "min": 0,
+              "max": 0,
+              "zero": 7970,
+              "sum": 0
+            },
+            "water_now": {
+              "values": 22,
+              "min": 0,
+              "max": 26,
+              "zero": 3753,
+              "sum": 27671
+            },
+            "light_now": {
+              "values": 175,
+              "min": 24,
+              "max": 222,
+              "zero": 0,
+              "sum": 463769
+            },
+            "wet_ema": {
+              "values": 53,
+              "min": 2,
+              "max": 54,
+              "zero": 0,
+              "sum": 202608
+            },
+            "light_ema": {
+              "values": 98,
+              "min": 12,
+              "max": 109,
+              "zero": 0,
+              "sum": 435993
+            },
+            "wet_light_ema": {
+              "values": 15,
+              "min": 1,
+              "max": 15,
+              "zero": 0,
+              "sum": 40575
+            },
+            "open_wet_light_ema": {
+              "values": 13,
+              "min": 0,
+              "max": 12,
+              "zero": 66,
+              "sum": 29590
+            }
+          }
+        },
+        "flower": {
+          "queries": 1180,
+          "stems": 811,
+          "roots": 369,
+          "sources": 4703,
+          "choices": 740,
+          "variable": 642,
+          "in_bounds_choices": 811,
+          "in_bounds_variable": 739,
+          "joint_below_marginals": 4687,
+          "max_origins": 3,
+          "field_variation": [
+            383,
+            0,
+            318,
+            326,
+            559,
+            601,
+            324,
+            379
+          ],
+          "fields": {
+            "space_free": {
+              "values": 11,
+              "min": 0,
+              "max": 182,
+              "zero": 416,
+              "sum": 464960
+            },
+            "dead_only": {
+              "values": 1,
+              "min": 0,
+              "max": 0,
+              "zero": 4703,
+              "sum": 0
+            },
+            "water_now": {
+              "values": 37,
+              "min": 0,
+              "max": 37,
+              "zero": 1461,
+              "sum": 30485
+            },
+            "light_now": {
+              "values": 192,
+              "min": 24,
+              "max": 244,
+              "zero": 0,
+              "sum": 300311
+            },
+            "wet_ema": {
+              "values": 102,
+              "min": 1,
+              "max": 175,
+              "zero": 0,
+              "sum": 151819
+            },
+            "light_ema": {
+              "values": 96,
+              "min": 15,
+              "max": 110,
+              "zero": 0,
+              "sum": 287066
+            },
+            "wet_light_ema": {
+              "values": 52,
+              "min": 1,
+              "max": 67,
+              "zero": 0,
+              "sum": 57124
+            },
+            "open_wet_light_ema": {
+              "values": 50,
+              "min": 0,
+              "max": 63,
+              "zero": 13,
+              "sum": 45163
+            }
+          }
+        }
+      }
+    },
+    "partitions": {
+      "seed": {
+        "ed52188c": {
+          "whole": {
+            "base": {
+              "queries": 40783,
+              "stems": 28375,
+              "roots": 12408,
+              "sources": 166343,
+              "choices": 20725,
+              "variable": 0,
+              "in_bounds_choices": 28375,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 153128,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 25136,
+                  "sum": 10510650
+                },
+                "dead_only": {
+                  "values": 8,
+                  "min": 0,
+                  "max": 146,
+                  "zero": 164825,
+                  "sum": 115770
+                },
+                "water_now": {
+                  "values": 37,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 91678,
+                  "sum": 474201
+                },
+                "light_now": {
+                  "values": 220,
+                  "min": 24,
+                  "max": 254,
+                  "zero": 0,
+                  "sum": 7347164
+                },
+                "wet_ema": {
+                  "values": 103,
+                  "min": 0,
+                  "max": 102,
+                  "zero": 36,
+                  "sum": 3740161
+                },
+                "light_ema": {
+                  "values": 119,
+                  "min": 1,
+                  "max": 122,
+                  "zero": 0,
+                  "sum": 8591949
+                },
+                "wet_light_ema": {
+                  "values": 40,
+                  "min": 0,
+                  "max": 39,
+                  "zero": 132,
+                  "sum": 1074886
+                },
+                "open_wet_light_ema": {
+                  "values": 40,
+                  "min": 0,
+                  "max": 39,
+                  "zero": 55304,
+                  "sum": 538418
+                }
+              }
+            },
+            "flower": {
+              "queries": 33657,
+              "stems": 23222,
+              "roots": 10435,
+              "sources": 138591,
+              "choices": 18475,
+              "variable": 15190,
+              "in_bounds_choices": 23222,
+              "in_bounds_variable": 22533,
+              "joint_below_marginals": 124771,
+              "max_origins": 3,
+              "field_variation": [
+                8658,
+                219,
+                4325,
+                5184,
+                12018,
+                13036,
+                9511,
+                6556
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 28106,
+                  "sum": 7722111
+                },
+                "dead_only": {
+                  "values": 12,
+                  "min": 0,
+                  "max": 219,
+                  "zero": 136689,
+                  "sum": 129118
+                },
+                "water_now": {
+                  "values": 38,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 74655,
+                  "sum": 436557
+                },
+                "light_now": {
+                  "values": 218,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 6171599
+                },
+                "wet_ema": {
+                  "values": 163,
+                  "min": 0,
+                  "max": 195,
+                  "zero": 50,
+                  "sum": 3714694
+                },
+                "light_ema": {
+                  "values": 120,
+                  "min": 1,
+                  "max": 121,
+                  "zero": 0,
+                  "sum": 6733194
+                },
+                "wet_light_ema": {
+                  "values": 48,
+                  "min": 0,
+                  "max": 48,
+                  "zero": 50,
+                  "sum": 936567
+                },
+                "open_wet_light_ema": {
+                  "values": 42,
+                  "min": 0,
+                  "max": 42,
+                  "zero": 41893,
+                  "sum": 440045
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 34755,
+              "stems": 24081,
+              "roots": 10674,
+              "sources": 140579,
+              "choices": 17498,
+              "variable": 0,
+              "in_bounds_choices": 24081,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 139868,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 19010,
+                  "sum": 8785530
+                },
+                "dead_only": {
+                  "values": 8,
+                  "min": 0,
+                  "max": 146,
+                  "zero": 139139,
+                  "sum": 111480
+                },
+                "water_now": {
+                  "values": 37,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 77596,
+                  "sum": 404811
+                },
+                "light_now": {
+                  "values": 214,
+                  "min": 24,
+                  "max": 254,
+                  "zero": 0,
+                  "sum": 6307892
+                },
+                "wet_ema": {
+                  "values": 102,
+                  "min": 1,
+                  "max": 102,
+                  "zero": 0,
+                  "sum": 3553717
+                },
+                "light_ema": {
+                  "values": 115,
+                  "min": 1,
+                  "max": 122,
+                  "zero": 0,
+                  "sum": 7928565
+                },
+                "wet_light_ema": {
+                  "values": 40,
+                  "min": 0,
+                  "max": 39,
+                  "zero": 96,
+                  "sum": 971086
+                },
+                "open_wet_light_ema": {
+                  "values": 40,
+                  "min": 0,
+                  "max": 39,
+                  "zero": 29540,
+                  "sum": 538418
+                }
+              }
+            },
+            "flower": {
+              "queries": 27629,
+              "stems": 18928,
+              "roots": 8701,
+              "sources": 112827,
+              "choices": 15248,
+              "variable": 12757,
+              "in_bounds_choices": 18928,
+              "in_bounds_variable": 18459,
+              "joint_below_marginals": 112502,
+              "max_origins": 3,
+              "field_variation": [
+                7393,
+                213,
+                3806,
+                4448,
+                10495,
+                11247,
+                8012,
+                6556
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 20213,
+                  "sum": 6251076
+                },
+                "dead_only": {
+                  "values": 12,
+                  "min": 0,
+                  "max": 219,
+                  "zero": 110958,
+                  "sum": 128144
+                },
+                "water_now": {
+                  "values": 34,
+                  "min": 0,
+                  "max": 33,
+                  "zero": 60585,
+                  "sum": 367312
+                },
+                "light_now": {
+                  "values": 213,
+                  "min": 24,
+                  "max": 243,
+                  "zero": 0,
+                  "sum": 5129078
+                },
+                "wet_ema": {
+                  "values": 162,
+                  "min": 1,
+                  "max": 195,
+                  "zero": 0,
+                  "sum": 3530069
+                },
+                "light_ema": {
+                  "values": 117,
+                  "min": 4,
+                  "max": 121,
+                  "zero": 0,
+                  "sum": 6066922
+                },
+                "wet_light_ema": {
+                  "values": 47,
+                  "min": 1,
+                  "max": 48,
+                  "zero": 0,
+                  "sum": 829887
+                },
+                "open_wet_light_ema": {
+                  "values": 42,
+                  "min": 0,
+                  "max": 42,
+                  "zero": 16129,
+                  "sum": 440045
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 887,
+              "stems": 461,
+              "roots": 426,
+              "sources": 2761,
+              "choices": 402,
+              "variable": 0,
+              "in_bounds_choices": 461,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 2761,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 4,
+                  "min": 0,
+                  "max": 109,
+                  "zero": 78,
+                  "sum": 163398
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 2761,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 19,
+                  "min": 0,
+                  "max": 26,
+                  "zero": 1567,
+                  "sum": 6204
+                },
+                "light_now": {
+                  "values": 89,
+                  "min": 24,
+                  "max": 137,
+                  "zero": 0,
+                  "sum": 115051
+                },
+                "wet_ema": {
+                  "values": 51,
+                  "min": 4,
+                  "max": 54,
+                  "zero": 0,
+                  "sum": 61282
+                },
+                "light_ema": {
+                  "values": 55,
+                  "min": 12,
+                  "max": 66,
+                  "zero": 0,
+                  "sum": 97141
+                },
+                "wet_light_ema": {
+                  "values": 13,
+                  "min": 1,
+                  "max": 13,
+                  "zero": 0,
+                  "sum": 14983
+                },
+                "open_wet_light_ema": {
+                  "values": 9,
+                  "min": 1,
+                  "max": 9,
+                  "zero": 0,
+                  "sum": 10651
+                }
+              }
+            },
+            "flower": {
+              "queries": 686,
+              "stems": 512,
+              "roots": 174,
+              "sources": 2923,
+              "choices": 441,
+              "variable": 350,
+              "in_bounds_choices": 512,
+              "in_bounds_variable": 447,
+              "joint_below_marginals": 2907,
+              "max_origins": 3,
+              "field_variation": [
+                291,
+                0,
+                116,
+                176,
+                279,
+                324,
+                158,
+                200
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 11,
+                  "min": 0,
+                  "max": 182,
+                  "zero": 282,
+                  "sum": 270625
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 2923,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 23,
+                  "min": 0,
+                  "max": 22,
+                  "zero": 1437,
+                  "sum": 9102
+                },
+                "light_now": {
+                  "values": 145,
+                  "min": 24,
+                  "max": 189,
+                  "zero": 0,
+                  "sum": 159472
+                },
+                "wet_ema": {
+                  "values": 49,
+                  "min": 1,
+                  "max": 57,
+                  "zero": 0,
+                  "sum": 49891
+                },
+                "light_ema": {
+                  "values": 86,
+                  "min": 15,
+                  "max": 101,
+                  "zero": 0,
+                  "sum": 159950
+                },
+                "wet_light_ema": {
+                  "values": 11,
+                  "min": 1,
+                  "max": 11,
+                  "zero": 0,
+                  "sum": 13739
+                },
+                "open_wet_light_ema": {
+                  "values": 8,
+                  "min": 1,
+                  "max": 8,
+                  "zero": 0,
+                  "sum": 8088
+                }
+              }
+            }
+          }
+        },
+        "82deacfd": {
+          "whole": {
+            "base": {
+              "queries": 46197,
+              "stems": 33712,
+              "roots": 12485,
+              "sources": 199798,
+              "choices": 22965,
+              "variable": 0,
+              "in_bounds_choices": 33712,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 192089,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 14,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 18490,
+                  "sum": 16202485
+                },
+                "dead_only": {
+                  "values": 12,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 196714,
+                  "sum": 232632
+                },
+                "water_now": {
+                  "values": 44,
+                  "min": 0,
+                  "max": 44,
+                  "zero": 99199,
+                  "sum": 776563
+                },
+                "light_now": {
+                  "values": 219,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 9530813
+                },
+                "wet_ema": {
+                  "values": 130,
+                  "min": 0,
+                  "max": 129,
+                  "zero": 36,
+                  "sum": 7669587
+                },
+                "light_ema": {
+                  "values": 113,
+                  "min": 1,
+                  "max": 114,
+                  "zero": 0,
+                  "sum": 10618451
+                },
+                "wet_light_ema": {
+                  "values": 44,
+                  "min": 0,
+                  "max": 43,
+                  "zero": 36,
+                  "sum": 1116788
+                },
+                "open_wet_light_ema": {
+                  "values": 40,
+                  "min": 0,
+                  "max": 39,
+                  "zero": 75815,
+                  "sum": 677714
+                }
+              }
+            },
+            "flower": {
+              "queries": 39840,
+              "stems": 31118,
+              "roots": 8722,
+              "sources": 185322,
+              "choices": 20574,
+              "variable": 14323,
+              "in_bounds_choices": 31118,
+              "in_bounds_variable": 30289,
+              "joint_below_marginals": 177790,
+              "max_origins": 3,
+              "field_variation": [
+                8316,
+                37,
+                4339,
+                5409,
+                11935,
+                12085,
+                8867,
+                6250
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 25034,
+                  "sum": 14827770
+                },
+                "dead_only": {
+                  "values": 6,
+                  "min": 0,
+                  "max": 109,
+                  "zero": 185109,
+                  "sum": 7933
+                },
+                "water_now": {
+                  "values": 38,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 92666,
+                  "sum": 699169
+                },
+                "light_now": {
+                  "values": 225,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 8581894
+                },
+                "wet_ema": {
+                  "values": 138,
+                  "min": 0,
+                  "max": 175,
+                  "zero": 54,
+                  "sum": 6951008
+                },
+                "light_ema": {
+                  "values": 120,
+                  "min": 1,
+                  "max": 123,
+                  "zero": 0,
+                  "sum": 10673047
+                },
+                "wet_light_ema": {
+                  "values": 65,
+                  "min": 0,
+                  "max": 67,
+                  "zero": 242,
+                  "sum": 1284602
+                },
+                "open_wet_light_ema": {
+                  "values": 59,
+                  "min": 0,
+                  "max": 63,
+                  "zero": 66967,
+                  "sum": 737539
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 39772,
+              "stems": 28987,
+              "roots": 10785,
+              "sources": 172083,
+              "choices": 19232,
+              "variable": 0,
+              "in_bounds_choices": 28987,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 171525,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 14,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 13876,
+                  "sum": 14146283
+                },
+                "dead_only": {
+                  "values": 12,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 169191,
+                  "sum": 221760
+                },
+                "water_now": {
+                  "values": 44,
+                  "min": 0,
+                  "max": 44,
+                  "zero": 85775,
+                  "sum": 680648
+                },
+                "light_now": {
+                  "values": 215,
+                  "min": 24,
+                  "max": 243,
+                  "zero": 0,
+                  "sum": 8410626
+                },
+                "wet_ema": {
+                  "values": 129,
+                  "min": 1,
+                  "max": 129,
+                  "zero": 0,
+                  "sum": 7353006
+                },
+                "light_ema": {
+                  "values": 111,
+                  "min": 2,
+                  "max": 114,
+                  "zero": 0,
+                  "sum": 9874418
+                },
+                "wet_light_ema": {
+                  "values": 43,
+                  "min": 1,
+                  "max": 43,
+                  "zero": 0,
+                  "sum": 1007593
+                },
+                "open_wet_light_ema": {
+                  "values": 40,
+                  "min": 0,
+                  "max": 39,
+                  "zero": 48100,
+                  "sum": 677714
+                }
+              }
+            },
+            "flower": {
+              "queries": 33415,
+              "stems": 26393,
+              "roots": 7022,
+              "sources": 157607,
+              "choices": 16841,
+              "variable": 12020,
+              "in_bounds_choices": 26393,
+              "in_bounds_variable": 25920,
+              "joint_below_marginals": 157139,
+              "max_origins": 3,
+              "field_variation": [
+                7509,
+                16,
+                3746,
+                4705,
+                10236,
+                10219,
+                7445,
+                6250
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 19784,
+                  "sum": 13038022
+                },
+                "dead_only": {
+                  "values": 5,
+                  "min": 0,
+                  "max": 109,
+                  "zero": 157518,
+                  "sum": 3612
+                },
+                "water_now": {
+                  "values": 38,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 79502,
+                  "sum": 604250
+                },
+                "light_now": {
+                  "values": 225,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 7431052
+                },
+                "wet_ema": {
+                  "values": 136,
+                  "min": 2,
+                  "max": 175,
+                  "zero": 0,
+                  "sum": 6626050
+                },
+                "light_ema": {
+                  "values": 113,
+                  "min": 11,
+                  "max": 123,
+                  "zero": 0,
+                  "sum": 9922935
+                },
+                "wet_light_ema": {
+                  "values": 65,
+                  "min": 0,
+                  "max": 67,
+                  "zero": 188,
+                  "sum": 1170563
+                },
+                "open_wet_light_ema": {
+                  "values": 59,
+                  "min": 0,
+                  "max": 63,
+                  "zero": 39252,
+                  "sum": 737539
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 2077,
+              "stems": 877,
+              "roots": 1200,
+              "sources": 5209,
+              "choices": 876,
+              "variable": 0,
+              "in_bounds_choices": 877,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 5209,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 7,
+                  "min": 0,
+                  "max": 146,
+                  "zero": 1300,
+                  "sum": 218508
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 5209,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 18,
+                  "min": 0,
+                  "max": 17,
+                  "zero": 2186,
+                  "sum": 21467
+                },
+                "light_now": {
+                  "values": 168,
+                  "min": 24,
+                  "max": 222,
+                  "zero": 0,
+                  "sum": 348718
+                },
+                "wet_ema": {
+                  "values": 52,
+                  "min": 2,
+                  "max": 53,
+                  "zero": 0,
+                  "sum": 141326
+                },
+                "light_ema": {
+                  "values": 87,
+                  "min": 21,
+                  "max": 109,
+                  "zero": 0,
+                  "sum": 338852
+                },
+                "wet_light_ema": {
+                  "values": 15,
+                  "min": 1,
+                  "max": 15,
+                  "zero": 0,
+                  "sum": 25592
+                },
+                "open_wet_light_ema": {
+                  "values": 13,
+                  "min": 0,
+                  "max": 12,
+                  "zero": 66,
+                  "sum": 18939
+                }
+              }
+            },
+            "flower": {
+              "queries": 494,
+              "stems": 299,
+              "roots": 195,
+              "sources": 1780,
+              "choices": 299,
+              "variable": 292,
+              "in_bounds_choices": 299,
+              "in_bounds_variable": 292,
+              "joint_below_marginals": 1780,
+              "max_origins": 3,
+              "field_variation": [
+                92,
+                0,
+                202,
+                150,
+                280,
+                277,
+                166,
+                179
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 10,
+                  "min": 0,
+                  "max": 182,
+                  "zero": 134,
+                  "sum": 194335
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 1780,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 37,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 24,
+                  "sum": 21383
+                },
+                "light_now": {
+                  "values": 175,
+                  "min": 24,
+                  "max": 244,
+                  "zero": 0,
+                  "sum": 140839
+                },
+                "wet_ema": {
+                  "values": 99,
+                  "min": 4,
+                  "max": 175,
+                  "zero": 0,
+                  "sum": 101928
+                },
+                "light_ema": {
+                  "values": 88,
+                  "min": 23,
+                  "max": 110,
+                  "zero": 0,
+                  "sum": 127116
+                },
+                "wet_light_ema": {
+                  "values": 52,
+                  "min": 1,
+                  "max": 67,
+                  "zero": 0,
+                  "sum": 43385
+                },
+                "open_wet_light_ema": {
+                  "values": 50,
+                  "min": 0,
+                  "max": 63,
+                  "zero": 13,
+                  "sum": 37075
+                }
+              }
+            }
+          }
+        }
+      },
+      "scenario": {
+        "rainfed": {
+          "whole": {
+            "base": {
+              "queries": 52004,
+              "stems": 37020,
+              "roots": 14984,
+              "sources": 217981,
+              "choices": 26523,
+              "variable": 0,
+              "in_bounds_choices": 37020,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 214881,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 18929,
+                  "sum": 19369660
+                },
+                "dead_only": {
+                  "values": 10,
+                  "min": 0,
+                  "max": 200,
+                  "zero": 214711,
+                  "sum": 235668
+                },
+                "water_now": {
+                  "values": 44,
+                  "min": 0,
+                  "max": 44,
+                  "zero": 107275,
+                  "sum": 802641
+                },
+                "light_now": {
+                  "values": 224,
+                  "min": 24,
+                  "max": 254,
+                  "zero": 0,
+                  "sum": 10001477
+                },
+                "wet_ema": {
+                  "values": 130,
+                  "min": 0,
+                  "max": 129,
+                  "zero": 72,
+                  "sum": 7336402
+                },
+                "light_ema": {
+                  "values": 120,
+                  "min": 1,
+                  "max": 122,
+                  "zero": 0,
+                  "sum": 11699009
+                },
+                "wet_light_ema": {
+                  "values": 44,
+                  "min": 0,
+                  "max": 43,
+                  "zero": 168,
+                  "sum": 1462605
+                },
+                "open_wet_light_ema": {
+                  "values": 40,
+                  "min": 0,
+                  "max": 39,
+                  "zero": 46060,
+                  "sum": 944990
+                }
+              }
+            },
+            "flower": {
+              "queries": 41642,
+              "stems": 30427,
+              "roots": 11215,
+              "sources": 181391,
+              "choices": 23800,
+              "variable": 18207,
+              "in_bounds_choices": 30427,
+              "in_bounds_variable": 29815,
+              "joint_below_marginals": 178435,
+              "max_origins": 3,
+              "field_variation": [
+                12234,
+                144,
+                6192,
+                6324,
+                15283,
+                15665,
+                12322,
+                9683
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 11645,
+                  "sum": 17492278
+                },
+                "dead_only": {
+                  "values": 12,
+                  "min": 0,
+                  "max": 219,
+                  "zero": 180230,
+                  "sum": 83164
+                },
+                "water_now": {
+                  "values": 38,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 83284,
+                  "sum": 755010
+                },
+                "light_now": {
+                  "values": 225,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 8273627
+                },
+                "wet_ema": {
+                  "values": 154,
+                  "min": 0,
+                  "max": 175,
+                  "zero": 88,
+                  "sum": 7059238
+                },
+                "light_ema": {
+                  "values": 122,
+                  "min": 1,
+                  "max": 123,
+                  "zero": 0,
+                  "sum": 10001117
+                },
+                "wet_light_ema": {
+                  "values": 65,
+                  "min": 0,
+                  "max": 67,
+                  "zero": 276,
+                  "sum": 1484409
+                },
+                "open_wet_light_ema": {
+                  "values": 59,
+                  "min": 0,
+                  "max": 63,
+                  "zero": 33732,
+                  "sum": 960691
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 47096,
+              "stems": 33291,
+              "roots": 13805,
+              "sources": 195927,
+              "choices": 23381,
+              "variable": 0,
+              "in_bounds_choices": 33291,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 195399,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 18929,
+                  "sum": 16149776
+                },
+                "dead_only": {
+                  "values": 10,
+                  "min": 0,
+                  "max": 200,
+                  "zero": 192735,
+                  "sum": 231378
+                },
+                "water_now": {
+                  "values": 44,
+                  "min": 0,
+                  "max": 44,
+                  "zero": 97659,
+                  "sum": 718605
+                },
+                "light_now": {
+                  "values": 219,
+                  "min": 24,
+                  "max": 254,
+                  "zero": 0,
+                  "sum": 9075316
+                },
+                "wet_ema": {
+                  "values": 128,
+                  "min": 2,
+                  "max": 129,
+                  "zero": 0,
+                  "sum": 7039688
+                },
+                "light_ema": {
+                  "values": 116,
+                  "min": 1,
+                  "max": 122,
+                  "zero": 0,
+                  "sum": 11084238
+                },
+                "wet_light_ema": {
+                  "values": 44,
+                  "min": 0,
+                  "max": 43,
+                  "zero": 96,
+                  "sum": 1400793
+                },
+                "open_wet_light_ema": {
+                  "values": 40,
+                  "min": 0,
+                  "max": 39,
+                  "zero": 24006,
+                  "sum": 944990
+                }
+              }
+            },
+            "flower": {
+              "queries": 36734,
+              "stems": 26698,
+              "roots": 10036,
+              "sources": 159337,
+              "choices": 20658,
+              "variable": 16443,
+              "in_bounds_choices": 26698,
+              "in_bounds_variable": 26248,
+              "joint_below_marginals": 158885,
+              "max_origins": 3,
+              "field_variation": [
+                10985,
+                138,
+                5561,
+                5752,
+                13949,
+                14435,
+                11202,
+                9683
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 11645,
+                  "sum": 14693861
+                },
+                "dead_only": {
+                  "values": 12,
+                  "min": 0,
+                  "max": 219,
+                  "zero": 158209,
+                  "sum": 82190
+                },
+                "water_now": {
+                  "values": 38,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 73786,
+                  "sum": 668742
+                },
+                "light_now": {
+                  "values": 225,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 7335518
+                },
+                "wet_ema": {
+                  "values": 153,
+                  "min": 1,
+                  "max": 175,
+                  "zero": 0,
+                  "sum": 6751137
+                },
+                "light_ema": {
+                  "values": 119,
+                  "min": 4,
+                  "max": 123,
+                  "zero": 0,
+                  "sum": 9391043
+                },
+                "wet_light_ema": {
+                  "values": 65,
+                  "min": 0,
+                  "max": 67,
+                  "zero": 188,
+                  "sum": 1413376
+                },
+                "open_wet_light_ema": {
+                  "values": 59,
+                  "min": 0,
+                  "max": 63,
+                  "zero": 11678,
+                  "sum": 960691
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 1107,
+              "stems": 538,
+              "roots": 569,
+              "sources": 3209,
+              "choices": 479,
+              "variable": 0,
+              "in_bounds_choices": 538,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 3209,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 7,
+                  "min": 0,
+                  "max": 146,
+                  "zero": 562,
+                  "sum": 163083
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 3209,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 21,
+                  "min": 0,
+                  "max": 26,
+                  "zero": 1525,
+                  "sum": 10140
+                },
+                "light_now": {
+                  "values": 141,
+                  "min": 24,
+                  "max": 222,
+                  "zero": 0,
+                  "sum": 208165
+                },
+                "wet_ema": {
+                  "values": 53,
+                  "min": 2,
+                  "max": 54,
+                  "zero": 0,
+                  "sum": 69853
+                },
+                "light_ema": {
+                  "values": 83,
+                  "min": 12,
+                  "max": 100,
+                  "zero": 0,
+                  "sum": 119710
+                },
+                "wet_light_ema": {
+                  "values": 15,
+                  "min": 1,
+                  "max": 15,
+                  "zero": 0,
+                  "sum": 17709
+                },
+                "open_wet_light_ema": {
+                  "values": 12,
+                  "min": 1,
+                  "max": 12,
+                  "zero": 0,
+                  "sum": 11232
+                }
+              }
+            },
+            "flower": {
+              "queries": 1111,
+              "stems": 784,
+              "roots": 327,
+              "sources": 4541,
+              "choices": 713,
+              "variable": 615,
+              "in_bounds_choices": 784,
+              "in_bounds_variable": 712,
+              "joint_below_marginals": 4525,
+              "max_origins": 3,
+              "field_variation": [
+                358,
+                0,
+                296,
+                302,
+                538,
+                582,
+                302,
+                355
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 11,
+                  "min": 0,
+                  "max": 182,
+                  "zero": 403,
+                  "sum": 448944
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 4541,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 36,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 1457,
+                  "sum": 28311
+                },
+                "light_now": {
+                  "values": 187,
+                  "min": 24,
+                  "max": 244,
+                  "zero": 0,
+                  "sum": 276615
+                },
+                "wet_ema": {
+                  "values": 94,
+                  "min": 1,
+                  "max": 175,
+                  "zero": 0,
+                  "sum": 144210
+                },
+                "light_ema": {
+                  "values": 96,
+                  "min": 15,
+                  "max": 110,
+                  "zero": 0,
+                  "sum": 279126
+                },
+                "wet_light_ema": {
+                  "values": 52,
+                  "min": 1,
+                  "max": 67,
+                  "zero": 0,
+                  "sum": 54450
+                },
+                "open_wet_light_ema": {
+                  "values": 49,
+                  "min": 1,
+                  "max": 63,
+                  "zero": 0,
+                  "sum": 43499
+                }
+              }
+            }
+          }
+        },
+        "rainfed-crowded": {
+          "whole": {
+            "base": {
+              "queries": 34976,
+              "stems": 25067,
+              "roots": 9909,
+              "sources": 148160,
+              "choices": 17167,
+              "variable": 0,
+              "in_bounds_choices": 25067,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 130336,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 13,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 24697,
+                  "sum": 7343475
+                },
+                "dead_only": {
+                  "values": 10,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 146828,
+                  "sum": 112734
+                },
+                "water_now": {
+                  "values": 37,
+                  "min": 0,
+                  "max": 38,
+                  "zero": 83602,
+                  "sum": 448123
+                },
+                "light_now": {
+                  "values": 213,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 6876500
+                },
+                "wet_ema": {
+                  "values": 121,
+                  "min": 1,
+                  "max": 121,
+                  "zero": 0,
+                  "sum": 4073346
+                },
+                "light_ema": {
+                  "values": 111,
+                  "min": 1,
+                  "max": 113,
+                  "zero": 0,
+                  "sum": 7511391
+                },
+                "wet_light_ema": {
+                  "values": 38,
+                  "min": 1,
+                  "max": 38,
+                  "zero": 0,
+                  "sum": 729069
+                },
+                "open_wet_light_ema": {
+                  "values": 34,
+                  "min": 0,
+                  "max": 34,
+                  "zero": 85059,
+                  "sum": 271142
+                }
+              }
+            },
+            "flower": {
+              "queries": 31855,
+              "stems": 23913,
+              "roots": 7942,
+              "sources": 142522,
+              "choices": 15249,
+              "variable": 11306,
+              "in_bounds_choices": 23913,
+              "in_bounds_variable": 23007,
+              "joint_below_marginals": 124126,
+              "max_origins": 3,
+              "field_variation": [
+                4740,
+                112,
+                2472,
+                4269,
+                8670,
+                9456,
+                6056,
+                3123
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 13,
+                  "min": 0,
+                  "max": 237,
+                  "zero": 41495,
+                  "sum": 5057603
+                },
+                "dead_only": {
+                  "values": 9,
+                  "min": 0,
+                  "max": 146,
+                  "zero": 141568,
+                  "sum": 53887
+                },
+                "water_now": {
+                  "values": 37,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 84037,
+                  "sum": 380716
+                },
+                "light_now": {
+                  "values": 219,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 6479866
+                },
+                "wet_ema": {
+                  "values": 143,
+                  "min": 0,
+                  "max": 195,
+                  "zero": 16,
+                  "sum": 3606464
+                },
+                "light_ema": {
+                  "values": 116,
+                  "min": 1,
+                  "max": 119,
+                  "zero": 0,
+                  "sum": 7405124
+                },
+                "wet_light_ema": {
+                  "values": 47,
+                  "min": 0,
+                  "max": 53,
+                  "zero": 16,
+                  "sum": 736760
+                },
+                "open_wet_light_ema": {
+                  "values": 38,
+                  "min": 0,
+                  "max": 42,
+                  "zero": 75128,
+                  "sum": 216893
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 27431,
+              "stems": 19777,
+              "roots": 7654,
+              "sources": 116735,
+              "choices": 13349,
+              "variable": 0,
+              "in_bounds_choices": 19777,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 115994,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 13,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 13957,
+                  "sum": 6782037
+                },
+                "dead_only": {
+                  "values": 10,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 115595,
+                  "sum": 101862
+                },
+                "water_now": {
+                  "values": 37,
+                  "min": 0,
+                  "max": 38,
+                  "zero": 65712,
+                  "sum": 366854
+                },
+                "light_now": {
+                  "values": 207,
+                  "min": 24,
+                  "max": 236,
+                  "zero": 0,
+                  "sum": 5643202
+                },
+                "wet_ema": {
+                  "values": 121,
+                  "min": 1,
+                  "max": 121,
+                  "zero": 0,
+                  "sum": 3867035
+                },
+                "light_ema": {
+                  "values": 109,
+                  "min": 4,
+                  "max": 113,
+                  "zero": 0,
+                  "sum": 6718745
+                },
+                "wet_light_ema": {
+                  "values": 38,
+                  "min": 1,
+                  "max": 38,
+                  "zero": 0,
+                  "sum": 577886
+                },
+                "open_wet_light_ema": {
+                  "values": 34,
+                  "min": 0,
+                  "max": 34,
+                  "zero": 53634,
+                  "sum": 271142
+                }
+              }
+            },
+            "flower": {
+              "queries": 24310,
+              "stems": 18623,
+              "roots": 5687,
+              "sources": 111097,
+              "choices": 11431,
+              "variable": 8334,
+              "in_bounds_choices": 18623,
+              "in_bounds_variable": 18131,
+              "joint_below_marginals": 110756,
+              "max_origins": 3,
+              "field_variation": [
+                3917,
+                91,
+                1991,
+                3401,
+                6782,
+                7031,
+                4255,
+                3123
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 13,
+                  "min": 0,
+                  "max": 237,
+                  "zero": 28352,
+                  "sum": 4595237
+                },
+                "dead_only": {
+                  "values": 9,
+                  "min": 0,
+                  "max": 146,
+                  "zero": 110267,
+                  "sum": 49566
+                },
+                "water_now": {
+                  "values": 33,
+                  "min": 0,
+                  "max": 32,
+                  "zero": 66301,
+                  "sum": 302820
+                },
+                "light_now": {
+                  "values": 217,
+                  "min": 24,
+                  "max": 241,
+                  "zero": 0,
+                  "sum": 5224612
+                },
+                "wet_ema": {
+                  "values": 141,
+                  "min": 2,
+                  "max": 195,
+                  "zero": 0,
+                  "sum": 3404982
+                },
+                "light_ema": {
+                  "values": 108,
+                  "min": 12,
+                  "max": 119,
+                  "zero": 0,
+                  "sum": 6598814
+                },
+                "wet_light_ema": {
+                  "values": 46,
+                  "min": 1,
+                  "max": 53,
+                  "zero": 0,
+                  "sum": 587074
+                },
+                "open_wet_light_ema": {
+                  "values": 38,
+                  "min": 0,
+                  "max": 42,
+                  "zero": 43703,
+                  "sum": 216893
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 1857,
+              "stems": 800,
+              "roots": 1057,
+              "sources": 4761,
+              "choices": 799,
+              "variable": 0,
+              "in_bounds_choices": 800,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 4761,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 5,
+                  "min": 0,
+                  "max": 128,
+                  "zero": 816,
+                  "sum": 218823
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 4761,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 18,
+                  "min": 0,
+                  "max": 17,
+                  "zero": 2228,
+                  "sum": 17531
+                },
+                "light_now": {
+                  "values": 151,
+                  "min": 24,
+                  "max": 220,
+                  "zero": 0,
+                  "sum": 255604
+                },
+                "wet_ema": {
+                  "values": 49,
+                  "min": 4,
+                  "max": 53,
+                  "zero": 0,
+                  "sum": 132755
+                },
+                "light_ema": {
+                  "values": 87,
+                  "min": 21,
+                  "max": 109,
+                  "zero": 0,
+                  "sum": 316283
+                },
+                "wet_light_ema": {
+                  "values": 15,
+                  "min": 1,
+                  "max": 15,
+                  "zero": 0,
+                  "sum": 22866
+                },
+                "open_wet_light_ema": {
+                  "values": 9,
+                  "min": 0,
+                  "max": 8,
+                  "zero": 66,
+                  "sum": 18358
+                }
+              }
+            },
+            "flower": {
+              "queries": 69,
+              "stems": 27,
+              "roots": 42,
+              "sources": 162,
+              "choices": 27,
+              "variable": 27,
+              "in_bounds_choices": 27,
+              "in_bounds_variable": 27,
+              "joint_below_marginals": 162,
+              "max_origins": 3,
+              "field_variation": [
+                25,
+                0,
+                22,
+                24,
+                21,
+                19,
+                22,
+                24
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 6,
+                  "min": 0,
+                  "max": 164,
+                  "zero": 13,
+                  "sum": 16016
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 162,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 29,
+                  "min": 0,
+                  "max": 31,
+                  "zero": 4,
+                  "sum": 2174
+                },
+                "light_now": {
+                  "values": 51,
+                  "min": 57,
+                  "max": 213,
+                  "zero": 0,
+                  "sum": 23696
+                },
+                "wet_ema": {
+                  "values": 35,
+                  "min": 20,
+                  "max": 111,
+                  "zero": 0,
+                  "sum": 7609
+                },
+                "light_ema": {
+                  "values": 34,
+                  "min": 30,
+                  "max": 68,
+                  "zero": 0,
+                  "sum": 7940
+                },
+                "wet_light_ema": {
+                  "values": 27,
+                  "min": 4,
+                  "max": 36,
+                  "zero": 0,
+                  "sum": 2674
+                },
+                "open_wet_light_ema": {
+                  "values": 25,
+                  "min": 0,
+                  "max": 31,
+                  "zero": 13,
+                  "sum": 1664
+                }
+              }
+            }
+          }
+        }
+      },
+      "policy": {
+        "baseline": {
+          "whole": {
+            "base": {
+              "queries": 17734,
+              "stems": 11223,
+              "roots": 6511,
+              "sources": 65892,
+              "choices": 9686,
+              "variable": 0,
+              "in_bounds_choices": 11223,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 63642,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 7033,
+                  "sum": 6053894
+                },
+                "dead_only": {
+                  "values": 10,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 63900,
+                  "sum": 157530
+                },
+                "water_now": {
+                  "values": 43,
+                  "min": 0,
+                  "max": 44,
+                  "zero": 29902,
+                  "sum": 282516
+                },
+                "light_now": {
+                  "values": 216,
+                  "min": 24,
+                  "max": 254,
+                  "zero": 0,
+                  "sum": 3249894
+                },
+                "wet_ema": {
+                  "values": 129,
+                  "min": 0,
+                  "max": 129,
+                  "zero": 36,
+                  "sum": 2438411
+                },
+                "light_ema": {
+                  "values": 119,
+                  "min": 1,
+                  "max": 122,
+                  "zero": 0,
+                  "sum": 3251366
+                },
+                "wet_light_ema": {
+                  "values": 44,
+                  "min": 0,
+                  "max": 43,
+                  "zero": 36,
+                  "sum": 533851
+                },
+                "open_wet_light_ema": {
+                  "values": 40,
+                  "min": 0,
+                  "max": 39,
+                  "zero": 13739,
+                  "sum": 359371
+                }
+              }
+            },
+            "flower": {
+              "queries": 21023,
+              "stems": 15054,
+              "roots": 5969,
+              "sources": 89733,
+              "choices": 12779,
+              "variable": 10857,
+              "in_bounds_choices": 15054,
+              "in_bounds_variable": 14784,
+              "joint_below_marginals": 87490,
+              "max_origins": 3,
+              "field_variation": [
+                6917,
+                202,
+                3696,
+                3697,
+                9175,
+                9660,
+                6973,
+                5442
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 9060,
+                  "sum": 7043772
+                },
+                "dead_only": {
+                  "values": 12,
+                  "min": 0,
+                  "max": 219,
+                  "zero": 88200,
+                  "sum": 103608
+                },
+                "water_now": {
+                  "values": 38,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 41422,
+                  "sum": 360348
+                },
+                "light_now": {
+                  "values": 220,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 3952094
+                },
+                "wet_ema": {
+                  "values": 164,
+                  "min": 0,
+                  "max": 195,
+                  "zero": 44,
+                  "sum": 3484651
+                },
+                "light_ema": {
+                  "values": 119,
+                  "min": 1,
+                  "max": 121,
+                  "zero": 0,
+                  "sum": 4394906
+                },
+                "wet_light_ema": {
+                  "values": 51,
+                  "min": 0,
+                  "max": 53,
+                  "zero": 232,
+                  "sum": 713734
+                },
+                "open_wet_light_ema": {
+                  "values": 42,
+                  "min": 0,
+                  "max": 42,
+                  "zero": 14050,
+                  "sum": 433394
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 15783,
+              "stems": 10238,
+              "roots": 5545,
+              "sources": 60018,
+              "choices": 8769,
+              "variable": 0,
+              "in_bounds_choices": 10238,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 59946,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 5845,
+                  "sum": 5644122
+                },
+                "dead_only": {
+                  "values": 10,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 58296,
+                  "sum": 142368
+                },
+                "water_now": {
+                  "values": 43,
+                  "min": 0,
+                  "max": 44,
+                  "zero": 26973,
+                  "sum": 262257
+                },
+                "light_now": {
+                  "values": 214,
+                  "min": 24,
+                  "max": 254,
+                  "zero": 0,
+                  "sum": 2946275
+                },
+                "wet_ema": {
+                  "values": 128,
+                  "min": 1,
+                  "max": 129,
+                  "zero": 0,
+                  "sum": 2388984
+                },
+                "light_ema": {
+                  "values": 118,
+                  "min": 2,
+                  "max": 122,
+                  "zero": 0,
+                  "sum": 3110828
+                },
+                "wet_light_ema": {
+                  "values": 43,
+                  "min": 1,
+                  "max": 43,
+                  "zero": 0,
+                  "sum": 510644
+                },
+                "open_wet_light_ema": {
+                  "values": 40,
+                  "min": 0,
+                  "max": 39,
+                  "zero": 7865,
+                  "sum": 359371
+                }
+              }
+            },
+            "flower": {
+              "queries": 19072,
+              "stems": 14069,
+              "roots": 5003,
+              "sources": 83859,
+              "choices": 11862,
+              "variable": 10160,
+              "in_bounds_choices": 14069,
+              "in_bounds_variable": 13846,
+              "joint_below_marginals": 83793,
+              "max_origins": 3,
+              "field_variation": [
+                6615,
+                175,
+                3526,
+                3440,
+                8705,
+                9156,
+                6523,
+                5442
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 15,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 7655,
+                  "sum": 6685394
+                },
+                "dead_only": {
+                  "values": 12,
+                  "min": 0,
+                  "max": 219,
+                  "zero": 82483,
+                  "sum": 98313
+                },
+                "water_now": {
+                  "values": 35,
+                  "min": 0,
+                  "max": 36,
+                  "zero": 38481,
+                  "sum": 340181
+                },
+                "light_now": {
+                  "values": 217,
+                  "min": 24,
+                  "max": 243,
+                  "zero": 0,
+                  "sum": 3643781
+                },
+                "wet_ema": {
+                  "values": 163,
+                  "min": 1,
+                  "max": 195,
+                  "zero": 0,
+                  "sum": 3433325
+                },
+                "light_ema": {
+                  "values": 117,
+                  "min": 4,
+                  "max": 121,
+                  "zero": 0,
+                  "sum": 4253237
+                },
+                "wet_light_ema": {
+                  "values": 51,
+                  "min": 0,
+                  "max": 53,
+                  "zero": 188,
+                  "sum": 689384
+                },
+                "open_wet_light_ema": {
+                  "values": 42,
+                  "min": 0,
+                  "max": 42,
+                  "zero": 8176,
+                  "sum": 433394
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 1032,
+              "stems": 620,
+              "roots": 412,
+              "sources": 3684,
+              "choices": 560,
+              "variable": 0,
+              "in_bounds_choices": 620,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 3684,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 5,
+                  "min": 0,
+                  "max": 109,
+                  "zero": 929,
+                  "sum": 172243
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 3684,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 21,
+                  "min": 0,
+                  "max": 26,
+                  "zero": 2060,
+                  "sum": 9230
+                },
+                "light_now": {
+                  "values": 140,
+                  "min": 24,
+                  "max": 213,
+                  "zero": 0,
+                  "sum": 196130
+                },
+                "wet_ema": {
+                  "values": 50,
+                  "min": 5,
+                  "max": 54,
+                  "zero": 0,
+                  "sum": 73420
+                },
+                "light_ema": {
+                  "values": 84,
+                  "min": 12,
+                  "max": 95,
+                  "zero": 0,
+                  "sum": 155533
+                },
+                "wet_light_ema": {
+                  "values": 15,
+                  "min": 1,
+                  "max": 15,
+                  "zero": 0,
+                  "sum": 17282
+                },
+                "open_wet_light_ema": {
+                  "values": 13,
+                  "min": 0,
+                  "max": 12,
+                  "zero": 66,
+                  "sum": 12403
+                }
+              }
+            },
+            "flower": {
+              "queries": 667,
+              "stems": 520,
+              "roots": 147,
+              "sources": 3072,
+              "choices": 449,
+              "variable": 406,
+              "in_bounds_choices": 520,
+              "in_bounds_variable": 503,
+              "joint_below_marginals": 3072,
+              "max_origins": 3,
+              "field_variation": [
+                339,
+                0,
+                163,
+                226,
+                330,
+                376,
+                194,
+                247
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 11,
+                  "min": 0,
+                  "max": 182,
+                  "zero": 93,
+                  "sum": 300961
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 3072,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 30,
+                  "min": 0,
+                  "max": 31,
+                  "zero": 1357,
+                  "sum": 13106
+                },
+                "light_now": {
+                  "values": 172,
+                  "min": 24,
+                  "max": 222,
+                  "zero": 0,
+                  "sum": 195841
+                },
+                "wet_ema": {
+                  "values": 63,
+                  "min": 7,
+                  "max": 111,
+                  "zero": 0,
+                  "sum": 58868
+                },
+                "light_ema": {
+                  "values": 86,
+                  "min": 15,
+                  "max": 101,
+                  "zero": 0,
+                  "sum": 172854
+                },
+                "wet_light_ema": {
+                  "values": 32,
+                  "min": 1,
+                  "max": 36,
+                  "zero": 0,
+                  "sum": 18281
+                },
+                "open_wet_light_ema": {
+                  "values": 28,
+                  "min": 0,
+                  "max": 31,
+                  "zero": 13,
+                  "sum": 10668
+                }
+              }
+            }
+          }
+        },
+        "adaptive": {
+          "whole": {
+            "base": {
+              "queries": 69246,
+              "stems": 50864,
+              "roots": 18382,
+              "sources": 300249,
+              "choices": 34004,
+              "variable": 0,
+              "in_bounds_choices": 50864,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 281575,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 14,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 36593,
+                  "sum": 20659241
+                },
+                "dead_only": {
+                  "values": 8,
+                  "min": 0,
+                  "max": 200,
+                  "zero": 297639,
+                  "sum": 190872
+                },
+                "water_now": {
+                  "values": 42,
+                  "min": 0,
+                  "max": 41,
+                  "zero": 160975,
+                  "sum": 968248
+                },
+                "light_now": {
+                  "values": 220,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 13628083
+                },
+                "wet_ema": {
+                  "values": 123,
+                  "min": 0,
+                  "max": 122,
+                  "zero": 36,
+                  "sum": 8971337
+                },
+                "light_ema": {
+                  "values": 112,
+                  "min": 1,
+                  "max": 114,
+                  "zero": 0,
+                  "sum": 15959034
+                },
+                "wet_light_ema": {
+                  "values": 35,
+                  "min": 0,
+                  "max": 34,
+                  "zero": 132,
+                  "sum": 1657823
+                },
+                "open_wet_light_ema": {
+                  "values": 33,
+                  "min": 0,
+                  "max": 32,
+                  "zero": 117380,
+                  "sum": 856761
+                }
+              }
+            },
+            "flower": {
+              "queries": 52474,
+              "stems": 39286,
+              "roots": 13188,
+              "sources": 234180,
+              "choices": 26270,
+              "variable": 18656,
+              "in_bounds_choices": 39286,
+              "in_bounds_variable": 38038,
+              "joint_below_marginals": 215071,
+              "max_origins": 3,
+              "field_variation": [
+                10057,
+                54,
+                4968,
+                6896,
+                14778,
+                15461,
+                11405,
+                7364
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 14,
+                  "min": 0,
+                  "max": 237,
+                  "zero": 44080,
+                  "sum": 15506109
+                },
+                "dead_only": {
+                  "values": 9,
+                  "min": 0,
+                  "max": 146,
+                  "zero": 233598,
+                  "sum": 33443
+                },
+                "water_now": {
+                  "values": 38,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 125899,
+                  "sum": 775378
+                },
+                "light_now": {
+                  "values": 225,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 10801399
+                },
+                "wet_ema": {
+                  "values": 126,
+                  "min": 0,
+                  "max": 175,
+                  "zero": 60,
+                  "sum": 7181051
+                },
+                "light_ema": {
+                  "values": 120,
+                  "min": 1,
+                  "max": 123,
+                  "zero": 0,
+                  "sum": 13011335
+                },
+                "wet_light_ema": {
+                  "values": 65,
+                  "min": 0,
+                  "max": 67,
+                  "zero": 60,
+                  "sum": 1507435
+                },
+                "open_wet_light_ema": {
+                  "values": 59,
+                  "min": 0,
+                  "max": 63,
+                  "zero": 94810,
+                  "sum": 744190
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 58744,
+              "stems": 42830,
+              "roots": 15914,
+              "sources": 252644,
+              "choices": 27961,
+              "variable": 0,
+              "in_bounds_choices": 42830,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 251447,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 14,
+                  "min": 0,
+                  "max": 255,
+                  "zero": 27041,
+                  "sum": 17287691
+                },
+                "dead_only": {
+                  "values": 8,
+                  "min": 0,
+                  "max": 200,
+                  "zero": 250034,
+                  "sum": 190872
+                },
+                "water_now": {
+                  "values": 42,
+                  "min": 0,
+                  "max": 41,
+                  "zero": 136398,
+                  "sum": 823202
+                },
+                "light_now": {
+                  "values": 215,
+                  "min": 24,
+                  "max": 243,
+                  "zero": 0,
+                  "sum": 11772243
+                },
+                "wet_ema": {
+                  "values": 122,
+                  "min": 1,
+                  "max": 122,
+                  "zero": 0,
+                  "sum": 8517739
+                },
+                "light_ema": {
+                  "values": 108,
+                  "min": 1,
+                  "max": 114,
+                  "zero": 0,
+                  "sum": 14692155
+                },
+                "wet_light_ema": {
+                  "values": 35,
+                  "min": 0,
+                  "max": 34,
+                  "zero": 96,
+                  "sum": 1468035
+                },
+                "open_wet_light_ema": {
+                  "values": 33,
+                  "min": 0,
+                  "max": 32,
+                  "zero": 69775,
+                  "sum": 856761
+                }
+              }
+            },
+            "flower": {
+              "queries": 41972,
+              "stems": 31252,
+              "roots": 10720,
+              "sources": 186575,
+              "choices": 20227,
+              "variable": 14617,
+              "in_bounds_choices": 31252,
+              "in_bounds_variable": 30533,
+              "joint_below_marginals": 185848,
+              "max_origins": 3,
+              "field_variation": [
+                8287,
+                54,
+                4026,
+                5713,
+                12026,
+                12310,
+                8934,
+                7364
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 14,
+                  "min": 0,
+                  "max": 237,
+                  "zero": 32342,
+                  "sum": 12603704
+                },
+                "dead_only": {
+                  "values": 9,
+                  "min": 0,
+                  "max": 146,
+                  "zero": 185993,
+                  "sum": 33443
+                },
+                "water_now": {
+                  "values": 38,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 101606,
+                  "sum": 631381
+                },
+                "light_now": {
+                  "values": 225,
+                  "min": 24,
+                  "max": 251,
+                  "zero": 0,
+                  "sum": 8916349
+                },
+                "wet_ema": {
+                  "values": 125,
+                  "min": 1,
+                  "max": 175,
+                  "zero": 0,
+                  "sum": 6722794
+                },
+                "light_ema": {
+                  "values": 113,
+                  "min": 11,
+                  "max": 123,
+                  "zero": 0,
+                  "sum": 11736620
+                },
+                "wet_light_ema": {
+                  "values": 64,
+                  "min": 1,
+                  "max": 67,
+                  "zero": 0,
+                  "sum": 1311066
+                },
+                "open_wet_light_ema": {
+                  "values": 59,
+                  "min": 0,
+                  "max": 63,
+                  "zero": 47205,
+                  "sum": 744190
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 1932,
+              "stems": 718,
+              "roots": 1214,
+              "sources": 4286,
+              "choices": 718,
+              "variable": 0,
+              "in_bounds_choices": 718,
+              "in_bounds_variable": 0,
+              "joint_below_marginals": 4286,
+              "max_origins": 1,
+              "field_variation": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 7,
+                  "min": 0,
+                  "max": 146,
+                  "zero": 449,
+                  "sum": 209663
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 4286,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 18,
+                  "min": 0,
+                  "max": 17,
+                  "zero": 1693,
+                  "sum": 18441
+                },
+                "light_now": {
+                  "values": 156,
+                  "min": 24,
+                  "max": 222,
+                  "zero": 0,
+                  "sum": 267639
+                },
+                "wet_ema": {
+                  "values": 52,
+                  "min": 2,
+                  "max": 53,
+                  "zero": 0,
+                  "sum": 129188
+                },
+                "light_ema": {
+                  "values": 88,
+                  "min": 21,
+                  "max": 109,
+                  "zero": 0,
+                  "sum": 280460
+                },
+                "wet_light_ema": {
+                  "values": 15,
+                  "min": 1,
+                  "max": 15,
+                  "zero": 0,
+                  "sum": 23293
+                },
+                "open_wet_light_ema": {
+                  "values": 8,
+                  "min": 1,
+                  "max": 8,
+                  "zero": 0,
+                  "sum": 17187
+                }
+              }
+            },
+            "flower": {
+              "queries": 513,
+              "stems": 291,
+              "roots": 222,
+              "sources": 1631,
+              "choices": 291,
+              "variable": 236,
+              "in_bounds_choices": 291,
+              "in_bounds_variable": 236,
+              "joint_below_marginals": 1615,
+              "max_origins": 3,
+              "field_variation": [
+                44,
+                0,
+                155,
+                100,
+                229,
+                225,
+                130,
+                132
+              ],
+              "fields": {
+                "space_free": {
+                  "values": 8,
+                  "min": 0,
+                  "max": 182,
+                  "zero": 323,
+                  "sum": 163999
+                },
+                "dead_only": {
+                  "values": 1,
+                  "min": 0,
+                  "max": 0,
+                  "zero": 1631,
+                  "sum": 0
+                },
+                "water_now": {
+                  "values": 36,
+                  "min": 0,
+                  "max": 37,
+                  "zero": 104,
+                  "sum": 17379
+                },
+                "light_now": {
+                  "values": 151,
+                  "min": 24,
+                  "max": 244,
+                  "zero": 0,
+                  "sum": 104470
+                },
+                "wet_ema": {
+                  "values": 90,
+                  "min": 1,
+                  "max": 175,
+                  "zero": 0,
+                  "sum": 92951
+                },
+                "light_ema": {
+                  "values": 82,
+                  "min": 23,
+                  "max": 110,
+                  "zero": 0,
+                  "sum": 114212
+                },
+                "wet_light_ema": {
+                  "values": 52,
+                  "min": 1,
+                  "max": 67,
+                  "zero": 0,
+                  "sum": 38843
+                },
+                "open_wet_light_ema": {
+                  "values": 49,
+                  "min": 1,
+                  "max": 63,
+                  "zero": 0,
+                  "sum": 34495
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed",
+        "policy": "baseline",
+        "seed": "ed52188c"
+      },
+      "arm": "base",
+      "trace_sha256": "760c0cab9eed7432c595fc0ee342d765e0c60a215f4d4e3e53934466552fd8cb",
+      "original_sha256": "141bff59ee8c90152e74aa2ba7d32b18cbcc195631f62a463f5c740baf91a130",
+      "worlds": 32769,
+      "bids": 7486,
+      "final_hash": "323a0868",
+      "created": 68,
+      "days_sha256": "5956657f5d6740f734a614e44c5e3ea5c40531cc71ce31b748cb4d6ce5dc0ac0"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed",
+        "policy": "baseline",
+        "seed": "ed52188c"
+      },
+      "arm": "flower",
+      "trace_sha256": "2c3c5ffe29d809e6279b9ae0187f4b91e7c133917457b62459c812a8c619fcbd",
+      "original_sha256": "5e5d46dbce7ab79abcc1abebfbaced5e6e9f680d4b5447fdef5334544ed7e436",
+      "worlds": 32769,
+      "bids": 13153,
+      "final_hash": "76cb16ef",
+      "created": 85,
+      "days_sha256": "31a5d48ad027db5c034716095d6c1519c085a95fea2f279a81a02491ff22c646"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed",
+        "policy": "baseline",
+        "seed": "82deacfd"
+      },
+      "arm": "base",
+      "trace_sha256": "6da6f316a4678734e623afedbf2d1b0f88961a0e0f3ce61ef6c55036dbbdb650",
+      "original_sha256": "d8ed9288e9705c5105542f8580887b2b3751507670d7b33053ec492209051abe",
+      "worlds": 32769,
+      "bids": 4184,
+      "final_hash": "a55130da",
+      "created": 59,
+      "days_sha256": "e3f911c7af0638863b29882cb35faa048825d9f34352247cbe6d7a71808c6a31"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed",
+        "policy": "baseline",
+        "seed": "82deacfd"
+      },
+      "arm": "flower",
+      "trace_sha256": "0da4c7d6b3ebe504e1edd0c173a996916e2dda7c2f49cd1e4844319436b337e7",
+      "original_sha256": "9e2bc5cc41577fee4b1525062712690775d0f4175e1900e4d2a6b6c24adf8de2",
+      "worlds": 32769,
+      "bids": 3512,
+      "final_hash": "f04c745b",
+      "created": 52,
+      "days_sha256": "b2d8eb40cfd92e7f13a8cab56ac341424cb82136ef881952e038a5872bd02c23"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed",
+        "policy": "adaptive",
+        "seed": "ed52188c"
+      },
+      "arm": "base",
+      "trace_sha256": "fffe928b1a1e19c4540f7fa7d80e09ef28c3280812a6f70781027fb298f81f5a",
+      "original_sha256": "ed926b7d71f0b08e57aa9f09e834c3b58c990a760bce9abd5e280df242b21c80",
+      "worlds": 32769,
+      "bids": 19806,
+      "final_hash": "e4f17837",
+      "created": 55,
+      "days_sha256": "96fd589c9177894cbd5afc286b41d2618cfa18be31f8f0787dbbc17ae34d7ff6"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed",
+        "policy": "adaptive",
+        "seed": "ed52188c"
+      },
+      "arm": "flower",
+      "trace_sha256": "4167c6a3bcc89090154599600b12162806aa5a0644b839227adf6bc8c7de0a90",
+      "original_sha256": "374da083ce2f5a4a798699e0d451cb7a34a601b1836735666342d24299cb0a37",
+      "worlds": 32769,
+      "bids": 10415,
+      "final_hash": "8ad254e3",
+      "created": 49,
+      "days_sha256": "fe53eb06fc3d255193a582a03bace3e9fa0d0bf523472778ba0768c229909cd9"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed",
+        "policy": "adaptive",
+        "seed": "82deacfd"
+      },
+      "arm": "base",
+      "trace_sha256": "7f97f35c0fca8d1f5b52f971f5af4f19b736ffc3931b7342ece496d354ab246a",
+      "original_sha256": "7d8a6d447a212a8b45e32f34c1947ce0003104e9b9ce8144cb7897b52545a382",
+      "worlds": 32769,
+      "bids": 20528,
+      "final_hash": "e2a8df48",
+      "created": 64,
+      "days_sha256": "47a1b0812042411a8dfe98215f2d63c166bfc81b776a2392b3022cc43ead0836"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed",
+        "policy": "adaptive",
+        "seed": "82deacfd"
+      },
+      "arm": "flower",
+      "trace_sha256": "a12daf92492285ec93de72373db53c3ffaa0b4c964ad82e79488f1496df3843a",
+      "original_sha256": "1072bdccfffa2b200b4b5f660d7b9cee06a25df9e65ac4f5eed9f0f2376417ae",
+      "worlds": 32769,
+      "bids": 14562,
+      "final_hash": "99dd8fc6",
+      "created": 47,
+      "days_sha256": "c474142f814c720db3b94429f03381f52ed2a225e25e8848559f0d9c5bd47d15"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed-crowded",
+        "policy": "baseline",
+        "seed": "ed52188c"
+      },
+      "arm": "base",
+      "trace_sha256": "e7a469148e4b5b313a20d44a084b5b9c3e1632d58f8c25327230f8c6043a4492",
+      "original_sha256": "5ea608905cf97160b0ac1ae364cf2936f140c8e26d2fbb750d09b9367f04b0dd",
+      "worlds": 32769,
+      "bids": 2294,
+      "final_hash": "6b9a0dee",
+      "created": 49,
+      "days_sha256": "2e628d21a5c3600617064b69cc6ab052ef018d48de417ac4d79c0adb2302380c"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed-crowded",
+        "policy": "baseline",
+        "seed": "ed52188c"
+      },
+      "arm": "flower",
+      "trace_sha256": "82a6b21c632af2ee458cd294c68f89a149cb84bf092fbd854f8ab7d5f2bf881b",
+      "original_sha256": "0dacefb7e4470599d880d56bcc3a838cac2f6990f93939e9f334dd8f3b6c4ca0",
+      "worlds": 32769,
+      "bids": 2561,
+      "final_hash": "c0903f72",
+      "created": 49,
+      "days_sha256": "32902e3eb31e5dfcb478b018dc4404d0f499ffa04c702cd7cf2ebf009e3005db"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed-crowded",
+        "policy": "baseline",
+        "seed": "82deacfd"
+      },
+      "arm": "base",
+      "trace_sha256": "a6d0e3a20a3e4e66f1da5585caba4d8e890bc419aac9aa33ab600fa3c5406f14",
+      "original_sha256": "cac4cdafce3cf1f822d7f62e48d527619c13e8325f47586fcbbb109969e304c8",
+      "worlds": 32769,
+      "bids": 3770,
+      "final_hash": "f6ada5c2",
+      "created": 60,
+      "days_sha256": "cab2cb0cf1a815ad29687d4a6deae9d04ccaf2c53c6d3df1635d7e20d81716e3"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed-crowded",
+        "policy": "baseline",
+        "seed": "82deacfd"
+      },
+      "arm": "flower",
+      "trace_sha256": "d9b6a7efcd4f3d07f0ebf1e8a46d893c649a1ece93b45e92a7ad2df1ab2f43aa",
+      "original_sha256": "6d50ea076eeae4297c6f3b5f21255d7bf13102e3d046bc6280f1338d36e068c0",
+      "worlds": 32769,
+      "bids": 1797,
+      "final_hash": "2a921780",
+      "created": 41,
+      "days_sha256": "cd79d6d5cc087e24cd869790adc47f01a39bb031914610e4a5b1d9dbda8663b8"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed-crowded",
+        "policy": "adaptive",
+        "seed": "ed52188c"
+      },
+      "arm": "base",
+      "trace_sha256": "d1b2a15ef9acde3567166fd08e2e95616bca400c62d8f94b374a462a1360ef16",
+      "original_sha256": "d15b498fe8540181799c1cca38afdd087f0780278062bdf5d0cb027fc1b5ef76",
+      "worlds": 32769,
+      "bids": 11197,
+      "final_hash": "7bba9256",
+      "created": 51,
+      "days_sha256": "4d9f3b9f7524552d49c810cbb21a20cc860a65656d22e676a34125192611b887"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed-crowded",
+        "policy": "adaptive",
+        "seed": "ed52188c"
+      },
+      "arm": "flower",
+      "trace_sha256": "e327d72d313638df2aa1590deb76e9c6c96bc430b2100eb028b75b38c55fdfc3",
+      "original_sha256": "7815adbc1f45dc499f2009194073426f62aef0e33d3df1a6475b0ef491d08257",
+      "worlds": 32769,
+      "bids": 7528,
+      "final_hash": "1aff7040",
+      "created": 44,
+      "days_sha256": "bee9299d5d7c9ba7d4c52f54a36212a7f8daae35346283e111d998d5c4fdf4f4"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed-crowded",
+        "policy": "adaptive",
+        "seed": "82deacfd"
+      },
+      "arm": "base",
+      "trace_sha256": "da0cb1be6f6b1a3d3e1647801f438626414cdc0967c99259d33769aa9e86541a",
+      "original_sha256": "99af42f7c7db5d90206f624dd31cad7e2037091587e3fd347e1184d9d692a9bb",
+      "worlds": 32769,
+      "bids": 17715,
+      "final_hash": "9414560d",
+      "created": 56,
+      "days_sha256": "b865baa6baba17637152f5d568ca8946119db512ae070d9d2455b3064cc37af1"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "scenario": "rainfed-crowded",
+        "policy": "adaptive",
+        "seed": "82deacfd"
+      },
+      "arm": "flower",
+      "trace_sha256": "2248e33b0dc8788b74f701be04cc68fb4ea1bd37bd331561b0133a78e92989ce",
+      "original_sha256": "f5c2f1d5963d1fb194a76d0feac8ebe0057bc0ee1a86cd827143954cf945fa18",
+      "worlds": 32769,
+      "bids": 19969,
+      "final_hash": "0e8fd294",
+      "created": 49,
+      "days_sha256": "0261ad344423afca7a44d8b24ae9a39328c9760c059f90c002a46f9af65c23d1"
+    }
+  ]
+}

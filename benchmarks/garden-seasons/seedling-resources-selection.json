@@ -1,0 +1,60 @@
+[
+  {
+    "role": "energy",
+    "case": "seasonal-rainfed-baseline-a9c30c1f",
+    "wide": {
+      "id": 35,
+      "parent": 30,
+      "species": "flower",
+      "family": 1,
+      "generation": 4,
+      "birth_tick": 434565,
+      "death_tick": 435420
+    },
+    "control": {
+      "id": 34,
+      "parent": 28,
+      "species": "flower",
+      "family": 1,
+      "generation": 4,
+      "birth_tick": 433260,
+      "death_tick": null
+    }
+  },
+  {
+    "role": "water",
+    "case": "seasonal-rainfed-crowded-baseline-ed52188d",
+    "wide": {
+      "id": 41,
+      "parent": 5,
+      "species": "flower",
+      "family": 5,
+      "generation": 1,
+      "birth_tick": 433305,
+      "death_tick": 434220
+    },
+    "control": null
+  },
+  {
+    "role": "survivor",
+    "case": "seasonal-rainfed-crowded-adaptive-4f0b9246",
+    "wide": {
+      "id": 39,
+      "parent": 32,
+      "species": "flower",
+      "family": 1,
+      "generation": 6,
+      "birth_tick": 468045,
+      "death_tick": null
+    },
+    "control": {
+      "id": 26,
+      "parent": 20,
+      "species": "flower",
+      "family": 5,
+      "generation": 4,
+      "birth_tick": 467760,
+      "death_tick": null
+    }
+  }
+]

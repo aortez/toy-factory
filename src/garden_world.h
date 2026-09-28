@@ -93,7 +93,13 @@
 #else
 #define PICOSYSTEM_GARDEN_MAX_NODES 256U
 #endif
-#if defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+#if defined(TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK)
+#if defined(__ZEPHYR__) || defined(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT) ||                      \
+	defined(TOY_FACTORY_GARDEN_WATER_HEADROOM) || defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+#error "Seasonal seed bank is an isolated host-only capacity experiment"
+#endif
+#define PICOSYSTEM_GARDEN_MAX_SEEDS 16U
+#elif defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
 #if defined(__ZEPHYR__) || !defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) ||                        \
 	!defined(TOY_FACTORY_GARDEN_LARGE_POOL) || defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
 #error "Large seed bank requires the undrained 512-node host maintenance experiment"
@@ -160,6 +166,15 @@ struct picosystem_garden_leaf_telemetry {
 #define PICOSYSTEM_GARDEN_DISPERSAL_MINIMUM 5
 #define PICOSYSTEM_GARDEN_DISPERSAL_CHOICES 3U
 #define PICOSYSTEM_GARDEN_DISPERSAL_NAME    "narrow-v1"
+#endif
+
+#if defined(TOY_FACTORY_GARDEN_FLOWER_DISPERSAL)
+#if defined(__ZEPHYR__) || defined(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT) ||                      \
+	defined(TOY_FACTORY_GARDEN_WATER_HEADROOM) ||                                              \
+	defined(TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK)
+#error "Flower dispersal is an isolated eight-seed host experiment"
+#endif
+#define PICOSYSTEM_GARDEN_SEED_ORIGIN_NAME "flower-v1"
 #endif
 
 #if defined(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT) &&                                             \
@@ -340,7 +355,10 @@ struct picosystem_garden_seed {
 
 /* Caller-owned read-only diagnostic; never retained in the authoritative world. */
 struct picosystem_garden_seed_sites {
-	/* All possible dispersal columns for each living parent, as a bit set. */
+	/* Possible columns for each living parent, as a bit set. The flower-origin
+	 * experiment uses the next mature, unspent flower (zero if absent), without
+	 * applying resource/cooldown gates. Ordinary builds use the parent's base.
+	 */
 	uint32_t dispersal_columns[PICOSYSTEM_GARDEN_MAX_PLANTS];
 	/* Site constraints for a hypothetical mature seed; excludes dormancy. */
 	uint8_t blockers[PICOSYSTEM_GARDEN_GRID_COLUMNS];

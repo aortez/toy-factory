@@ -550,6 +550,11 @@ JSON trace, a canonical CRC-protected binary model, and equivalent linkable C to
 `artifacts/`. The binary can seed another search or replace the neural reference
 in `make host-evaluate-garden`.
 
+Experimental landing-aware TGL2 models have separate
+[`host-landing-garden` and `host-evaluate-landing-garden` tools](docs/garden-landing-tools.md)
+for explicit import/inspection, deterministic replay, and matched outcome/PNG
+bundles. They do not change the existing trainer or device defaults.
+
 For interactive work on Linux, `make host-play` builds pinned SDL3 sources in a
 separate Docker image, then launches the resulting self-contained player on the
 host. Arrow keys act as the D-pad; A, B, X, and Y match the labeled face

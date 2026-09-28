@@ -18,6 +18,7 @@
 #include "garden_model_file.h"
 #include "garden_policy_probe.h"
 #include "garden_reserve_policy.h"
+#include "garden_seedling_reserve.h"
 #include "garden_root_bootstrap.h"
 #include "garden_focal_policy.h"
 #include "garden_topology.h"
@@ -27,6 +28,10 @@
 static const char *growth_policy_name;
 static uint32_t root_bootstrap_after;
 static uint32_t focal_founder;
+static uint32_t seedling_reserve_lineage;
+static bool seedling_reserve_all;
+static enum toy_factory_garden_seedling_component seedling_component;
+static struct toy_factory_garden_seedling_reserve_context seedling_reserve_context;
 static bool death_audit_enabled;
 #if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
 static bool seed_order_rotating;
@@ -202,6 +207,20 @@ static void print_plant(const struct picosystem_garden_world *world, uint8_t pla
 
 static void print_soil_totals(const struct picosystem_garden_world *world)
 {
+	if ((seedling_reserve_lineage != 0U) || seedling_reserve_all) {
+		printf("\"seedling_reserve\":{\"rule\":\"%s\"",
+		       TOY_FACTORY_GARDEN_SEEDLING_RESERVE_NAME);
+		if (seedling_reserve_all) {
+			printf(",\"scope\":\"offspring\"");
+		} else {
+			printf(",\"lineage\":%" PRIu32, seedling_reserve_lineage);
+		}
+		if (seedling_component != TOY_FACTORY_GARDEN_SEEDLING_BOTH) {
+			printf(",\"component\":\"%s\"",
+			       toy_factory_garden_seedling_component_name(seedling_component));
+		}
+		printf("},");
+	}
 #if defined(TOY_FACTORY_GARDEN_WET_GERMINATION)
 	if (world->wet_germination_enabled) {
 		printf("\"germination_rule\":\"%s\",", PICOSYSTEM_GARDEN_WET_GERMINATION_NAME);
@@ -222,8 +241,11 @@ static void print_soil_totals(const struct picosystem_garden_world *world)
 #if defined(TOY_FACTORY_GARDEN_SEED_RESERVE)
 	printf("\"seed_reserve_rule\":\"%s\",", PICOSYSTEM_GARDEN_SEED_RESERVE_NAME);
 #endif
-#if defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+#if defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK) || defined(TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK)
 	printf("\"seed_capacity\":%u,", PICOSYSTEM_GARDEN_MAX_SEEDS);
+#endif
+#if defined(TOY_FACTORY_GARDEN_FLOWER_DISPERSAL)
+	printf("\"seed_origin\":\"%s\",", PICOSYSTEM_GARDEN_SEED_ORIGIN_NAME);
 #endif
 	if (growth_policy_name != NULL) {
 		printf("\"growth_policy\":\"%s\",", growth_policy_name);
@@ -562,6 +584,26 @@ static int trace_decision(const struct picosystem_garden_agent_observation *obse
 	 * Keep the original output visible; these overrides are never model training.
 	 */
 	struct picosystem_garden_agent_decision unmodified = *decision;
+	const bool seedling_active =
+		toy_factory_garden_seedling_reserve_active(&seedling_reserve_context, observation);
+	struct toy_factory_garden_seedling_reserve_forecast seedling_forecast;
+	if (seedling_active) {
+		const int base_err = picosystem_garden_agent_decide(
+			seedling_reserve_context.base, observation, memory, &unmodified);
+		if (base_err != 0) {
+			return base_err;
+		}
+		const int forecast_err = toy_factory_garden_seedling_reserve_forecast(
+			observation, &unmodified.proposal, &seedling_forecast);
+		if (forecast_err != 0) {
+			return forecast_err;
+		}
+		if ((decision->proposal.priority != unmodified.proposal.priority) ||
+		    (memcmp(&decision->next_memory, &unmodified.next_memory,
+			    sizeof(decision->next_memory)) != 0)) {
+			return -EFAULT;
+		}
+	}
 	if (root_bootstrap_after != 0U) {
 		const int base_err = picosystem_garden_agent_decide(
 			root_bootstrap_context.base, observation, memory, &unmodified);
@@ -600,6 +642,48 @@ static int trace_decision(const struct picosystem_garden_agent_observation *obse
 		       candidate->light, candidate->flags);
 	}
 	printf("]");
+	if (seedling_active) {
+		const struct toy_factory_garden_seedling_reserve_forecast *const f =
+			&seedling_forecast;
+		printf(",\"seedling_reserve\":{\"age\":%u,\"nodes\":%u,\"roots\":%u,"
+		       "\"species\":%u,\"vigor\":%d,\"sun_phase\":%u,\"maintenance_phase\":%u,"
+		       "\"income\":%u,\"tip_moisture\":%u,\"energy_allowed\":%s,"
+		       "\"post_nodes\":%" PRIu32 ",\"growth_cost\":%" PRIu32
+		       ",\"maintenance_cost\":%" PRIu32 ",\"daylight_steps\":%" PRIu32
+		       ",\"daylight_credit\":%" PRIu32 ",\"daylight_upkeep\":%" PRIu32
+		       ",\"night_upkeep\":%" PRIu32 ",\"projected_sunset\":%" PRId32
+		       ",\"water_cost\":%" PRIu32 ",\"water_upkeep\":%" PRIu32
+		       ",\"water_reserve\":%" PRIu32 ",\"destination\":%u,\"wet_root\":%s,"
+		       "\"water_allowed\":%s,\"allowed\":%s,\"original_order\":[",
+		       observation->age_ecology_ticks, observation->plant_node_count,
+		       observation->root_node_count, observation->species_id, observation->vigor,
+		       observation->sun_phase, observation->maintenance_phase,
+		       observation->last_energy_income, observation->tip_moisture,
+		       f->energy.allowed ? "true" : "false", f->energy.post_nodes,
+		       f->energy.growth_cost, f->energy.maintenance_cost, f->energy.daylight_steps,
+		       f->energy.daylight_credit, f->energy.daylight_upkeep, f->energy.night_upkeep,
+		       f->energy.projected_sunset, f->water_cost, f->water_upkeep, f->water_reserve,
+		       f->destination, f->wet_root ? "true" : "false",
+		       f->water_allowed ? "true" : "false",
+		       toy_factory_garden_seedling_reserve_allows(f, seedling_component) ? "true"
+											 : "false");
+		for (uint8_t i = 0U; i < unmodified.proposal.candidate_count; ++i) {
+			printf("%s%u", i == 0U ? "" : ",", unmodified.proposal.candidate_order[i]);
+		}
+		printf("],\"order\":[");
+		for (uint8_t i = 0U; i < decision->proposal.candidate_count; ++i) {
+			printf("%s%u", i == 0U ? "" : ",", decision->proposal.candidate_order[i]);
+		}
+		printf("]");
+		if (seedling_reserve_all) {
+			printf(",\"scope\":\"offspring\"");
+		}
+		if (seedling_component != TOY_FACTORY_GARDEN_SEEDLING_BOTH) {
+			printf(",\"component\":\"%s\"",
+			       toy_factory_garden_seedling_component_name(seedling_component));
+		}
+		printf("}");
+	}
 	if (inspection->focal_context != NULL) {
 		const struct picosystem_garden_agent_policy *const selected =
 			toy_factory_garden_focal_policy_select(inspection->focal_context,
@@ -751,6 +835,13 @@ int main(int argc, char **argv)
 		fprintf(help ? stdout : stderr,
 			"neural-reserve-growth uses MODEL with energy-reserve-v1.\n");
 		fprintf(help ? stdout : stderr,
+			"--seedling-reserve ID: first-day host reserve diagnostic for one "
+			"offspring; "
+			"baseline/adaptive only, no other interventions.\n"
+			"--seedling-reserve all: same combined rule for every offspring.\n"
+			"--seedling-reserve-component both|energy|water: requires the focal ID; "
+			"default both.\n");
+		fprintf(help ? stdout : stderr,
 			"--focal-model MODEL --focal-founder ID: route only that reset founder; "
 			"requires neural-no-night-growth, no other overrides.\n");
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
@@ -801,6 +892,7 @@ int main(int argc, char **argv)
 	uint32_t tick_count = 0U;
 	enum picosystem_garden_climate_mode climate_mode = PICOSYSTEM_GARDEN_CLIMATE_STEADY;
 	bool climate_seen = false;
+	bool seedling_component_seen = false;
 	const char *focal_model_path = NULL;
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 	uint32_t gap_tick = 0U;
@@ -809,6 +901,29 @@ int main(int argc, char **argv)
 	uint32_t disturbance_seed = 0U;
 #endif
 	for (int index = 5; index < argc; ++index) {
+		if (strcmp(argv[index], "--seedling-reserve") == 0) {
+			if ((seedling_reserve_lineage != 0U) || seedling_reserve_all ||
+			    (++index >= argc)) {
+				return 2;
+			}
+			if (strcmp(argv[index], "all") == 0) {
+				seedling_reserve_all = true;
+			} else if (parse_positive_u32(argv[index], &seedling_reserve_lineage) !=
+				   0) {
+				return 2;
+			}
+			inspection.every_ecology = true;
+			continue;
+		}
+		if (strcmp(argv[index], "--seedling-reserve-component") == 0) {
+			if (seedling_component_seen || (++index >= argc) ||
+			    (toy_factory_garden_seedling_component_parse(
+				     argv[index], &seedling_component) != 0)) {
+				return 2;
+			}
+			seedling_component_seen = true;
+			continue;
+		}
 		if (strcmp(argv[index], "--climate") == 0) {
 			if (climate_seen || (++index >= argc) ||
 			    (toy_factory_garden_climate_parse(argv[index], &climate_mode) != 0)) {
@@ -997,8 +1112,24 @@ int main(int argc, char **argv)
 			inspection.every_ecology = true;
 		}
 	}
-	if (tick_count > INSPECTION_MAX_TICKS) {
+	if ((tick_count > INSPECTION_MAX_TICKS) ||
+	    (seedling_component_seen && (seedling_reserve_lineage == 0U) &&
+	     !seedling_reserve_all) ||
+	    (seedling_reserve_all && (seedling_component != TOY_FACTORY_GARDEN_SEEDLING_BOTH))) {
 		return 2;
+	}
+	if ((seedling_reserve_lineage != 0U) || seedling_reserve_all) {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		return 2;
+#endif
+		if ((strcmp(argv[1], "-") != 0) ||
+		    ((strcmp(argv[3], "baseline") != 0) && (strcmp(argv[3], "adaptive") != 0)) ||
+		    (inspection.root_first_lineage != 0U) ||
+		    (inspection.night_wait_lineage != 0U) || (root_bootstrap_after != 0U) ||
+		    (focal_founder != 0U) || (focal_model_path != NULL) || inspection.seed_sites ||
+		    inspection.population_census || (inspection.topology_count != 0U)) {
+			return 2;
+		}
 	}
 	if (death_audit_enabled && (inspection.seed_sites || inspection.population_census ||
 				    (inspection.topology_count != 0U))) {
@@ -1187,6 +1318,7 @@ int main(int argc, char **argv)
 	}
 	struct picosystem_garden_world world;
 	struct picosystem_garden_agent_policy root_policy;
+	struct picosystem_garden_agent_policy seedling_policy;
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 	struct picosystem_garden_agent_policy maintained_policy = {0};
 	if (err == 0) {
@@ -1199,6 +1331,16 @@ int main(int argc, char **argv)
 		err = toy_factory_garden_root_bootstrap_init(policy, &world, root_bootstrap_after,
 							     &root_bootstrap_context, &root_policy);
 		policy = &root_policy;
+	}
+	if ((err == 0) && seedling_reserve_all) {
+		err = toy_factory_garden_seedling_reserve_offspring_init(
+			policy, &world, &seedling_reserve_context, &seedling_policy);
+		policy = &seedling_policy;
+	} else if ((err == 0) && (seedling_reserve_lineage != 0U)) {
+		err = toy_factory_garden_seedling_reserve_init(
+			policy, &world, seedling_reserve_lineage, seedling_component,
+			&seedling_reserve_context, &seedling_policy);
+		policy = &seedling_policy;
 	}
 	inspection.world = &world;
 	inspection.policy = policy;

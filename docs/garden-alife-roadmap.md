@@ -25,6 +25,194 @@ real descendant reproduction, but diversity and spatial recruitment remain
 limitations. This bounded implementation/evidence pass does not close the broader
 qualification gates below; no new fitness or model is adopted.
 
+The [seasonal recruitment follow-up](../benchmarks/garden-seasons/recruitment.md)
+now observes exact germination checks in 32 matched normal-ecology worlds.
+All 16 late seasonal worlds have usable space, but 5,014 of 5,038 open steps
+have mature seeds without a successful landing. One isolated wider-scattering
+screen improves late-birth worlds 8/16 → 10/16, day survivors 30 → 36 and durable
+descendant parents 6 → 8. It passes the predeclared exploratory gates, but crowded
+layouts regress and diversity remains 1/16 multi-species endpoints.
+The [fresh eight-seed confirmation](../benchmarks/garden-seasons/dispersal-confirmation.md)
+now passes the same aggregate gates: late-birth worlds 17/32 → 21/32, full-day
+survivors 14 → 20, late durable parents 0 → 1 and historical parents 163 → 211.
+However, four weather seeds lose late survivors, adaptive loses one, survival
+fractions fall and all 32 seasonal endpoints retain just one viable species.
+Keep narrow scattering on device. The
+[saved-history offspring audit](../benchmarks/garden-seasons/offspring-outcomes.md)
+now reconciles all 128 trajectories: 17/37 eligible wide late seedlings die
+within a day (15 outside active drought/dim light), while 18/20 day survivors
+have no germinated child recorded yet. Most non-durable late survivors remain
+alive, and not every adverse seed block loses survivors through extra mortality.
+The [fixed seedling-resource replay](../benchmarks/garden-seasons/seedling-resources.md)
+now reconciles five selected plants across six matched worlds. The energy failure
+spends 63 of its 74 available energy on growth before sunset; the water failure
+spends 65 of its 76 water on growth despite abundant energy. Surviving examples
+fund much more growth from income. All historical states, repeated traces and
+resource budgets match; twelve rendered checkpoints are retained. The subsequent
+[first-day reserve counterfactual](../benchmarks/garden-seasons/seedling-reserve.md)
+rescues both failures through day 128 and retains the existing survivor. One
+pre-existing parent dies later in the water treatment, with unchanged final
+population counts and single-species endpoints. The water rescue also starts
+with an energy veto, and the wet-root exception admits no otherwise-blocked bid.
+The [fixed component comparison](../benchmarks/garden-seasons/seedling-components.md)
+now separates the rescues: energy-only rescues #35; water-only rescues #41.
+Neither alone rescues both, while #39 survives every arm. Energy-only merely
+delays #41's water death; water-only has the same later founder #5 death as
+combined. One wetter-root exception is exercised, without evidence that it is
+necessary. All twelve runs repeat, legacy controls match byte-for-byte, and
+no focal has a germinated child by day 128. The subsequent
+[all-offspring screen](../benchmarks/garden-seasons/seedling-population.md) applies
+the same combined rule to every new offspring in all 32 known-seed seasonal
+worlds. It passes all nine aggregate gates: late day survivors 20/37 → 33/44,
+late durable parents 1 → 2, historical durable parents 211 → 271. All 64 runs
+repeat and saved controls match. But five worlds lose late survivors, two weather
+blocks regress, and 31/33 late survivors have no child. Viable multi-species
+endpoints rise 0 → 2 solely through banked shrub seeds; every endpoint remains
+single-living-species, with no living shrub endpoint under treatment. The
+[fresh reserve confirmation](../benchmarks/garden-seasons/seedling-confirmation.md)
+now passes the same nine gates on eight new weather seeds: late full-day survival
+38/71 → 55/62, late durable parents 5 → 6 and historical durable parents 276 → 285.
+All 64 fresh runs repeat with unchanged native binaries/rules. Reproduction
+remains uneven: ten worlds and three weather blocks lose historical parents,
+ground-cover parents fall 112 → 100, and 48/55 late survivors have no child.
+All fresh endpoints retain only one viable species, including the seed bank.
+Next discuss a read-only saved-trace audit separating seed production,
+germination and child survival before further tuning. No ecology, default, model
+or qualification milestone is promoted; the adapter remains explicit and host-only.
+The [read-only reproductive funnel](../benchmarks/garden-seasons/reproduction-funnel.md)
+now follows all 3,892 seeds in the 64 fresh traces, including posthumous births,
+and reconciles every established-parent cohort. Of 55 guarded late survivors,
+35 never produced a seed, thirteen have pending seeds only, six have a
+day-surviving child and one has a living youngster. Thirty-three of the 35
+nonproducers had flower tissue; exact maturity/resources/bank eligibility is
+not logged at the production decision. Equal-age views retain this production
+gap without dropping parents that died. Next discuss a bounded host-only
+production-gate observer with unchanged replay hashes, not another policy tweak.
+The [exact production-gate audit](../benchmarks/garden-seasons/production-gates.md)
+now replays the same 64 trajectories twice, matching every saved ecology state
+and all 3,892 seed productions. The eight-slot bank is full in 5,947/5,999
+ready-flower daylight/cooldown-clear visits for guarded late nonproducers.
+Thirty-one of those 35 parents have a bank-only failed opportunity; two also
+always lack energy during their windows, and two have no ready flower. The
+observer is host-only and defaults remain unchanged. Next discuss a bounded
+eight-versus-sixteen bank experiment with the same lifespan and resource rules,
+measuring establishment, durable renewal, diversity and costs. No capacity
+intervention or ecology qualification is claimed by this diagnostic.
+The [isolated sixteen-slot screen](../benchmarks/garden-seasons/seed-bank-capacity.md)
+now changes only bank capacity in the same 32 guarded seasonal worlds. Historical
+durable parents rise 285 → 401 and late survivors 55 → 63, but late durable
+parents fall 6 → 4 and the late survival fraction drops 55/62 → 63/73. It fails
+two predeclared gates and remains an explicit host-only option. The larger bank
+is full in 97.90% of closing post-step samples. Fifty-seven of 132 shared
+incumbents die earlier, and shrubs have no viable endpoint; one flower/ground-
+cover mixed endpoint appears. All 64 trajectories repeat, eight-slot controls
+match the earlier confirmation byte-for-byte, and independent raw reanalysis
+agrees. Measured native storage rises 160 bytes/world and 16 bytes/snapshot;
+all 115 default and 117 older-research CTests pass, with unchanged firmware and
+no flash. Next discuss saved-history bank ownership/residence, seed outcomes and
+incumbent resource costs, not a larger capacity or promotion. Environmental
+qualification and durable diversity remain open.
+The [saved-trace bank diagnosis](../benchmarks/garden-seasons/seed-bank-diagnosis.md)
+now follows all 4,966 seeds and matched resource windows for all 132 shared
+incumbents, with zero new experimental trajectories. In the sixteen-slot arm, eventual
+expiry consumes 60.69% of occupied slot-time; dry/spacing/light constraints dominate
+retained mature seed samples. However, 805/1,368 births are posthumous and 472
+germinations wait at least sixteen days. Family concentration improves somewhat,
+while shrubs remain absent from the closing bank. Seven of 57 earlier-death
+incumbents spend no more on seeds; all 21 later-lived incumbents spend more, so
+extra reproductive spending is not an isolated causal explanation. Every budget
+and seed interval reconciles, offline reanalysis repeats, and 116 default / 118
+older-research CTests pass. The proposed drift follow-up was superseded by the
+discussion of placement as an agent behavior: first connect branch geometry to
+where its seeds land, without moving seeds after they land.
+The [producing-flower origin screen](../benchmarks/garden-seasons/flower-origin.md)
+now implements that mechanic as an isolated host option with no extra RAM. In the
+same 32 guarded eight-slot worlds, births fall 1,009 → 839, historical durable
+parents 285 → 265, closing durable parents 6 → 2, and closing survival 55/62 →
+30/34. Four gates fail. Ground cover gains historical durable parents, while
+flowers/shrubs lose them; no living coexistence is established. All 64 trajectories
+repeat, base controls match prior evidence, raw reanalysis agrees, and 118 default
+/ 119 older-research CTests pass. No default promotion, training or device flash.
+This establishes a growth-to-placement consequence, not learned placement.
+The [exact flower-site audit](../benchmarks/garden-seasons/flower-sites.md) now
+observes all 3,576 saved purchases without changing a trajectory. In flower-origin
+worlds, 1,310/1,710 purchases have only one eligible flower, including every flower-
+species purchase. Another flower opens otherwise closed reach at 39 purchases;
+373 have open soil outside every eligible flower's reach, and 967 have none open
+anywhere at production. Cold/capacity exclusions barely change those classes.
+However, 465 seeds in the globally blocked group later germinate and 145 offspring
+become durable parents. Current-site blockage is not a safe release veto. All
+observed traces repeat, every saved state matches, raw reanalysis agrees, and 120
+default / 120 older-research CTests pass; the bounded host observer adds no world
+or firmware RAM. No rule change, training, promotion or flash. Current purchase
+snapshots do not establish a bound on learned growth, timing or lifetime fitness.
+The [exact seed-wait audit](../benchmarks/garden-seasons/seed-waits.md) now follows
+16,553,918 germination checks on all 64 unchanged trajectories. Of the 465
+initially world-closed seeds that germinate, 345 need a spacing release through
+verified dead-neighbor reclamation, but only seven germinate immediately at
+that release. Water/light are the final blockers for 456; cold affects 215
+earlier but never clears last. Median waiting time is 7.875 Garden days. Of the
+342 expired seeds in that cohort, 244 never see spacing open after dormancy;
+pending seeds remain censored. Moisture recovery coincides with rain in 178/179
+final water crossings, without attributing exact cell-level water causality.
+Solar movement and canopy changes remain confounded in shaded-light recovery.
+All captures repeat, every original ecology hash matches, raw reanalysis agrees,
+and 121 default / 121 older-research CTests pass. No core change or device flash.
+Next discuss a compact landing-neighborhood observation contract: distinguish
+slow establishment-space occupancy from fast water/light windows, reuse current
+tip-local signals/solar context/memory, and define sensing/storage costs before
+adding neural inputs or reproductive actions. No present-site veto, drift,
+future-outcome observations or automatic promotion.
+The [landing-neighborhood contract](garden-landing-observation.md) now specifies
+eight signals for a stem tip and each growth endpoint: current spacing/dead-only
+occupancy, water/light and four causal resource/opportunity traces. History is
+anchored to soil columns and sampled once pre-growth, not once per tip query.
+The proposed virtual sensor deliberately shares recent terrain history, separate
+from the existing eight-byte private plant memory. Host and Cortex-M0+ layout
+checks give 316 bytes per-world cache, a 52-byte packet and a weights-only NN
+extension budget of 208 bytes. Thirteen design-reference tests exercise geometry,
+joint history, query-order independence, reset and layout; all 122 default and
+122 older-research CTests passed at that design-only checkpoint.
+The subsequent [host-only shadow observer](../benchmarks/garden-seasons/landing-shadow.md)
+now implements the cache/projector without changing policies or neural inputs.
+Sixteen fixed 128-day worlds repeat exactly; all 524,304 saved world hashes and
+160,477 bids match, and Python independently reproduces every trace update and
+packet. Available candidate signals differ in 29,513 / 39,049 flower-origin
+queries (75.6%), versus zero under base-origin; dead-only readings are rare and
+absent in the closing window. World/snapshot storage stays unchanged; the
+316-byte cache/52-byte packet layouts hold on ARM. Full host diagnostic timing
+is 319.3 versus 233.8 ms for the declared 128-day case, including defensive
+validation—not target timing or worst-case active-bid cost. Raw reanalysis,
+124 default / 123 older-research CTests and the firmware build pass; no flash.
+The [host-only versioned encoding](garden-landing-encoding.md) is now implemented;
+[replay results](../benchmarks/garden-seasons/landing-encoding.md) retain all
+802,385 encodings from the same 16 worlds. The legacy 77 bytes remain unchanged,
+with a 49-byte extension supporting off/current/history and dead-only ablation.
+Current-only distinguishes 22,626 / 39,049 flower-origin choices (57.9%), history
+29,513 (75.6%); most added distinctions are small, with only fourteen extra
+queries crossing a sixteen-count separation threshold. This is extension-only
+variation, not information independent of the legacy inputs or useful fitness.
+Native/reference repeatability, three unchanged 32-day legacy-controller worlds,
+unchanged v1 model files, host/ARM layout and 126 default / 124 older-research
+tests pass. The subsequent [host-only inference checkpoint](garden-landing-inference.md)
+now implements the 1,416-byte extended model, explicit v1 import, separate
+CRC-protected 1,448-byte file, bounded accumulators and complete cache-aware
+run checkpoints. All 3,072 zero-extra decision comparisons and three 32-day
+worlds match v1; 512 extended decisions agree with independent Python arithmetic.
+Nonzero inputs demonstrably alter choices/memory, and six checkpoint continuations
+repeat with world/cache rollback on errors. All 128 default / 124 older-research
+CTests and focused wide/flower tests pass at that checkpoint.
+The [subsequent replay/evaluation tools](garden-landing-tools.md) add explicit
+TGL2 reference/import/inspect/replay commands, exact retained lifetime accounting,
+and matched fixed-checkpoint screenshot bundles with independent repeats and
+frozen-binary verification. Models fix their masks; loading never overrides
+them. No new fitness score is introduced. Next specify a bounded equal-budget
+training/input-ablation comparison under identical mechanics, then integrate
+extended-model mutation/training. The player, existing trainer, firmware and
+ecology defaults still use the unchanged paths. No training, promotion or claimed
+survival gain from the tooling.
+Environmental qualification and durable diversity remain open.
+
 Research checkpoint: the [read-only topology census](../benchmarks/garden-longevity/renewal-topology.md)
 finds only zero or one conservative terminal-shedding candidate at each of eight
 fixed snapshots. At the full endpoint, 136 of 146 exhausted leaf nodes support

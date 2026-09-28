@@ -18,12 +18,15 @@
 #include "garden_model_file.h"
 #include "garden_policy_probe.h"
 #include "garden_reserve_policy.h"
+#include "garden_seedling_reserve.h"
 #include "garden_root_bootstrap.h"
 #include "garden_focal_policy.h"
-#include "game_snapshot.h"
-#include "graphics_raster.h"
+#include "garden_capture.h"
 static uint32_t root_bootstrap_after;
 static uint32_t focal_founder;
+static uint32_t seedling_reserve_lineage;
+static bool seedling_reserve_all;
+static enum toy_factory_garden_seedling_component seedling_component;
 #if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
 static bool seed_order_rotating;
 #endif
@@ -81,41 +84,6 @@ static int parse_u32(const char *text, uint32_t maximum, uint32_t *value)
 	}
 	*value = (uint32_t)parsed;
 	return 0;
-}
-
-static int capture(const struct picosystem_garden_world *world, const char *path,
-		   uint32_t *framebuffer_crc)
-{
-	/* Host-only adapter: never reset via a playable scene or advance its default policy.
-	 * The shared raster is process-global, so this executable has one renderer owner.
-	 */
-	const struct picosystem_game_world render_world = {
-		.garden = *world,
-		.logic_tick_count = world->logic_tick_count,
-		.scene_id = PICOSYSTEM_GAME_SCENE_GARDEN,
-	};
-	struct picosystem_scene_snapshot snapshot;
-	int err = picosystem_game_snapshot_build(&render_world, 1U, 0U,
-						 (int64_t)world->logic_tick_count, &snapshot);
-	if (err == 0) {
-		err = picosystem_scene_render_full(&snapshot);
-	}
-	if (err != 0) {
-		return err;
-	}
-	if (picosystem_garden_world_hash(&render_world.garden) !=
-	    picosystem_garden_world_hash(world)) {
-		return -EFAULT;
-	}
-	*framebuffer_crc = picosystem_graphics_raster_crc32();
-	FILE *const stream = fopen(path, "wbx");
-	if (stream == NULL) {
-		return errno != 0 ? -errno : -EIO;
-	}
-	const size_t length = picosystem_graphics_raster_byte_count();
-	const size_t written = fwrite(picosystem_graphics_raster_bytes(), 1U, length, stream);
-	const int closed = fclose(stream);
-	return ((written == length) && (closed == 0)) ? 0 : -EIO;
 }
 
 static int print_result(const struct picosystem_garden_world *world, const char *scenario,
@@ -216,6 +184,20 @@ static int print_result(const struct picosystem_garden_world *world, const char 
 	} else {
 		printf("null");
 	}
+	if ((seedling_reserve_lineage != 0U) || seedling_reserve_all) {
+		printf(",\"seedling_reserve\":{\"rule\":\"%s\"",
+		       TOY_FACTORY_GARDEN_SEEDLING_RESERVE_NAME);
+		if (seedling_reserve_all) {
+			printf(",\"scope\":\"offspring\"");
+		} else {
+			printf(",\"lineage\":%" PRIu32, seedling_reserve_lineage);
+		}
+		if (seedling_component != TOY_FACTORY_GARDEN_SEEDLING_BOTH) {
+			printf(",\"component\":\"%s\"",
+			       toy_factory_garden_seedling_component_name(seedling_component));
+		}
+		printf("}");
+	}
 	if (focal_founder != 0U) {
 		printf(",\"focal_policy\":{\"rule\":\"%s\",\"founder\":%" PRIu32
 		       ",\"model_crc32\":\"%08" PRIx32 "\"}",
@@ -230,6 +212,9 @@ static int print_result(const struct picosystem_garden_world *world, const char 
 #if defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
 	printf(",\"seed_dispersal\":\"%s\"", PICOSYSTEM_GARDEN_DISPERSAL_NAME);
 #endif
+#if defined(TOY_FACTORY_GARDEN_FLOWER_DISPERSAL)
+	printf(",\"seed_origin\":\"%s\"", PICOSYSTEM_GARDEN_SEED_ORIGIN_NAME);
+#endif
 #if defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
 	printf(",\"drainage_rule\":\"%s\"", PICOSYSTEM_GARDEN_DRAINAGE_NAME);
 #endif
@@ -239,7 +224,7 @@ static int print_result(const struct picosystem_garden_world *world, const char 
 #if defined(TOY_FACTORY_GARDEN_LARGE_POOL)
 	printf(",\"node_capacity\":%u", PICOSYSTEM_GARDEN_MAX_NODES);
 #endif
-#if defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+#if defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK) || defined(TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK)
 	printf(",\"seed_capacity\":%u", PICOSYSTEM_GARDEN_MAX_SEEDS);
 #endif
 #if defined(TOY_FACTORY_GARDEN_SEED_RESERVE)
@@ -293,6 +278,13 @@ int main(int argc, char **argv)
 		fprintf(help ? stdout : stderr,
 			"neural-reserve-growth uses MODEL with energy-reserve-v1.\n");
 		fprintf(help ? stdout : stderr,
+			"--seedling-reserve ID: first-day host reserve diagnostic for one "
+			"offspring; "
+			"baseline/adaptive only, no other interventions.\n"
+			"--seedling-reserve all: same combined rule for every offspring.\n"
+			"--seedling-reserve-component both|energy|water: requires the focal ID; "
+			"default both.\n");
+		fprintf(help ? stdout : stderr,
 			"--focal-model MODEL --focal-founder ID: route only that reset founder; "
 			"requires neural-no-night-growth, no other overrides.\n");
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
@@ -342,6 +334,7 @@ int main(int argc, char **argv)
 	uint32_t ticks = 0U;
 	enum picosystem_garden_climate_mode climate_mode = PICOSYSTEM_GARDEN_CLIMATE_STEADY;
 	bool climate_seen = false;
+	bool seedling_component_seen = false;
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 	uint32_t wet_tick = 0U;
 #endif
@@ -352,6 +345,28 @@ int main(int argc, char **argv)
 	for (int index = 5; index < argc; index += 2) {
 		if ((index + 1) >= argc) {
 			return 2;
+		}
+		if (strcmp(argv[index], "--seedling-reserve-component") == 0) {
+			if (seedling_component_seen ||
+			    (toy_factory_garden_seedling_component_parse(
+				     argv[index + 1], &seedling_component) != 0)) {
+				return 2;
+			}
+			seedling_component_seen = true;
+			continue;
+		}
+		if (strcmp(argv[index], "--seedling-reserve") == 0) {
+			if ((seedling_reserve_lineage != 0U) || seedling_reserve_all) {
+				return 2;
+			}
+			if (strcmp(argv[index + 1], "all") == 0) {
+				seedling_reserve_all = true;
+			} else if ((parse_u32(argv[index + 1], UINT32_MAX,
+					      &seedling_reserve_lineage) != 0) ||
+				   (seedling_reserve_lineage == 0U)) {
+				return 2;
+			}
+			continue;
 		}
 		if (strcmp(argv[index], "--climate") == 0) {
 			if (climate_seen || (toy_factory_garden_climate_parse(
@@ -512,8 +527,22 @@ int main(int argc, char **argv)
 			return 2;
 		}
 	}
-	if (!ticks_seen || (parse_u32(argv[4], UINT32_MAX, &seed) != 0) || (seed == 0U)) {
+	if (!ticks_seen || (parse_u32(argv[4], UINT32_MAX, &seed) != 0) || (seed == 0U) ||
+	    (seedling_component_seen && (seedling_reserve_lineage == 0U) &&
+	     !seedling_reserve_all) ||
+	    (seedling_reserve_all && (seedling_component != TOY_FACTORY_GARDEN_SEEDLING_BOTH))) {
 		return 2;
+	}
+	if ((seedling_reserve_lineage != 0U) || seedling_reserve_all) {
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+		return 2;
+#endif
+		if ((strcmp(argv[1], "-") != 0) ||
+		    ((strcmp(argv[3], "baseline") != 0) && (strcmp(argv[3], "adaptive") != 0)) ||
+		    (root_bootstrap_after != 0U) || (focal_founder != 0U) ||
+		    (focal_model_path != NULL)) {
+			return 2;
+		}
 	}
 	if (((focal_model_path != NULL) != (focal_founder != 0U)) ||
 	    ((focal_founder != 0U) &&
@@ -645,6 +674,8 @@ int main(int argc, char **argv)
 	struct picosystem_garden_world world;
 	struct picosystem_garden_agent_policy root_policy;
 	struct toy_factory_garden_root_bootstrap_context root_context;
+	struct picosystem_garden_agent_policy seedling_policy;
+	struct toy_factory_garden_seedling_reserve_context seedling_context;
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 	struct picosystem_garden_agent_policy maintained_policy = {0};
 	if (err == 0) {
@@ -657,6 +688,16 @@ int main(int argc, char **argv)
 		err = toy_factory_garden_root_bootstrap_init(policy, &world, root_bootstrap_after,
 							     &root_context, &root_policy);
 		policy = &root_policy;
+	}
+	if ((err == 0) && seedling_reserve_all) {
+		err = toy_factory_garden_seedling_reserve_offspring_init(
+			policy, &world, &seedling_context, &seedling_policy);
+		policy = &seedling_policy;
+	} else if ((err == 0) && (seedling_reserve_lineage != 0U)) {
+		err = toy_factory_garden_seedling_reserve_init(
+			policy, &world, seedling_reserve_lineage, seedling_component,
+			&seedling_context, &seedling_policy);
+		policy = &seedling_policy;
 	}
 	if (err == 0) {
 		err = toy_factory_garden_evaluation_reset(&world, scenario, seed);
@@ -760,7 +801,7 @@ int main(int argc, char **argv)
 	uint32_t framebuffer_crc = 0U;
 	if ((err == 0) && (framebuffer != NULL)) {
 		const uint32_t before = picosystem_garden_world_hash(&world);
-		err = capture(&world, framebuffer, &framebuffer_crc);
+		err = toy_factory_garden_capture(&world, framebuffer, &framebuffer_crc);
 		if ((err == 0) && (picosystem_garden_world_hash(&world) != before)) {
 			err = -EFAULT;
 		}

@@ -1318,8 +1318,11 @@ static void print_report(uint32_t trial_count, uint32_t tick_count, uint32_t bas
 	printf("\"leaf_environment\":\"%s\",\"leaf_policy\":\"%s\",\"node_capacity\":%u,\n",
 	       PICOSYSTEM_GARDEN_LEAF_ENVIRONMENT, leaf_policy_name, PICOSYSTEM_GARDEN_MAX_NODES);
 #endif
-#if defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK)
+#if defined(TOY_FACTORY_GARDEN_LARGE_SEED_BANK) || defined(TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK)
 	printf("\"seed_capacity\":%u,\n", PICOSYSTEM_GARDEN_MAX_SEEDS);
+#endif
+#if defined(TOY_FACTORY_GARDEN_FLOWER_DISPERSAL)
+	printf("\"seed_origin\":\"%s\",\n", PICOSYSTEM_GARDEN_SEED_ORIGIN_NAME);
 #endif
 	printf("  \"trial_count\": %" PRIu32 ",\n", trial_count);
 	printf("  \"tick_count\": %" PRIu32 ",\n", tick_count);

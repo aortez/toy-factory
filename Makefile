@@ -44,11 +44,16 @@ GARDEN_EXPERIMENT_ARGS ?=
 GARDEN_GALLERY_BUNDLE ?= artifacts/garden-experiment
 GARDEN_GALLERY_OUT ?= artifacts/garden-gallery
 GARDEN_GALLERY_ARGS ?=
+GARDEN_LANDING_OUT ?= artifacts/garden-landing-evaluation
+GARDEN_LANDING_ARGS ?=
 GARDEN_AUDIT_BUNDLE ?= artifacts/garden-experiment
 GARDEN_AUDIT_OUT ?= artifacts/garden-establishment
 GARDEN_AUDIT_ARGS ?=
 GARDEN_SEASONS_OUT ?= artifacts/garden-seasons
 GARDEN_SEASONS_ARGS ?= --days 64 --trials 2 --jobs 2
+GARDEN_RECRUITMENT_PANEL ?= artifacts/garden-seasons-fresh-128/results.json
+GARDEN_RECRUITMENT_OUT ?= artifacts/garden-season-recruitment
+GARDEN_RECRUITMENT_JOBS ?= 4
 GARDEN_TRAIN_GENERATIONS ?= 8
 GARDEN_TRAIN_POPULATION ?= 16
 GARDEN_TRAIN_TRIALS ?= 2
@@ -70,7 +75,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
 	host-build host-check host-research-check host-run host-cli host-profile-build host-profile-garden \
 	host-evaluate-garden host-train-garden host-experiment-garden host-gallery-garden host-audit-garden \
-	host-seasons-garden \
+	host-seasons-garden host-recruitment-garden host-landing-garden host-evaluate-landing-garden \
 	host-image host-player-build host-player-check host-play \
 	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
 	bootloader console status game-stats \
@@ -202,6 +207,11 @@ host-seasons-garden: host-build ## Compare steady, winter, drought, and combined
 	$(COMPOSE) run --rm -T firmware python3 sim/garden_seasons.py \
 		--out "$(GARDEN_SEASONS_OUT)" $(GARDEN_SEASONS_ARGS)
 
+host-recruitment-garden: host-build ## Audit exact seed checks against the retained fresh-128 seasonal panel
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_season_recruitment.py \
+		--panel "$(GARDEN_RECRUITMENT_PANEL)" --out "$(GARDEN_RECRUITMENT_OUT)" \
+		--jobs "$(GARDEN_RECRUITMENT_JOBS)"
+
 host-experiment-garden: host-build ## Collect matched rain-fed trials, report, and verified diagnostic replays
 	$(COMPOSE) run --rm firmware python3 sim/garden_experiments.py \
 		--output "$(GARDEN_EXPERIMENT_OUT)" $(GARDEN_EXPERIMENT_ARGS)
@@ -209,6 +219,13 @@ host-experiment-garden: host-build ## Collect matched rain-fed trials, report, a
 host-gallery-garden: host-build ## Capture a fixed visual-review panel from a completed experiment bundle
 	$(COMPOSE) run --rm firmware python3 sim/garden_gallery.py \
 		--bundle "$(GARDEN_GALLERY_BUNDLE)" --output "$(GARDEN_GALLERY_OUT)" $(GARDEN_GALLERY_ARGS)
+
+host-landing-garden: host-build ## Inspect/import/replay experimental landing models (ARGS="--help")
+	$(COMPOSE) run --rm -T firmware build-host/toy-factory-garden-landing $(if $(strip $(ARGS)),$(ARGS),--help)
+
+host-evaluate-landing-garden: host-build ## Save matched TGL2 outcomes/screenshots (GARDEN_LANDING_ARGS="--model label=path.tgl")
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_evaluate.py \
+		--out "$(GARDEN_LANDING_OUT)" $(GARDEN_LANDING_ARGS)
 
 host-audit-garden: host-build ## Audit seed lifetimes and planting sites against a completed experiment
 	$(COMPOSE) run --rm firmware python3 sim/garden_establishment.py \
