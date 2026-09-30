@@ -90,7 +90,7 @@ benchmark variants; the default uses polling SPI0/PL022.
 ## Build
 
 For the current Garden work, start with the
-[A-life checkpoint review guide](docs/garden-merge-checkpoint.md). It separates
+[recruitment checkpoint review guide](docs/garden-recruitment-checkpoint.md). It separates
 normal host/device behavior from opt-in research and summarizes the remaining
 ecology and training work.
 
@@ -554,6 +554,47 @@ Experimental landing-aware TGL2 models have separate
 [`host-landing-garden` and `host-evaluate-landing-garden` tools](docs/garden-landing-tools.md)
 for explicit import/inspection, deterministic replay, and matched outcome/PNG
 bundles. They do not change the existing trainer or device defaults.
+[`host-train-landing-garden`](docs/garden-landing-training.md) runs the separate,
+fixed-budget renewal pilot with per-generation review images and a capture-free
+repeat. It requires the explicitly identified starting controller; it does not
+silently substitute the built-in reference.
+[`host-validate-landing-garden`](docs/garden-landing-validation.md) tests the
+frozen finalists across additional seeds and explicit same-weight input
+ablations, with complete histories, fixed screenshots and exact repetition.
+[`host-probe-landing-garden`](docs/garden-landing-signals.md) separately tests
+live versus fixed occupancy and resource readings without changing model bytes.
+[`host-trace-landing-garden`](docs/garden-landing-decisions.md) records bounded
+same-state decision comparisons, with separate water/light probes and independent
+integer verification; only the live controller advances the world.
+[`host-train-landing-controls`](docs/garden-landing-controls.md) compares matched
+live versus fixed-input training, with fixed evaluation seeds and per-generation
+screenshots; it does not promote a controller or alter firmware defaults.
+[`host-train-landing-multiseed`](docs/garden-landing-multiseed.md) tests broader
+training experience against those frozen finalists on a shared fresh panel,
+keeping the candidate budget and network unchanged.
+[`host-audit-landing-renewal`](docs/garden-landing-renewal-audit.md) explains the
+saved seed/lineage outcomes and renewal-credit gaps without running new worlds.
+[`host-trace-landing-recruitment`](docs/garden-landing-recruitment.md) then
+replays a fixed matched subset with exact seed blockers and first-day resource
+accounting, checking that diagnostics do not change the biological trajectory.
+[`host-trace-landing-reach`](docs/garden-landing-reach.md) distinguishes open
+sites elsewhere from sites within each seed's producing parent's actual reach.
+[`host-screen-landing-range`](docs/garden-landing-range.md) runs a paired,
+host-only narrow/wide scattering screen with frozen models and unchanged scoring.
+[`host-audit-landing-establishment`](benchmarks/garden-seasons/landing-establishment.md)
+recomputes first-day allocation, root expansion and shortage timing from saved
+ordinary traces without running new simulations.
+[`host-screen-landing-water`](docs/garden-landing-water.md) compares the existing
+first-day water reserve on those frozen models, preserving ordinary ecology
+and scoring and tracing vetoes, resource spending and losing root opportunities.
+[`host-audit-landing-stalls`](benchmarks/garden-seasons/landing-stalls.md) inspects
+the saved refusal streaks and observed continuations without running new worlds.
+[`host-screen-landing-arbitration`](docs/garden-landing-arbitration.md) compares
+the current water veto with selection among water-eligible proposals, retaining
+the frozen models and both guarded and ordinary comparison baselines.
+[`host-audit-landing-turnover`](benchmarks/garden-seasons/landing-turnover.md)
+separates seed supply, first-day failures and gaps between established generations
+from the saved histories, without new simulation runs.
 
 For interactive work on Linux, `make host-play` builds pinned SDL3 sources in a
 separate Docker image, then launches the resulting self-contained player on the

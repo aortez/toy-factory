@@ -5,9 +5,11 @@ status and experiment notes. This document records the agreed direction,
 acceptance gates, and design constraints. Update the issue with evidence as
 work lands; it is the authoritative completion checklist.
 
-The [merge checkpoint guide](garden-merge-checkpoint.md) defines the bounded
-review scope, production/research boundary, retained conclusions and outstanding
-limitations. Consolidation does not close this roadmap or qualify the ecology.
+The [recruitment checkpoint guide](garden-recruitment-checkpoint.md) defines the
+current review scope, production/research boundary and outstanding limitations.
+The [earlier foundation guide](garden-merge-checkpoint.md) records PR #31.
+Consolidation does not close this roadmap or qualify the ecology. Further adult
+resource tracing is follow-up work, not a requirement to keep expanding this PR.
 
 PR #31 merged the foundation/research checkpoint. The immediate correctness
 follow-up addresses age wrap and natural-death resource receipts; see
@@ -206,12 +208,213 @@ The [subsequent replay/evaluation tools](garden-landing-tools.md) add explicit
 TGL2 reference/import/inspect/replay commands, exact retained lifetime accounting,
 and matched fixed-checkpoint screenshot bundles with independent repeats and
 frozen-binary verification. Models fix their masks; loading never overrides
-them. No new fitness score is introduced. Next specify a bounded equal-budget
-training/input-ablation comparison under identical mechanics, then integrate
-extended-model mutation/training. The player, existing trainer, firmware and
-ecology defaults still use the unchanged paths. No training, promotion or claimed
-survival gain from the tooling.
+them. No new fitness score is introduced at that checkpoint.
+The [bounded landing training pilot](garden-landing-training.md) now connects
+complete audited lineage/seed histories to the existing individual-minimum
+renewal objective, adds deterministic extended-model mutation and saves every
+generation with separate review worlds and screenshots. Its
+[fixed protocol](../benchmarks/garden-seasons/landing-training-protocol.md)
+limits the comparison to 63 candidate evaluations across three masks and three
+search seeds, followed by an exact capture-free repetition. The player, old
+trainer, firmware and ecology defaults still use unchanged paths. Pilot evidence
+must be reviewed before any longer search, objective adjustment or promotion.
+The [completed pilot](../benchmarks/garden-seasons/landing-training.md) repeats
+exactly with capture disabled. Current-only finalists pass all 16 review
+endpoint checks in all three searches, versus zero of three off/history
+finalists, but still leave 7–9 of 16 review windows without credited renewal.
+No mode sustains credit in every window of every review world.
+The [completed broader validation](../benchmarks/garden-seasons/landing-validation.md)
+retains all nine training-selected finalists across four additional seeds:
+19 labeled variants (18 distinct files), 304 primary worlds and 76 review frames.
+Its [explicit ablation tooling](garden-landing-validation.md) changes only the
+stored mask and outer CRC, never weights. All three current-only finalists retain
+established descendants at all 64 endpoints, but 32–33 windows still earn zero
+renewal credit. Same-weight current inputs improve two finalists' aggregate
+results and worsen one; removing only history hurts all three history-trained
+models, while removing all added inputs helps two. Results and every screenshot
+repeat exactly, including independent frozen verification. No reselection,
+training, promotion or device change. Next proposal: separate signal groups and
+fixed-value controls to distinguish environmental information from activation
+shifts before expanding training. Steady-climate renewal remains particularly weak.
+The [completed signal-content probe](../benchmarks/garden-seasons/landing-signals.md)
+now runs those controls: three unchanged current-only finalists, ten probes,
+16 reused conditions, 480 primary worlds and sixty fixed review frames. Live
+and neutral controls match the prior trajectories; exact one-worker repetition
+and frozen verification retain every result. Some fully fixed added inputs
+match survival and improve aggregate credit, but hide individual losses and
+steady-world stalls. This weakens a simple information-use interpretation of
+the earlier zeroing result, not a reason to discard sensing. No steady world
+in any probe earns credit in all four windows. All legacy sensing and role
+gating remain, and water/light were tested jointly. No training, reselection,
+ecology/default change or promotion. Next discuss a bounded same-state decision
+trace to separate individual signal contributions and activation shifts before
+another training budget. The fixed protocol is exhausted; do not tune constants
+against this panel.
+The [completed same-state decision trace](../benchmarks/garden-seasons/landing-decisions.md)
+now records 135,839 policy queries, samples 1,992 decisions and checks all 31,872
+native probe outputs with independent integer arithmetic. The 48 original live
+results and raw traces repeat exactly, including frozen verification. No probe
+changes action category in the 976 sampled stem decisions, but rankings,
+priorities and next memory can change. Added light weights are absent in one
+controller; another's common-water unit stays at zero despite changed sums.
+Raw-neutral water 128 is outside all observed common-water ranges. This explains
+some activation shifts, not useful adaptation, and does not qualify the
+environment or controllers. Full root/stem, phase and condition evidence is
+retained. Next discuss a small matched live-versus-fixed-input training pilot
+with equal capacity and a predeclared comparison panel; do not change encoding,
+ecology or device defaults automatically. No training or promotion in this pass.
+The [subsequent matched live/fixed-input training pilot](../benchmarks/garden-seasons/landing-controls.md)
+uses the unchanged current-only architecture, initial model and paired mutation
+budgets: 42 candidates, 368 scored runs and 72 generation-review images. All
+earlier live-search candidates and trajectories reproduce. On four unused
+evaluation seeds, live beats fixed in one of three paired aggregates and loses
+two, failing the predeclared replication/climate gate. The old live finalists'
+established endpoint coverage falls from 64/64 on the previous panel to 40/64,
+48/64 and 56/64; fixed inputs are not a general solution either. No steady world
+has credit in every late window. Full one-worker/capture-free repetition matches
+exactly. Next discuss a bounded multi-seed training panel with fresh evaluation
+seeds before increasing model size or extending the single-seed search. No
+controller, encoding, objective, ecology or device change is promoted.
+Independent frozen verification also reproduces all model bytes, scored runs
+and 72 generation-review frames. Portable records and score/selection/pixel
+regression checks retain both successes and failures.
+The [bounded five-seed follow-up](../benchmarks/garden-seasons/landing-multiseed.md)
+is now complete: the same 42-candidate budget with 20 training conditions per
+candidate, followed by old/new finalists on 16 shared fresh conditions. Broader
+live training wins two of three aggregate comparisons through terminal-tier
+gains and loses one; fixed training loses two and ties one. All five changed
+finalists have less weakest-window renewal credit. Neither breadth gate passes
+(live 6/9, fixed 0/9); the secondary multi-live/fixed gate also fails (8/9).
+No steady world under any evaluated variant has credit in all four windows.
+The 1,136 scored worlds repeat exactly with one worker/captures off; independent
+frozen replay reproduces all model bytes, records and 72 images. Full portable
+ledgers, matched comparisons, mutation/selection/pixel regressions and an
+independent replay receipt are retained. No larger network, longer training,
+score/ecology change or promotion. Next discuss a bounded saved-ledger diagnosis
+of survival gains versus renewal losses before allocating another search budget.
+The [saved-ledger renewal audit](../benchmarks/garden-seasons/landing-renewal-audit.md)
+is now complete: all 224 evaluated histories / 896 late windows re-score
+unchanged, with exact repeated and independent frozen analysis and no native
+calls. All 390 persistent-but-zero windows have seed purchases, but some only
+from founders. The improved live / 34 and / 35 each have 26 such steady windows:
+208 carried-in seeds expire in each, while their 3 and 14 new seedlings die
+before first-day establishment. Pending 32-day seeds are not failures.
+Aged-out descendants and founder children explain surviving occupancy without
+fresh renewal credit. All five changed finalists have fewer eligible
+child/window intersections in their own weakest windows; this is exact
+accounting, not a causal intervention. The ledger cannot distinguish moisture,
+light, spacing or capacity blockers. Next discuss a small matched germination
+and first-day seedling trace, retaining successful/regressing controls, before
+changing the environment, objective or training budget. No promotion.
+The [matched recruitment trace](../benchmarks/garden-seasons/landing-recruitment-trace.md)
+now covers twelve fixed old/new live cases. All 192 late-expiring steady seeds
+are spacing-blocked at every mature check, with overlapping moisture/light
+failures and no plant/node capacity blocks. Open columns occur elsewhere for
+all 343 late expiries across both climates, but parent reach is not established.
+Among 127 late-born children, 55 establish and 72 die: 43 water-only, 22 energy-only
+and seven combined. Exact first-day budgets separate initial stores, uptake,
+overflow, upkeep, growth, reproduction and discarded resources; all reconcile.
+Historical results/scores, untraced controls, repeated traces and independent
+frozen replays match. Bounded host-only instrumentation adds no authoritative
+state or policy inputs; 141 UBSan host tests pass. Next inspect placement
+opportunity versus actual dispersal reach before a placement-only comparison,
+keeping first-day resource policy separate. No ecology/score/model promotion.
 Environmental qualification and durable diversity remain open.
+
+The [parent-specific reach follow-up](../benchmarks/garden-seasons/landing-reach.md)
+is complete on the same twelve unchanged worlds. Of 192 late-expiring steady
+seeds, 170 have every reachable column spacing-blocked at every mature check;
+only 22 ever have reachable alternatives. Seasonal alternatives occur for
+80/151 seeds; 44 are persistently spacing-blocked across their whole support.
+Only six steady and 21 seasonal expired seeds have open reachable alternatives
+at purchase. Reflection often reduces six choices to three distinct columns.
+Parent traits are captured at purchase rather than inferred from mutated seeds.
+All 806 purchases and 4,592,849 events reconcile, prior traces match byte-for-byte,
+and repeated/untraced/independent frozen replays preserve results and scores.
+Next discuss a placement-range-only A/B using the existing wider-scattering
+candidate, fixed model bytes/ecology/score otherwise, retaining contrary cases
+and measuring renewal and first-day survival rather than germination alone.
+No intervention or promotion yet; resource management remains separate.
+
+The [fixed-model narrow/wide screen](../benchmarks/garden-seasons/landing-range.md)
+is now complete and fails the predeclared gates. The 24 paired worlds preserve
+the ordinary histories, unchanged scoring, model bytes and initial biology.
+Late births rise 127 → 268 but survivors only 55 → 60; first-day deaths rise
+72 → 208. Steady survivors and credit worsen, while one seasonal window loses
+all established descendants, lowering its primary tier despite more total
+credit. There are five paired score wins and seven losses, with no new empty
+world. The existing wide option also changes range-aware observation projection;
+this is not a physical-placement-only intervention holding neural inputs fixed.
+All 24 final screenshots and complete budgets are retained. Keep narrow defaults;
+next discuss a bounded first-day establishment/resource-allocation experiment
+under ordinary ecology, not another range tune or a combined intervention.
+
+The [first-day allocation diagnosis](../benchmarks/garden-seasons/landing-establishment.md)
+uses those saved ordinary traces without native runs. Water-only deaths almost
+never expand roots (42/43); their growth-water spending is overwhelmingly on
+shoots (2,050/2,070 units). A fixed one-eighth-day comparison, before any death,
+retains the root/survival association and its exceptions. All 29 energy-related
+deaths occur in the dark, a distinct timing problem. Proposed next: the existing
+water-only first-day reserve probe, with its wetter-root exception, on the same
+frozen controllers and ordinary ecology. Preserve priority/memory semantics,
+measure unchanged renewal and survival by climate, and retain possible stalls
+and regressions. No intervention is implemented or promoted by this diagnosis.
+
+The [water-only reserve screen](../benchmarks/garden-seasons/landing-water.md)
+now completes that comparison and fails its gates. Late survivors rise 55 → 60,
+but steady survivors fall 4 → 1 and a seasonal day-128 checkpoint loses all
+established descendants. Both climate score keys worsen. Water-only deaths
+fall 43 → 28 while energy-related deaths increase; cohorts diverge, so these
+are not individually matched rescues or conversions. Of 1,282 selected guarded
+WAITs, 680 have a funded wetter-root alternative that loses arbitration. The
+adapter intentionally preserves refused-bid priority and winner-only memory.
+All controls, traces, pixels and budgets repeat; independent frozen verification
+and 148 ordinary host CTests pass. Retain the host-only probe and its negative
+evidence, not a default change. Next discuss saved-receipt arbitration stalls
+before any separate policy comparison; keep energy timing and retraining apart.
+
+The [offline refusal-streak diagnosis](../benchmarks/garden-seasons/landing-stalls.md)
+now resolves those 680 opportunities into 174 finite streaks, with median two
+decisions and maximum 25. Immediate continuation is root growth in 66, shoot
+growth in 70, or continued WAIT without a funded wetter root in 38. Of 77
+affected children, 38 survive and 39 die; 73 first encounter the conflict before
+root expansion. Fifty-nine grow roots afterward, but 21 of those still die.
+All five affected steady children die, without establishing a causal rescue.
+All 262 late-child histories and resource budgets recompute, with eight new
+offline tests; no new policy or experimental trajectories. Proposed next:
+eligibility-aware arbitration using unchanged reserve thresholds and normal
+priority/ties among remaining bids, genuine WAIT handling and winner-only memory.
+Do not force roots or combine energy/timing changes; agree the bounded comparison
+and fallback semantics before implementing.
+
+The [eligible-arbitration comparison](../benchmarks/garden-seasons/landing-arbitration.md)
+now implements that single host-only change with a versioned probe identity and
+all-bid receipts. Highest-priority eligible proposals win; genuine WAIT remains
+eligible, and all-refused fallback preserves the original winner's memory.
+Late survivors rise 60 → 62 and water-only deaths fall 28 → 8, but births fall
+135 → 101 and the seasonal renewal key regresses. Both baseline comparisons
+fail: ordinary steady survival remains four versus one, and a new seasonal
+single /34 day-128 gap replaces the veto's single /35 gap. There are 252 changed
+late selections: 114 root extensions and 138 genuine WAITs. No eligible bid is
+left unused by a forced fallback. Exact controls, repeated traces/pixels,
+independent frozen verification and 151 ordinary host CTests pass. No default
+or device promotion. Next inspect saved histories around the gap and opposing
+/35 outcomes to separate seed
+supply, establishment and older-descendant loss before another intervention.
+
+The [offline turnover diagnosis](../benchmarks/garden-seasons/landing-turnover.md)
+now separates those cases across all 24 histories and 96 periods. Single /34's
+day-128 gap is 2.0391 days with seeds continuously present: old plants die,
+three recruits fail energy-related, and the next wave establishes after the
+checkpoint. Even rescuing the first wave would confirm too late under its
+observed birth times. Adult death resource causes are not recorded. Single /35
+has a 41.3164-day birth-to-birth interval despite 7–8 banked seeds; five complete
+seed lifetimes are always spacing-blocked. Multi /35 instead shows repeated
+seedling failures under the veto. Eight tests and an independent sampled oracle
+validate gap/credit accounting, censoring and immutable inputs. No new native
+runs, policy or scoring changes. Proposed next: read-only adult resource and
+concurrent seed-blocker traces on the frozen single /34 pair, with trace-off
+parity, before choosing another intervention.
 
 Research checkpoint: the [read-only topology census](../benchmarks/garden-longevity/renewal-topology.md)
 finds only zero or one conservative terminal-shedding candidate at each of eight

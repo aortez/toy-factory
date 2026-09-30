@@ -570,11 +570,15 @@ add_test(NAME garden-landing-features COMMAND ${Python3_EXECUTABLE} -W error
 	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_features.py --build ${CMAKE_BINARY_DIR} --cc ${CMAKE_C_COMPILER})
 if(NOT TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT AND NOT TOY_FACTORY_GARDEN_WATER_HEADROOM
 	AND NOT TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK)
-	target_sources(toy_factory_simulator_core PRIVATE garden_landing_run.c garden_landing_model_file.c)
-	set_source_files_properties(garden_landing_run.c garden_landing_model_file.c
+	target_sources(toy_factory_simulator_core PRIVATE garden_landing_run.c garden_landing_model_file.c garden_landing_mutation.c garden_landing_signal.c garden_landing_decisions.c garden_landing_water.c)
+	set_source_files_properties(garden_landing_run.c garden_landing_model_file.c garden_landing_mutation.c garden_landing_ledger.c garden_landing_signal.c garden_landing_decisions.c garden_landing_water.c
 		PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
-	add_executable(toy-factory-garden-landing garden_landing_cli.c garden_lifetimes.c)
+	add_executable(toy-factory-garden-landing garden_landing_cli.c garden_lifetimes.c garden_landing_ledger.c garden_landing_recruitment.c garden_landing_reach.c)
 	add_executable(toy-factory-garden-landing-file-test garden_landing_file_test.c)
+	add_executable(toy-factory-garden-landing-training-test garden_landing_training_test.c garden_landing_ledger.c garden_lifetimes.c)
+	add_executable(toy-factory-garden-landing-signal-test garden_landing_signal_test.c)
+	add_executable(toy-factory-garden-landing-decisions-test garden_landing_decisions_test.c)
+	add_executable(toy-factory-garden-landing-resources-test garden_landing_resources_test.c)
 	add_executable(toy-factory-garden-landing-audit garden_landing_audit.c)
 	add_executable(toy-factory-garden-landing-test garden_landing_test.c)
 	add_executable(toy-factory-garden-landing-features-test garden_landing_features_test.c)
@@ -582,6 +586,8 @@ if(NOT TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT AND NOT TOY_FACTORY_GARDEN_WATER_H
 	add_executable(toy-factory-garden-landing-neural-test garden_landing_neural_test.c)
 	add_executable(toy-factory-garden-landing-codec-probe garden_landing_codec_probe.c)
 	foreach(target toy-factory-garden-landing toy-factory-garden-landing-file-test
+		toy-factory-garden-landing-training-test toy-factory-garden-landing-signal-test
+		toy-factory-garden-landing-decisions-test toy-factory-garden-landing-resources-test
 		toy-factory-garden-landing-audit toy-factory-garden-landing-test
 		toy-factory-garden-landing-features-test toy-factory-garden-landing-features-probe
 		toy-factory-garden-landing-neural-test toy-factory-garden-landing-codec-probe)
@@ -596,6 +602,62 @@ if(NOT TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT AND NOT TOY_FACTORY_GARDEN_WATER_H
 	add_test(NAME garden-landing-features-native COMMAND toy-factory-garden-landing-features-test)
 	add_test(NAME garden-landing-neural-native COMMAND toy-factory-garden-landing-neural-test)
 	add_test(NAME garden-landing-file-native COMMAND toy-factory-garden-landing-file-test)
+	add_test(NAME garden-landing-training-native COMMAND toy-factory-garden-landing-training-test)
+	add_test(NAME garden-landing-signal-native COMMAND toy-factory-garden-landing-signal-test)
+	add_test(NAME garden-landing-decisions-native COMMAND toy-factory-garden-landing-decisions-test)
+	add_test(NAME garden-landing-resources-native COMMAND toy-factory-garden-landing-resources-test)
+	if(NOT TOY_FACTORY_GARDEN_FLOWER_DISPERSAL)
+		add_test(NAME garden-landing-range COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_range.py --build ${CMAKE_BINARY_DIR})
+	endif()
+	# The pilot deliberately rejects experimental ecology; native mutation/audit
+	# coverage above also runs for isolated dispersal variants.
+	if(NOT TOY_FACTORY_GARDEN_WIDE_DISPERSAL AND NOT TOY_FACTORY_GARDEN_FLOWER_DISPERSAL)
+		add_executable(toy-factory-garden-landing-water-test garden_landing_water_test.c)
+		target_link_libraries(toy-factory-garden-landing-water-test PRIVATE toy_factory_simulator_core)
+		target_compile_options(toy-factory-garden-landing-water-test PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+		if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+			target_compile_options(toy-factory-garden-landing-water-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+			target_link_options(toy-factory-garden-landing-water-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		endif()
+		add_test(NAME garden-landing-water-native COMMAND toy-factory-garden-landing-water-test)
+		add_executable(toy-factory-garden-landing-arbitration-test garden_landing_arbitration_test.c)
+		target_link_libraries(toy-factory-garden-landing-arbitration-test PRIVATE toy_factory_simulator_core)
+		target_compile_options(toy-factory-garden-landing-arbitration-test PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+		if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+			target_compile_options(toy-factory-garden-landing-arbitration-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+			target_link_options(toy-factory-garden-landing-arbitration-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		endif()
+		add_test(NAME garden-landing-arbitration-native COMMAND toy-factory-garden-landing-arbitration-test)
+		add_test(NAME garden-landing-arbitration COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_arbitration.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-water COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_water.py --build ${CMAKE_BINARY_DIR})
+		add_executable(toy-factory-garden-landing-reach-test garden_landing_reach_test.c garden_landing_reach.c)
+		target_link_libraries(toy-factory-garden-landing-reach-test PRIVATE toy_factory_simulator_core)
+		target_compile_options(toy-factory-garden-landing-reach-test PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+		if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+			target_compile_options(toy-factory-garden-landing-reach-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+			target_link_options(toy-factory-garden-landing-reach-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		endif()
+		add_test(NAME garden-landing-reach-native COMMAND toy-factory-garden-landing-reach-test)
+		add_test(NAME garden-landing-reach COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_reach.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-training COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_training.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-validation COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_validation.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-signals COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_signals.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-decisions COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_decisions.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-controls COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_controls.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-multiseed COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_multiseed.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-recruitment COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_recruitment.py --build ${CMAKE_BINARY_DIR})
+	endif()
 	add_test(NAME garden-landing-tools COMMAND ${Python3_EXECUTABLE} -W error
 		${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_tools.py --build ${CMAKE_BINARY_DIR})
 	add_test(NAME garden-landing-neural-reference COMMAND ${Python3_EXECUTABLE} -W error
@@ -796,6 +858,14 @@ add_test(NAME garden-individual-renewal-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_individual_renewal.py)
 add_test(NAME garden-renewal-stalls-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_renewal_stalls.py)
+add_test(NAME garden-landing-renewal-audit-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_renewal_audit.py)
+add_test(NAME garden-landing-establishment-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_establishment.py)
+add_test(NAME garden-landing-stalls-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_stalls.py)
+add_test(NAME garden-landing-turnover-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_turnover.py)
 add_test(NAME garden-recruitment-recovery-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_recruitment_recovery.py)
 add_test(NAME garden-founder-independence-unit COMMAND ${Python3_EXECUTABLE}

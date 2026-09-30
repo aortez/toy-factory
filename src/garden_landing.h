@@ -4,6 +4,8 @@
 
 #include "garden_agent.h"
 #include "garden_death_audit.h"
+#include "garden_seed_audit.h"
+#include "garden_resource_audit.h"
 
 #if defined(__ZEPHYR__)
 #error "Landing observations are restricted to host diagnostics"
@@ -57,6 +59,24 @@ int picosystem_garden_world_step_landing(struct picosystem_garden_world *world,
 int picosystem_garden_world_step_landing_death_audit(
 	struct picosystem_garden_world *world, const struct picosystem_garden_agent_policy *policy,
 	struct picosystem_garden_landing_cache *cache, struct picosystem_garden_death_audit *audit);
+
+/* Both receipts from one authoritative step; required, disjoint outputs are
+ * published together only on success. No second step or observer RNG draws.
+ */
+int picosystem_garden_world_step_landing_audits(struct picosystem_garden_world *world,
+						const struct picosystem_garden_agent_policy *policy,
+						struct picosystem_garden_landing_cache *cache,
+						struct picosystem_garden_death_audit *deaths,
+						struct picosystem_garden_seed_audit *seeds);
+
+/* Same contract, additionally retaining exact resource-stage snapshots. All
+ * outputs are required, disjoint and published together only on success.
+ */
+int picosystem_garden_world_step_landing_resources(
+	struct picosystem_garden_world *world, const struct picosystem_garden_agent_policy *policy,
+	struct picosystem_garden_landing_cache *cache, struct picosystem_garden_death_audit *deaths,
+	struct picosystem_garden_seed_audit *seeds,
+	struct picosystem_garden_resource_audit *resources);
 
 /* Pure query using an already frozen cache. No RNG/clock/private memory input.
  * Output unchanged on error; root/OOB sources are explicitly invalid and zero.

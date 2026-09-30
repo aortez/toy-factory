@@ -46,6 +46,33 @@ GARDEN_GALLERY_OUT ?= artifacts/garden-gallery
 GARDEN_GALLERY_ARGS ?=
 GARDEN_LANDING_OUT ?= artifacts/garden-landing-evaluation
 GARDEN_LANDING_ARGS ?=
+GARDEN_LANDING_TRAIN_OUT ?= artifacts/garden-landing-training-v1
+GARDEN_LANDING_TRAIN_ARGS ?=
+GARDEN_LANDING_VALIDATE_OUT ?= artifacts/garden-landing-validation-v1
+GARDEN_LANDING_VALIDATE_ARGS ?=
+GARDEN_LANDING_SIGNALS_OUT ?= artifacts/garden-landing-signals-v1
+GARDEN_LANDING_SIGNALS_ARGS ?=
+GARDEN_LANDING_DECISIONS_OUT ?= artifacts/garden-landing-decisions-v1
+GARDEN_LANDING_DECISIONS_ARGS ?=
+GARDEN_LANDING_CONTROLS_OUT ?= artifacts/garden-landing-controls-v1
+GARDEN_LANDING_CONTROLS_ARGS ?=
+GARDEN_LANDING_MULTISEED_OUT ?= artifacts/garden-landing-multiseed-v1
+GARDEN_LANDING_MULTISEED_ARGS ?=
+GARDEN_LANDING_RENEWAL_OUT ?= artifacts/garden-landing-renewal-audit-v1
+GARDEN_LANDING_RENEWAL_ARGS ?=
+GARDEN_LANDING_RECRUITMENT_OUT ?= artifacts/garden-landing-recruitment-v1
+GARDEN_LANDING_RECRUITMENT_ARGS ?=
+GARDEN_LANDING_REACH_OUT ?= artifacts/garden-landing-reach-v1
+GARDEN_LANDING_REACH_ARGS ?=
+GARDEN_LANDING_RANGE_OUT ?= artifacts/garden-landing-range-v1
+GARDEN_LANDING_RANGE_ARGS ?=
+GARDEN_LANDING_ESTABLISHMENT_OUT ?= artifacts/garden-landing-establishment.json.gz
+GARDEN_LANDING_WATER_OUT ?= artifacts/garden-landing-water-v1
+GARDEN_LANDING_WATER_ARGS ?=
+GARDEN_LANDING_STALLS_OUT ?= artifacts/garden-landing-stalls.json.gz
+GARDEN_LANDING_ARBITRATION_OUT ?= artifacts/garden-landing-arbitration-v1
+GARDEN_LANDING_TURNOVER_OUT ?= artifacts/garden-landing-turnover.json.gz
+GARDEN_LANDING_ARBITRATION_ARGS ?=
 GARDEN_AUDIT_BUNDLE ?= artifacts/garden-experiment
 GARDEN_AUDIT_OUT ?= artifacts/garden-establishment
 GARDEN_AUDIT_ARGS ?=
@@ -76,6 +103,9 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 	host-build host-check host-research-check host-run host-cli host-profile-build host-profile-garden \
 	host-evaluate-garden host-train-garden host-experiment-garden host-gallery-garden host-audit-garden \
 	host-seasons-garden host-recruitment-garden host-landing-garden host-evaluate-landing-garden \
+	host-train-landing-garden host-validate-landing-garden host-probe-landing-garden \
+	host-trace-landing-garden host-train-landing-controls host-train-landing-multiseed host-audit-landing-renewal \
+	host-trace-landing-recruitment host-trace-landing-reach host-screen-landing-range host-audit-landing-establishment host-screen-landing-water host-audit-landing-stalls host-screen-landing-arbitration host-audit-landing-turnover \
 	host-image host-player-build host-player-check host-play \
 	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
 	bootloader console status game-stats \
@@ -220,12 +250,78 @@ host-gallery-garden: host-build ## Capture a fixed visual-review panel from a co
 	$(COMPOSE) run --rm firmware python3 sim/garden_gallery.py \
 		--bundle "$(GARDEN_GALLERY_BUNDLE)" --output "$(GARDEN_GALLERY_OUT)" $(GARDEN_GALLERY_ARGS)
 
-host-landing-garden: host-build ## Inspect/import/replay experimental landing models (ARGS="--help")
+host-landing-garden: host-build ## Inspect/import/mutate/ablate/replay experimental landing models (ARGS="--help")
 	$(COMPOSE) run --rm -T firmware build-host/toy-factory-garden-landing $(if $(strip $(ARGS)),$(ARGS),--help)
 
 host-evaluate-landing-garden: host-build ## Save matched TGL2 outcomes/screenshots (GARDEN_LANDING_ARGS="--model label=path.tgl")
 	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_evaluate.py \
 		--out "$(GARDEN_LANDING_OUT)" $(GARDEN_LANDING_ARGS)
+
+host-train-landing-garden: host-build ## Run the fixed 63-candidate renewal pilot (requires frozen initial model; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_training.py \
+		--out "$(GARDEN_LANDING_TRAIN_OUT)" $(GARDEN_LANDING_TRAIN_ARGS)
+
+host-validate-landing-garden: host-build ## Replay 19 frozen controller variants on 16 fixed conditions (no training; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_validation.py \
+		--out "$(GARDEN_LANDING_VALIDATE_OUT)" $(GARDEN_LANDING_VALIDATE_ARGS)
+
+host-probe-landing-garden: host-build ## Probe live versus fixed occupancy/resource inputs (480 frozen worlds; no training)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_signals.py \
+		--out "$(GARDEN_LANDING_SIGNALS_OUT)" $(GARDEN_LANDING_SIGNALS_ARGS)
+
+host-trace-landing-garden: host-build ## Compare same-state neural proposals in 48 unchanged worlds (no training; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_decisions.py \
+		--out "$(GARDEN_LANDING_DECISIONS_OUT)" $(GARDEN_LANDING_DECISIONS_ARGS)
+
+host-train-landing-controls: host-build ## Run 42 paired live/fixed-input candidates and fixed evaluation (fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_controls.py \
+		--out "$(GARDEN_LANDING_CONTROLS_OUT)" $(GARDEN_LANDING_CONTROLS_ARGS)
+
+host-train-landing-multiseed: host-build ## Train 42 candidates on five seeds; compare frozen one-seed finalists (fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_multiseed.py \
+		--out "$(GARDEN_LANDING_MULTISEED_OUT)" $(GARDEN_LANDING_MULTISEED_ARGS)
+
+host-audit-landing-renewal: image ## Diagnose saved landing-training seed/renewal ledgers (no native runs; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_renewal_audit.py \
+		--out "$(GARDEN_LANDING_RENEWAL_OUT)" $(GARDEN_LANDING_RENEWAL_ARGS)
+
+host-trace-landing-recruitment: host-build ## Trace matched seed blockers and first-day budgets (host-only; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_recruitment.py \
+		--out "$(GARDEN_LANDING_RECRUITMENT_OUT)" $(GARDEN_LANDING_RECRUITMENT_ARGS)
+
+host-trace-landing-reach: host-build ## Diagnose parent-specific seed reach in twelve unchanged worlds (fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_reach.py \
+		--out "$(GARDEN_LANDING_REACH_OUT)" $(GARDEN_LANDING_REACH_ARGS)
+
+host-screen-landing-range: image ## Build isolated narrow/wide hosts and compare frozen models (no promotion; fresh output)
+	$(COMPOSE) run --rm -T firmware bash scripts/container/host-landing-range-build.sh
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_range.py \
+		--narrow-build artifacts/build-host-landing-range/narrow \
+		--wide-build artifacts/build-host-landing-range/wide \
+		--out "$(GARDEN_LANDING_RANGE_OUT)" $(GARDEN_LANDING_RANGE_ARGS)
+
+host-audit-landing-establishment: image ## Diagnose saved first-day resource allocation (no simulation; fresh output file)
+	@mkdir -p "$(dir $(GARDEN_LANDING_ESTABLISHMENT_OUT))"
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_establishment.py \
+		--out "$(GARDEN_LANDING_ESTABLISHMENT_OUT)"
+
+host-screen-landing-water: host-build ## Compare first-day water reserve on frozen models (host-only; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_water.py \
+		--out "$(GARDEN_LANDING_WATER_OUT)" $(GARDEN_LANDING_WATER_ARGS)
+
+host-audit-landing-stalls: image ## Diagnose saved water-refusal streaks and observed continuations (no simulation)
+	@mkdir -p "$(dir $(GARDEN_LANDING_STALLS_OUT))"
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_stalls.py \
+		--out "$(GARDEN_LANDING_STALLS_OUT)"
+
+host-screen-landing-arbitration: host-build ## Compare water-eligible arbitration on frozen models (host-only; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_arbitration.py \
+		--out "$(GARDEN_LANDING_ARBITRATION_OUT)" $(GARDEN_LANDING_ARBITRATION_ARGS)
+
+host-audit-landing-turnover: image ## Diagnose saved recruitment and established-descendant gaps (no simulation)
+	@mkdir -p "$(dir $(GARDEN_LANDING_TURNOVER_OUT))"
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_turnover.py \
+		--out "$(GARDEN_LANDING_TURNOVER_OUT)"
 
 host-audit-garden: host-build ## Audit seed lifetimes and planting sites against a completed experiment
 	$(COMPOSE) run --rm firmware python3 sim/garden_establishment.py \

@@ -137,6 +137,17 @@ struct picosystem_garden_agent_policy {
 	picosystem_garden_agent_decide_fn decide;
 	const void *context;
 	enum picosystem_garden_agent_arbitration arbitration;
+#if !defined(__ZEPHYR__)
+	/* Optional host-only ALL_TIPS experiment. Reject bids before ranking, not
+	 * by changing priority. If none qualifies, the original winner becomes
+	 * WAIT and alone advances memory/nonce, as with the legacy veto adapter.
+	 * NULL preserves ordinary arbitration. Context is borrowed for one step.
+	 */
+	int (*eligible)(const struct picosystem_garden_agent_observation *observation,
+			const struct picosystem_garden_agent_decision *decision, bool *allowed,
+			const void *context);
+	const void *eligibility_context;
+#endif
 };
 
 /* Validate the complete, versioned observation contract without mutating it. */

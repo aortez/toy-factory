@@ -38,6 +38,33 @@ int toy_factory_garden_landing_run_step(struct toy_factory_garden_landing_run *r
 int toy_factory_garden_landing_run_step_death_audit(struct toy_factory_garden_landing_run *run,
 						    struct picosystem_garden_death_audit *audit);
 
+/* Same rollback guarantee, with required non-aliasing death AND seed outputs. */
+int toy_factory_garden_landing_run_step_audits(struct toy_factory_garden_landing_run *run,
+					       struct picosystem_garden_death_audit *deaths,
+					       struct picosystem_garden_seed_audit *seeds);
+
+/* Required, non-aliasing resource output shares the complete rollback contract. */
+int toy_factory_garden_landing_run_step_resources(
+	struct toy_factory_garden_landing_run *run, struct picosystem_garden_death_audit *deaths,
+	struct picosystem_garden_seed_audit *seeds,
+	struct picosystem_garden_resource_audit *resources);
+
+/* Borrowed, read-only pre-arbitration inputs and the live policy's proposal.
+ * No pointers may be retained. A callback failure rolls back run/death/seed
+ * outputs, but NOT the observer's external context: discard its partial trace
+ * on any failed step. Only the live decision is returned to the world.
+ */
+typedef int (*toy_factory_garden_landing_observe_fn)(
+	const struct picosystem_garden_agent_observation *observation,
+	const struct picosystem_garden_agent_memory *memory,
+	const struct picosystem_garden_landing_packet *packet,
+	const struct picosystem_garden_agent_decision *decision, void *context);
+int toy_factory_garden_landing_run_step_observed(struct toy_factory_garden_landing_run *run,
+						 struct picosystem_garden_death_audit *deaths,
+						 struct picosystem_garden_seed_audit *seeds,
+						 toy_factory_garden_landing_observe_fn observe,
+						 void *context);
+
 /* Diagnostic fingerprint for initialized runs: schema/build rules, legacy world
  * hash, every cache field and canonical model bytes. Not collision-free/authentic
  * identity. Record source/build hashes separately for cross-build experiments.

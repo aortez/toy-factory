@@ -20,6 +20,20 @@ def default_options():
 
 
 class HostGardenDefaultsTest(unittest.TestCase):
+    def test_recruitment_make_targets_have_independent_outputs(self):
+        variables = ("GARDEN_RECRUITMENT_OUT", "GARDEN_LANDING_RECRUITMENT_OUT")
+        env = {k: v for k, v in os.environ.items() if k not in variables}
+        cases = (("host-recruitment-garden", "garden-season-recruitment", "seasonal"),
+                 ("host-trace-landing-recruitment", "garden-landing-recruitment-v1", "landing"))
+        for target, default, override in cases:
+            for assignments, expected in (([], default),
+                    (["GARDEN_RECRUITMENT_OUT=artifacts/seasonal",
+                      "GARDEN_LANDING_RECRUITMENT_OUT=artifacts/landing"], override)):
+                result = subprocess.run(["make", "--no-print-directory", "-n", target, *assignments],
+                                        cwd=ROOT, env=env, capture_output=True, text=True, timeout=15)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(re.findall(r'--out "([^"]+)"', result.stdout), ["artifacts/" + expected])
+
     def test_defaults_cover_every_declared_research_switch(self):
         declared = re.findall(r'^option\((TOY_FACTORY_GARDEN_\w+) "[^"]*" (ON|OFF)\)',
                               (ROOT / "sim/CMakeLists.txt").read_text(), re.MULTILINE)

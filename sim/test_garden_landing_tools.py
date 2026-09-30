@@ -110,6 +110,51 @@ class ToolTests(unittest.TestCase):
         self.native("inspect", self.root, valid=False)
         self.assertEqual(self.replay(model, seed="0xffffffff", ticks=983040)["tick"], 983040)
 
+    def test_explicit_ablation_preserves_weights_and_only_removes_inputs(self):
+        for mode in ("off", "current", "history"):
+            base, _ = self.reference(mode, mode, omit=True)
+            source = self.root / (mode + "-mutated.tgl")
+            self.native("mutate", base, source, 0x6d697833, 32, 16)
+            before = source.read_bytes()
+            for target in ("off", "current", "history", "bogus", ""):
+                output = self.root / (mode + "-as-" + target + ".tgl")
+                allowed = (mode, target) in (("current", "off"), ("history", "off"), ("history", "current"))
+                result = self.native("ablate", source, output, target, valid=allowed)
+                if not allowed:
+                    self.assertFalse(output.exists())
+                    continue
+                receipt = json.loads(result)
+                expected = bytearray(before)
+                expected[1237] = ("off", "current", "history").index(target)
+                self.assertEqual(output.read_bytes(), crc_repair(bytes(expected)))
+                self.assertEqual(receipt["source_mode"], mode)
+                self.assertEqual(receipt["model"], json.loads(self.native("inspect", output))["model"])
+                self.assertTrue(receipt["model"]["omit_dead_only"])
+                decode(output.read_bytes())
+                self.native("ablate", source, output, target, valid=False)
+                self.assertEqual(output.read_bytes(), crc_repair(bytes(expected)))
+                if target == "off":
+                    legacy = self.root / (mode + ".tgm")
+                    legacy.write_bytes(before[16:1236])
+                    imported = self.root / (mode + "-legacy.tgl")
+                    self.native("import", legacy, imported, "--mode", "off", "--omit-dead-only")
+                    def biological(result):
+                        return {k: v for k, v in result.items() if k not in ("model", "run_hash")}
+                    self.assertEqual(biological(self.replay(output)), biological(self.replay(imported)))
+            self.assertEqual(source.read_bytes(), before)
+            for suffix in ([], ["off", "extra"]):
+                self.native("ablate", source, self.root / "bad.tgl", *suffix, valid=False)
+                self.assertFalse((self.root / "bad.tgl").exists())
+            self.native("ablate", source, source, "off", valid=False)
+            link = self.root / (mode + "-link.tgl")
+            link.symlink_to(source)
+            self.native("ablate", source, link, "off", valid=False)
+            self.assertEqual(source.read_bytes(), before)
+        corrupt = self.root / "corrupt.tgl"
+        corrupt.write_bytes(before[:-1])
+        self.native("ablate", corrupt, self.root / "bad.tgl", "off", valid=False)
+        self.assertFalse((self.root / "bad.tgl").exists())
+
     def test_write_failures_do_not_clobber(self):
         model, _ = self.reference()
         link = self.root / "link.tgl"

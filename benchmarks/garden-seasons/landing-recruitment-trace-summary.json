@@ -1,0 +1,2006 @@
+{
+  "bundle": "artifacts/garden-landing-recruitment-v1",
+  "independent_frozen_verification": true,
+  "independent_replay_runs": 12,
+  "inputs": {
+    "landing-multiseed-models.json.gz": "631364e9c1c23c676fb7cf699f630c807b6197cc21b6bc5b317afaf5095e757c",
+    "landing-multiseed-results.json.gz": "c68d070a6f6a1859cb88fb90934f68e1928d22d2a79c94ffc9cdece631915bd4",
+    "landing-renewal-audit-results.json.gz": "974866fec534ee6c3a147e9b2c251d5b016184a6e8546606b222ca0b03f82539"
+  },
+  "manifest_sha256": "ba22339088f42a8d0708128e776a274346c8eeb84e9fda2d8551512240e47278",
+  "models": {
+    "multi-s6d697833-live": {
+      "champion": "g2-c2",
+      "id": "multi-s6d697833-live",
+      "metadata": {
+        "bytes": 1448,
+        "candidate_nonzero_weights": 10,
+        "common_nonzero_weights": 20,
+        "feature_version": 1,
+        "format": "TGL2",
+        "legacy_payload_crc32": "20c2d987",
+        "mode": "current",
+        "omit_dead_only": false,
+        "payload_crc32": "d8153008"
+      },
+      "model": "s6d697833-live/models/g2-c2.tgl",
+      "profile": {
+        "id": "live",
+        "occupancy": "live",
+        "resources": "live"
+      },
+      "sha256": "55feb57d6a50b5dee64295391ede8aa70c298d57c2ae9703799538b4bbd6e904"
+    },
+    "multi-s6d697834-live": {
+      "champion": "g2-c2",
+      "id": "multi-s6d697834-live",
+      "metadata": {
+        "bytes": 1448,
+        "candidate_nonzero_weights": 9,
+        "common_nonzero_weights": 20,
+        "feature_version": 1,
+        "format": "TGL2",
+        "legacy_payload_crc32": "6e0ba712",
+        "mode": "current",
+        "omit_dead_only": false,
+        "payload_crc32": "b4db48e6"
+      },
+      "model": "s6d697834-live/models/g2-c2.tgl",
+      "profile": {
+        "id": "live",
+        "occupancy": "live",
+        "resources": "live"
+      },
+      "sha256": "8f7fc708348aa1026105ab142e349b71faebe2de3263e1aca744a3bd23dcb1d8"
+    },
+    "multi-s6d697835-live": {
+      "champion": "g2-c0",
+      "id": "multi-s6d697835-live",
+      "metadata": {
+        "bytes": 1448,
+        "candidate_nonzero_weights": 9,
+        "common_nonzero_weights": 20,
+        "feature_version": 1,
+        "format": "TGL2",
+        "legacy_payload_crc32": "1e3e9329",
+        "mode": "current",
+        "omit_dead_only": false,
+        "payload_crc32": "2b44b21f"
+      },
+      "model": "s6d697835-live/models/g2-c0.tgl",
+      "profile": {
+        "id": "live",
+        "occupancy": "live",
+        "resources": "live"
+      },
+      "sha256": "1400548e8a81ed91d2b988e15242908e9af4008c9c7307d79d5bcb8d8c6eba61"
+    },
+    "single-s6d697833-live": {
+      "champion": "g1-c0",
+      "id": "single-s6d697833-live",
+      "metadata": {
+        "bytes": 1448,
+        "candidate_nonzero_weights": 8,
+        "common_nonzero_weights": 8,
+        "feature_version": 1,
+        "format": "TGL2",
+        "legacy_payload_crc32": "2f229d51",
+        "mode": "current",
+        "omit_dead_only": false,
+        "payload_crc32": "0081312a"
+      },
+      "model": "single/s6d697833-live/models/g1-c0.tgl",
+      "profile": {
+        "id": "live",
+        "occupancy": "live",
+        "resources": "live"
+      },
+      "sha256": "98395be10fd823edba358dae771740630b443bc41adf7259b03cf1c8b93192b1"
+    },
+    "single-s6d697834-live": {
+      "champion": "g1-c2",
+      "id": "single-s6d697834-live",
+      "metadata": {
+        "bytes": 1448,
+        "candidate_nonzero_weights": 5,
+        "common_nonzero_weights": 10,
+        "feature_version": 1,
+        "format": "TGL2",
+        "legacy_payload_crc32": "28b4dc9b",
+        "mode": "current",
+        "omit_dead_only": false,
+        "payload_crc32": "1cf8c325"
+      },
+      "model": "single/s6d697834-live/models/g1-c2.tgl",
+      "profile": {
+        "id": "live",
+        "occupancy": "live",
+        "resources": "live"
+      },
+      "sha256": "33a6a80da210b8b9fea861b432d78e5dee405e119f838a2e939ccd602f10999b"
+    },
+    "single-s6d697835-live": {
+      "champion": "g1-c1",
+      "id": "single-s6d697835-live",
+      "metadata": {
+        "bytes": 1448,
+        "candidate_nonzero_weights": 5,
+        "common_nonzero_weights": 11,
+        "feature_version": 1,
+        "format": "TGL2",
+        "legacy_payload_crc32": "e64d8d4f",
+        "mode": "current",
+        "omit_dead_only": false,
+        "payload_crc32": "708507d2"
+      },
+      "model": "single/s6d697835-live/models/g1-c1.tgl",
+      "profile": {
+        "id": "live",
+        "occupancy": "live",
+        "resources": "live"
+      },
+      "sha256": "f2dc989380339614dc512f64f11f2bf03f7079c465c4c9bd18895044ec3e1567"
+    }
+  },
+  "native_collection_runs": 36,
+  "plan": [
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "single-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "multi-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "single-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "multi-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "single-s6d697835-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "multi-s6d697835-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697835-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697835-live"
+    }
+  ],
+  "protocol_sha256": "0841d2015462ec1ca6ca092a19c2dca3c273f7832fb229577994e3cc22861b74",
+  "repeat_verified": true,
+  "resource_fields": [
+    "initial",
+    "income",
+    "overflow",
+    "upkeep",
+    "growth",
+    "reproduction",
+    "discarded",
+    "final"
+  ],
+  "results_sha256": "5dac9b8df7cab3c8d9bd28912a0a274a012be63d1ef2dd970eacc28ad0eb52e7",
+  "rule": "garden-landing-recruitment-trace-v1",
+  "schema_version": 1,
+  "stages": [
+    "uptake",
+    "maintenance",
+    "germination",
+    "growth",
+    "reproduction"
+  ],
+  "worlds": [
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 1940,
+        "seed_checks": 385485,
+        "seed_samples": 385525,
+        "summary": {
+          "all_children": {
+            "children": 13,
+            "death_shortages": {
+              "energy": 4,
+              "energy+water": 1,
+              "water": 5
+            },
+            "outcomes": {
+              "confirmed": 3,
+              "died": 10
+            },
+            "resources": {
+              "energy": {
+                "discarded": 1024,
+                "final": 503,
+                "growth": 2331,
+                "income": 8690,
+                "initial": 832,
+                "overflow": 3966,
+                "reproduction": 96,
+                "upkeep": 1602
+              },
+              "water": {
+                "discarded": 871,
+                "final": 1508,
+                "growth": 1339,
+                "income": 5075,
+                "initial": 312,
+                "overflow": 771,
+                "reproduction": 48,
+                "upkeep": 850
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 17,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 45
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 284221,
+              "moisture": 351888,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 379151
+            },
+            "mature_checks": 385058,
+            "open_elsewhere_checks": 25561,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 13,
+              "pending": 8
+            },
+            "seeds": 61
+          },
+          "late_children": {
+            "children": 4,
+            "death_shortages": {
+              "energy": 2,
+              "water": 1
+            },
+            "outcomes": {
+              "confirmed": 1,
+              "died": 3
+            },
+            "resources": {
+              "energy": {
+                "discarded": 8,
+                "final": 251,
+                "growth": 729,
+                "income": 1668,
+                "initial": 256,
+                "overflow": 445,
+                "reproduction": 0,
+                "upkeep": 491
+              },
+              "water": {
+                "discarded": 256,
+                "final": 510,
+                "growth": 405,
+                "income": 1362,
+                "initial": 96,
+                "overflow": 39,
+                "reproduction": 0,
+                "upkeep": 248
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 14,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 32
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 193036,
+              "moisture": 239673,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 261888
+            },
+            "mature_checks": 261888,
+            "open_elsewhere_checks": 16525,
+            "outcomes": {
+              "expired": 32
+            },
+            "seeds": 32
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "single-s6d697833-live",
+      "run_hash": "424c927a",
+      "trace_sha256": "536b3d6a3dc5a4632bd5e67eed09f9e7bb79fa806e73c0e6c62f9d47c6a625c6",
+      "world_hash": "fc261295"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 1269,
+        "seed_checks": 384682,
+        "seed_samples": 384722,
+        "summary": {
+          "all_children": {
+            "children": 8,
+            "death_shortages": {
+              "energy": 1,
+              "water": 4
+            },
+            "outcomes": {
+              "confirmed": 3,
+              "died": 5
+            },
+            "resources": {
+              "energy": {
+                "discarded": 829,
+                "final": 239,
+                "growth": 1619,
+                "income": 7531,
+                "initial": 512,
+                "overflow": 3971,
+                "reproduction": 144,
+                "upkeep": 1241
+              },
+              "water": {
+                "discarded": 507,
+                "final": 1532,
+                "growth": 983,
+                "income": 5793,
+                "initial": 192,
+                "overflow": 2225,
+                "reproduction": 72,
+                "upkeep": 666
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 15,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 47
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 286484,
+              "moisture": 355056,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 382166
+            },
+            "mature_checks": 384290,
+            "open_elsewhere_checks": 82698,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 8,
+              "pending": 8
+            },
+            "seeds": 56
+          },
+          "late_children": {
+            "children": 1,
+            "death_shortages": {
+              "water": 1
+            },
+            "outcomes": {
+              "died": 1
+            },
+            "resources": {
+              "energy": {
+                "discarded": 254,
+                "final": 0,
+                "growth": 88,
+                "income": 822,
+                "initial": 64,
+                "overflow": 514,
+                "reproduction": 0,
+                "upkeep": 30
+              },
+              "water": {
+                "discarded": 0,
+                "final": 0,
+                "growth": 55,
+                "income": 52,
+                "initial": 24,
+                "overflow": 0,
+                "reproduction": 0,
+                "upkeep": 21
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 7,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 32
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 192209,
+              "moisture": 239249,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 261888
+            },
+            "mature_checks": 261888,
+            "open_elsewhere_checks": 56142,
+            "outcomes": {
+              "expired": 32
+            },
+            "seeds": 32
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "multi-s6d697833-live",
+      "run_hash": "90b9cceb",
+      "trace_sha256": "4684120a67781398e74c05d18e0f7c5708da9bd3d1ae079802421098c5fde2a3",
+      "world_hash": "6a6a0032"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 3928,
+        "seed_checks": 379418,
+        "seed_samples": 379454,
+        "summary": {
+          "all_children": {
+            "children": 26,
+            "death_shortages": {
+              "energy": 8,
+              "energy+water": 2,
+              "water": 7
+            },
+            "outcomes": {
+              "confirmed": 9,
+              "died": 17
+            },
+            "resources": {
+              "energy": {
+                "discarded": 1526,
+                "final": 1358,
+                "growth": 4733,
+                "income": 15664,
+                "initial": 1664,
+                "overflow": 6252,
+                "reproduction": 144,
+                "upkeep": 3315
+              },
+              "water": {
+                "discarded": 2239,
+                "final": 4505,
+                "growth": 2770,
+                "income": 18819,
+                "initial": 624,
+                "overflow": 8054,
+                "reproduction": 72,
+                "upkeep": 1803
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 12,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 28
+            },
+            "blocker_checks": {
+              "cold": 42744,
+              "dormant": 0,
+              "light": 296027,
+              "moisture": 359042,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 365249
+            },
+            "mature_checks": 378928,
+            "open_elsewhere_checks": 62070,
+            "outcomes": {
+              "expired": 36,
+              "germinated": 26,
+              "pending": 8
+            },
+            "seeds": 70
+          },
+          "late_children": {
+            "children": 16,
+            "death_shortages": {
+              "energy": 2,
+              "energy+water": 2,
+              "water": 5
+            },
+            "outcomes": {
+              "confirmed": 7,
+              "died": 9
+            },
+            "resources": {
+              "energy": {
+                "discarded": 1018,
+                "final": 1112,
+                "growth": 3020,
+                "income": 10848,
+                "initial": 1024,
+                "overflow": 4162,
+                "reproduction": 96,
+                "upkeep": 2464
+              },
+              "water": {
+                "discarded": 658,
+                "final": 3546,
+                "growth": 1755,
+                "income": 12881,
+                "initial": 384,
+                "overflow": 5982,
+                "reproduction": 48,
+                "upkeep": 1276
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 5,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 15
+            },
+            "blocker_checks": {
+              "cold": 23692,
+              "dormant": 0,
+              "light": 178330,
+              "moisture": 216204,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 224565
+            },
+            "mature_checks": 229152,
+            "open_elsewhere_checks": 35155,
+            "outcomes": {
+              "expired": 28
+            },
+            "seeds": 28
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697833-live",
+      "run_hash": "cb0ff9a6",
+      "trace_sha256": "3d0686eeb56bc042d4fe44d31892fa671a01c281c69eb5567e854a1a44328683",
+      "world_hash": "32b31578"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 3696,
+        "seed_checks": 381866,
+        "seed_samples": 381902,
+        "summary": {
+          "all_children": {
+            "children": 25,
+            "death_shortages": {
+              "energy": 5,
+              "energy+water": 2,
+              "water": 8
+            },
+            "outcomes": {
+              "confirmed": 10,
+              "died": 15
+            },
+            "resources": {
+              "energy": {
+                "discarded": 1602,
+                "final": 1021,
+                "growth": 4906,
+                "income": 17716,
+                "initial": 1600,
+                "overflow": 8065,
+                "reproduction": 336,
+                "upkeep": 3386
+              },
+              "water": {
+                "discarded": 1425,
+                "final": 5091,
+                "growth": 2828,
+                "income": 17000,
+                "initial": 600,
+                "overflow": 6464,
+                "reproduction": 168,
+                "upkeep": 1624
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 15,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 32
+            },
+            "blocker_checks": {
+              "cold": 42744,
+              "dormant": 0,
+              "light": 297399,
+              "moisture": 355867,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 369395
+            },
+            "mature_checks": 381383,
+            "open_elsewhere_checks": 21927,
+            "outcomes": {
+              "expired": 36,
+              "germinated": 25,
+              "pending": 8
+            },
+            "seeds": 69
+          },
+          "late_children": {
+            "children": 9,
+            "death_shortages": {
+              "water": 3
+            },
+            "outcomes": {
+              "confirmed": 6,
+              "died": 3
+            },
+            "resources": {
+              "energy": {
+                "discarded": 332,
+                "final": 748,
+                "growth": 2044,
+                "income": 7598,
+                "initial": 576,
+                "overflow": 3010,
+                "reproduction": 240,
+                "upkeep": 1800
+              },
+              "water": {
+                "discarded": 0,
+                "final": 3047,
+                "growth": 1180,
+                "income": 7617,
+                "initial": 216,
+                "overflow": 2702,
+                "reproduction": 120,
+                "upkeep": 784
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 10,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 22
+            },
+            "blocker_checks": {
+              "cold": 26244,
+              "dormant": 0,
+              "light": 178726,
+              "moisture": 214722,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 227662
+            },
+            "mature_checks": 229152,
+            "open_elsewhere_checks": 13862,
+            "outcomes": {
+              "expired": 28
+            },
+            "seeds": 28
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697833-live",
+      "run_hash": "e0bf9448",
+      "trace_sha256": "5850c70eac2117c772df906d493e8fe2d435875268729795bd4c0315fa37b9a5",
+      "world_hash": "a812f5c6"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 1254,
+        "seed_checks": 384189,
+        "seed_samples": 384229,
+        "summary": {
+          "all_children": {
+            "children": 8,
+            "death_shortages": {
+              "energy": 1,
+              "water": 4
+            },
+            "outcomes": {
+              "confirmed": 3,
+              "died": 5
+            },
+            "resources": {
+              "energy": {
+                "discarded": 770,
+                "final": 495,
+                "growth": 1475,
+                "income": 5518,
+                "initial": 512,
+                "overflow": 2060,
+                "reproduction": 96,
+                "upkeep": 1134
+              },
+              "water": {
+                "discarded": 503,
+                "final": 1534,
+                "growth": 847,
+                "income": 6676,
+                "initial": 192,
+                "overflow": 3428,
+                "reproduction": 48,
+                "upkeep": 508
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 11,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 47
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 278548,
+              "moisture": 348814,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 382048
+            },
+            "mature_checks": 383797,
+            "open_elsewhere_checks": 81709,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 8,
+              "pending": 8
+            },
+            "seeds": 56
+          },
+          "late_children": {
+            "children": 2,
+            "death_shortages": {
+              "water": 1
+            },
+            "outcomes": {
+              "confirmed": 1,
+              "died": 1
+            },
+            "resources": {
+              "energy": {
+                "discarded": 254,
+                "final": 256,
+                "growth": 376,
+                "income": 1753,
+                "initial": 128,
+                "overflow": 689,
+                "reproduction": 0,
+                "upkeep": 306
+              },
+              "water": {
+                "discarded": 0,
+                "final": 512,
+                "growth": 235,
+                "income": 2229,
+                "initial": 48,
+                "overflow": 1399,
+                "reproduction": 0,
+                "upkeep": 131
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 6,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 32
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 189887,
+              "moisture": 237303,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 261888
+            },
+            "mature_checks": 261888,
+            "open_elsewhere_checks": 57077,
+            "outcomes": {
+              "expired": 32
+            },
+            "seeds": 32
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "single-s6d697834-live",
+      "run_hash": "b0157d1d",
+      "trace_sha256": "a6159e4d7905ffd82e4494ba46b82e70a2776efefffb872ea2cade772550bf74",
+      "world_hash": "bf286184"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 4141,
+        "seed_checks": 388024,
+        "seed_samples": 388064,
+        "summary": {
+          "all_children": {
+            "children": 26,
+            "death_shortages": {
+              "energy": 18,
+              "water": 5
+            },
+            "outcomes": {
+              "confirmed": 3,
+              "died": 23
+            },
+            "resources": {
+              "energy": {
+                "discarded": 1269,
+                "final": 431,
+                "growth": 5514,
+                "income": 15889,
+                "initial": 1664,
+                "overflow": 6819,
+                "reproduction": 576,
+                "upkeep": 2944
+              },
+              "water": {
+                "discarded": 5801,
+                "final": 1289,
+                "growth": 3312,
+                "income": 14525,
+                "initial": 624,
+                "overflow": 2089,
+                "reproduction": 288,
+                "upkeep": 2370
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 18,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 45
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 290630,
+              "moisture": 362727,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 381084
+            },
+            "mature_checks": 387506,
+            "open_elsewhere_checks": 71988,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 26,
+              "pending": 8
+            },
+            "seeds": 74
+          },
+          "late_children": {
+            "children": 4,
+            "death_shortages": {
+              "energy": 2,
+              "water": 1
+            },
+            "outcomes": {
+              "confirmed": 1,
+              "died": 3
+            },
+            "resources": {
+              "energy": {
+                "discarded": 253,
+                "final": 89,
+                "growth": 805,
+                "income": 2600,
+                "initial": 256,
+                "overflow": 1205,
+                "reproduction": 0,
+                "upkeep": 504
+              },
+              "water": {
+                "discarded": 548,
+                "final": 510,
+                "growth": 477,
+                "income": 2345,
+                "initial": 96,
+                "overflow": 583,
+                "reproduction": 0,
+                "upkeep": 323
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 13,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 32
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 197920,
+              "moisture": 248183,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 261888
+            },
+            "mature_checks": 261888,
+            "open_elsewhere_checks": 47718,
+            "outcomes": {
+              "expired": 32
+            },
+            "seeds": 32
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "multi-s6d697834-live",
+      "run_hash": "4ae5bbda",
+      "trace_sha256": "e8aedbe25daf962e7d31c454d3220bc1e79fe51643c6325a1a11549cc7c18bd2",
+      "world_hash": "2268bd00"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 6597,
+        "seed_checks": 381878,
+        "seed_samples": 381909,
+        "summary": {
+          "all_children": {
+            "children": 46,
+            "death_shortages": {
+              "energy": 17,
+              "energy+water": 4,
+              "water": 8
+            },
+            "outcomes": {
+              "confirmed": 17,
+              "died": 29
+            },
+            "resources": {
+              "energy": {
+                "discarded": 1810,
+                "final": 2376,
+                "growth": 8619,
+                "income": 25201,
+                "initial": 2944,
+                "overflow": 9086,
+                "reproduction": 432,
+                "upkeep": 5822
+              },
+              "water": {
+                "discarded": 1970,
+                "final": 8427,
+                "growth": 5046,
+                "income": 26269,
+                "initial": 1104,
+                "overflow": 8744,
+                "reproduction": 216,
+                "upkeep": 2970
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 7,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 24
+            },
+            "blocker_checks": {
+              "cold": 42589,
+              "dormant": 0,
+              "light": 292725,
+              "moisture": 354127,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 351965
+            },
+            "mature_checks": 381283,
+            "open_elsewhere_checks": 21522,
+            "outcomes": {
+              "expired": 31,
+              "germinated": 46,
+              "pending": 8
+            },
+            "seeds": 85
+          },
+          "late_children": {
+            "children": 29,
+            "death_shortages": {
+              "energy": 7,
+              "energy+water": 3,
+              "water": 7
+            },
+            "outcomes": {
+              "confirmed": 12,
+              "died": 17
+            },
+            "resources": {
+              "energy": {
+                "discarded": 1556,
+                "final": 1936,
+                "growth": 5451,
+                "income": 17676,
+                "initial": 1856,
+                "overflow": 6278,
+                "reproduction": 288,
+                "upkeep": 4023
+              },
+              "water": {
+                "discarded": 479,
+                "final": 5874,
+                "growth": 3215,
+                "income": 16465,
+                "initial": 696,
+                "overflow": 5497,
+                "reproduction": 144,
+                "upkeep": 1952
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 3,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 10
+            },
+            "blocker_checks": {
+              "cold": 18561,
+              "dormant": 0,
+              "light": 143055,
+              "moisture": 173514,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 179770
+            },
+            "mature_checks": 188232,
+            "open_elsewhere_checks": 12284,
+            "outcomes": {
+              "expired": 23
+            },
+            "seeds": 23
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697834-live",
+      "run_hash": "08726c62",
+      "trace_sha256": "746b90fa1576b39c5f85e1888a17f1b277201b8f83fc9a060d006edede1063e7",
+      "world_hash": "86e7804f"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 4050,
+        "seed_checks": 377077,
+        "seed_samples": 377112,
+        "summary": {
+          "all_children": {
+            "children": 24,
+            "death_shortages": {
+              "energy": 5,
+              "water": 8
+            },
+            "outcomes": {
+              "confirmed": 11,
+              "died": 13
+            },
+            "resources": {
+              "energy": {
+                "discarded": 1606,
+                "final": 1793,
+                "growth": 4705,
+                "income": 15997,
+                "initial": 1536,
+                "overflow": 5682,
+                "reproduction": 432,
+                "upkeep": 3315
+              },
+              "water": {
+                "discarded": 1233,
+                "final": 4807,
+                "growth": 2693,
+                "income": 14818,
+                "initial": 576,
+                "overflow": 4754,
+                "reproduction": 216,
+                "upkeep": 1691
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 12,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 33
+            },
+            "blocker_checks": {
+              "cold": 42744,
+              "dormant": 0,
+              "light": 290650,
+              "moisture": 344921,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 369624
+            },
+            "mature_checks": 376608,
+            "open_elsewhere_checks": 37814,
+            "outcomes": {
+              "expired": 35,
+              "germinated": 24,
+              "pending": 8
+            },
+            "seeds": 67
+          },
+          "late_children": {
+            "children": 12,
+            "death_shortages": {
+              "water": 4
+            },
+            "outcomes": {
+              "confirmed": 8,
+              "died": 4
+            },
+            "resources": {
+              "energy": {
+                "discarded": 589,
+                "final": 1518,
+                "growth": 2720,
+                "income": 9846,
+                "initial": 768,
+                "overflow": 3382,
+                "reproduction": 288,
+                "upkeep": 2117
+              },
+              "water": {
+                "discarded": 0,
+                "final": 3303,
+                "growth": 1575,
+                "income": 8585,
+                "initial": 288,
+                "overflow": 2827,
+                "reproduction": 144,
+                "upkeep": 1024
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 6,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 18
+            },
+            "blocker_checks": {
+              "cold": 25224,
+              "dormant": 0,
+              "light": 171245,
+              "moisture": 204465,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 218242
+            },
+            "mature_checks": 220968,
+            "open_elsewhere_checks": 16014,
+            "outcomes": {
+              "expired": 27
+            },
+            "seeds": 27
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697834-live",
+      "run_hash": "ccaab483",
+      "trace_sha256": "374eba82ca03f7f110fdb1e7cfab256fb083488566e72ab8133f7555a5c2bc54",
+      "world_hash": "eb58647e"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 1377,
+        "seed_checks": 385057,
+        "seed_samples": 385097,
+        "summary": {
+          "all_children": {
+            "children": 9,
+            "death_shortages": {
+              "energy": 4,
+              "water": 2
+            },
+            "outcomes": {
+              "confirmed": 3,
+              "died": 6
+            },
+            "resources": {
+              "energy": {
+                "discarded": 483,
+                "final": 329,
+                "growth": 2080,
+                "income": 6621,
+                "initial": 576,
+                "overflow": 2949,
+                "reproduction": 96,
+                "upkeep": 1260
+              },
+              "water": {
+                "discarded": 1080,
+                "final": 1532,
+                "growth": 1199,
+                "income": 8109,
+                "initial": 216,
+                "overflow": 3777,
+                "reproduction": 48,
+                "upkeep": 689
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 12,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 47
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 279439,
+              "moisture": 361092,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 382751
+            },
+            "mature_checks": 384658,
+            "open_elsewhere_checks": 63928,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 9,
+              "pending": 8
+            },
+            "seeds": 57
+          },
+          "late_children": {
+            "children": 1,
+            "death_shortages": {},
+            "outcomes": {
+              "confirmed": 1
+            },
+            "resources": {
+              "energy": {
+                "discarded": 0,
+                "final": 160,
+                "growth": 306,
+                "income": 1241,
+                "initial": 64,
+                "overflow": 552,
+                "reproduction": 0,
+                "upkeep": 287
+              },
+              "water": {
+                "discarded": 0,
+                "final": 512,
+                "growth": 170,
+                "income": 1486,
+                "initial": 24,
+                "overflow": 649,
+                "reproduction": 0,
+                "upkeep": 179
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 10,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 32
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 191352,
+              "moisture": 246391,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 261888
+            },
+            "mature_checks": 261888,
+            "open_elsewhere_checks": 34602,
+            "outcomes": {
+              "expired": 32
+            },
+            "seeds": 32
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "single-s6d697835-live",
+      "run_hash": "59e85ceb",
+      "trace_sha256": "aff361d7eb96c6c8239abcb17bd06ccc7edf546fbd9b7e6942a55a842498bdad",
+      "world_hash": "998e2eab"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 790,
+        "seed_checks": 385200,
+        "seed_samples": 385240,
+        "summary": {
+          "all_children": {
+            "children": 6,
+            "death_shortages": {
+              "energy": 1,
+              "water": 3
+            },
+            "outcomes": {
+              "confirmed": 2,
+              "died": 4
+            },
+            "resources": {
+              "energy": {
+                "discarded": 762,
+                "final": 337,
+                "growth": 861,
+                "income": 4539,
+                "initial": 384,
+                "overflow": 2194,
+                "reproduction": 96,
+                "upkeep": 673
+              },
+              "water": {
+                "discarded": 24,
+                "final": 1008,
+                "growth": 529,
+                "income": 3655,
+                "initial": 144,
+                "overflow": 1871,
+                "reproduction": 48,
+                "upkeep": 319
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 12,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 46
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 271895,
+              "moisture": 354365,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 382800
+            },
+            "mature_checks": 384822,
+            "open_elsewhere_checks": 74361,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 6,
+              "pending": 8
+            },
+            "seeds": 54
+          },
+          "late_children": {
+            "children": 1,
+            "death_shortages": {
+              "water": 1
+            },
+            "outcomes": {
+              "died": 1
+            },
+            "resources": {
+              "energy": {
+                "discarded": 254,
+                "final": 0,
+                "growth": 96,
+                "income": 900,
+                "initial": 64,
+                "overflow": 578,
+                "reproduction": 0,
+                "upkeep": 36
+              },
+              "water": {
+                "discarded": 0,
+                "final": 0,
+                "growth": 60,
+                "income": 54,
+                "initial": 24,
+                "overflow": 0,
+                "reproduction": 0,
+                "upkeep": 18
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 8,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 32
+            },
+            "blocker_checks": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 184853,
+              "moisture": 240529,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 261888
+            },
+            "mature_checks": 261888,
+            "open_elsewhere_checks": 48562,
+            "outcomes": {
+              "expired": 32
+            },
+            "seeds": 32
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "multi-s6d697835-live",
+      "run_hash": "1d6c3bfc",
+      "trace_sha256": "560416b60115f7e7f08023a61e13971fe886814aecfc27c9e2b22313e115dd45",
+      "world_hash": "98e48fed"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 5732,
+        "seed_checks": 379981,
+        "seed_samples": 380013,
+        "summary": {
+          "all_children": {
+            "children": 39,
+            "death_shortages": {
+              "energy": 10,
+              "energy+water": 2,
+              "water": 11
+            },
+            "outcomes": {
+              "confirmed": 16,
+              "died": 23
+            },
+            "resources": {
+              "energy": {
+                "discarded": 2575,
+                "final": 1988,
+                "growth": 7223,
+                "income": 25220,
+                "initial": 2496,
+                "overflow": 10385,
+                "reproduction": 336,
+                "upkeep": 5209
+              },
+              "water": {
+                "discarded": 1481,
+                "final": 7924,
+                "growth": 4177,
+                "income": 22820,
+                "initial": 936,
+                "overflow": 7507,
+                "reproduction": 168,
+                "upkeep": 2499
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 7,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 21
+            },
+            "blocker_checks": {
+              "cold": 42744,
+              "dormant": 0,
+              "light": 292719,
+              "moisture": 347884,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 349456
+            },
+            "mature_checks": 379428,
+            "open_elsewhere_checks": 29950,
+            "outcomes": {
+              "expired": 32,
+              "germinated": 39,
+              "pending": 8
+            },
+            "seeds": 79
+          },
+          "late_children": {
+            "children": 28,
+            "death_shortages": {
+              "energy": 5,
+              "energy+water": 2,
+              "water": 10
+            },
+            "outcomes": {
+              "confirmed": 11,
+              "died": 17
+            },
+            "resources": {
+              "energy": {
+                "discarded": 2321,
+                "final": 1472,
+                "growth": 4860,
+                "income": 18239,
+                "initial": 1792,
+                "overflow": 7625,
+                "reproduction": 192,
+                "upkeep": 3561
+              },
+              "water": {
+                "discarded": 497,
+                "final": 5505,
+                "growth": 2805,
+                "income": 14436,
+                "initial": 672,
+                "overflow": 4524,
+                "reproduction": 96,
+                "upkeep": 1681
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 2,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 7
+            },
+            "blocker_checks": {
+              "cold": 19181,
+              "dormant": 0,
+              "light": 151104,
+              "moisture": 178997,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 182681
+            },
+            "mature_checks": 196416,
+            "open_elsewhere_checks": 11109,
+            "outcomes": {
+              "expired": 24
+            },
+            "seeds": 24
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697835-live",
+      "run_hash": "72da6974",
+      "trace_sha256": "c288ea40227a2c9995617023eea840516520f1f622f7e334209bfd2783997cf8",
+      "world_hash": "5f51e8f4"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "first_day_samples": 5401,
+        "seed_checks": 379553,
+        "seed_samples": 379582,
+        "summary": {
+          "all_children": {
+            "children": 41,
+            "death_shortages": {
+              "energy": 13,
+              "energy+water": 2,
+              "water": 14
+            },
+            "outcomes": {
+              "confirmed": 12,
+              "died": 29
+            },
+            "resources": {
+              "energy": {
+                "discarded": 3525,
+                "final": 1528,
+                "growth": 7172,
+                "income": 27188,
+                "initial": 2624,
+                "overflow": 12769,
+                "reproduction": 240,
+                "upkeep": 4578
+              },
+              "water": {
+                "discarded": 2209,
+                "final": 6036,
+                "growth": 4043,
+                "income": 26248,
+                "initial": 984,
+                "overflow": 12349,
+                "reproduction": 120,
+                "upkeep": 2475
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "all_seeds": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 9,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 21
+            },
+            "blocker_checks": {
+              "cold": 42744,
+              "dormant": 0,
+              "light": 284678,
+              "moisture": 339207,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 360305
+            },
+            "mature_checks": 379007,
+            "open_elsewhere_checks": 61218,
+            "outcomes": {
+              "expired": 29,
+              "germinated": 41,
+              "pending": 8
+            },
+            "seeds": 78
+          },
+          "late_children": {
+            "children": 20,
+            "death_shortages": {
+              "energy": 4,
+              "water": 9
+            },
+            "outcomes": {
+              "confirmed": 7,
+              "died": 13
+            },
+            "resources": {
+              "energy": {
+                "discarded": 2255,
+                "final": 1082,
+                "growth": 3684,
+                "income": 16604,
+                "initial": 1280,
+                "overflow": 8154,
+                "reproduction": 48,
+                "upkeep": 2661
+              },
+              "water": {
+                "discarded": 625,
+                "final": 3574,
+                "growth": 2080,
+                "income": 15352,
+                "initial": 480,
+                "overflow": 8119,
+                "reproduction": 24,
+                "upkeep": 1410
+              }
+            },
+            "zero_energy_income": 0
+          },
+          "late_expired": {
+            "always_blocked_seeds": {
+              "cold": 0,
+              "dormant": 0,
+              "light": 0,
+              "moisture": 4,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 10
+            },
+            "blocker_checks": {
+              "cold": 17694,
+              "dormant": 0,
+              "light": 129756,
+              "moisture": 149281,
+              "node_capacity": 0,
+              "plant_capacity": 0,
+              "spacing": 167569
+            },
+            "mature_checks": 171864,
+            "open_elsewhere_checks": 36808,
+            "outcomes": {
+              "expired": 21
+            },
+            "seeds": 21
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697835-live",
+      "run_hash": "1d66b985",
+      "trace_sha256": "8f2f6c7976cd41f3dcaba4843f114333c8af4292b49b193d0c62b7e8ea123dd8",
+      "world_hash": "fb95ad44"
+    }
+  ]
+}

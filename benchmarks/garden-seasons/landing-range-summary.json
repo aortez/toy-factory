@@ -1,0 +1,5035 @@
+{
+  "arms": {
+    "narrow": 0,
+    "wide": 1
+  },
+  "artifact_hashes_rechecked": 405,
+  "builds": {
+    "narrow": {
+      "binary": "627dfa0fe938815f068c495113a13e569d0d0e8b733c30d0e81c60decf501758",
+      "cache": "5c362e294a6e964912318483edb541bb4c4f34f29c6fbb4ce116f0f3761e31ac"
+    },
+    "wide": {
+      "binary": "fff21232f7b90f54d49b50c66a2a1748ce90f8fc05ab5633a504389da6bb7fec",
+      "cache": "18a83321d81b040e2fbe7184df92e42771cc2ff0fe574a7bc7c4da61bcd2e482"
+    }
+  },
+  "comparison": {
+    "gates": {
+      "improve_key_or_renewal": true,
+      "no_earlier_or_new_empty_world": true,
+      "seasonal_retain_key": false,
+      "seasonal_retain_late_survivors": true,
+      "steady_retain_key": false,
+      "steady_retain_late_survivors": false
+    },
+    "groups": {
+      "all": {
+        "scores": {
+          "candidate": {
+            "key": [
+              0,
+              47,
+              833385,
+              6111435
+            ],
+            "mean_denominator": 12,
+            "period_sums": [
+              1796790,
+              1579230,
+              1351665,
+              1383750
+            ],
+            "pooled_key": [
+              0,
+              47,
+              1351665,
+              6111435
+            ],
+            "pooling_gap_ticks": 518280,
+            "rule": "garden-individual-renewal-candidate-v1",
+            "sorted_world_minima": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              8325,
+              11205,
+              50805,
+              211320,
+              233640,
+              318090
+            ],
+            "terminal_tier_counts": {
+              "-1": 0,
+              "0": 1,
+              "1": 47
+            },
+            "world_count": 12,
+            "worlds": {
+              "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 50805,
+                "period_ticks": [
+                  110655,
+                  50805,
+                  118905,
+                  118470
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 398835,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  64590,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 64590,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 318090,
+                "period_ticks": [
+                  397065,
+                  380640,
+                  318090,
+                  505395
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1601190,
+                "weakest_periods": [
+                  [
+                    126,
+                    158
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  39015,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 39015,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 211320,
+                "period_ticks": [
+                  303510,
+                  211320,
+                  240480,
+                  252735
+                ],
+                "terminal_tiers": [
+                  1,
+                  0,
+                  1,
+                  1
+                ],
+                "total_ticks": 1008045,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  62040
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 62040,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 8325,
+                "period_ticks": [
+                  221805,
+                  301920,
+                  146850,
+                  8325
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 678900,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 233640,
+                "period_ticks": [
+                  233640,
+                  272460,
+                  321570,
+                  425580
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1253250,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 11205,
+                "period_ticks": [
+                  377100,
+                  362085,
+                  205770,
+                  11205
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 956160,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  49410,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 49410,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 3
+              }
+            },
+            "zero_minimum_worlds": [
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "multi-s6d697834-live--rainfed-steady-5aa2b327",
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "single-s6d697834-live--rainfed-steady-5aa2b327",
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327"
+            ],
+            "zero_world_periods": 20
+          },
+          "comparison": -1,
+          "control": {
+            "key": [
+              1,
+              48,
+              837480,
+              6155700
+            ],
+            "mean_denominator": 12,
+            "period_sums": [
+              1494045,
+              1881720,
+              1668315,
+              1111620
+            ],
+            "pooled_key": [
+              1,
+              48,
+              1111620,
+              6155700
+            ],
+            "pooling_gap_ticks": 274140,
+            "rule": "garden-individual-renewal-candidate-v1",
+            "sorted_world_minima": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              119415,
+              122460,
+              162570,
+              169905,
+              263130
+            ],
+            "terminal_tier_counts": {
+              "-1": 0,
+              "0": 0,
+              "1": 48
+            },
+            "world_count": 12,
+            "worlds": {
+              "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  272790,
+                  386310,
+                  181980,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 841080,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 1
+              },
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 119415,
+                "period_ticks": [
+                  207255,
+                  382005,
+                  258090,
+                  119415
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 966765,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  65955,
+                  56925
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 122880,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 2
+              },
+              "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 122460,
+                "period_ticks": [
+                  207240,
+                  177315,
+                  173580,
+                  122460
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 680595,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 169905,
+                "period_ticks": [
+                  218370,
+                  169905,
+                  217605,
+                  175335
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 781215,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  61755
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 61755,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 162570,
+                "period_ticks": [
+                  162570,
+                  381945,
+                  373335,
+                  278280
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1196130,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  88560,
+                  34320
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 122880,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 2
+              },
+              "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 263130,
+                "period_ticks": [
+                  306915,
+                  354120,
+                  309210,
+                  263130
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1233375,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  118905,
+                  30120,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 149025,
+                "weakest_periods": [
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 2
+              }
+            },
+            "zero_minimum_worlds": [
+              "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "multi-s6d697834-live--rainfed-steady-5aa2b327",
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "single-s6d697834-live--rainfed-steady-5aa2b327",
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327"
+            ],
+            "zero_world_periods": 18
+          },
+          "minimum_delta": -4095,
+          "paired_counts": {
+            "losses": 7,
+            "ties": 0,
+            "wins": 5
+          },
+          "pairs": [
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "control_key": [
+                1,
+                4,
+                0,
+                61755
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                64590
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "control_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                8325,
+                678900
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                169905,
+                781215
+              ],
+              "minimum_delta": -161580
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                50805,
+                398835
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                0,
+                841080
+              ],
+              "minimum_delta": 50805
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697834-live--rainfed-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                122880
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                39015
+              ],
+              "comparison": -1,
+              "condition": "multi-s6d697834-live--rainfed-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                122880
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                233640,
+                1253250
+              ],
+              "comparison": 1,
+              "condition": "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                162570,
+                1196130
+              ],
+              "minimum_delta": 71070
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                318090,
+                1601190
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                119415,
+                966765
+              ],
+              "minimum_delta": 198675
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                49410
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                149025
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                62040
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                11205,
+                956160
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                263130,
+                1233375
+              ],
+              "minimum_delta": -251925
+            },
+            {
+              "candidate_key": [
+                0,
+                3,
+                211320,
+                1008045
+              ],
+              "comparison": -1,
+              "condition": "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                122460,
+                680595
+              ],
+              "minimum_delta": 88860
+            }
+          ],
+          "pooled_minimum_delta": 240045,
+          "pooling_gap_delta": 244140
+        },
+        "totals": {
+          "narrow": {
+            "births": 271,
+            "deaths": 280,
+            "empty_worlds": 0,
+            "historical_durable_parents": 45,
+            "late_child_births": 127,
+            "late_child_deaths": 72,
+            "late_child_shortages": {
+              "energy": 22,
+              "energy+water": 7,
+              "water": 43
+            },
+            "late_child_survivors": 55,
+            "late_renewal_confirmations": 55,
+            "late_seed_expiries": 343,
+            "living": 47,
+            "minimum_ticks": 837480,
+            "seed_bank": 96,
+            "seed_outcomes": {
+              "expired": 439,
+              "germinated": 271,
+              "pending": 96
+            },
+            "total_ticks": 6155700,
+            "worlds": 12,
+            "zero_periods": 18
+          },
+          "wide": {
+            "births": 515,
+            "deaths": 514,
+            "empty_worlds": 0,
+            "historical_durable_parents": 51,
+            "late_child_births": 268,
+            "late_child_deaths": 208,
+            "late_child_shortages": {
+              "energy": 82,
+              "energy+water": 18,
+              "water": 108
+            },
+            "late_child_survivors": 60,
+            "late_renewal_confirmations": 58,
+            "late_seed_expiries": 326,
+            "living": 57,
+            "minimum_ticks": 833385,
+            "seed_bank": 96,
+            "seed_outcomes": {
+              "expired": 430,
+              "germinated": 515,
+              "pending": 96
+            },
+            "total_ticks": 6111435,
+            "worlds": 12,
+            "zero_periods": 20
+          }
+        }
+      },
+      "multi": {
+        "scores": {
+          "candidate": {
+            "key": [
+              0,
+              23,
+              580215,
+              3173715
+            ],
+            "mean_denominator": 6,
+            "period_sums": [
+              914835,
+              642765,
+              677475,
+              938640
+            ],
+            "pooled_key": [
+              0,
+              23,
+              642765,
+              3173715
+            ],
+            "pooling_gap_ticks": 62550,
+            "rule": "garden-individual-renewal-candidate-v1",
+            "sorted_world_minima": [
+              0,
+              0,
+              0,
+              50805,
+              211320,
+              318090
+            ],
+            "terminal_tier_counts": {
+              "-1": 0,
+              "0": 1,
+              "1": 23
+            },
+            "world_count": 6,
+            "worlds": {
+              "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 50805,
+                "period_ticks": [
+                  110655,
+                  50805,
+                  118905,
+                  118470
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 398835,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  64590,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 64590,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 318090,
+                "period_ticks": [
+                  397065,
+                  380640,
+                  318090,
+                  505395
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1601190,
+                "weakest_periods": [
+                  [
+                    126,
+                    158
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  39015,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 39015,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 211320,
+                "period_ticks": [
+                  303510,
+                  211320,
+                  240480,
+                  252735
+                ],
+                "terminal_tiers": [
+                  1,
+                  0,
+                  1,
+                  1
+                ],
+                "total_ticks": 1008045,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  62040
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 62040,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ]
+                ],
+                "zero_periods": 3
+              }
+            },
+            "zero_minimum_worlds": [
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "multi-s6d697834-live--rainfed-steady-5aa2b327",
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327"
+            ],
+            "zero_world_periods": 9
+          },
+          "comparison": -1,
+          "control": {
+            "key": [
+              1,
+              24,
+              241875,
+              2611320
+            ],
+            "mean_denominator": 6,
+            "period_sums": [
+              687285,
+              945630,
+              679605,
+              298800
+            ],
+            "pooled_key": [
+              1,
+              24,
+              298800,
+              2611320
+            ],
+            "pooling_gap_ticks": 56925,
+            "rule": "garden-individual-renewal-candidate-v1",
+            "sorted_world_minima": [
+              0,
+              0,
+              0,
+              0,
+              119415,
+              122460
+            ],
+            "terminal_tier_counts": {
+              "-1": 0,
+              "0": 0,
+              "1": 24
+            },
+            "world_count": 6,
+            "worlds": {
+              "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  272790,
+                  386310,
+                  181980,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 841080,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 1
+              },
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 119415,
+                "period_ticks": [
+                  207255,
+                  382005,
+                  258090,
+                  119415
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 966765,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  65955,
+                  56925
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 122880,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 2
+              },
+              "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 122460,
+                "period_ticks": [
+                  207240,
+                  177315,
+                  173580,
+                  122460
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 680595,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              }
+            },
+            "zero_minimum_worlds": [
+              "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "multi-s6d697834-live--rainfed-steady-5aa2b327",
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327"
+            ],
+            "zero_world_periods": 11
+          },
+          "minimum_delta": 338340,
+          "paired_counts": {
+            "losses": 2,
+            "ties": 0,
+            "wins": 4
+          },
+          "pairs": [
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                64590
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "control_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                50805,
+                398835
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                0,
+                841080
+              ],
+              "minimum_delta": 50805
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                39015
+              ],
+              "comparison": -1,
+              "condition": "multi-s6d697834-live--rainfed-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                122880
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                318090,
+                1601190
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                119415,
+                966765
+              ],
+              "minimum_delta": 198675
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                62040
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                0,
+                3,
+                211320,
+                1008045
+              ],
+              "comparison": -1,
+              "condition": "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                122460,
+                680595
+              ],
+              "minimum_delta": 88860
+            }
+          ],
+          "pooled_minimum_delta": 343965,
+          "pooling_gap_delta": 5625
+        },
+        "totals": {
+          "narrow": {
+            "births": 130,
+            "deaths": 136,
+            "empty_worlds": 0,
+            "historical_durable_parents": 19,
+            "late_child_births": 47,
+            "late_child_deaths": 25,
+            "late_child_shortages": {
+              "energy": 6,
+              "water": 19
+            },
+            "late_child_survivors": 22,
+            "late_renewal_confirmations": 22,
+            "late_seed_expiries": 172,
+            "living": 22,
+            "minimum_ticks": 241875,
+            "seed_bank": 48,
+            "seed_outcomes": {
+              "expired": 220,
+              "germinated": 130,
+              "pending": 48
+            },
+            "total_ticks": 2611320,
+            "worlds": 6,
+            "zero_periods": 11
+          },
+          "wide": {
+            "births": 269,
+            "deaths": 265,
+            "empty_worlds": 0,
+            "historical_durable_parents": 28,
+            "late_child_births": 146,
+            "late_child_deaths": 115,
+            "late_child_shortages": {
+              "energy": 45,
+              "energy+water": 6,
+              "water": 64
+            },
+            "late_child_survivors": 31,
+            "late_renewal_confirmations": 29,
+            "late_seed_expiries": 163,
+            "living": 32,
+            "minimum_ticks": 580215,
+            "seed_bank": 48,
+            "seed_outcomes": {
+              "expired": 214,
+              "germinated": 269,
+              "pending": 48
+            },
+            "total_ticks": 3173715,
+            "worlds": 6,
+            "zero_periods": 9
+          }
+        }
+      },
+      "seasonal": {
+        "scores": {
+          "candidate": {
+            "key": [
+              0,
+              23,
+              833385,
+              5896380
+            ],
+            "mean_denominator": 6,
+            "period_sums": [
+              1643775,
+              1579230,
+              1351665,
+              1321710
+            ],
+            "pooled_key": [
+              0,
+              23,
+              1321710,
+              5896380
+            ],
+            "pooling_gap_ticks": 488325,
+            "rule": "garden-individual-renewal-candidate-v1",
+            "sorted_world_minima": [
+              8325,
+              11205,
+              50805,
+              211320,
+              233640,
+              318090
+            ],
+            "terminal_tier_counts": {
+              "-1": 0,
+              "0": 1,
+              "1": 23
+            },
+            "world_count": 6,
+            "worlds": {
+              "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 50805,
+                "period_ticks": [
+                  110655,
+                  50805,
+                  118905,
+                  118470
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 398835,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 318090,
+                "period_ticks": [
+                  397065,
+                  380640,
+                  318090,
+                  505395
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1601190,
+                "weakest_periods": [
+                  [
+                    126,
+                    158
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 211320,
+                "period_ticks": [
+                  303510,
+                  211320,
+                  240480,
+                  252735
+                ],
+                "terminal_tiers": [
+                  1,
+                  0,
+                  1,
+                  1
+                ],
+                "total_ticks": 1008045,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 8325,
+                "period_ticks": [
+                  221805,
+                  301920,
+                  146850,
+                  8325
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 678900,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 233640,
+                "period_ticks": [
+                  233640,
+                  272460,
+                  321570,
+                  425580
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1253250,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 11205,
+                "period_ticks": [
+                  377100,
+                  362085,
+                  205770,
+                  11205
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 956160,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              }
+            },
+            "zero_minimum_worlds": [],
+            "zero_world_periods": 0
+          },
+          "comparison": -1,
+          "control": {
+            "key": [
+              1,
+              24,
+              837480,
+              5699160
+            ],
+            "mean_denominator": 6,
+            "period_sums": [
+              1375140,
+              1851600,
+              1513800,
+              958620
+            ],
+            "pooled_key": [
+              1,
+              24,
+              958620,
+              5699160
+            ],
+            "pooling_gap_ticks": 121140,
+            "rule": "garden-individual-renewal-candidate-v1",
+            "sorted_world_minima": [
+              0,
+              119415,
+              122460,
+              162570,
+              169905,
+              263130
+            ],
+            "terminal_tier_counts": {
+              "-1": 0,
+              "0": 0,
+              "1": 24
+            },
+            "world_count": 6,
+            "worlds": {
+              "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  272790,
+                  386310,
+                  181980,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 841080,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 1
+              },
+              "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 119415,
+                "period_ticks": [
+                  207255,
+                  382005,
+                  258090,
+                  119415
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 966765,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 122460,
+                "period_ticks": [
+                  207240,
+                  177315,
+                  173580,
+                  122460
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 680595,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 169905,
+                "period_ticks": [
+                  218370,
+                  169905,
+                  217605,
+                  175335
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 781215,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 162570,
+                "period_ticks": [
+                  162570,
+                  381945,
+                  373335,
+                  278280
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1196130,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 263130,
+                "period_ticks": [
+                  306915,
+                  354120,
+                  309210,
+                  263130
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1233375,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              }
+            },
+            "zero_minimum_worlds": [
+              "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4"
+            ],
+            "zero_world_periods": 1
+          },
+          "minimum_delta": -4095,
+          "paired_counts": {
+            "losses": 3,
+            "ties": 0,
+            "wins": 3
+          },
+          "pairs": [
+            {
+              "candidate_key": [
+                1,
+                4,
+                8325,
+                678900
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                169905,
+                781215
+              ],
+              "minimum_delta": -161580
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                50805,
+                398835
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                0,
+                841080
+              ],
+              "minimum_delta": 50805
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                233640,
+                1253250
+              ],
+              "comparison": 1,
+              "condition": "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                162570,
+                1196130
+              ],
+              "minimum_delta": 71070
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                318090,
+                1601190
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                119415,
+                966765
+              ],
+              "minimum_delta": 198675
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                11205,
+                956160
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                263130,
+                1233375
+              ],
+              "minimum_delta": -251925
+            },
+            {
+              "candidate_key": [
+                0,
+                3,
+                211320,
+                1008045
+              ],
+              "comparison": -1,
+              "condition": "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                122460,
+                680595
+              ],
+              "minimum_delta": 88860
+            }
+          ],
+          "pooled_minimum_delta": 363090,
+          "pooling_gap_delta": 367185
+        },
+        "totals": {
+          "narrow": {
+            "births": 201,
+            "deaths": 207,
+            "empty_worlds": 0,
+            "historical_durable_parents": 37,
+            "late_child_births": 114,
+            "late_child_deaths": 63,
+            "late_child_shortages": {
+              "energy": 18,
+              "energy+water": 7,
+              "water": 38
+            },
+            "late_child_survivors": 51,
+            "late_renewal_confirmations": 51,
+            "late_seed_expiries": 151,
+            "living": 24,
+            "minimum_ticks": 837480,
+            "seed_bank": 48,
+            "seed_outcomes": {
+              "expired": 199,
+              "germinated": 201,
+              "pending": 48
+            },
+            "total_ticks": 5699160,
+            "worlds": 6,
+            "zero_periods": 1
+          },
+          "wide": {
+            "births": 370,
+            "deaths": 373,
+            "empty_worlds": 0,
+            "historical_durable_parents": 43,
+            "late_child_births": 224,
+            "late_child_deaths": 167,
+            "late_child_shortages": {
+              "energy": 71,
+              "energy+water": 15,
+              "water": 81
+            },
+            "late_child_survivors": 57,
+            "late_renewal_confirmations": 57,
+            "late_seed_expiries": 134,
+            "living": 27,
+            "minimum_ticks": 833385,
+            "seed_bank": 48,
+            "seed_outcomes": {
+              "expired": 190,
+              "germinated": 370,
+              "pending": 48
+            },
+            "total_ticks": 5896380,
+            "worlds": 6,
+            "zero_periods": 0
+          }
+        }
+      },
+      "single": {
+        "scores": {
+          "candidate": {
+            "key": [
+              1,
+              24,
+              253170,
+              2937720
+            ],
+            "mean_denominator": 6,
+            "period_sums": [
+              881955,
+              936465,
+              674190,
+              445110
+            ],
+            "pooled_key": [
+              1,
+              24,
+              445110,
+              2937720
+            ],
+            "pooling_gap_ticks": 191940,
+            "rule": "garden-individual-renewal-candidate-v1",
+            "sorted_world_minima": [
+              0,
+              0,
+              0,
+              8325,
+              11205,
+              233640
+            ],
+            "terminal_tier_counts": {
+              "-1": 0,
+              "0": 0,
+              "1": 24
+            },
+            "world_count": 6,
+            "worlds": {
+              "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 8325,
+                "period_ticks": [
+                  221805,
+                  301920,
+                  146850,
+                  8325
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 678900,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 233640,
+                "period_ticks": [
+                  233640,
+                  272460,
+                  321570,
+                  425580
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1253250,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 11205,
+                "period_ticks": [
+                  377100,
+                  362085,
+                  205770,
+                  11205
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 956160,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  49410,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 49410,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 3
+              }
+            },
+            "zero_minimum_worlds": [
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "single-s6d697834-live--rainfed-steady-5aa2b327",
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327"
+            ],
+            "zero_world_periods": 11
+          },
+          "comparison": -1,
+          "control": {
+            "key": [
+              1,
+              24,
+              595605,
+              3544380
+            ],
+            "mean_denominator": 6,
+            "period_sums": [
+              806760,
+              936090,
+              988710,
+              812820
+            ],
+            "pooled_key": [
+              1,
+              24,
+              806760,
+              3544380
+            ],
+            "pooling_gap_ticks": 211155,
+            "rule": "garden-individual-renewal-candidate-v1",
+            "sorted_world_minima": [
+              0,
+              0,
+              0,
+              162570,
+              169905,
+              263130
+            ],
+            "terminal_tier_counts": {
+              "-1": 0,
+              "0": 0,
+              "1": 24
+            },
+            "world_count": 6,
+            "worlds": {
+              "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 169905,
+                "period_ticks": [
+                  218370,
+                  169905,
+                  217605,
+                  175335
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 781215,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  61755
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 61755,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 162570,
+                "period_ticks": [
+                  162570,
+                  381945,
+                  373335,
+                  278280
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1196130,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  88560,
+                  34320
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 122880,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 2
+              },
+              "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4": {
+                "minimum_ticks": 263130,
+                "period_ticks": [
+                  306915,
+                  354120,
+                  309210,
+                  263130
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 1233375,
+                "weakest_periods": [
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 0
+              },
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  118905,
+                  30120,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 149025,
+                "weakest_periods": [
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 2
+              }
+            },
+            "zero_minimum_worlds": [
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "single-s6d697834-live--rainfed-steady-5aa2b327",
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327"
+            ],
+            "zero_world_periods": 7
+          },
+          "minimum_delta": -342435,
+          "paired_counts": {
+            "losses": 5,
+            "ties": 0,
+            "wins": 1
+          },
+          "pairs": [
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "control_key": [
+                1,
+                4,
+                0,
+                61755
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                8325,
+                678900
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                169905,
+                781215
+              ],
+              "minimum_delta": -161580
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697834-live--rainfed-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                122880
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                233640,
+                1253250
+              ],
+              "comparison": 1,
+              "condition": "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                162570,
+                1196130
+              ],
+              "minimum_delta": 71070
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                49410
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                149025
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                11205,
+                956160
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+              "control_key": [
+                1,
+                4,
+                263130,
+                1233375
+              ],
+              "minimum_delta": -251925
+            }
+          ],
+          "pooled_minimum_delta": -361650,
+          "pooling_gap_delta": -19215
+        },
+        "totals": {
+          "narrow": {
+            "births": 141,
+            "deaths": 144,
+            "empty_worlds": 0,
+            "historical_durable_parents": 26,
+            "late_child_births": 80,
+            "late_child_deaths": 47,
+            "late_child_shortages": {
+              "energy": 16,
+              "energy+water": 7,
+              "water": 24
+            },
+            "late_child_survivors": 33,
+            "late_renewal_confirmations": 33,
+            "late_seed_expiries": 171,
+            "living": 25,
+            "minimum_ticks": 595605,
+            "seed_bank": 48,
+            "seed_outcomes": {
+              "expired": 219,
+              "germinated": 141,
+              "pending": 48
+            },
+            "total_ticks": 3544380,
+            "worlds": 6,
+            "zero_periods": 7
+          },
+          "wide": {
+            "births": 246,
+            "deaths": 249,
+            "empty_worlds": 0,
+            "historical_durable_parents": 23,
+            "late_child_births": 122,
+            "late_child_deaths": 93,
+            "late_child_shortages": {
+              "energy": 37,
+              "energy+water": 12,
+              "water": 44
+            },
+            "late_child_survivors": 29,
+            "late_renewal_confirmations": 29,
+            "late_seed_expiries": 163,
+            "living": 25,
+            "minimum_ticks": 253170,
+            "seed_bank": 48,
+            "seed_outcomes": {
+              "expired": 216,
+              "germinated": 246,
+              "pending": 48
+            },
+            "total_ticks": 2937720,
+            "worlds": 6,
+            "zero_periods": 11
+          }
+        }
+      },
+      "steady": {
+        "scores": {
+          "candidate": {
+            "key": [
+              1,
+              24,
+              0,
+              215055
+            ],
+            "mean_denominator": 6,
+            "period_sums": [
+              153015,
+              0,
+              0,
+              62040
+            ],
+            "pooled_key": [
+              1,
+              24,
+              0,
+              215055
+            ],
+            "pooling_gap_ticks": 0,
+            "rule": "garden-individual-renewal-candidate-v1",
+            "sorted_world_minima": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "terminal_tier_counts": {
+              "-1": 0,
+              "0": 0,
+              "1": 24
+            },
+            "world_count": 6,
+            "worlds": {
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  64590,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 64590,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "multi-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  39015,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 39015,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  62040
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 62040,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "single-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  49410,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 49410,
+                "weakest_periods": [
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 3
+              }
+            },
+            "zero_minimum_worlds": [
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "multi-s6d697834-live--rainfed-steady-5aa2b327",
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "single-s6d697834-live--rainfed-steady-5aa2b327",
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327"
+            ],
+            "zero_world_periods": 20
+          },
+          "comparison": -1,
+          "control": {
+            "key": [
+              1,
+              24,
+              0,
+              456540
+            ],
+            "mean_denominator": 6,
+            "period_sums": [
+              118905,
+              30120,
+              154515,
+              153000
+            ],
+            "pooled_key": [
+              1,
+              24,
+              30120,
+              456540
+            ],
+            "pooling_gap_ticks": 30120,
+            "rule": "garden-individual-renewal-candidate-v1",
+            "sorted_world_minima": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "terminal_tier_counts": {
+              "-1": 0,
+              "0": 0,
+              "1": 24
+            },
+            "world_count": 6,
+            "worlds": {
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "multi-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  65955,
+                  56925
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 122880,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 2
+              },
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 0,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 4
+              },
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  0,
+                  61755
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 61755,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ],
+                  [
+                    126,
+                    158
+                  ]
+                ],
+                "zero_periods": 3
+              },
+              "single-s6d697834-live--rainfed-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  0,
+                  0,
+                  88560,
+                  34320
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 122880,
+                "weakest_periods": [
+                  [
+                    62,
+                    94
+                  ],
+                  [
+                    94,
+                    126
+                  ]
+                ],
+                "zero_periods": 2
+              },
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327": {
+                "minimum_ticks": 0,
+                "period_ticks": [
+                  118905,
+                  30120,
+                  0,
+                  0
+                ],
+                "terminal_tiers": [
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "total_ticks": 149025,
+                "weakest_periods": [
+                  [
+                    126,
+                    158
+                  ],
+                  [
+                    158,
+                    190
+                  ]
+                ],
+                "zero_periods": 2
+              }
+            },
+            "zero_minimum_worlds": [
+              "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "multi-s6d697834-live--rainfed-steady-5aa2b327",
+              "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+              "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "single-s6d697834-live--rainfed-steady-5aa2b327",
+              "single-s6d697835-live--rainfed-crowded-steady-5aa2b327"
+            ],
+            "zero_world_periods": 17
+          },
+          "minimum_delta": 0,
+          "paired_counts": {
+            "losses": 4,
+            "ties": 0,
+            "wins": 2
+          },
+          "pairs": [
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "control_key": [
+                1,
+                4,
+                0,
+                61755
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                64590
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+              "control_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697834-live--rainfed-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                122880
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                39015
+              ],
+              "comparison": -1,
+              "condition": "multi-s6d697834-live--rainfed-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                122880
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                49410
+              ],
+              "comparison": -1,
+              "condition": "single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                149025
+              ],
+              "minimum_delta": 0
+            },
+            {
+              "candidate_key": [
+                1,
+                4,
+                0,
+                62040
+              ],
+              "comparison": 1,
+              "condition": "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+              "control_key": [
+                1,
+                4,
+                0,
+                0
+              ],
+              "minimum_delta": 0
+            }
+          ],
+          "pooled_minimum_delta": -30120,
+          "pooling_gap_delta": -30120
+        },
+        "totals": {
+          "narrow": {
+            "births": 70,
+            "deaths": 73,
+            "empty_worlds": 0,
+            "historical_durable_parents": 8,
+            "late_child_births": 13,
+            "late_child_deaths": 9,
+            "late_child_shortages": {
+              "energy": 4,
+              "water": 5
+            },
+            "late_child_survivors": 4,
+            "late_renewal_confirmations": 4,
+            "late_seed_expiries": 192,
+            "living": 23,
+            "minimum_ticks": 0,
+            "seed_bank": 48,
+            "seed_outcomes": {
+              "expired": 240,
+              "germinated": 70,
+              "pending": 48
+            },
+            "total_ticks": 456540,
+            "worlds": 6,
+            "zero_periods": 17
+          },
+          "wide": {
+            "births": 145,
+            "deaths": 141,
+            "empty_worlds": 0,
+            "historical_durable_parents": 8,
+            "late_child_births": 44,
+            "late_child_deaths": 41,
+            "late_child_shortages": {
+              "energy": 11,
+              "energy+water": 3,
+              "water": 27
+            },
+            "late_child_survivors": 3,
+            "late_renewal_confirmations": 1,
+            "late_seed_expiries": 192,
+            "living": 30,
+            "minimum_ticks": 0,
+            "seed_bank": 48,
+            "seed_outcomes": {
+              "expired": 240,
+              "germinated": 145,
+              "pending": 48
+            },
+            "total_ticks": 215055,
+            "worlds": 6,
+            "zero_periods": 20
+          }
+        }
+      }
+    },
+    "passes_screen": false
+  },
+  "independent_frozen_verification": true,
+  "inputs": {
+    "landing-multiseed-models.json.gz": "631364e9c1c23c676fb7cf699f630c807b6197cc21b6bc5b317afaf5095e757c",
+    "landing-multiseed-results.json.gz": "c68d070a6f6a1859cb88fb90934f68e1928d22d2a79c94ffc9cdece631915bd4",
+    "landing-recruitment-trace-results.json.gz": "2e4a8b9bada29ae847e0f77d22e020cab9b117765455ff6e11fbd52088b44561",
+    "landing-renewal-audit-results.json.gz": "974866fec534ee6c3a147e9b2c251d5b016184a6e8546606b222ca0b03f82539"
+  },
+  "manifest_sha256": "f15e65d6655575d5f40253458f75010a41e24bab0fcd218e6cc9c4ec8befd109",
+  "objective": "garden-individual-renewal-candidate-v1",
+  "plan": [
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "single-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "multi-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "single-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "multi-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "single-s6d697835-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "multi-s6d697835-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697835-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697835-live"
+    }
+  ],
+  "portable_images": {
+    "frames/landing-range-narrow--multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.png": "f6632457b24e4f9e4fc51b040df72cb69516045e90f96ab0e9fbeaa96dd6b5b0",
+    "frames/landing-range-narrow--multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde.png": "727caf8a42b985b6cdaddede1330a0ba15f834efe9067860f13ad2ba751f70f9",
+    "frames/landing-range-narrow--multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.png": "8f1dd341f968db80516689a5f08ba5056b4b22d39503c738a440143f7badca23",
+    "frames/landing-range-narrow--multi-s6d697834-live--rainfed-steady-5aa2b327.png": "e49472a4a4e9cdfd92a543a731bc86d5b233005706342e46aa12b07cdc46041f",
+    "frames/landing-range-narrow--multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.png": "4ed192f8da223e2e99619e4a8eb7dc4f381f8faa3711adaa4a0ec2944c2f3e74",
+    "frames/landing-range-narrow--multi-s6d697835-live--rainfed-crowded-steady-5aa2b327.png": "0fa803c2ecf2c1f4d7417ff9c93dfe8cf29cc2545e9952c9d7467644979b3c9e",
+    "frames/landing-range-narrow--single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.png": "9856bbe8b9268f9906706911bce6be6389c5af02317b6762f60bfabeb90b66d8",
+    "frames/landing-range-narrow--single-s6d697833-live--rainfed-crowded-steady-7d3b7bde.png": "3a04a9281da3213d3066e9bab690d824ad1b2ed064003c94a6507b07602f606b",
+    "frames/landing-range-narrow--single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.png": "ed852f501aff64b36f0027a297dbc8a8119607e1d8312bb218c2a3e0b054d973",
+    "frames/landing-range-narrow--single-s6d697834-live--rainfed-steady-5aa2b327.png": "733f8556dddf800965ec46b63cd17db78ff4cb9b7b1bb5d74d583f0dae118529",
+    "frames/landing-range-narrow--single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.png": "c33313767a9b2f951e6063bd91ff17c0a3896ec0e85b23bbd353ba81035ac926",
+    "frames/landing-range-narrow--single-s6d697835-live--rainfed-crowded-steady-5aa2b327.png": "b1d94df446bbfda2008ad11d54a752f75937cace83adf51d38a9de6f31949a6d",
+    "frames/landing-range-seasonal.png": "2cf0d73ab8a59aa32ae7865237905c0fc7be32365d12e970556d696687837728",
+    "frames/landing-range-steady.png": "cd1d96b154c5ced5ac49c6ce6644a064e3b9a4f7b45f0b3134d9d5da36a81912",
+    "frames/landing-range-wide--multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.png": "68c4d4db85afcb7d38bdadb18e106a52aca1a455206ab5a9ae21143cd08fddf6",
+    "frames/landing-range-wide--multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde.png": "2b874afd98e8abf6f84278c8c2d7e1ac2f5e1541c3b2e4fe7fa89c46899db965",
+    "frames/landing-range-wide--multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.png": "da2a121c8853f30e54b61912f100a04f9da8671feaf665163fe8e0962b843552",
+    "frames/landing-range-wide--multi-s6d697834-live--rainfed-steady-5aa2b327.png": "5fe0bfdddbf35b695072d88c25d03473467402ed7133303922170b635f1a5c3d",
+    "frames/landing-range-wide--multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.png": "6a62bab66338b26bd906e9357ce21432e3df982da4816fd0f6a31a4ac19060c5",
+    "frames/landing-range-wide--multi-s6d697835-live--rainfed-crowded-steady-5aa2b327.png": "f54b650ba102b9902f7f1e79876fc3005bcedaea926f668d0c978f1d6f2728b0",
+    "frames/landing-range-wide--single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.png": "3157786f8b23c5fa69cf591104476ba0476d53263d20406751c650162031e380",
+    "frames/landing-range-wide--single-s6d697833-live--rainfed-crowded-steady-7d3b7bde.png": "def46c470fc3ef2bbd258cd983d6fde53db65e22f3888a1799fb441229042ae2",
+    "frames/landing-range-wide--single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.png": "b75efeb2b3405326fa73c7ecbcb24f4d051b55e3ed524292055c749a323e0a18",
+    "frames/landing-range-wide--single-s6d697834-live--rainfed-steady-5aa2b327.png": "8ba700885ac01aa80a3544b326d19b5d9db0edd0efeaca7accf10116fa0f6932",
+    "frames/landing-range-wide--single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.png": "1bad89e237810258dbdb946cabe48f67946809ce29339fd3773253edf0362fae",
+    "frames/landing-range-wide--single-s6d697835-live--rainfed-crowded-steady-5aa2b327.png": "156f5179016913830eaaf17566d86933c5768aa8394c6319cf87d91c60a4d3b2"
+  },
+  "protocol_sha256": "840abfba72c6b00e0f36c1afd995c049f9163f2da7adcf2adf158bf08f0e32a2",
+  "repeat_verified": true,
+  "results_sha256": "93af5a1dd4e54b07c1819e26eb1a9817391013b989924f3ca093f65af144abeb",
+  "rule": "garden-landing-range-v1",
+  "sample_totals": {
+    "narrow": {
+      "ecology_samples": 589824,
+      "first_day_samples": 40175,
+      "seed_checks": 4592410,
+      "seed_samples": 4592849
+    },
+    "wide": {
+      "ecology_samples": 589824,
+      "first_day_samples": 63274,
+      "seed_checks": 4524637,
+      "seed_samples": 4525067
+    }
+  },
+  "settings": {
+    "ecology": {
+      "narrow": {
+        "TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE": "OFF",
+        "TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION": "OFF",
+        "TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT": "OFF",
+        "TOY_FACTORY_GARDEN_DARK_GUARD": "OFF",
+        "TOY_FACTORY_GARDEN_DAWN_FINISH": "OFF",
+        "TOY_FACTORY_GARDEN_FLOWER_DISPERSAL": "OFF",
+        "TOY_FACTORY_GARDEN_FOCAL_SEED_VETO": "OFF",
+        "TOY_FACTORY_GARDEN_FULL_POOL": "OFF",
+        "TOY_FACTORY_GARDEN_LARGE_POOL": "OFF",
+        "TOY_FACTORY_GARDEN_LARGE_SEED_BANK": "OFF",
+        "TOY_FACTORY_GARDEN_LEAF_MAINTENANCE": "OFF",
+        "TOY_FACTORY_GARDEN_NIGHT_CAPACITY": "OFF",
+        "TOY_FACTORY_GARDEN_PLANT_SLOTS": "OFF",
+        "TOY_FACTORY_GARDEN_PURCHASE_VETO": "OFF",
+        "TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK": "OFF",
+        "TOY_FACTORY_GARDEN_SEED_ORDER": "OFF",
+        "TOY_FACTORY_GARDEN_SEED_RESERVE": "OFF",
+        "TOY_FACTORY_GARDEN_SEED_SPACING": "OFF",
+        "TOY_FACTORY_GARDEN_WATER_HEADROOM": "OFF",
+        "TOY_FACTORY_GARDEN_WET_GERMINATION": "OFF",
+        "TOY_FACTORY_GARDEN_WIDE_DISPERSAL": "OFF"
+      },
+      "wide": {
+        "TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE": "OFF",
+        "TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION": "OFF",
+        "TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT": "OFF",
+        "TOY_FACTORY_GARDEN_DARK_GUARD": "OFF",
+        "TOY_FACTORY_GARDEN_DAWN_FINISH": "OFF",
+        "TOY_FACTORY_GARDEN_FLOWER_DISPERSAL": "OFF",
+        "TOY_FACTORY_GARDEN_FOCAL_SEED_VETO": "OFF",
+        "TOY_FACTORY_GARDEN_FULL_POOL": "OFF",
+        "TOY_FACTORY_GARDEN_LARGE_POOL": "OFF",
+        "TOY_FACTORY_GARDEN_LARGE_SEED_BANK": "OFF",
+        "TOY_FACTORY_GARDEN_LEAF_MAINTENANCE": "OFF",
+        "TOY_FACTORY_GARDEN_NIGHT_CAPACITY": "OFF",
+        "TOY_FACTORY_GARDEN_PLANT_SLOTS": "OFF",
+        "TOY_FACTORY_GARDEN_PURCHASE_VETO": "OFF",
+        "TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK": "OFF",
+        "TOY_FACTORY_GARDEN_SEED_ORDER": "OFF",
+        "TOY_FACTORY_GARDEN_SEED_RESERVE": "OFF",
+        "TOY_FACTORY_GARDEN_SEED_SPACING": "OFF",
+        "TOY_FACTORY_GARDEN_WATER_HEADROOM": "OFF",
+        "TOY_FACTORY_GARDEN_WET_GERMINATION": "OFF",
+        "TOY_FACTORY_GARDEN_WIDE_DISPERSAL": "ON"
+      }
+    },
+    "shared": {
+      "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+      "CMAKE_C_COMPILER": "/usr/bin/cc",
+      "CMAKE_C_FLAGS": "",
+      "CMAKE_C_FLAGS-ADVANCED": "1",
+      "CMAKE_C_FLAGS_DEBUG": "-g",
+      "CMAKE_C_FLAGS_DEBUG-ADVANCED": "1",
+      "CMAKE_C_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+      "CMAKE_C_FLAGS_MINSIZEREL-ADVANCED": "1",
+      "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
+      "CMAKE_C_FLAGS_RELEASE-ADVANCED": "1",
+      "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+      "CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+      "CMAKE_HOME_DIRECTORY": "/workspace/app/sim",
+      "TOY_FACTORY_SIMULATOR_PLAYER": "OFF",
+      "TOY_FACTORY_SIMULATOR_PROFILING": "ON",
+      "TOY_FACTORY_SIMULATOR_SANITIZERS": "ON"
+    }
+  },
+  "sheets": {
+    "seasonal": {
+      "gap": 8,
+      "height": 1496,
+      "png": "frames/seasonal/contact-sheet.png",
+      "rows": [
+        [
+          "narrow--single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+          "wide--single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4"
+        ],
+        [
+          "narrow--multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+          "wide--multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4"
+        ],
+        [
+          "narrow--single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+          "wide--single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4"
+        ],
+        [
+          "narrow--multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+          "wide--multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4"
+        ],
+        [
+          "narrow--single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+          "wide--single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4"
+        ],
+        [
+          "narrow--multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+          "wide--multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4"
+        ]
+      ],
+      "sha256": "2cf0d73ab8a59aa32ae7865237905c0fc7be32365d12e970556d696687837728",
+      "width": 504
+    },
+    "steady": {
+      "gap": 8,
+      "height": 1496,
+      "png": "frames/steady/contact-sheet.png",
+      "rows": [
+        [
+          "narrow--single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+          "wide--single-s6d697833-live--rainfed-crowded-steady-7d3b7bde"
+        ],
+        [
+          "narrow--multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+          "wide--multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde"
+        ],
+        [
+          "narrow--single-s6d697834-live--rainfed-steady-5aa2b327",
+          "wide--single-s6d697834-live--rainfed-steady-5aa2b327"
+        ],
+        [
+          "narrow--multi-s6d697834-live--rainfed-steady-5aa2b327",
+          "wide--multi-s6d697834-live--rainfed-steady-5aa2b327"
+        ],
+        [
+          "narrow--single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+          "wide--single-s6d697835-live--rainfed-crowded-steady-5aa2b327"
+        ],
+        [
+          "narrow--multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+          "wide--multi-s6d697835-live--rainfed-crowded-steady-5aa2b327"
+        ]
+      ],
+      "sha256": "cd1d96b154c5ced5ac49c6ce6644a064e3b9a4f7b45f0b3134d9d5da36a81912",
+      "width": 504
+    }
+  },
+  "worlds": [
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--single-s6d697833-live--rainfed-crowded-steady-7d3b7bde.rgb565be",
+            "framebuffer_crc32": "d77c25e0",
+            "id": "narrow--single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+            "png": "frames/narrow--single-s6d697833-live--rainfed-crowded-steady-7d3b7bde.png",
+            "png_sha256": "3a04a9281da3213d3066e9bab690d824ad1b2ed064003c94a6507b07602f606b",
+            "raw_sha256": "2cf4e9de14c33d4e42ab70cd3a85178bd5fd89caad97e0a2d3f19140636a4012"
+          },
+          "metrics": {
+            "births": 13,
+            "deaths": 13,
+            "first_empty_tick": null,
+            "historical_durable_parents": 1,
+            "late_child_births": 4,
+            "late_child_deaths": 3,
+            "late_child_shortages": {
+              "energy": 2,
+              "water": 1
+            },
+            "late_child_survivors": 1,
+            "late_renewal_confirmations": 1,
+            "late_seed_expiries": 32,
+            "living": 5,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              0,
+              0,
+              0,
+              61755
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 13,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 61755,
+            "zero_periods": 3
+          },
+          "trace_sha256": "536b3d6a3dc5a4632bd5e67eed09f9e7bb79fa806e73c0e6c62f9d47c6a625c6"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--single-s6d697833-live--rainfed-crowded-steady-7d3b7bde.rgb565be",
+            "framebuffer_crc32": "c218e16b",
+            "id": "wide--single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+            "png": "frames/wide--single-s6d697833-live--rainfed-crowded-steady-7d3b7bde.png",
+            "png_sha256": "def46c470fc3ef2bbd258cd983d6fde53db65e22f3888a1799fb441229042ae2",
+            "raw_sha256": "6d6fdf0c38d4f2b79f78dbe487adee89ccca67380c5d59db614141589fdecc73"
+          },
+          "metrics": {
+            "births": 14,
+            "deaths": 14,
+            "first_empty_tick": null,
+            "historical_durable_parents": 1,
+            "late_child_births": 4,
+            "late_child_deaths": 4,
+            "late_child_shortages": {
+              "energy": 2,
+              "water": 2
+            },
+            "late_child_survivors": 0,
+            "late_renewal_confirmations": 0,
+            "late_seed_expiries": 32,
+            "living": 5,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 14,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 0,
+            "zero_periods": 4
+          },
+          "trace_sha256": "5870ee5f603e6a6731bb853fb0a8be65fbe68448221ed97fb4ea775c168d3a8e"
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "single-s6d697833-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde.rgb565be",
+            "framebuffer_crc32": "7f28d140",
+            "id": "narrow--multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+            "png": "frames/narrow--multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde.png",
+            "png_sha256": "727caf8a42b985b6cdaddede1330a0ba15f834efe9067860f13ad2ba751f70f9",
+            "raw_sha256": "6fe4dc82742a8bf9905cc6c79d895a73f7a5db447ed74143bda75ad7bdaa6b4e"
+          },
+          "metrics": {
+            "births": 8,
+            "deaths": 10,
+            "first_empty_tick": null,
+            "historical_durable_parents": 1,
+            "late_child_births": 1,
+            "late_child_deaths": 1,
+            "late_child_shortages": {
+              "water": 1
+            },
+            "late_child_survivors": 0,
+            "late_renewal_confirmations": 0,
+            "late_seed_expiries": 32,
+            "living": 3,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 8,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 0,
+            "zero_periods": 4
+          },
+          "trace_sha256": "4684120a67781398e74c05d18e0f7c5708da9bd3d1ae079802421098c5fde2a3"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde.rgb565be",
+            "framebuffer_crc32": "744fe225",
+            "id": "wide--multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+            "png": "frames/wide--multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde.png",
+            "png_sha256": "2b874afd98e8abf6f84278c8c2d7e1ac2f5e1541c3b2e4fe7fa89c46899db965",
+            "raw_sha256": "4945254998fa2f051416ac31b0be9cb9e70a962155ab72e3680f38c42d0cb9e9"
+          },
+          "metrics": {
+            "births": 23,
+            "deaths": 23,
+            "first_empty_tick": null,
+            "historical_durable_parents": 2,
+            "late_child_births": 4,
+            "late_child_deaths": 4,
+            "late_child_shortages": {
+              "energy": 1,
+              "energy+water": 1,
+              "water": 2
+            },
+            "late_child_survivors": 0,
+            "late_renewal_confirmations": 0,
+            "late_seed_expiries": 32,
+            "living": 5,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              64590,
+              0,
+              0,
+              0
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 23,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 64590,
+            "zero_periods": 3
+          },
+          "trace_sha256": "12af90ec042c36d169f5aa3940990e2022e3dac3eb81fba5a272bd44c8b7441a"
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "multi-s6d697833-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "cc127056",
+            "id": "narrow--single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/narrow--single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "9856bbe8b9268f9906706911bce6be6389c5af02317b6762f60bfabeb90b66d8",
+            "raw_sha256": "52367588ce212448192c8e9bd0143493516b3ce0418477ed31490b2753cb5d76"
+          },
+          "metrics": {
+            "births": 26,
+            "deaths": 27,
+            "first_empty_tick": null,
+            "historical_durable_parents": 4,
+            "late_child_births": 16,
+            "late_child_deaths": 9,
+            "late_child_shortages": {
+              "energy": 2,
+              "energy+water": 2,
+              "water": 5
+            },
+            "late_child_survivors": 7,
+            "late_renewal_confirmations": 7,
+            "late_seed_expiries": 28,
+            "living": 4,
+            "minimum_ticks": 169905,
+            "period_ticks": [
+              218370,
+              169905,
+              217605,
+              175335
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 36,
+              "germinated": 26,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 781215,
+            "zero_periods": 0
+          },
+          "trace_sha256": "3d0686eeb56bc042d4fe44d31892fa671a01c281c69eb5567e854a1a44328683"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "4c1f2347",
+            "id": "wide--single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/wide--single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "3157786f8b23c5fa69cf591104476ba0476d53263d20406751c650162031e380",
+            "raw_sha256": "219e87fbe600081d4630011e220f912df431f449661df89f851f48df3c4a2da7"
+          },
+          "metrics": {
+            "births": 48,
+            "deaths": 48,
+            "first_empty_tick": null,
+            "historical_durable_parents": 6,
+            "late_child_births": 28,
+            "late_child_deaths": 23,
+            "late_child_shortages": {
+              "energy": 10,
+              "energy+water": 3,
+              "water": 10
+            },
+            "late_child_survivors": 5,
+            "late_renewal_confirmations": 5,
+            "late_seed_expiries": 26,
+            "living": 5,
+            "minimum_ticks": 8325,
+            "period_ticks": [
+              221805,
+              301920,
+              146850,
+              8325
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 36,
+              "germinated": 48,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 678900,
+            "zero_periods": 0
+          },
+          "trace_sha256": "da50a0845578415a04d044502ce409a766077b549ed6c91167aaecd4b05fd793"
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697833-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "cf8570dd",
+            "id": "narrow--multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/narrow--multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "f6632457b24e4f9e4fc51b040df72cb69516045e90f96ab0e9fbeaa96dd6b5b0",
+            "raw_sha256": "34a41ad99ae54ca4551076fd38816e8d0e660d6163f040a08c2ca3c42cfe7e1f"
+          },
+          "metrics": {
+            "births": 25,
+            "deaths": 26,
+            "first_empty_tick": null,
+            "historical_durable_parents": 3,
+            "late_child_births": 9,
+            "late_child_deaths": 3,
+            "late_child_shortages": {
+              "water": 3
+            },
+            "late_child_survivors": 6,
+            "late_renewal_confirmations": 6,
+            "late_seed_expiries": 28,
+            "living": 4,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              272790,
+              386310,
+              181980,
+              0
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 36,
+              "germinated": 25,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 841080,
+            "zero_periods": 1
+          },
+          "trace_sha256": "5850c70eac2117c772df906d493e8fe2d435875268729795bd4c0315fa37b9a5"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "f1e6bcff",
+            "id": "wide--multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/wide--multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "68c4d4db85afcb7d38bdadb18e106a52aca1a455206ab5a9ae21143cd08fddf6",
+            "raw_sha256": "9a2962c0b5b121f54743bffb025bfecc0d156cc8314332cfb42cc399f3bdc639"
+          },
+          "metrics": {
+            "births": 42,
+            "deaths": 41,
+            "first_empty_tick": null,
+            "historical_durable_parents": 4,
+            "late_child_births": 21,
+            "late_child_deaths": 18,
+            "late_child_shortages": {
+              "energy": 9,
+              "water": 9
+            },
+            "late_child_survivors": 3,
+            "late_renewal_confirmations": 3,
+            "late_seed_expiries": 28,
+            "living": 6,
+            "minimum_ticks": 50805,
+            "period_ticks": [
+              110655,
+              50805,
+              118905,
+              118470
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 39,
+              "germinated": 42,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 398835,
+            "zero_periods": 0
+          },
+          "trace_sha256": "fae9f3a92a1c2ccee1f9aee2cdb795809fe922c0a56a28cb318da2680ee0c6bc"
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697833-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--single-s6d697834-live--rainfed-steady-5aa2b327.rgb565be",
+            "framebuffer_crc32": "51add2d2",
+            "id": "narrow--single-s6d697834-live--rainfed-steady-5aa2b327",
+            "png": "frames/narrow--single-s6d697834-live--rainfed-steady-5aa2b327.png",
+            "png_sha256": "733f8556dddf800965ec46b63cd17db78ff4cb9b7b1bb5d74d583f0dae118529",
+            "raw_sha256": "596c6c28996eeec4ad6f4fea3773824b2c5ec0e609955358b1148b4ab645eb3f"
+          },
+          "metrics": {
+            "births": 8,
+            "deaths": 7,
+            "first_empty_tick": null,
+            "historical_durable_parents": 2,
+            "late_child_births": 2,
+            "late_child_deaths": 1,
+            "late_child_shortages": {
+              "water": 1
+            },
+            "late_child_survivors": 1,
+            "late_renewal_confirmations": 1,
+            "late_seed_expiries": 32,
+            "living": 4,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              0,
+              0,
+              88560,
+              34320
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 8,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 122880,
+            "zero_periods": 2
+          },
+          "trace_sha256": "a6159e4d7905ffd82e4494ba46b82e70a2776efefffb872ea2cade772550bf74"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--single-s6d697834-live--rainfed-steady-5aa2b327.rgb565be",
+            "framebuffer_crc32": "9a870442",
+            "id": "wide--single-s6d697834-live--rainfed-steady-5aa2b327",
+            "png": "frames/wide--single-s6d697834-live--rainfed-steady-5aa2b327.png",
+            "png_sha256": "8ba700885ac01aa80a3544b326d19b5d9db0edd0efeaca7accf10116fa0f6932",
+            "raw_sha256": "f693bcd727738aeaa6fb323592a1be1ec07a0f8e54d0ab76d6f63f556551e308"
+          },
+          "metrics": {
+            "births": 19,
+            "deaths": 19,
+            "first_empty_tick": null,
+            "historical_durable_parents": 0,
+            "late_child_births": 4,
+            "late_child_deaths": 4,
+            "late_child_shortages": {
+              "energy": 2,
+              "energy+water": 1,
+              "water": 1
+            },
+            "late_child_survivors": 0,
+            "late_renewal_confirmations": 0,
+            "late_seed_expiries": 32,
+            "living": 3,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 19,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 0,
+            "zero_periods": 4
+          },
+          "trace_sha256": "6cb42eb3285271d6fea0098b331fbf459f8652d96e462113524a443fc2f0b735"
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "single-s6d697834-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--multi-s6d697834-live--rainfed-steady-5aa2b327.rgb565be",
+            "framebuffer_crc32": "efbd172e",
+            "id": "narrow--multi-s6d697834-live--rainfed-steady-5aa2b327",
+            "png": "frames/narrow--multi-s6d697834-live--rainfed-steady-5aa2b327.png",
+            "png_sha256": "e49472a4a4e9cdfd92a543a731bc86d5b233005706342e46aa12b07cdc46041f",
+            "raw_sha256": "bbb127ab7b9a765cb416d3271794469c66c33910d25aa8bd6c93ec89d270995f"
+          },
+          "metrics": {
+            "births": 26,
+            "deaths": 25,
+            "first_empty_tick": null,
+            "historical_durable_parents": 1,
+            "late_child_births": 4,
+            "late_child_deaths": 3,
+            "late_child_shortages": {
+              "energy": 2,
+              "water": 1
+            },
+            "late_child_survivors": 1,
+            "late_renewal_confirmations": 1,
+            "late_seed_expiries": 32,
+            "living": 4,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              0,
+              0,
+              65955,
+              56925
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 26,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 122880,
+            "zero_periods": 2
+          },
+          "trace_sha256": "e8aedbe25daf962e7d31c454d3220bc1e79fe51643c6325a1a11549cc7c18bd2"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--multi-s6d697834-live--rainfed-steady-5aa2b327.rgb565be",
+            "framebuffer_crc32": "715f50ae",
+            "id": "wide--multi-s6d697834-live--rainfed-steady-5aa2b327",
+            "png": "frames/wide--multi-s6d697834-live--rainfed-steady-5aa2b327.png",
+            "png_sha256": "5fe0bfdddbf35b695072d88c25d03473467402ed7133303922170b635f1a5c3d",
+            "raw_sha256": "be3539cdb66d3fd75a69d6f31a8d5a7c66487f6a23078d1581a4292d6edd7d96"
+          },
+          "metrics": {
+            "births": 23,
+            "deaths": 20,
+            "first_empty_tick": null,
+            "historical_durable_parents": 2,
+            "late_child_births": 7,
+            "late_child_deaths": 6,
+            "late_child_shortages": {
+              "energy": 1,
+              "water": 5
+            },
+            "late_child_survivors": 1,
+            "late_renewal_confirmations": 0,
+            "late_seed_expiries": 32,
+            "living": 6,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              39015,
+              0,
+              0,
+              0
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 23,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 39015,
+            "zero_periods": 3
+          },
+          "trace_sha256": "62bbfe3ab49c6a931cd20cff55407af521dc2c4d2c6b1f6d7f57c0858add6d31"
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "multi-s6d697834-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "13c19cca",
+            "id": "narrow--single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/narrow--single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "ed852f501aff64b36f0027a297dbc8a8119607e1d8312bb218c2a3e0b054d973",
+            "raw_sha256": "2f1ff6fe26367eaf086e46d30bca297743e97a17d0e160a739631365cdc712fa"
+          },
+          "metrics": {
+            "births": 46,
+            "deaths": 47,
+            "first_empty_tick": null,
+            "historical_durable_parents": 7,
+            "late_child_births": 29,
+            "late_child_deaths": 17,
+            "late_child_shortages": {
+              "energy": 7,
+              "energy+water": 3,
+              "water": 7
+            },
+            "late_child_survivors": 12,
+            "late_renewal_confirmations": 12,
+            "late_seed_expiries": 23,
+            "living": 4,
+            "minimum_ticks": 162570,
+            "period_ticks": [
+              162570,
+              381945,
+              373335,
+              278280
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 31,
+              "germinated": 46,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 1196130,
+            "zero_periods": 0
+          },
+          "trace_sha256": "746b90fa1576b39c5f85e1888a17f1b277201b8f83fc9a060d006edede1063e7"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "a77f3f4b",
+            "id": "wide--single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/wide--single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "b75efeb2b3405326fa73c7ecbcb24f4d051b55e3ed524292055c749a323e0a18",
+            "raw_sha256": "160c9b5106105850d35674f8a220084c446fa7491ec91219826953c01181e2cb"
+          },
+          "metrics": {
+            "births": 68,
+            "deaths": 69,
+            "first_empty_tick": null,
+            "historical_durable_parents": 10,
+            "late_child_births": 49,
+            "late_child_deaths": 33,
+            "late_child_shortages": {
+              "energy": 18,
+              "energy+water": 2,
+              "water": 13
+            },
+            "late_child_survivors": 16,
+            "late_renewal_confirmations": 16,
+            "late_seed_expiries": 18,
+            "living": 4,
+            "minimum_ticks": 233640,
+            "period_ticks": [
+              233640,
+              272460,
+              321570,
+              425580
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 28,
+              "germinated": 68,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 1253250,
+            "zero_periods": 0
+          },
+          "trace_sha256": "4f952ffe1eb8ee035a8931c312ce2768bac87484f1d65c2539fbe91a3bb84477"
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697834-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "dbf30314",
+            "id": "narrow--multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/narrow--multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "8f1dd341f968db80516689a5f08ba5056b4b22d39503c738a440143f7badca23",
+            "raw_sha256": "0afcaa2b9cd660ccc25369c84156118f6c7d3809522a4b339b8bd9c866bb1d1c"
+          },
+          "metrics": {
+            "births": 24,
+            "deaths": 24,
+            "first_empty_tick": null,
+            "historical_durable_parents": 7,
+            "late_child_births": 12,
+            "late_child_deaths": 4,
+            "late_child_shortages": {
+              "water": 4
+            },
+            "late_child_survivors": 8,
+            "late_renewal_confirmations": 8,
+            "late_seed_expiries": 27,
+            "living": 5,
+            "minimum_ticks": 119415,
+            "period_ticks": [
+              207255,
+              382005,
+              258090,
+              119415
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 35,
+              "germinated": 24,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 966765,
+            "zero_periods": 0
+          },
+          "trace_sha256": "374eba82ca03f7f110fdb1e7cfab256fb083488566e72ab8133f7555a5c2bc54"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "e41d58ad",
+            "id": "wide--multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/wide--multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "da2a121c8853f30e54b61912f100a04f9da8671feaf665163fe8e0962b843552",
+            "raw_sha256": "101f89be2ce2930f1d63a4fd61f18b6be0434563f39b0fee3c7a8802d9295299"
+          },
+          "metrics": {
+            "births": 70,
+            "deaths": 70,
+            "first_empty_tick": null,
+            "historical_durable_parents": 9,
+            "late_child_births": 48,
+            "late_child_deaths": 33,
+            "late_child_shortages": {
+              "energy": 12,
+              "energy+water": 4,
+              "water": 17
+            },
+            "late_child_survivors": 15,
+            "late_renewal_confirmations": 15,
+            "late_seed_expiries": 21,
+            "living": 5,
+            "minimum_ticks": 318090,
+            "period_ticks": [
+              397065,
+              380640,
+              318090,
+              505395
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 29,
+              "germinated": 70,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 1601190,
+            "zero_periods": 0
+          },
+          "trace_sha256": "e914f4b29b8b6563a8301362b461fd870e53e5ed50df1503df047acb041783cd"
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697834-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--single-s6d697835-live--rainfed-crowded-steady-5aa2b327.rgb565be",
+            "framebuffer_crc32": "7e800e4c",
+            "id": "narrow--single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+            "png": "frames/narrow--single-s6d697835-live--rainfed-crowded-steady-5aa2b327.png",
+            "png_sha256": "b1d94df446bbfda2008ad11d54a752f75937cace83adf51d38a9de6f31949a6d",
+            "raw_sha256": "f158de11063e0495cf11eb25a4d2a35a83253567fadc5306259cb983302a7bf0"
+          },
+          "metrics": {
+            "births": 9,
+            "deaths": 10,
+            "first_empty_tick": null,
+            "historical_durable_parents": 2,
+            "late_child_births": 1,
+            "late_child_deaths": 0,
+            "late_child_shortages": {},
+            "late_child_survivors": 1,
+            "late_renewal_confirmations": 1,
+            "late_seed_expiries": 32,
+            "living": 4,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              118905,
+              30120,
+              0,
+              0
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 9,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 149025,
+            "zero_periods": 2
+          },
+          "trace_sha256": "aff361d7eb96c6c8239abcb17bd06ccc7edf546fbd9b7e6942a55a842498bdad"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--single-s6d697835-live--rainfed-crowded-steady-5aa2b327.rgb565be",
+            "framebuffer_crc32": "c6d22cd5",
+            "id": "wide--single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+            "png": "frames/wide--single-s6d697835-live--rainfed-crowded-steady-5aa2b327.png",
+            "png_sha256": "156f5179016913830eaaf17566d86933c5768aa8394c6319cf87d91c60a4d3b2",
+            "raw_sha256": "ec4ee684c6cbbba8b24ef7f6748697afe698836f22647e73e8a42e2dc5f49c61"
+          },
+          "metrics": {
+            "births": 37,
+            "deaths": 37,
+            "first_empty_tick": null,
+            "historical_durable_parents": 1,
+            "late_child_births": 8,
+            "late_child_deaths": 8,
+            "late_child_shortages": {
+              "energy": 1,
+              "energy+water": 1,
+              "water": 6
+            },
+            "late_child_survivors": 0,
+            "late_renewal_confirmations": 0,
+            "late_seed_expiries": 32,
+            "living": 5,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              49410,
+              0,
+              0,
+              0
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 37,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 49410,
+            "zero_periods": 3
+          },
+          "trace_sha256": "21dab2301f886a3796ea3b83179127f056b76d293b32a28d47b62f483c3ae00d"
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "single-s6d697835-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--multi-s6d697835-live--rainfed-crowded-steady-5aa2b327.rgb565be",
+            "framebuffer_crc32": "741b7e63",
+            "id": "narrow--multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+            "png": "frames/narrow--multi-s6d697835-live--rainfed-crowded-steady-5aa2b327.png",
+            "png_sha256": "0fa803c2ecf2c1f4d7417ff9c93dfe8cf29cc2545e9952c9d7467644979b3c9e",
+            "raw_sha256": "2caf2b7211348615b783f021e9310826ee00a2a8c6a521029cbd5971e3038434"
+          },
+          "metrics": {
+            "births": 6,
+            "deaths": 8,
+            "first_empty_tick": null,
+            "historical_durable_parents": 1,
+            "late_child_births": 1,
+            "late_child_deaths": 1,
+            "late_child_shortages": {
+              "water": 1
+            },
+            "late_child_survivors": 0,
+            "late_renewal_confirmations": 0,
+            "late_seed_expiries": 32,
+            "living": 3,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 6,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 0,
+            "zero_periods": 4
+          },
+          "trace_sha256": "560416b60115f7e7f08023a61e13971fe886814aecfc27c9e2b22313e115dd45"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--multi-s6d697835-live--rainfed-crowded-steady-5aa2b327.rgb565be",
+            "framebuffer_crc32": "3080a16c",
+            "id": "wide--multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+            "png": "frames/wide--multi-s6d697835-live--rainfed-crowded-steady-5aa2b327.png",
+            "png_sha256": "f54b650ba102b9902f7f1e79876fc3005bcedaea926f668d0c978f1d6f2728b0",
+            "raw_sha256": "0809e6147351a4849bce0e8db526b42e385c9993c474948115d4bd322924553f"
+          },
+          "metrics": {
+            "births": 29,
+            "deaths": 28,
+            "first_empty_tick": null,
+            "historical_durable_parents": 2,
+            "late_child_births": 17,
+            "late_child_deaths": 15,
+            "late_child_shortages": {
+              "energy": 4,
+              "water": 11
+            },
+            "late_child_survivors": 2,
+            "late_renewal_confirmations": 1,
+            "late_seed_expiries": 32,
+            "living": 6,
+            "minimum_ticks": 0,
+            "period_ticks": [
+              0,
+              0,
+              0,
+              62040
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 40,
+              "germinated": 29,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 62040,
+            "zero_periods": 3
+          },
+          "trace_sha256": "4e6416f71079f5acea71725d1c723f671b56f8bd66de568260fefdfb541126cf"
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "multi-s6d697835-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "cd1ebd15",
+            "id": "narrow--single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/narrow--single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "c33313767a9b2f951e6063bd91ff17c0a3896ec0e85b23bbd353ba81035ac926",
+            "raw_sha256": "62df9f5d937ee1f6cbbd514dd8c0d5bb4586c3a80d4d8e977c38cd656604a940"
+          },
+          "metrics": {
+            "births": 39,
+            "deaths": 40,
+            "first_empty_tick": null,
+            "historical_durable_parents": 10,
+            "late_child_births": 28,
+            "late_child_deaths": 17,
+            "late_child_shortages": {
+              "energy": 5,
+              "energy+water": 2,
+              "water": 10
+            },
+            "late_child_survivors": 11,
+            "late_renewal_confirmations": 11,
+            "late_seed_expiries": 24,
+            "living": 4,
+            "minimum_ticks": 263130,
+            "period_ticks": [
+              306915,
+              354120,
+              309210,
+              263130
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 32,
+              "germinated": 39,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 1233375,
+            "zero_periods": 0
+          },
+          "trace_sha256": "c288ea40227a2c9995617023eea840516520f1f622f7e334209bfd2783997cf8"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "d4739dce",
+            "id": "wide--single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/wide--single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "1bad89e237810258dbdb946cabe48f67946809ce29339fd3773253edf0362fae",
+            "raw_sha256": "aeadeee04a5351713ad3699db6b5a10cb1d8e5cbb3f20168890837247f0fdffb"
+          },
+          "metrics": {
+            "births": 60,
+            "deaths": 62,
+            "first_empty_tick": null,
+            "historical_durable_parents": 5,
+            "late_child_births": 29,
+            "late_child_deaths": 21,
+            "late_child_shortages": {
+              "energy": 4,
+              "energy+water": 5,
+              "water": 12
+            },
+            "late_child_survivors": 8,
+            "late_renewal_confirmations": 8,
+            "late_seed_expiries": 23,
+            "living": 3,
+            "minimum_ticks": 11205,
+            "period_ticks": [
+              377100,
+              362085,
+              205770,
+              11205
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 32,
+              "germinated": 60,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 956160,
+            "zero_periods": 0
+          },
+          "trace_sha256": "2f64c7d95b3cdeabfb44d09380253d9c54dfdd1ee52a25ae00220b42544d6b89"
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697835-live"
+    },
+    {
+      "arms": {
+        "narrow": {
+          "frame": {
+            "framebuffer": "frames/narrow--multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "3b454a56",
+            "id": "narrow--multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/narrow--multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "4ed192f8da223e2e99619e4a8eb7dc4f381f8faa3711adaa4a0ec2944c2f3e74",
+            "raw_sha256": "062962d4206fa7593f356bdb5bc36b6801ad41da9cf403a95a7530a10cc77408"
+          },
+          "metrics": {
+            "births": 41,
+            "deaths": 43,
+            "first_empty_tick": null,
+            "historical_durable_parents": 6,
+            "late_child_births": 20,
+            "late_child_deaths": 13,
+            "late_child_shortages": {
+              "energy": 4,
+              "water": 9
+            },
+            "late_child_survivors": 7,
+            "late_renewal_confirmations": 7,
+            "late_seed_expiries": 21,
+            "living": 3,
+            "minimum_ticks": 122460,
+            "period_ticks": [
+              207240,
+              177315,
+              173580,
+              122460
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 29,
+              "germinated": 41,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "total_ticks": 680595,
+            "zero_periods": 0
+          },
+          "trace_sha256": "8f2f6c7976cd41f3dcaba4843f114333c8af4292b49b193d0c62b7e8ea123dd8"
+        },
+        "wide": {
+          "frame": {
+            "framebuffer": "frames/wide--multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.rgb565be",
+            "framebuffer_crc32": "59dfba9e",
+            "id": "wide--multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+            "png": "frames/wide--multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4.png",
+            "png_sha256": "6a62bab66338b26bd906e9357ce21432e3df982da4816fd0f6a31a4ac19060c5",
+            "raw_sha256": "0a61334f7fe1b6ef8393689840025e75eaa1f16d9947fa1a4c4380262289d125"
+          },
+          "metrics": {
+            "births": 82,
+            "deaths": 83,
+            "first_empty_tick": null,
+            "historical_durable_parents": 9,
+            "late_child_births": 49,
+            "late_child_deaths": 39,
+            "late_child_shortages": {
+              "energy": 18,
+              "energy+water": 1,
+              "water": 20
+            },
+            "late_child_survivors": 10,
+            "late_renewal_confirmations": 10,
+            "late_seed_expiries": 18,
+            "living": 4,
+            "minimum_ticks": 211320,
+            "period_ticks": [
+              303510,
+              211320,
+              240480,
+              252735
+            ],
+            "seed_bank": 8,
+            "seed_outcomes": {
+              "expired": 26,
+              "germinated": 82,
+              "pending": 8
+            },
+            "terminal_tiers": [
+              1,
+              0,
+              1,
+              1
+            ],
+            "total_ticks": 1008045,
+            "zero_periods": 0
+          },
+          "trace_sha256": "7cd60d53cd1ffdda61483a1fb45cb4e0a90bc9d36a27f3e5c75a41e2df028e30"
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697835-live"
+    }
+  ]
+}

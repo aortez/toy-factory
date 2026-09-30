@@ -1,0 +1,2265 @@
+{
+  "candidate_evaluations": 63,
+  "conditions_per_seed": 4,
+  "frames": 108,
+  "horizon_days": 192,
+  "inputs_sha256": {
+    "binary": "2c4744a76229bf75a6b4302f67f6591423aab6c322484ba9963ef28f38fe3508",
+    "cache": "87215706d523f89dd4277a1c428c95d7db3df8fc786b7c88fe1d6991c9b14d24",
+    "legacy": "fab9b6d97de88a970d63bb8af8fc336d076bb3d0ae6867b307290209abf85cf2"
+  },
+  "manifest_sha256": "f1e16d3a495dd04c2cceba9bfcbe67253b4bf1c1b9fee9f50286363268b8f6c2",
+  "objective": "garden-individual-renewal-candidate-v1",
+  "repeat_verified": true,
+  "review_seed": "ed52188c",
+  "role": "development-no-promotion",
+  "rule": "garden-landing-renewal-pilot-v1",
+  "schema_version": 1,
+  "searches": {
+    "s6d697833-current": {
+      "candidates": [
+        {
+          "id": "g0",
+          "model_crc32": "e6d9b9ae",
+          "parent": null,
+          "sha256": "1e1834d0850cabe26c8523678554c78e2787a0b2aba43788783ea8de4e6c37c9",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "id": "g1-c0",
+          "model_crc32": "0081312a",
+          "parent": "g0",
+          "sha256": "98395be10fd823edba358dae771740630b443bc41adf7259b03cf1c8b93192b1",
+          "training_key": [
+            1,
+            16,
+            265980,
+            2106615
+          ]
+        },
+        {
+          "id": "g1-c1",
+          "model_crc32": "445351a6",
+          "parent": "g0",
+          "sha256": "a36af71f80d93f5e2320b34471d99db43fa9feadeb10b8b99d362bb6970b2e27",
+          "training_key": [
+            1,
+            16,
+            181050,
+            1720185
+          ]
+        },
+        {
+          "id": "g1-c2",
+          "model_crc32": "30a13914",
+          "parent": "g0",
+          "sha256": "0b14fa3998ea73f84d7d9921ebe80d9605f02cfceab35f65ecb5b2e2168acb7a",
+          "training_key": [
+            1,
+            16,
+            45150,
+            2547375
+          ]
+        },
+        {
+          "id": "g2-c0",
+          "model_crc32": "facebaae",
+          "parent": "g1-c0",
+          "sha256": "c898e488fd4b45cbee1faa9fe57e237f3272ad82ded4df2407c1360b531aed37",
+          "training_key": [
+            1,
+            16,
+            111045,
+            1748040
+          ]
+        },
+        {
+          "id": "g2-c1",
+          "model_crc32": "357ffad8",
+          "parent": "g1-c0",
+          "sha256": "42f4c11b5bd011847bb17b7a046cede7a3081e1159a376836141472bc5008155",
+          "training_key": [
+            -1,
+            -16,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "g2-c2",
+          "model_crc32": "f2725afc",
+          "parent": "g1-c0",
+          "sha256": "9748768313f510d0fddcd1cfc8ca8cf623a99264f37279018541fe5af3666113",
+          "training_key": [
+            1,
+            16,
+            107970,
+            1908705
+          ]
+        }
+      ],
+      "final_review_worlds": {
+        "rainfed-crowded-seasonal-ed52188c": {
+          "births": 46,
+          "credit_ticks": [
+            187110,
+            109815,
+            144720,
+            223965
+          ],
+          "deaths": 48,
+          "living": 3,
+          "run_hash": "6a141ff7",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "88f124da"
+        },
+        "rainfed-crowded-steady-ed52188c": {
+          "births": 15,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 16,
+          "living": 4,
+          "run_hash": "1353e1c7",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "9f1fc6b0"
+        },
+        "rainfed-seasonal-ed52188c": {
+          "births": 45,
+          "credit_ticks": [
+            315105,
+            291705,
+            52485,
+            0
+          ],
+          "deaths": 44,
+          "living": 4,
+          "run_hash": "8de18151",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "4239d720"
+        },
+        "rainfed-steady-ed52188c": {
+          "births": 11,
+          "credit_ticks": [
+            0,
+            73215,
+            49665,
+            0
+          ],
+          "deaths": 9,
+          "living": 5,
+          "run_hash": "8ee1ab75",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "e3313f5e"
+        }
+      },
+      "generations": [
+        {
+          "champion": "g0",
+          "generation": 0,
+          "review_key": [
+            -1,
+            0,
+            0,
+            607050
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 1835628595,
+          "sha256": "1e1834d0850cabe26c8523678554c78e2787a0b2aba43788783ea8de4e6c37c9",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "champion": "g1-c0",
+          "generation": 1,
+          "review_key": [
+            1,
+            16,
+            109815,
+            1447785
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            109815
+          ],
+          "review_zero_credit_windows": 7,
+          "rng_after": 3483899823,
+          "sha256": "98395be10fd823edba358dae771740630b443bc41adf7259b03cf1c8b93192b1",
+          "training_key": [
+            1,
+            16,
+            265980,
+            2106615
+          ]
+        },
+        {
+          "champion": "g1-c0",
+          "generation": 2,
+          "review_key": [
+            1,
+            16,
+            109815,
+            1447785
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            109815
+          ],
+          "review_zero_credit_windows": 7,
+          "rng_after": 2897077789,
+          "sha256": "98395be10fd823edba358dae771740630b443bc41adf7259b03cf1c8b93192b1",
+          "training_key": [
+            1,
+            16,
+            265980,
+            2106615
+          ]
+        }
+      ],
+      "mode": "current",
+      "search_seed": 1835628595
+    },
+    "s6d697833-history": {
+      "candidates": [
+        {
+          "id": "g0",
+          "model_crc32": "199d2666",
+          "parent": null,
+          "sha256": "2ea8ec2a5ba3b2be359f509fcbdb7bf26a709c7201b121757744ebffb913b592",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "id": "g1-c0",
+          "model_crc32": "ffc5aee2",
+          "parent": "g0",
+          "sha256": "bbfdd39dda56aa504f9a5044f316f18be9a9090d9f8d1ea4624fc99f86080c58",
+          "training_key": [
+            1,
+            16,
+            159540,
+            2256990
+          ]
+        },
+        {
+          "id": "g1-c1",
+          "model_crc32": "bb17ce6e",
+          "parent": "g0",
+          "sha256": "6bc2df6c1ca631f4d9e86d94687c281ab66e3fa9dcfa5c8ddc48c93a33adbf0e",
+          "training_key": [
+            -1,
+            0,
+            0,
+            469425
+          ]
+        },
+        {
+          "id": "g1-c2",
+          "model_crc32": "cfe5a6dc",
+          "parent": "g0",
+          "sha256": "9dc4c41a0e6c2dec4b72c1e4ccc63879035ad5a0e98536f531a9b7eb9a32e20f",
+          "training_key": [
+            1,
+            16,
+            190470,
+            2023785
+          ]
+        },
+        {
+          "id": "g2-c0",
+          "model_crc32": "79f4c2c0",
+          "parent": "g1-c2",
+          "sha256": "2d1092c97d7f181991ea656d4b9df61e35218d72d69e7677e897b95f34a0ef12",
+          "training_key": [
+            -1,
+            0,
+            8385,
+            1024485
+          ]
+        },
+        {
+          "id": "g2-c1",
+          "model_crc32": "da39367e",
+          "parent": "g1-c2",
+          "sha256": "446e4066ca8c29cb219f35f6566072882b569f55f5f232911a5c3ab4c283dc30",
+          "training_key": [
+            -1,
+            -16,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "g2-c2",
+          "model_crc32": "6e089e50",
+          "parent": "g1-c2",
+          "sha256": "4517af932c93437ea53ab2ceecf2f32d92148543279b8b68cca3307f257b5733",
+          "training_key": [
+            1,
+            16,
+            100260,
+            1275600
+          ]
+        }
+      ],
+      "final_review_worlds": {
+        "rainfed-crowded-seasonal-ed52188c": {
+          "births": 43,
+          "credit_ticks": [
+            287265,
+            107250,
+            65295,
+            314235
+          ],
+          "deaths": 45,
+          "living": 3,
+          "run_hash": "d2dfaa4b",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            0,
+            1
+          ],
+          "world_hash": "0d3c687d"
+        },
+        "rainfed-crowded-steady-ed52188c": {
+          "births": 13,
+          "credit_ticks": [
+            103170,
+            0,
+            0,
+            0
+          ],
+          "deaths": 14,
+          "living": 4,
+          "run_hash": "27839ce0",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "7c32e1ab"
+        },
+        "rainfed-seasonal-ed52188c": {
+          "births": 4,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 7,
+          "living": 0,
+          "run_hash": "ab22348f",
+          "seed_bank": 0,
+          "terminal_tiers": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "world_hash": "0cb41588"
+        },
+        "rainfed-steady-ed52188c": {
+          "births": 4,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 7,
+          "living": 0,
+          "run_hash": "37f12316",
+          "seed_bank": 0,
+          "terminal_tiers": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "world_hash": "a0a75790"
+        }
+      },
+      "generations": [
+        {
+          "champion": "g0",
+          "generation": 0,
+          "review_key": [
+            -1,
+            0,
+            0,
+            607050
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 1835628595,
+          "sha256": "2ea8ec2a5ba3b2be359f509fcbdb7bf26a709c7201b121757744ebffb913b592",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "champion": "g1-c2",
+          "generation": 1,
+          "review_key": [
+            -1,
+            -1,
+            65295,
+            877215
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            65295
+          ],
+          "review_zero_credit_windows": 11,
+          "rng_after": 3483899823,
+          "sha256": "9dc4c41a0e6c2dec4b72c1e4ccc63879035ad5a0e98536f531a9b7eb9a32e20f",
+          "training_key": [
+            1,
+            16,
+            190470,
+            2023785
+          ]
+        },
+        {
+          "champion": "g1-c2",
+          "generation": 2,
+          "review_key": [
+            -1,
+            -1,
+            65295,
+            877215
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            65295
+          ],
+          "review_zero_credit_windows": 11,
+          "rng_after": 2897077789,
+          "sha256": "9dc4c41a0e6c2dec4b72c1e4ccc63879035ad5a0e98536f531a9b7eb9a32e20f",
+          "training_key": [
+            1,
+            16,
+            190470,
+            2023785
+          ]
+        }
+      ],
+      "mode": "history",
+      "search_seed": 1835628595
+    },
+    "s6d697833-off": {
+      "candidates": [
+        {
+          "id": "g0",
+          "model_crc32": "05353129",
+          "parent": null,
+          "sha256": "19c7f53bdebe85b24faef9501bf3359c31d76b77f292fb5fbce93245e7ffdb54",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "id": "g1-c0",
+          "model_crc32": "e36db9ad",
+          "parent": "g0",
+          "sha256": "b4cd867015f174ef66ef93a1ebb839841d9c29f7ffcec75c7a0731cc55110dab",
+          "training_key": [
+            -1,
+            0,
+            44340,
+            1271835
+          ]
+        },
+        {
+          "id": "g1-c1",
+          "model_crc32": "a7bfd921",
+          "parent": "g0",
+          "sha256": "94acbb4eef5ef2772a24adc5474f5eb35d8958d2c52ea60c8d17ffc4aae09567",
+          "training_key": [
+            -1,
+            -16,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "g1-c2",
+          "model_crc32": "d34db193",
+          "parent": "g0",
+          "sha256": "9d4ba5fed2d71c2797081ca7ca5ace9cef5326a0e656346fc995a6b7a9fef0e8",
+          "training_key": [
+            1,
+            16,
+            178785,
+            1658115
+          ]
+        },
+        {
+          "id": "g2-c0",
+          "model_crc32": "655cd58f",
+          "parent": "g1-c2",
+          "sha256": "95264db6884e3c74afaa6eaf138a07deca1b81be51baac36bf31ceef97c080f2",
+          "training_key": [
+            -1,
+            0,
+            50640,
+            572490
+          ]
+        },
+        {
+          "id": "g2-c1",
+          "model_crc32": "c6912131",
+          "parent": "g1-c2",
+          "sha256": "3ece250d8b867b4a7946eae2453b5e6493371ffd1a7bde16347d4dbecd92d723",
+          "training_key": [
+            -1,
+            0,
+            8385,
+            695910
+          ]
+        },
+        {
+          "id": "g2-c2",
+          "model_crc32": "72a0891f",
+          "parent": "g1-c2",
+          "sha256": "3b8ae7769951087f0f1422eccba36c120dcbd1ba9f9c9626071c2e1699e05cda",
+          "training_key": [
+            1,
+            16,
+            253050,
+            2563335
+          ]
+        }
+      ],
+      "final_review_worlds": {
+        "rainfed-crowded-seasonal-ed52188c": {
+          "births": 23,
+          "credit_ticks": [
+            188880,
+            59985,
+            0,
+            311670
+          ],
+          "deaths": 25,
+          "living": 3,
+          "run_hash": "3664e25e",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            0,
+            1
+          ],
+          "world_hash": "3c7599b7"
+        },
+        "rainfed-crowded-steady-ed52188c": {
+          "births": 12,
+          "credit_ticks": [
+            73650,
+            49230,
+            0,
+            0
+          ],
+          "deaths": 13,
+          "living": 4,
+          "run_hash": "40551e15",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "477c147d"
+        },
+        "rainfed-seasonal-ed52188c": {
+          "births": 50,
+          "credit_ticks": [
+            110640,
+            214905,
+            53250,
+            347145
+          ],
+          "deaths": 49,
+          "living": 4,
+          "run_hash": "a39fd4c9",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "3efe42e7"
+        },
+        "rainfed-steady-ed52188c": {
+          "births": 18,
+          "credit_ticks": [
+            41625,
+            0,
+            0,
+            0
+          ],
+          "deaths": 17,
+          "living": 4,
+          "run_hash": "32a34c01",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "bde68783"
+        }
+      },
+      "generations": [
+        {
+          "champion": "g0",
+          "generation": 0,
+          "review_key": [
+            -1,
+            0,
+            0,
+            607050
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 1835628595,
+          "sha256": "19c7f53bdebe85b24faef9501bf3359c31d76b77f292fb5fbce93245e7ffdb54",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "champion": "g1-c2",
+          "generation": 1,
+          "review_key": [
+            -1,
+            -1,
+            18675,
+            1092060
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            18675
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 3483899823,
+          "sha256": "9d4ba5fed2d71c2797081ca7ca5ace9cef5326a0e656346fc995a6b7a9fef0e8",
+          "training_key": [
+            1,
+            16,
+            178785,
+            1658115
+          ]
+        },
+        {
+          "champion": "g2-c2",
+          "generation": 2,
+          "review_key": [
+            0,
+            15,
+            53250,
+            1450980
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            53250
+          ],
+          "review_zero_credit_windows": 6,
+          "rng_after": 2897077789,
+          "sha256": "3b8ae7769951087f0f1422eccba36c120dcbd1ba9f9c9626071c2e1699e05cda",
+          "training_key": [
+            1,
+            16,
+            253050,
+            2563335
+          ]
+        }
+      ],
+      "mode": "off",
+      "search_seed": 1835628595
+    },
+    "s6d697834-current": {
+      "candidates": [
+        {
+          "id": "g0",
+          "model_crc32": "e6d9b9ae",
+          "parent": null,
+          "sha256": "1e1834d0850cabe26c8523678554c78e2787a0b2aba43788783ea8de4e6c37c9",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "id": "g1-c0",
+          "model_crc32": "7c152520",
+          "parent": "g0",
+          "sha256": "6e6fc8f394765d73e3d2a9b2760a2aae4976a4f8073a387ee571b7e5255a93f9",
+          "training_key": [
+            -1,
+            0,
+            55050,
+            923250
+          ]
+        },
+        {
+          "id": "g1-c1",
+          "model_crc32": "41236ffa",
+          "parent": "g0",
+          "sha256": "64ca38cf970f7d1532bd45843ac5179bd3e23bf1022602cbcf80288ae90698e0",
+          "training_key": [
+            -1,
+            -16,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "g1-c2",
+          "model_crc32": "1cf8c325",
+          "parent": "g0",
+          "sha256": "33a6a80da210b8b9fea861b432d78e5dee405e119f838a2e939ccd602f10999b",
+          "training_key": [
+            1,
+            16,
+            215970,
+            1902225
+          ]
+        },
+        {
+          "id": "g2-c0",
+          "model_crc32": "11281de0",
+          "parent": "g1-c2",
+          "sha256": "6a56e2062525ee3de1d2bd6763e19a9d411f1300c42f2f803624e0b9af8337f5",
+          "training_key": [
+            1,
+            16,
+            195585,
+            1488270
+          ]
+        },
+        {
+          "id": "g2-c1",
+          "model_crc32": "1a076c07",
+          "parent": "g1-c2",
+          "sha256": "de36b9b055b3ab0a648802d464984b88fcfea11ec486f3d7abe0a9933ba50ab2",
+          "training_key": [
+            -1,
+            0,
+            85350,
+            790140
+          ]
+        },
+        {
+          "id": "g2-c2",
+          "model_crc32": "b4db48e6",
+          "parent": "g1-c2",
+          "sha256": "8f7fc708348aa1026105ab142e349b71faebe2de3263e1aca744a3bd23dcb1d8",
+          "training_key": [
+            1,
+            16,
+            196830,
+            1763175
+          ]
+        }
+      ],
+      "final_review_worlds": {
+        "rainfed-crowded-seasonal-ed52188c": {
+          "births": 28,
+          "credit_ticks": [
+            346650,
+            21600,
+            0,
+            0
+          ],
+          "deaths": 29,
+          "living": 4,
+          "run_hash": "1ab25e4d",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "c89bfeb2"
+        },
+        "rainfed-crowded-steady-ed52188c": {
+          "births": 11,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 12,
+          "living": 4,
+          "run_hash": "df5235c8",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "a56f775f"
+        },
+        "rainfed-seasonal-ed52188c": {
+          "births": 40,
+          "credit_ticks": [
+            74610,
+            96315,
+            107730,
+            149835
+          ],
+          "deaths": 39,
+          "living": 4,
+          "run_hash": "3bc5c168",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "00e9c964"
+        },
+        "rainfed-steady-ed52188c": {
+          "births": 10,
+          "credit_ticks": [
+            45885,
+            0,
+            0,
+            0
+          ],
+          "deaths": 9,
+          "living": 4,
+          "run_hash": "3fc3acde",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "a95839e6"
+        }
+      },
+      "generations": [
+        {
+          "champion": "g0",
+          "generation": 0,
+          "review_key": [
+            -1,
+            0,
+            0,
+            607050
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 1835628596,
+          "sha256": "1e1834d0850cabe26c8523678554c78e2787a0b2aba43788783ea8de4e6c37c9",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "champion": "g1-c2",
+          "generation": 1,
+          "review_key": [
+            1,
+            16,
+            74610,
+            842625
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            74610
+          ],
+          "review_zero_credit_windows": 9,
+          "rng_after": 2802411561,
+          "sha256": "33a6a80da210b8b9fea861b432d78e5dee405e119f838a2e939ccd602f10999b",
+          "training_key": [
+            1,
+            16,
+            215970,
+            1902225
+          ]
+        },
+        {
+          "champion": "g1-c2",
+          "generation": 2,
+          "review_key": [
+            1,
+            16,
+            74610,
+            842625
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            74610
+          ],
+          "review_zero_credit_windows": 9,
+          "rng_after": 4037851969,
+          "sha256": "33a6a80da210b8b9fea861b432d78e5dee405e119f838a2e939ccd602f10999b",
+          "training_key": [
+            1,
+            16,
+            215970,
+            1902225
+          ]
+        }
+      ],
+      "mode": "current",
+      "search_seed": 1835628596
+    },
+    "s6d697834-history": {
+      "candidates": [
+        {
+          "id": "g0",
+          "model_crc32": "199d2666",
+          "parent": null,
+          "sha256": "2ea8ec2a5ba3b2be359f509fcbdb7bf26a709c7201b121757744ebffb913b592",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "id": "g1-c0",
+          "model_crc32": "8351bae8",
+          "parent": "g0",
+          "sha256": "f0bcb528cf8aae5f9e4952bc267bc0baa38c1d964fe473d421ed10049280ba19",
+          "training_key": [
+            -1,
+            0,
+            176730,
+            1110075
+          ]
+        },
+        {
+          "id": "g1-c1",
+          "model_crc32": "be67f032",
+          "parent": "g0",
+          "sha256": "3dad627c719143ff92592bb8fe57a567aa7e1adfd9226f0142e61e6c15bf5a7c",
+          "training_key": [
+            1,
+            16,
+            222420,
+            2214390
+          ]
+        },
+        {
+          "id": "g1-c2",
+          "model_crc32": "e3bc5ced",
+          "parent": "g0",
+          "sha256": "686cd6a0208bd3d5d76a94a09cde20dff91d4e661f98f710ff27743782f43154",
+          "training_key": [
+            1,
+            16,
+            80445,
+            1194225
+          ]
+        },
+        {
+          "id": "g2-c0",
+          "model_crc32": "95840643",
+          "parent": "g1-c1",
+          "sha256": "fb8bbf5dbe73dfcae383cc0d387e8353ad59f04fab5e2f94fe1fc9d1b45e8202",
+          "training_key": [
+            -1,
+            0,
+            320820,
+            1571550
+          ]
+        },
+        {
+          "id": "g2-c1",
+          "model_crc32": "0a26cdde",
+          "parent": "g1-c1",
+          "sha256": "87879a2e503e863d886df36971b5661f291ba5a4f93e970b53a108d9980aa89b",
+          "training_key": [
+            1,
+            16,
+            89805,
+            2076840
+          ]
+        },
+        {
+          "id": "g2-c2",
+          "model_crc32": "af8b78b1",
+          "parent": "g1-c1",
+          "sha256": "860e5039f13498d3817ea23ccea3cca3b202127f64b2e37d6203f3e043293ab0",
+          "training_key": [
+            1,
+            16,
+            370050,
+            2171085
+          ]
+        }
+      ],
+      "final_review_worlds": {
+        "rainfed-crowded-seasonal-ed52188c": {
+          "births": 26,
+          "credit_ticks": [
+            358560,
+            95955,
+            180060,
+            222870
+          ],
+          "deaths": 27,
+          "living": 4,
+          "run_hash": "475ee2b7",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "b83295fa"
+        },
+        "rainfed-crowded-steady-ed52188c": {
+          "births": 9,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 10,
+          "living": 4,
+          "run_hash": "8c1429ac",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "8027c307"
+        },
+        "rainfed-seasonal-ed52188c": {
+          "births": 1,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 4,
+          "living": 0,
+          "run_hash": "d7ed38c0",
+          "seed_bank": 0,
+          "terminal_tiers": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "world_hash": "cacb3fc1"
+        },
+        "rainfed-steady-ed52188c": {
+          "births": 1,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 4,
+          "living": 0,
+          "run_hash": "997f4a48",
+          "seed_bank": 0,
+          "terminal_tiers": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "world_hash": "e2186a39"
+        }
+      },
+      "generations": [
+        {
+          "champion": "g0",
+          "generation": 0,
+          "review_key": [
+            -1,
+            0,
+            0,
+            607050
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 1835628596,
+          "sha256": "2ea8ec2a5ba3b2be359f509fcbdb7bf26a709c7201b121757744ebffb913b592",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "champion": "g1-c1",
+          "generation": 1,
+          "review_key": [
+            1,
+            16,
+            87915,
+            1274910
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            87915
+          ],
+          "review_zero_credit_windows": 10,
+          "rng_after": 2802411561,
+          "sha256": "3dad627c719143ff92592bb8fe57a567aa7e1adfd9226f0142e61e6c15bf5a7c",
+          "training_key": [
+            1,
+            16,
+            222420,
+            2214390
+          ]
+        },
+        {
+          "champion": "g2-c2",
+          "generation": 2,
+          "review_key": [
+            -1,
+            0,
+            95955,
+            857445
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            95955
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 4037851969,
+          "sha256": "860e5039f13498d3817ea23ccea3cca3b202127f64b2e37d6203f3e043293ab0",
+          "training_key": [
+            1,
+            16,
+            370050,
+            2171085
+          ]
+        }
+      ],
+      "mode": "history",
+      "search_seed": 1835628596
+    },
+    "s6d697834-off": {
+      "candidates": [
+        {
+          "id": "g0",
+          "model_crc32": "05353129",
+          "parent": null,
+          "sha256": "19c7f53bdebe85b24faef9501bf3359c31d76b77f292fb5fbce93245e7ffdb54",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "id": "g1-c0",
+          "model_crc32": "9ff9ada7",
+          "parent": "g0",
+          "sha256": "d495bc2f40ffd959519e0c423b7484a50495b894823f4df37780bb51b3464736",
+          "training_key": [
+            -1,
+            0,
+            110655,
+            1161330
+          ]
+        },
+        {
+          "id": "g1-c1",
+          "model_crc32": "a2cfe77d",
+          "parent": "g0",
+          "sha256": "6f95d97f2d5c8711a0515aac7acde4d5840c183253f75f81152343c2330d3b83",
+          "training_key": [
+            -1,
+            -16,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "g1-c2",
+          "model_crc32": "ff144ba2",
+          "parent": "g0",
+          "sha256": "5f3b86bebbf8b84e4d8ae2469f091c014f85b8a24f811821eec01294190d880b",
+          "training_key": [
+            1,
+            16,
+            14625,
+            1051260
+          ]
+        },
+        {
+          "id": "g2-c0",
+          "model_crc32": "f2c49567",
+          "parent": "g1-c2",
+          "sha256": "7aadf55643e9a54eb2dfd6bca1ec973576f3adf1884fef57cf4c67fcd10ccd03",
+          "training_key": [
+            1,
+            16,
+            110595,
+            1534275
+          ]
+        },
+        {
+          "id": "g2-c1",
+          "model_crc32": "f9ebe480",
+          "parent": "g1-c2",
+          "sha256": "7115cc5dc536203405d9c9f60945bccecaf04830f6611249ea0c323046b7c662",
+          "training_key": [
+            1,
+            16,
+            135615,
+            1625700
+          ]
+        },
+        {
+          "id": "g2-c2",
+          "model_crc32": "5737c061",
+          "parent": "g1-c2",
+          "sha256": "6c9844f579b0c975e69130c1bb08f6eaa6bccc1140680cd2a61dff9f0e152393",
+          "training_key": [
+            1,
+            16,
+            76185,
+            1792650
+          ]
+        }
+      ],
+      "final_review_worlds": {
+        "rainfed-crowded-seasonal-ed52188c": {
+          "births": 33,
+          "credit_ticks": [
+            73695,
+            49185,
+            162285,
+            198855
+          ],
+          "deaths": 35,
+          "living": 3,
+          "run_hash": "9515aa3d",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "15fe6b90"
+        },
+        "rainfed-crowded-steady-ed52188c": {
+          "births": 12,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 13,
+          "living": 4,
+          "run_hash": "03b9e0a5",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "2a39ece0"
+        },
+        "rainfed-seasonal-ed52188c": {
+          "births": 3,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 6,
+          "living": 0,
+          "run_hash": "04c3f5b3",
+          "seed_bank": 0,
+          "terminal_tiers": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "world_hash": "d1bf873d"
+        },
+        "rainfed-steady-ed52188c": {
+          "births": 3,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 6,
+          "living": 0,
+          "run_hash": "c85e9f0d",
+          "seed_bank": 0,
+          "terminal_tiers": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "world_hash": "87369035"
+        }
+      },
+      "generations": [
+        {
+          "champion": "g0",
+          "generation": 0,
+          "review_key": [
+            -1,
+            0,
+            0,
+            607050
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 1835628596,
+          "sha256": "19c7f53bdebe85b24faef9501bf3359c31d76b77f292fb5fbce93245e7ffdb54",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "champion": "g1-c2",
+          "generation": 1,
+          "review_key": [
+            1,
+            16,
+            107580,
+            774285
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            107580
+          ],
+          "review_zero_credit_windows": 10,
+          "rng_after": 2802411561,
+          "sha256": "5f3b86bebbf8b84e4d8ae2469f091c014f85b8a24f811821eec01294190d880b",
+          "training_key": [
+            1,
+            16,
+            14625,
+            1051260
+          ]
+        },
+        {
+          "champion": "g2-c1",
+          "generation": 2,
+          "review_key": [
+            -1,
+            0,
+            49185,
+            484020
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            49185
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 4037851969,
+          "sha256": "7115cc5dc536203405d9c9f60945bccecaf04830f6611249ea0c323046b7c662",
+          "training_key": [
+            1,
+            16,
+            135615,
+            1625700
+          ]
+        }
+      ],
+      "mode": "off",
+      "search_seed": 1835628596
+    },
+    "s6d697835-current": {
+      "candidates": [
+        {
+          "id": "g0",
+          "model_crc32": "e6d9b9ae",
+          "parent": null,
+          "sha256": "1e1834d0850cabe26c8523678554c78e2787a0b2aba43788783ea8de4e6c37c9",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "id": "g1-c0",
+          "model_crc32": "ac0f1e14",
+          "parent": "g0",
+          "sha256": "31df0736188b4c2e27b55245c02f05f1eef8c70f89119086f35c64e11403a7a8",
+          "training_key": [
+            -1,
+            0,
+            0,
+            245760
+          ]
+        },
+        {
+          "id": "g1-c1",
+          "model_crc32": "708507d2",
+          "parent": "g0",
+          "sha256": "f2dc989380339614dc512f64f11f2bf03f7079c465c4c9bd18895044ec3e1567",
+          "training_key": [
+            1,
+            16,
+            290805,
+            2300025
+          ]
+        },
+        {
+          "id": "g1-c2",
+          "model_crc32": "ec359331",
+          "parent": "g0",
+          "sha256": "f40afd02d48824a74d4f8e7bafb4ceb4c53fcba03992fff686dc869f65a6f79b",
+          "training_key": [
+            1,
+            16,
+            195000,
+            1828500
+          ]
+        },
+        {
+          "id": "g2-c0",
+          "model_crc32": "2b44b21f",
+          "parent": "g1-c1",
+          "sha256": "1400548e8a81ed91d2b988e15242908e9af4008c9c7307d79d5bcb8d8c6eba61",
+          "training_key": [
+            -1,
+            8,
+            225120,
+            1358925
+          ]
+        },
+        {
+          "id": "g2-c1",
+          "model_crc32": "bfe3ece1",
+          "parent": "g1-c1",
+          "sha256": "aed1ebd2e294b0de0ef0896c1836b1ddfe4b907edf9b034d6aa288e477498ba8",
+          "training_key": [
+            -1,
+            -16,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "g2-c2",
+          "model_crc32": "f242e8c4",
+          "parent": "g1-c1",
+          "sha256": "bf5006c50c6ece347775930cf120bad63dab9cbd5f38615847f950993d278cbf",
+          "training_key": [
+            1,
+            16,
+            164955,
+            2750025
+          ]
+        }
+      ],
+      "final_review_worlds": {
+        "rainfed-crowded-seasonal-ed52188c": {
+          "births": 45,
+          "credit_ticks": [
+            237405,
+            202860,
+            45555,
+            307815
+          ],
+          "deaths": 46,
+          "living": 4,
+          "run_hash": "695e32b0",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "58f75b3e"
+        },
+        "rainfed-crowded-steady-ed52188c": {
+          "births": 7,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 9,
+          "living": 3,
+          "run_hash": "e5dbafbe",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "79973611"
+        },
+        "rainfed-seasonal-ed52188c": {
+          "births": 40,
+          "credit_ticks": [
+            263685,
+            153315,
+            122745,
+            122670
+          ],
+          "deaths": 40,
+          "living": 3,
+          "run_hash": "41624f45",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "f6fc2b67"
+        },
+        "rainfed-steady-ed52188c": {
+          "births": 10,
+          "credit_ticks": [
+            45765,
+            0,
+            0,
+            0
+          ],
+          "deaths": 10,
+          "living": 3,
+          "run_hash": "8cf5f5ea",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "8f9398a0"
+        }
+      },
+      "generations": [
+        {
+          "champion": "g0",
+          "generation": 0,
+          "review_key": [
+            -1,
+            0,
+            0,
+            607050
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 1835628597,
+          "sha256": "1e1834d0850cabe26c8523678554c78e2787a0b2aba43788783ea8de4e6c37c9",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "champion": "g1-c1",
+          "generation": 1,
+          "review_key": [
+            1,
+            16,
+            168225,
+            1501815
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            45555,
+            122670
+          ],
+          "review_zero_credit_windows": 7,
+          "rng_after": 4117497713,
+          "sha256": "f2dc989380339614dc512f64f11f2bf03f7079c465c4c9bd18895044ec3e1567",
+          "training_key": [
+            1,
+            16,
+            290805,
+            2300025
+          ]
+        },
+        {
+          "champion": "g1-c1",
+          "generation": 2,
+          "review_key": [
+            1,
+            16,
+            168225,
+            1501815
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            45555,
+            122670
+          ],
+          "review_zero_credit_windows": 7,
+          "rng_after": 3973242369,
+          "sha256": "f2dc989380339614dc512f64f11f2bf03f7079c465c4c9bd18895044ec3e1567",
+          "training_key": [
+            1,
+            16,
+            290805,
+            2300025
+          ]
+        }
+      ],
+      "mode": "current",
+      "search_seed": 1835628597
+    },
+    "s6d697835-history": {
+      "candidates": [
+        {
+          "id": "g0",
+          "model_crc32": "199d2666",
+          "parent": null,
+          "sha256": "2ea8ec2a5ba3b2be359f509fcbdb7bf26a709c7201b121757744ebffb913b592",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "id": "g1-c0",
+          "model_crc32": "534b81dc",
+          "parent": "g0",
+          "sha256": "76bd9c0f514ce02c6328b6f587dc07148788ed6a2cbea8304c24034f622956ad",
+          "training_key": [
+            -1,
+            -8,
+            0,
+            134805
+          ]
+        },
+        {
+          "id": "g1-c1",
+          "model_crc32": "8fc1981a",
+          "parent": "g0",
+          "sha256": "252a74d3dfe11ebddd29f8b381e93200e75f955090ad6fca39a1859a7d7b7d95",
+          "training_key": [
+            -1,
+            0,
+            16095,
+            996255
+          ]
+        },
+        {
+          "id": "g1-c2",
+          "model_crc32": "13710cf9",
+          "parent": "g0",
+          "sha256": "a588806c4cfe1d920e84f45c027d047214df462949c0ba6cdcdb7efaf657b6df",
+          "training_key": [
+            1,
+            16,
+            289005,
+            2290200
+          ]
+        },
+        {
+          "id": "g2-c0",
+          "model_crc32": "0a05563a",
+          "parent": "g1-c2",
+          "sha256": "21a96318d8385b84a6cb9682fa2181ad91801e9e83d169cb4c5d6a6643e46afe",
+          "training_key": [
+            1,
+            16,
+            304155,
+            2388720
+          ]
+        },
+        {
+          "id": "g2-c1",
+          "model_crc32": "73f38fc8",
+          "parent": "g1-c2",
+          "sha256": "361954db254ac321da8ce3ea439c10fc5682c3f74ff58428a408d28d178e742e",
+          "training_key": [
+            -1,
+            -16,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "g2-c2",
+          "model_crc32": "3e680d6f",
+          "parent": "g1-c2",
+          "sha256": "d2c51736800cd68d481d31ff0516932b76b10efd15c86264dae1c5ed4328ccd4",
+          "training_key": [
+            1,
+            16,
+            138075,
+            1925895
+          ]
+        }
+      ],
+      "final_review_worlds": {
+        "rainfed-crowded-seasonal-ed52188c": {
+          "births": 46,
+          "credit_ticks": [
+            194085,
+            88305,
+            45375,
+            361230
+          ],
+          "deaths": 47,
+          "living": 4,
+          "run_hash": "cca9a600",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            0,
+            1
+          ],
+          "world_hash": "d9ae70c4"
+        },
+        "rainfed-crowded-steady-ed52188c": {
+          "births": 10,
+          "credit_ticks": [
+            41505,
+            0,
+            0,
+            0
+          ],
+          "deaths": 11,
+          "living": 4,
+          "run_hash": "51d68e29",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "87f34d51"
+        },
+        "rainfed-seasonal-ed52188c": {
+          "births": 1,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 4,
+          "living": 0,
+          "run_hash": "e268f649",
+          "seed_bank": 0,
+          "terminal_tiers": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "world_hash": "4a056dcb"
+        },
+        "rainfed-steady-ed52188c": {
+          "births": 1,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 4,
+          "living": 0,
+          "run_hash": "8f48c9f4",
+          "seed_bank": 0,
+          "terminal_tiers": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "world_hash": "76500d83"
+        }
+      },
+      "generations": [
+        {
+          "champion": "g0",
+          "generation": 0,
+          "review_key": [
+            -1,
+            0,
+            0,
+            607050
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 1835628597,
+          "sha256": "2ea8ec2a5ba3b2be359f509fcbdb7bf26a709c7201b121757744ebffb913b592",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "champion": "g1-c2",
+          "generation": 1,
+          "review_key": [
+            -1,
+            -1,
+            26790,
+            701025
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            26790
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 4117497713,
+          "sha256": "a588806c4cfe1d920e84f45c027d047214df462949c0ba6cdcdb7efaf657b6df",
+          "training_key": [
+            1,
+            16,
+            289005,
+            2290200
+          ]
+        },
+        {
+          "champion": "g2-c0",
+          "generation": 2,
+          "review_key": [
+            -1,
+            -1,
+            45375,
+            730500
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            45375
+          ],
+          "review_zero_credit_windows": 11,
+          "rng_after": 3973242369,
+          "sha256": "21a96318d8385b84a6cb9682fa2181ad91801e9e83d169cb4c5d6a6643e46afe",
+          "training_key": [
+            1,
+            16,
+            304155,
+            2388720
+          ]
+        }
+      ],
+      "mode": "history",
+      "search_seed": 1835628597
+    },
+    "s6d697835-off": {
+      "candidates": [
+        {
+          "id": "g0",
+          "model_crc32": "05353129",
+          "parent": null,
+          "sha256": "19c7f53bdebe85b24faef9501bf3359c31d76b77f292fb5fbce93245e7ffdb54",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "id": "g1-c0",
+          "model_crc32": "4fe39693",
+          "parent": "g0",
+          "sha256": "9dffdbe9598e53325b27169f34479d3f5015bc1fd7613f50c228803169a4731e",
+          "training_key": [
+            -1,
+            0,
+            16095,
+            876270
+          ]
+        },
+        {
+          "id": "g1-c1",
+          "model_crc32": "93698f55",
+          "parent": "g0",
+          "sha256": "bd7d20f7b33eaa2e8b8786dac394db925d1b6b30cb1f7cbf2b6ea20b8b7885ec",
+          "training_key": [
+            1,
+            16,
+            100320,
+            1987770
+          ]
+        },
+        {
+          "id": "g1-c2",
+          "model_crc32": "0fd91bb6",
+          "parent": "g0",
+          "sha256": "d2b4564e88469213f47a244ce730b92c6a888fd51ed03cd8fd1e0e583c908a5b",
+          "training_key": [
+            1,
+            16,
+            115740,
+            1902540
+          ]
+        },
+        {
+          "id": "g2-c0",
+          "model_crc32": "16ad4175",
+          "parent": "g1-c2",
+          "sha256": "d2d5048e30611d710e6737c38edff5ececff5d15e5774073ee745f58af010057",
+          "training_key": [
+            1,
+            16,
+            203940,
+            1711155
+          ]
+        },
+        {
+          "id": "g2-c1",
+          "model_crc32": "6f5b9887",
+          "parent": "g1-c2",
+          "sha256": "509e5f4bbefe51977827aa5cba50553ffc835b7957ee5df97b9fa4f44e692286",
+          "training_key": [
+            -1,
+            0,
+            30585,
+            676995
+          ]
+        },
+        {
+          "id": "g2-c2",
+          "model_crc32": "22c01a20",
+          "parent": "g1-c2",
+          "sha256": "f1e5016ca774d508e918f2b0bc4296b009181da28e2a6707e76a77f2c45b3339",
+          "training_key": [
+            1,
+            16,
+            157065,
+            1600455
+          ]
+        }
+      ],
+      "final_review_worlds": {
+        "rainfed-crowded-seasonal-ed52188c": {
+          "births": 58,
+          "credit_ticks": [
+            45015,
+            150765,
+            110880,
+            368925
+          ],
+          "deaths": 58,
+          "living": 5,
+          "run_hash": "819eeb42",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            0,
+            1
+          ],
+          "world_hash": "2ed03c3d"
+        },
+        "rainfed-crowded-steady-ed52188c": {
+          "births": 11,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 12,
+          "living": 4,
+          "run_hash": "d89c74f5",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "1338af56"
+        },
+        "rainfed-seasonal-ed52188c": {
+          "births": 78,
+          "credit_ticks": [
+            313395,
+            149055,
+            126030,
+            257115
+          ],
+          "deaths": 78,
+          "living": 3,
+          "run_hash": "621430e0",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            0,
+            1
+          ],
+          "world_hash": "2aa1e63c"
+        },
+        "rainfed-steady-ed52188c": {
+          "births": 12,
+          "credit_ticks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "deaths": 11,
+          "living": 4,
+          "run_hash": "c309cd7f",
+          "seed_bank": 8,
+          "terminal_tiers": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "world_hash": "684cba32"
+        }
+      },
+      "generations": [
+        {
+          "champion": "g0",
+          "generation": 0,
+          "review_key": [
+            -1,
+            0,
+            0,
+            607050
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "review_zero_credit_windows": 12,
+          "rng_after": 1835628597,
+          "sha256": "19c7f53bdebe85b24faef9501bf3359c31d76b77f292fb5fbce93245e7ffdb54",
+          "training_key": [
+            -1,
+            0,
+            27015,
+            1055940
+          ]
+        },
+        {
+          "champion": "g1-c2",
+          "generation": 1,
+          "review_key": [
+            -1,
+            0,
+            45480,
+            375135
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            0,
+            45480
+          ],
+          "review_zero_credit_windows": 11,
+          "rng_after": 4117497713,
+          "sha256": "d2b4564e88469213f47a244ce730b92c6a888fd51ed03cd8fd1e0e583c908a5b",
+          "training_key": [
+            1,
+            16,
+            115740,
+            1902540
+          ]
+        },
+        {
+          "champion": "g2-c0",
+          "generation": 2,
+          "review_key": [
+            0,
+            14,
+            171045,
+            1521180
+          ],
+          "review_world_minima": [
+            0,
+            0,
+            45015,
+            126030
+          ],
+          "review_zero_credit_windows": 8,
+          "rng_after": 3973242369,
+          "sha256": "d2d5048e30611d710e6737c38edff5ececff5d15e5774073ee745f58af010057",
+          "training_key": [
+            1,
+            16,
+            203940,
+            1711155
+          ]
+        }
+      ],
+      "mode": "off",
+      "search_seed": 1835628597
+    }
+  },
+  "timing": {
+    "collection_and_repeat_seconds": 568.9503960849979
+  },
+  "training_seed": "a9c30c1f"
+}

@@ -27,6 +27,7 @@ struct picosystem_garden_death_audit;
 struct picosystem_garden_reproduction_audit;
 struct picosystem_garden_flower_audit;
 struct picosystem_garden_landing_cache;
+struct picosystem_garden_resource_audit;
 
 struct garden_step_audits {
 	struct picosystem_garden_water_audit *water;
@@ -35,6 +36,7 @@ struct garden_step_audits {
 	struct picosystem_garden_reproduction_audit *reproduction;
 	struct picosystem_garden_flower_audit *flower;
 	struct picosystem_garden_landing_cache *landing;
+	struct picosystem_garden_resource_audit *resources;
 };
 #if !defined(__ZEPHYR__)
 #include "garden_death_audit.h"
@@ -42,6 +44,36 @@ struct garden_step_audits {
 #include "garden_reproduction_audit.h"
 #include "garden_flower_audit.h"
 #include "garden_landing_internal.h"
+
+static void audit_resource_stage(const struct picosystem_garden_world *world,
+				 struct picosystem_garden_resource_audit *audit,
+				 enum picosystem_garden_resource_stage stage)
+{
+	if (audit == NULL) {
+		return;
+	}
+	audit->stages[stage].count = world->plant_count;
+	for (uint8_t i = 0U; i < world->plant_count; ++i) {
+		const struct picosystem_garden_plant *const p = &world->plants[i];
+		audit->stages[stage].plants[i] =
+			(struct picosystem_garden_resource_plant){.lineage_id = p->lineage_id,
+								  .energy = p->stored_energy,
+								  .water = p->stored_water,
+								  .nodes = p->node_count,
+								  .stress = p->stress,
+								  .flags = p->flags};
+	}
+}
+#define AUDIT_RESOURCE(stage)                                                                      \
+	audit_resource_stage(world, audits ? audits->resources : NULL,                             \
+			     PICOSYSTEM_GARDEN_RESOURCE_##stage)
+#else
+#define AUDIT_RESOURCE(stage)                                                                      \
+	do {                                                                                       \
+	} while (0)
+#endif
+
+#if !defined(__ZEPHYR__)
 
 static void audit_seed_stage(const struct picosystem_garden_world *world,
 			     struct picosystem_garden_seed_audit *audit,
@@ -1957,6 +1989,9 @@ static int grow_best_tip(struct picosystem_garden_world *world, uint8_t plant_in
 	struct picosystem_garden_agent_observation best_observation;
 	struct picosystem_garden_agent_decision best_decision;
 	bool found_tip = false;
+#if !defined(__ZEPHYR__)
+	bool found_eligible = false;
+#endif
 
 	for (uint16_t offset = 0U; offset < world->node_count; ++offset) {
 		const uint16_t tip_index = (uint16_t)((start + offset) % world->node_count);
@@ -1978,10 +2013,28 @@ static int grow_best_tip(struct picosystem_garden_world *world, uint8_t plant_in
 		if (!proposal_is_valid(&observation, &decision.proposal)) {
 			return -ERANGE;
 		}
-		if (!found_tip || (decision.proposal.priority > best_decision.proposal.priority)) {
+		bool replace = !found_tip ||
+			       (decision.proposal.priority > best_decision.proposal.priority);
+#if !defined(__ZEPHYR__)
+		bool eligible = true;
+		if (policy->eligible != NULL) {
+			const int eligibility_err = policy->eligible(
+				&observation, &decision, &eligible, policy->eligibility_context);
+			if (eligibility_err != 0) {
+				return (eligibility_err < 0) ? eligibility_err : -EINVAL;
+			}
+		}
+		if (found_tip && (eligible != found_eligible)) {
+			replace = eligible;
+		}
+#endif
+		if (replace) {
 			best_observation = observation;
 			best_decision = decision;
 			found_tip = true;
+#if !defined(__ZEPHYR__)
+			found_eligible = eligible;
+#endif
 		}
 	}
 
@@ -1991,6 +2044,15 @@ static int grow_best_tip(struct picosystem_garden_world *world, uint8_t plant_in
 	}
 
 	/* Every bid saw one immutable snapshot; only the winner advances private state. */
+#if !defined(__ZEPHYR__)
+	if (!found_eligible) {
+		best_decision.proposal.action = PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT;
+		best_decision.proposal.candidate_count = 0U;
+		memset(best_decision.proposal.candidate_order,
+		       PICOSYSTEM_GARDEN_AGENT_CANDIDATE_NONE,
+		       sizeof(best_decision.proposal.candidate_order));
+	}
+#endif
 #if defined(TOY_FACTORY_GARDEN_DARK_GUARD)
 	const int expense_err =
 		check_growth_expense(world, plant_index, &best_observation, &best_decision);
@@ -3155,6 +3217,12 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 	    !world_is_valid(world)) {
 		return -EINVAL;
 	}
+#if !defined(__ZEPHYR__)
+	if ((policy->eligible != NULL) &&
+	    (policy->arbitration != PICOSYSTEM_GARDEN_AGENT_ARBITRATION_ALL_TIPS)) {
+		return -EINVAL;
+	}
+#endif
 	const int input_err = update_cursor_input(world, horizontal, vertical);
 	if (input_err != 0) {
 		return input_err;
@@ -3204,6 +3272,7 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 		return err;
 	}
 	absorb_water_and_light(world, death_audit);
+	AUDIT_RESOURCE(UPTAKE);
 	AUDIT_WATER(UPTAKE);
 	err = update_decomposition(world);
 	if (err != 0) {
@@ -3211,6 +3280,7 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 	}
 	AUDIT_WATER(DECOMPOSITION);
 	update_plant_maintenance(world, death_audit);
+	AUDIT_RESOURCE(MAINTENANCE);
 	AUDIT_WATER(MAINTENANCE);
 	AUDIT_SEED(BEFORE_CHECKS);
 	err = update_seed_bank(world, seed_audit);
@@ -3219,6 +3289,7 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 	}
 	AUDIT_WATER(GERMINATION);
 	AUDIT_SEED(AFTER_CHECKS);
+	AUDIT_RESOURCE(GERMINATION);
 #if !defined(__ZEPHYR__)
 	if ((audits != NULL) && (audits->landing != NULL)) {
 		err = picosystem_garden_landing_capture(world, false, audits->landing);
@@ -3233,7 +3304,9 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 	}
 	AUDIT_WATER(GROWTH);
 	AUDIT_SEED(AFTER_GROWTH);
+	AUDIT_RESOURCE(GROWTH);
 	update_reproduction(world, reproduction_audit, flower_audit);
+	AUDIT_RESOURCE(REPRODUCTION);
 	AUDIT_SEED(AFTER_REPRODUCTION);
 	AUDIT_WATER(REPRODUCTION);
 	err = update_light(world);
@@ -3285,7 +3358,9 @@ static void compact_death_receipts(struct picosystem_garden_death_audit *result)
 static int step_landing(struct picosystem_garden_world *world,
 			const struct picosystem_garden_agent_policy *policy,
 			struct picosystem_garden_landing_cache *cache,
-			struct picosystem_garden_death_audit *audit)
+			struct picosystem_garden_death_audit *audit,
+			struct picosystem_garden_seed_audit *seed_audit,
+			struct picosystem_garden_resource_audit *resource_audit)
 {
 	if (!world_is_valid(world) || world->auto_gardener_enabled ||
 	    !picosystem_garden_landing_cache_is_valid(cache) ||
@@ -3300,19 +3375,33 @@ static int step_landing(struct picosystem_garden_world *world,
 	defined(TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK)
 	(void)policy;
 	(void)audit;
+	(void)seed_audit;
+	(void)resource_audit;
 	return -ENOTSUP;
 #else
 	/* Publish before callbacks, but do not retain a sample from a failed step. */
 	const struct picosystem_garden_landing_cache before = *cache;
 	struct picosystem_garden_death_audit deaths = {0};
+	struct picosystem_garden_seed_audit seeds = {0};
+	struct picosystem_garden_resource_audit resources = {0};
 	const struct garden_step_audits audits = {.landing = cache,
-						  .death = (audit != NULL) ? &deaths : NULL};
+						  .death = (audit != NULL) ? &deaths : NULL,
+						  .seed = (seed_audit != NULL) ? &seeds : NULL,
+						  .resources = (resource_audit != NULL) ? &resources
+											: NULL};
 	const int err = step_input_with_policy(world, 0, 0, policy, &audits);
 	if (err != 0) {
 		*cache = before;
 	} else if (audit != NULL) {
+		if (resource_audit != NULL) {
+			resources.uptake = deaths;
+			*resource_audit = resources;
+		}
 		compact_death_receipts(&deaths);
 		*audit = deaths;
+	}
+	if ((err == 0) && (seed_audit != NULL)) {
+		*seed_audit = seeds;
 	}
 	return err;
 #endif
@@ -3322,7 +3411,7 @@ int picosystem_garden_world_step_landing(struct picosystem_garden_world *world,
 					 const struct picosystem_garden_agent_policy *policy,
 					 struct picosystem_garden_landing_cache *cache)
 {
-	return step_landing(world, policy, cache, NULL);
+	return step_landing(world, policy, cache, NULL, NULL, NULL);
 }
 
 int picosystem_garden_world_step_landing_death_audit(
@@ -3332,7 +3421,29 @@ int picosystem_garden_world_step_landing_death_audit(
 	if (audit == NULL) {
 		return -EINVAL;
 	}
-	return step_landing(world, policy, cache, audit);
+	return step_landing(world, policy, cache, audit, NULL, NULL);
+}
+
+int picosystem_garden_world_step_landing_audits(struct picosystem_garden_world *world,
+						const struct picosystem_garden_agent_policy *policy,
+						struct picosystem_garden_landing_cache *cache,
+						struct picosystem_garden_death_audit *deaths,
+						struct picosystem_garden_seed_audit *seeds)
+{
+	return ((deaths == NULL) || (seeds == NULL))
+		       ? -EINVAL
+		       : step_landing(world, policy, cache, deaths, seeds, NULL);
+}
+
+int picosystem_garden_world_step_landing_resources(
+	struct picosystem_garden_world *world, const struct picosystem_garden_agent_policy *policy,
+	struct picosystem_garden_landing_cache *cache, struct picosystem_garden_death_audit *deaths,
+	struct picosystem_garden_seed_audit *seeds,
+	struct picosystem_garden_resource_audit *resources)
+{
+	return ((deaths == NULL) || (seeds == NULL) || (resources == NULL))
+		       ? -EINVAL
+		       : step_landing(world, policy, cache, deaths, seeds, resources);
 }
 
 int picosystem_garden_world_step_death_audit(struct picosystem_garden_world *world,

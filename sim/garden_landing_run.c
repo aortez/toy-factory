@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "garden_landing_run.h"
 #include "garden_landing_internal.h"
+#include "garden_landing_run_internal.h"
 
 #include <errno.h>
+#include <string.h>
 
 static uint32_t build_rules(void)
 {
@@ -64,6 +66,9 @@ int toy_factory_garden_landing_run_init(const struct picosystem_garden_world *wo
 struct run_context {
 	const struct toy_factory_garden_landing_model *model;
 	const struct picosystem_garden_landing_cache *cache;
+	const struct toy_factory_garden_landing_signal_config *probe;
+	toy_factory_garden_landing_observe_fn observe;
+	void *observer_context;
 };
 
 static int decide(const struct picosystem_garden_agent_observation *observation,
@@ -72,16 +77,35 @@ static int decide(const struct picosystem_garden_agent_observation *observation,
 {
 	const struct run_context *const ctx = context;
 	struct picosystem_garden_landing_packet packet;
-	const int err = picosystem_garden_landing_observe(ctx->cache, observation, &packet);
+	int err = picosystem_garden_landing_observe(ctx->cache, observation, &packet);
 	if (err != 0) {
 		return err;
 	}
-	return toy_factory_garden_landing_neural_decide(observation, memory, &packet, ctx->model,
-							decision);
+	if (ctx->probe != NULL) {
+		struct picosystem_garden_landing_packet changed;
+		err = toy_factory_garden_landing_signal_apply(observation, &packet, ctx->probe,
+							      &changed);
+		if (err != 0) {
+			return err;
+		}
+		packet = changed;
+	}
+	err = toy_factory_garden_landing_neural_decide(observation, memory, &packet, ctx->model,
+						       decision);
+	if ((err == 0) && (ctx->observe != NULL)) {
+		err = ctx->observe(observation, memory, &packet, decision, ctx->observer_context);
+	}
+	return err;
 }
 
 static int step(struct toy_factory_garden_landing_run *run,
-		struct picosystem_garden_death_audit *audit)
+		struct picosystem_garden_death_audit *audit,
+		struct picosystem_garden_seed_audit *seeds,
+		const struct toy_factory_garden_landing_signal_config *probe,
+		toy_factory_garden_landing_observe_fn observe, void *observer_context,
+		struct picosystem_garden_resource_audit *resources,
+		const struct toy_factory_garden_landing_water_config *water,
+		struct toy_factory_garden_landing_water_audit *water_audit)
 {
 	int err = validate(run);
 	if (err != 0) {
@@ -89,31 +113,125 @@ static int step(struct toy_factory_garden_landing_run *run,
 	}
 	struct picosystem_garden_world world = run->world;
 	struct picosystem_garden_landing_cache cache = run->cache;
-	const struct run_context context = {.model = &run->model, .cache = &cache};
-	const struct picosystem_garden_agent_policy policy = {
+	struct toy_factory_garden_landing_water_audit water_result;
+	struct toy_factory_garden_landing_water_context water_context = {
+		.world = &world,
+		.audit = &water_result,
+		.record_bids = (water != NULL) &&
+			       (water->version == TOY_FACTORY_GARDEN_LANDING_ARBITRATION_VERSION)};
+	if (water_audit != NULL) {
+		memset(&water_result, 0, sizeof(water_result));
+		observe = toy_factory_garden_landing_water_observe_internal;
+		observer_context = &water_context;
+	}
+	const struct run_context context = {.model = &run->model,
+					    .cache = &cache,
+					    .probe = probe,
+					    .observe = observe,
+					    .observer_context = observer_context};
+	const struct picosystem_garden_agent_policy base_policy = {
 		.decide = decide,
 		.context = &context,
 		.arbitration = PICOSYSTEM_GARDEN_AGENT_ARBITRATION_ALL_TIPS};
-	err = (audit == NULL) ? picosystem_garden_world_step_landing(&world, &policy, &cache)
-			      : picosystem_garden_world_step_landing_death_audit(&world, &policy,
-										 &cache, audit);
+	struct picosystem_garden_agent_policy policy = base_policy;
+	struct toy_factory_garden_seedling_reserve_context reserve;
+	if ((water != NULL) && (water->enabled != 0U)) {
+		if (water->eligible != 0U) {
+			reserve = (struct toy_factory_garden_seedling_reserve_context){
+				.world = &world, .all_offspring = true};
+			policy.eligible = toy_factory_garden_landing_water_eligible;
+			policy.eligibility_context = &reserve;
+		} else {
+			err = toy_factory_garden_seedling_reserve_init(
+				&base_policy, &world, 0U, TOY_FACTORY_GARDEN_SEEDLING_WATER,
+				&reserve, &policy);
+			if (err != 0) {
+				return err;
+			}
+			reserve.all_offspring = true;
+		}
+	}
+	if (resources != NULL) {
+		err = picosystem_garden_world_step_landing_resources(&world, &policy, &cache, audit,
+								     seeds, resources);
+	} else if (seeds != NULL) {
+		err = picosystem_garden_world_step_landing_audits(&world, &policy, &cache, audit,
+								  seeds);
+	} else if (audit != NULL) {
+		err = picosystem_garden_world_step_landing_death_audit(&world, &policy, &cache,
+								       audit);
+	} else {
+		err = picosystem_garden_world_step_landing(&world, &policy, &cache);
+	}
 	if (err != 0) {
 		return err;
 	}
 	run->world = world;
 	run->cache = cache;
+	if (water_audit != NULL) {
+		*water_audit = water_result;
+	}
 	return 0;
 }
 
 int toy_factory_garden_landing_run_step(struct toy_factory_garden_landing_run *run)
 {
-	return step(run, NULL);
+	return step(run, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 int toy_factory_garden_landing_run_step_death_audit(struct toy_factory_garden_landing_run *run,
 						    struct picosystem_garden_death_audit *audit)
 {
-	return (audit == NULL) ? -EINVAL : step(run, audit);
+	return (audit == NULL) ? -EINVAL
+			       : step(run, audit, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+}
+
+int toy_factory_garden_landing_run_step_audits(struct toy_factory_garden_landing_run *run,
+					       struct picosystem_garden_death_audit *deaths,
+					       struct picosystem_garden_seed_audit *seeds)
+{
+	return ((deaths == NULL) || (seeds == NULL))
+		       ? -EINVAL
+		       : step(run, deaths, seeds, NULL, NULL, NULL, NULL, NULL, NULL);
+}
+
+int toy_factory_garden_landing_run_step_resources(
+	struct toy_factory_garden_landing_run *run, struct picosystem_garden_death_audit *deaths,
+	struct picosystem_garden_seed_audit *seeds,
+	struct picosystem_garden_resource_audit *resources)
+{
+	return ((deaths == NULL) || (seeds == NULL) || (resources == NULL))
+		       ? -EINVAL
+		       : step(run, deaths, seeds, NULL, NULL, NULL, resources, NULL, NULL);
+}
+
+int toy_factory_garden_landing_run_step_observed(struct toy_factory_garden_landing_run *run,
+						 struct picosystem_garden_death_audit *deaths,
+						 struct picosystem_garden_seed_audit *seeds,
+						 toy_factory_garden_landing_observe_fn observe,
+						 void *context)
+{
+	return ((deaths == NULL) || (seeds == NULL) || (observe == NULL))
+		       ? -EINVAL
+		       : step(run, deaths, seeds, NULL, observe, context, NULL, NULL, NULL);
+}
+
+int toy_factory_garden_landing_run_step_signal_internal(
+	struct toy_factory_garden_landing_run *run,
+	const struct toy_factory_garden_landing_signal_config *config,
+	struct picosystem_garden_death_audit *deaths, struct picosystem_garden_seed_audit *seeds)
+{
+	return step(run, deaths, seeds, config, NULL, NULL, NULL, NULL, NULL);
+}
+
+int toy_factory_garden_landing_run_step_water_internal(
+	struct toy_factory_garden_landing_run *run,
+	const struct toy_factory_garden_landing_water_config *config,
+	struct picosystem_garden_death_audit *deaths, struct picosystem_garden_seed_audit *seeds,
+	struct picosystem_garden_resource_audit *resources,
+	struct toy_factory_garden_landing_water_audit *audit)
+{
+	return step(run, deaths, seeds, NULL, NULL, NULL, resources, config, audit);
 }
 
 static uint32_t hash_byte(uint32_t hash, uint8_t value)

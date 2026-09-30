@@ -4,6 +4,19 @@ The [experimental TGL2 network](garden-landing-inference.md) now has explicit
 host file, replay, and matched-evaluation commands. This is tooling, **not a new
 training score or evidence that the added observations improve plant fitness**.
 The old trainer/player, firmware, and ordinary ecological defaults are unchanged.
+The later [bounded training pilot](garden-landing-training.md) adds `mutate` and
+`replay --ledger`, reusing the established renewal score in a separate experiment.
+The [frozen validation panel](garden-landing-validation.md) adds explicit
+`ablate IN.tgl NEW.tgl off|current` derivation without modifying any weights.
+The [signal-content probe](garden-landing-signals.md) adds a separate
+`probe-replay` command with explicit occupancy/resource interventions and a
+probe-aware identity; ordinary replay and TGL2 files remain unchanged.
+The [same-state observer](garden-landing-decisions.md) adds explicit `trace-replay`
+with a separate trace file. Its alternative proposals never advance the world;
+the normal replay JSON and GLR1 run identity remain unchanged.
+The [reach observer](garden-landing-reach.md) adds `replay --ledger --reach-trace`
+for parent-specific support and exact sequential site masks, without altering
+the world, model or RNG. It can accompany the first-day recruitment trace.
 
 ## Start with an explicit model
 

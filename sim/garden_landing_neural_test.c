@@ -349,19 +349,33 @@ static void world_equivalence(void)
 		struct toy_factory_garden_landing_run run;
 		assert(toy_factory_garden_landing_run_init(&plain, &model, &run) == 0);
 		struct toy_factory_garden_landing_run audited = run;
+		struct toy_factory_garden_landing_run combined = run;
+		struct picosystem_garden_world seed_world = plain;
 		uint32_t deaths = 0U;
 		for (uint32_t tick = 0U; tick < 32U * 3840U; ++tick) {
 			struct picosystem_garden_death_audit expected;
 			struct picosystem_garden_death_audit actual;
+			struct picosystem_garden_death_audit both_deaths;
+			struct picosystem_garden_seed_audit expected_seeds, actual_seeds;
 			assert(picosystem_garden_world_step_death_audit(
 				       &plain, picosystem_garden_agent_neural_reference_policy(),
 				       &expected) == 0);
 			assert(toy_factory_garden_landing_run_step(&run) == 0);
 			assert(toy_factory_garden_landing_run_step_death_audit(&audited, &actual) ==
 			       0);
+			assert(picosystem_garden_world_step_seed_audit(
+				       &seed_world,
+				       picosystem_garden_agent_neural_reference_policy(),
+				       &expected_seeds) == 0);
+			assert(toy_factory_garden_landing_run_step_audits(&combined, &both_deaths,
+									  &actual_seeds) == 0);
 			assert(memcmp(&plain, &run.world, sizeof(plain)) == 0);
+			assert(memcmp(&plain, &seed_world, sizeof(plain)) == 0);
 			assert(memcmp(&run, &audited, sizeof(run)) == 0);
+			assert(memcmp(&run, &combined, sizeof(run)) == 0);
 			assert(memcmp(&expected, &actual, sizeof(expected)) == 0);
+			assert(memcmp(&expected, &both_deaths, sizeof(expected)) == 0);
+			assert(memcmp(&expected_seeds, &actual_seeds, sizeof(expected_seeds)) == 0);
 			deaths += actual.count;
 		}
 		assert(deaths > 0U && deaths == plain.death_count);
@@ -433,10 +447,19 @@ static void replay_and_rollback(void)
 	assert(toy_factory_garden_landing_run_step_death_audit(&run, &audit) != 0);
 	assert(memcmp(&run, &failing, sizeof(run)) == 0);
 	assert(memcmp(&audit, &before, sizeof(audit)) == 0);
+	struct picosystem_garden_seed_audit seeds;
+	memset(&seeds, 0xa5, sizeof(seeds));
+	const struct picosystem_garden_seed_audit seeds_before = seeds;
+	assert(toy_factory_garden_landing_run_step_audits(&run, &audit, &seeds) != 0);
+	assert(memcmp(&run, &failing, sizeof(run)) == 0);
+	assert(memcmp(&audit, &before, sizeof(audit)) == 0);
+	assert(memcmp(&seeds, &seeds_before, sizeof(seeds)) == 0);
 	assert(toy_factory_garden_landing_run_step_death_audit(NULL, &audit) == -EINVAL);
 	assert(memcmp(&audit, &before, sizeof(audit)) == 0);
 	run = saved;
 	assert(toy_factory_garden_landing_run_step_death_audit(&run, NULL) == -EINVAL);
+	assert(toy_factory_garden_landing_run_step_audits(&run, NULL, &seeds) == -EINVAL);
+	assert(toy_factory_garden_landing_run_step_audits(&run, &audit, NULL) == -EINVAL);
 	assert(memcmp(&run, &saved, sizeof(run)) == 0);
 }
 
