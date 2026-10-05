@@ -124,6 +124,29 @@ typedef int (*picosystem_garden_agent_decide_fn)(
 	const struct picosystem_garden_agent_memory *memory,
 	struct picosystem_garden_agent_decision *decision, const void *context);
 
+#if !defined(__ZEPHYR__)
+#if defined(TOY_FACTORY_GARDEN_LATE_DISPERSAL)
+#define PICOSYSTEM_GARDEN_PLACEMENT_CHOICES 14U
+#else
+#define PICOSYSTEM_GARDEN_PLACEMENT_CHOICES 6U
+#endif
+
+/* Borrowed at a paid seed purchase, before genome mutation. Spacing includes
+ * retained dead plants; weather and other germination gates are not consulted.
+ * Active choices retain reflection aliases. Capacity may exceed the active
+ * count before an experiment's onset. No new RNG is supplied.
+ */
+struct picosystem_garden_seed_placement {
+	uint32_t parent;
+	uint32_t random;
+	uint32_t logic_tick;
+	uint8_t origin;
+	int8_t dispersal;
+	uint8_t columns[PICOSYSTEM_GARDEN_PLACEMENT_CHOICES];
+	uint16_t blocked_choices;
+};
+#endif
+
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 struct picosystem_garden_leaf_policy;
 #endif
@@ -147,6 +170,24 @@ struct picosystem_garden_agent_policy {
 			const struct picosystem_garden_agent_decision *decision, bool *allowed,
 			const void *context);
 	const void *eligibility_context;
+	/* Optional host-only ordinary-dispersal experiment. Return a choice index
+	 * into observation.columns, not an arbitrary column. NULL is unchanged
+	 * production. Callbacks may not mutate the world or consume another draw.
+	 * Errors propagate through the enclosing step's normal failure contract.
+	 */
+	int (*place_seed)(const struct picosystem_garden_seed_placement *observation,
+			  uint8_t *choice, const void *context);
+	const void *placement_context;
+	/* Host-only reproduction-order experiment. Zero preserves fixed order.
+	 * A nonzero maintenance-aligned tick starts rotation strictly afterwards;
+	 * storage, growth and germination order are never changed.
+	 */
+	uint32_t reproduction_rotation_after;
+	/* Host-only paid replacement of an owned spacing-blocked seed, strictly
+	 * after this maintenance-aligned tick. Zero leaves production unchanged.
+	 * Requires a spacing-aware place_seed callback; no new world/model fields.
+	 */
+	uint32_t seed_replacement_after;
 #endif
 };
 

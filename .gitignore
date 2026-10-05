@@ -1,5 +1,10 @@
 /build/
 /build-host/
+/build-host-wicking/
+/build-host-uptake-limit/
+/build-host-uptake-limit-wicking/
+/build-host-late-dispersal/
+/build-host-late-dispersal-wicking/
 /build-host-profile/
 /build-host-player/
 /build-pio/

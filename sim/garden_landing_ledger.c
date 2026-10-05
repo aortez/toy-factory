@@ -53,6 +53,7 @@ int toy_factory_garden_landing_ledger_step(struct toy_factory_garden_landing_led
 {
 	if ((out == NULL) || (world == NULL) || (lifetimes == NULL) || (audit == NULL) ||
 	    !audit->ecology_step || (audit->count > PICOSYSTEM_GARDEN_MAX_SEEDS) ||
+	    (audit->replacement_count > PICOSYSTEM_GARDEN_MAX_PLANTS) ||
 	    (out->active_count != audit->count) ||
 	    (world->logic_tick_count != out->last_tick + STEP)) {
 		return -EINVAL;
@@ -104,6 +105,48 @@ int toy_factory_garden_landing_ledger_step(struct toy_factory_garden_landing_led
 			out->active[slot] = out->active[--out->active_count];
 		}
 	}
+	/* These exits happen after the germination checks above. Do not overwrite
+	 * those observations or pretend a paid replacement died of old age.
+	 */
+	for (uint8_t i = 0U; i < audit->replacement_count; ++i) {
+		const struct picosystem_garden_seed_replacement *const r = &audit->replacements[i];
+		const struct picosystem_garden_seed *const old = &r->previous;
+		const uint32_t age = (uint32_t)old->age_ecology_ticks * STEP;
+		if ((age == 0U) || (age > world->logic_tick_count) ||
+		    (world->seed_count != PICOSYSTEM_GARDEN_MAX_SEEDS)) {
+			return -EFAULT;
+		}
+		uint32_t slot = 0U;
+		while (slot < out->active_count) {
+			const struct toy_factory_garden_landing_purchase *const s =
+				&out->seeds[out->active[slot]];
+			if ((s->parent == old->parent_lineage_id) &&
+			    (s->birth == world->logic_tick_count - age)) {
+				break;
+			}
+			++slot;
+		}
+		if (slot == out->active_count) {
+			return -ENOENT;
+		}
+		struct toy_factory_garden_landing_purchase *const s =
+			&out->seeds[out->active[slot]];
+		bool purchased = false;
+		for (uint8_t j = 0U; j < world->seed_count; ++j) {
+			const struct picosystem_garden_seed *const fresh = &world->seeds[j];
+			purchased |= (fresh->age_ecology_ticks == 0U) &&
+				     (fresh->parent_lineage_id == old->parent_lineage_id) &&
+				     (fresh->column == r->new_column);
+		}
+		if (!purchased || (s->outcome != PICOSYSTEM_GARDEN_SEED_WAIT) ||
+		    (s->column != old->column) || (s->generation != old->generation) ||
+		    (s->species != old->species_id)) {
+			return -EFAULT;
+		}
+		s->end = world->logic_tick_count;
+		s->outcome = PICOSYSTEM_GARDEN_SEED_REPLACED;
+		out->active[slot] = out->active[--out->active_count];
+	}
 	for (uint8_t i = 0U; i < world->seed_count; ++i) {
 		const struct picosystem_garden_seed *s = &world->seeds[i];
 		if (s->age_ecology_ticks != 0U) {
@@ -114,6 +157,7 @@ int toy_factory_garden_landing_ledger_step(struct toy_factory_garden_landing_led
 			return -ENOSPC;
 		}
 		if ((s->parent_lineage_id == 0U) || (s->parent_lineage_id > out->count) ||
+		    (lifetimes->records[s->parent_lineage_id].removal_tick != 0U) ||
 		    (lifetimes->records[s->parent_lineage_id].death_cause !=
 		     TOY_FACTORY_GARDEN_LIFETIME_CAUSES)) {
 			return -EFAULT;
@@ -139,11 +183,38 @@ int toy_factory_garden_landing_ledger_print(FILE *stream,
 					    const struct toy_factory_garden_landing_ledger *ledger,
 					    const struct toy_factory_garden_lifetimes *lifetimes)
 {
+	return toy_factory_garden_landing_ledger_print_environmental(stream, ledger, lifetimes, 0U);
+}
+
+int toy_factory_garden_landing_ledger_print_environmental(
+	FILE *stream, const struct toy_factory_garden_landing_ledger *ledger,
+	const struct toy_factory_garden_lifetimes *lifetimes, uint32_t lineage_id)
+{
+	return toy_factory_garden_landing_ledger_print_environmental_pair(stream, ledger, lifetimes,
+									  lineage_id, 0U);
+}
+
+int toy_factory_garden_landing_ledger_print_environmental_pair(
+	FILE *stream, const struct toy_factory_garden_landing_ledger *ledger,
+	const struct toy_factory_garden_lifetimes *lifetimes, uint32_t first_id, uint32_t second_id)
+{
 	if ((stream == NULL) || (ledger == NULL) || (lifetimes == NULL) ||
 	    (ledger->count != lifetimes->count) ||
 	    (ledger->count > TOY_FACTORY_GARDEN_EVALUATION_MAX_TRACKED_LINEAGES) ||
 	    (ledger->seed_count > TOY_FACTORY_GARDEN_LANDING_MAX_PURCHASES)) {
 		return -EINVAL;
+	}
+	if ((second_id != 0U) && ((first_id == 0U) || (first_id == second_id))) {
+		return -EINVAL;
+	}
+	const uint32_t events[] = {first_id, second_id};
+	for (size_t i = 0U; i < sizeof(events) / sizeof(events[0]); ++i) {
+		const uint32_t id = events[i];
+		if ((id > lifetimes->count) ||
+		    ((id != 0U) && ((lifetimes->records[id].death_cause != 3U) ||
+				    (lifetimes->records[id].removal_tick != 0U)))) {
+			return -EINVAL;
+		}
 	}
 	fputs("\"ledger_start_tick\":0,\"lineages\":[", stream);
 	for (uint32_t id = 1U; id <= ledger->count; ++id) {
@@ -157,10 +228,14 @@ int toy_factory_garden_landing_ledger_print(FILE *stream,
 		} else {
 			fprintf(stream, "%" PRIu32, r->death_tick);
 		}
+		if (r->removal_tick != 0U) {
+			fprintf(stream, ",\"removal_tick\":%" PRIu32, r->removal_tick);
+		}
 		fprintf(stream,
-			",\"environmental_death\":false,\"column\":%u,\"generation\":%u,"
+			",\"environmental_death\":%s,\"column\":%u,\"generation\":%u,"
 			"\"species\":%u,"
 			"\"seeds_created\":%" PRIu32 ",\"late_seeds_created\":%" PRIu32 "}",
+			(id == first_id) || (id == second_id) ? "true" : "false",
 			ledger->plants[id].column, ledger->plants[id].generation, r->species_id,
 			ledger->plants[id].purchases, ledger->plants[id].purchases);
 	}
@@ -187,8 +262,30 @@ int toy_factory_garden_landing_ledger_print(FILE *stream,
 			PICOSYSTEM_GARDEN_SEED_LIFETIME_TICKS, s->generation, s->column, s->species,
 			s->outcome == PICOSYSTEM_GARDEN_SEED_EXPIRED      ? "expired"
 			: s->outcome == PICOSYSTEM_GARDEN_SEED_GERMINATED ? "germinated"
+			: s->outcome == PICOSYSTEM_GARDEN_SEED_REPLACED   ? "replaced"
 									  : "pending");
 	}
 	fputc(']', stream);
+	return ferror(stream) ? -EIO : 0;
+}
+
+int toy_factory_garden_landing_replacements_print(FILE *stream, uint32_t tick,
+						  const struct picosystem_garden_seed_audit *audit)
+{
+	if ((stream == NULL) || (audit == NULL) || !audit->ecology_step ||
+	    (audit->replacement_count > PICOSYSTEM_GARDEN_MAX_PLANTS)) {
+		return -EINVAL;
+	}
+	fprintf(stream, "{\"tick\":%" PRIu32 ",\"replacements\":[", tick);
+	for (uint8_t i = 0U; i < audit->replacement_count; ++i) {
+		const struct picosystem_garden_seed_replacement *const r = &audit->replacements[i];
+		const struct picosystem_garden_seed *const s = &r->previous;
+		fprintf(stream,
+			"%s{\"parent\":%" PRIu32 ",\"age\":%u,\"column\":%u,"
+			"\"generation\":%u,\"species\":%u,\"new_column\":%u}",
+			i ? "," : "", s->parent_lineage_id, s->age_ecology_ticks, s->column,
+			s->generation, s->species_id, r->new_column);
+	}
+	fputs("]}\n", stream);
 	return ferror(stream) ? -EIO : 0;
 }

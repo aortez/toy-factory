@@ -41,5 +41,20 @@ int toy_factory_garden_landing_ledger_step(struct toy_factory_garden_landing_led
 int toy_factory_garden_landing_ledger_print(FILE *stream,
 					    const struct toy_factory_garden_landing_ledger *ledger,
 					    const struct toy_factory_garden_lifetimes *lifetimes);
+/* Mark one already-recorded "other" death as an imposed environmental event.
+ * Zero preserves the ordinary export byte-for-byte. No ledger mutation.
+ */
+int toy_factory_garden_landing_ledger_print_environmental(
+	FILE *stream, const struct toy_factory_garden_landing_ledger *ledger,
+	const struct toy_factory_garden_lifetimes *lifetimes, uint32_t lineage_id);
+/* A second, distinct imposed death. Zero second_id preserves the single event. */
+int toy_factory_garden_landing_ledger_print_environmental_pair(
+	FILE *stream, const struct toy_factory_garden_landing_ledger *ledger,
+	const struct toy_factory_garden_lifetimes *lifetimes, uint32_t first_id,
+	uint32_t second_id);
+
+/* One production-phase row per ecology step, including no-replacement rows. */
+int toy_factory_garden_landing_replacements_print(FILE *stream, uint32_t tick,
+						  const struct picosystem_garden_seed_audit *audit);
 
 #endif

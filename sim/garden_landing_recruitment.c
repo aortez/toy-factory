@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "garden_landing_recruitment.h"
+#include "garden_light.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -10,10 +11,11 @@ static void print_transfer(FILE *stream, const struct picosystem_garden_death_re
 		r->upkeep_paid, r->discarded);
 }
 
-int toy_factory_garden_recruitment_print(FILE *stream, const struct picosystem_garden_world *world,
-					 const struct toy_factory_garden_lifetimes *lifetimes,
-					 const struct picosystem_garden_seed_audit *seeds,
-					 const struct picosystem_garden_resource_audit *resources)
+static int print_resources(FILE *stream, const struct picosystem_garden_world *world,
+			   const struct toy_factory_garden_lifetimes *lifetimes,
+			   const struct picosystem_garden_seed_audit *seeds,
+			   const struct picosystem_garden_resource_audit *resources,
+			   bool first_day_only)
 {
 	if ((stream == NULL) || (world == NULL) || (lifetimes == NULL) || (seeds == NULL) ||
 	    (resources == NULL) || !seeds->ecology_step || !resources->uptake.ecology_step ||
@@ -21,7 +23,22 @@ int toy_factory_garden_recruitment_print(FILE *stream, const struct picosystem_g
 	    (resources->uptake.count > PICOSYSTEM_GARDEN_MAX_PLANTS)) {
 		return -EINVAL;
 	}
-	fprintf(stream, "{\"tick\":%" PRIu32 ",\"seeds\":[", world->logic_tick_count);
+	fprintf(stream, "{\"tick\":%" PRIu32, world->logic_tick_count);
+	if (!first_day_only) {
+		const struct picosystem_garden_sun sun = picosystem_garden_world_sun(world);
+		const struct picosystem_garden_climate climate =
+			picosystem_garden_world_climate(world);
+		uint32_t soil = 0U;
+		for (size_t i = 0U; i < PICOSYSTEM_GARDEN_SOIL_CELL_COUNT; ++i) {
+			soil += world->moisture[i];
+		}
+		fprintf(stream,
+			",\"sun\":[%u,%u],\"season\":%u,\"cold\":%s,"
+			"\"soil_water\":%" PRIu32 ",\"bank\":%u",
+			sun.phase, sun.strength, climate.season, climate.cold ? "true" : "false",
+			soil, world->seed_count);
+	}
+	fputs(",\"seeds\":[", stream);
 	for (uint8_t i = 0U; i < seeds->count; ++i) {
 		const struct picosystem_garden_seed_attempt *const a = &seeds->attempts[i];
 		unsigned int open = 0U;
@@ -42,9 +59,10 @@ int toy_factory_garden_recruitment_print(FILE *stream, const struct picosystem_g
 		}
 		const struct toy_factory_garden_lifetime *const life =
 			&lifetimes->records[p->lineage_id];
-		if ((life->parent_id == 0U) || (world->logic_tick_count < life->birth_tick) ||
-		    (world->logic_tick_count - life->birth_tick >
-		     TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS) ||
+		if ((world->logic_tick_count < life->birth_tick) ||
+		    (first_day_only &&
+		     ((life->parent_id == 0U) || (world->logic_tick_count - life->birth_tick >
+						  TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS))) ||
 		    ((life->death_cause != TOY_FACTORY_GARDEN_LIFETIME_CAUSES) &&
 		     (life->death_tick != world->logic_tick_count))) {
 			continue;
@@ -107,4 +125,21 @@ int toy_factory_garden_recruitment_print(FILE *stream, const struct picosystem_g
 	}
 	fputs("]}\n", stream);
 	return ferror(stream) ? -EIO : 0;
+}
+
+int toy_factory_garden_recruitment_print(FILE *stream, const struct picosystem_garden_world *world,
+					 const struct toy_factory_garden_lifetimes *lifetimes,
+					 const struct picosystem_garden_seed_audit *seeds,
+					 const struct picosystem_garden_resource_audit *resources)
+{
+	return print_resources(stream, world, lifetimes, seeds, resources, true);
+}
+
+int toy_factory_garden_adult_resources_print(
+	FILE *stream, const struct picosystem_garden_world *world,
+	const struct toy_factory_garden_lifetimes *lifetimes,
+	const struct picosystem_garden_seed_audit *seeds,
+	const struct picosystem_garden_resource_audit *resources)
+{
+	return print_resources(stream, world, lifetimes, seeds, resources, false);
 }

@@ -13,6 +13,9 @@ option(TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT "Explicit opt-in to the combined h
 option(TOY_FACTORY_GARDEN_LARGE_POOL "Experimental host-only 512-node combined ecology control" OFF)
 option(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE "Host-only mature leaf wear and paid renewal" OFF)
 option(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE "Host-only bounded bottom-drainage comparison" OFF)
+option(TOY_FACTORY_GARDEN_SOIL_WICKING "Isolated host-only late upward-transfer comparison" OFF)
+option(TOY_FACTORY_GARDEN_LATE_UPTAKE_LIMIT "Host-only late uptake cap, alone or with soil wicking" OFF)
+option(TOY_FACTORY_GARDEN_LATE_DISPERSAL "Host-only late 3-9 cell dispersal with capped uptake" OFF)
 option(TOY_FACTORY_GARDEN_LARGE_SEED_BANK "Host-only 16-seed bank comparison" OFF)
 option(TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK "Isolated host-only seasonal 16-seed bank" OFF)
 option(TOY_FACTORY_GARDEN_SEED_RESERVE "Host-only sunset-aware seed energy check" OFF)
@@ -105,6 +108,20 @@ elseif(TOY_FACTORY_GARDEN_WIDE_DISPERSAL AND TOY_FACTORY_GARDEN_WATER_HEADROOM)
 endif()
 
 set(CMAKE_C_STANDARD 11)
+if(TOY_FACTORY_GARDEN_LATE_DISPERSAL AND NOT TOY_FACTORY_GARDEN_LATE_UPTAKE_LIMIT)
+	message(FATAL_ERROR "Late dispersal requires the capped-uptake host experiment")
+endif()
+if(TOY_FACTORY_GARDEN_SOIL_WICKING OR TOY_FACTORY_GARDEN_LATE_UPTAKE_LIMIT OR TOY_FACTORY_GARDEN_LATE_DISPERSAL)
+	get_cmake_property(garden_options VARIABLES)
+	foreach(garden_option IN LISTS garden_options)
+		if(garden_option MATCHES "^TOY_FACTORY_GARDEN_" AND
+		   NOT garden_option STREQUAL "TOY_FACTORY_GARDEN_SOIL_WICKING" AND
+		   NOT garden_option STREQUAL "TOY_FACTORY_GARDEN_LATE_DISPERSAL" AND
+		   NOT garden_option STREQUAL "TOY_FACTORY_GARDEN_LATE_UPTAKE_LIMIT" AND ${garden_option})
+			message(FATAL_ERROR "Late uptake/wicking are isolated from other compiled ecology experiments")
+		endif()
+	endforeach()
+endif()
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
@@ -145,7 +162,19 @@ set(toy_factory_sources
 	simulator.c
 )
 
-add_library(toy_factory_simulator_core STATIC ${toy_factory_sources})
+add_library(toy_factory_simulator_core STATIC ${toy_factory_sources} garden_gap.c)
+if(TOY_FACTORY_GARDEN_LATE_DISPERSAL)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_LATE_DISPERSAL=1)
+endif()
+if(TOY_FACTORY_GARDEN_LATE_UPTAKE_LIMIT)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_LATE_UPTAKE_LIMIT=1)
+endif()
+if(TOY_FACTORY_GARDEN_SOIL_WICKING)
+	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_SOIL_WICKING=1)
+	target_sources(toy_factory_simulator_core PRIVATE ${toy_factory_root}/src/garden_wicking.c)
+endif()
+set_source_files_properties(${toy_factory_root}/src/garden_wicking.c
+	PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
 set_source_files_properties(${toy_factory_root}/src/garden_landing.c
 	PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
 set_source_files_properties(garden_capture.c garden_landing_features.c garden_landing_neural.c garden_landing_neural_codec.c
@@ -218,7 +247,7 @@ if(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
 endif()
 if(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 	target_compile_definitions(toy_factory_simulator_core PUBLIC TOY_FACTORY_GARDEN_LEAF_MAINTENANCE=1)
-	target_sources(toy_factory_simulator_core PRIVATE garden_leaf_policies.c garden_gap.c garden_disturbance.c garden_founder_exit.c)
+	target_sources(toy_factory_simulator_core PRIVATE garden_leaf_policies.c garden_disturbance.c garden_founder_exit.c)
 	set_source_files_properties(garden_founder_exit.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
 endif()
 if(TOY_FACTORY_GARDEN_WIDE_DISPERSAL)
@@ -326,6 +355,19 @@ target_link_libraries(toy-factory-garden-water-uptake-test PRIVATE toy_factory_s
 target_compile_options(toy-factory-garden-water-uptake-test PRIVATE
 	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG
 )
+
+add_executable(toy-factory-garden-wicking-test garden_wicking_test.c)
+if(NOT TOY_FACTORY_GARDEN_SOIL_WICKING)
+	target_sources(toy-factory-garden-wicking-test PRIVATE ${toy_factory_root}/src/garden_wicking.c)
+endif()
+target_link_libraries(toy-factory-garden-wicking-test PRIVATE toy_factory_simulator_core)
+target_compile_options(toy-factory-garden-wicking-test PRIVATE
+	-Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(toy-factory-garden-wicking-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+	target_link_options(toy-factory-garden-wicking-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+endif()
+add_test(NAME garden-wicking-native COMMAND toy-factory-garden-wicking-test)
 
 add_executable(toy-factory-garden-damage-test garden_damage_test.c)
 target_link_libraries(toy-factory-garden-damage-test PRIVATE toy_factory_simulator_core)
@@ -512,6 +554,34 @@ if(TOY_FACTORY_SIMULATOR_PLAYER)
 endif()
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_test(NAME garden-landing-wicking COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_wicking.py)
+add_test(NAME garden-landing-uptake-limit COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_uptake_limit.py)
+add_test(NAME garden-landing-renewal-gates COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_renewal_gates.py)
+add_test(NAME garden-landing-dispersal-timing COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_dispersal_timing.py)
+add_test(NAME garden-landing-dispersal-energy-audit COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_dispersal_energy_audit.py)
+add_test(NAME garden-landing-energy-history COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_energy_history.py)
+add_test(NAME garden-landing-winter-light COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_winter_light.py)
+add_test(NAME garden-landing-placement-information COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_placement_information.py)
+add_test(NAME garden-landing-vacancy-sequence COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_vacancy_sequence.py)
+add_test(NAME garden-landing-followup COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_followup.py)
+add_test(NAME garden-landing-reproductive-access COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_reproductive_access.py)
+add_test(NAME garden-landing-disturbance-audit COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_disturbance_audit.py)
+add_test(NAME garden-landing-second-opening-audit COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_second_opening_audit.py)
+add_test(NAME garden-landing-opening-opportunities COMMAND ${Python3_EXECUTABLE} -W error
+	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_opening_opportunities.py)
 add_executable(toy-factory-garden-climate-test garden_climate_test.c)
 target_link_libraries(toy-factory-garden-climate-test PRIVATE toy_factory_simulator_core)
 target_compile_options(toy-factory-garden-climate-test PRIVATE
@@ -570,10 +640,11 @@ add_test(NAME garden-landing-features COMMAND ${Python3_EXECUTABLE} -W error
 	${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_features.py --build ${CMAKE_BINARY_DIR} --cc ${CMAKE_C_COMPILER})
 if(NOT TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT AND NOT TOY_FACTORY_GARDEN_WATER_HEADROOM
 	AND NOT TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK)
-	target_sources(toy_factory_simulator_core PRIVATE garden_landing_run.c garden_landing_model_file.c garden_landing_mutation.c garden_landing_signal.c garden_landing_decisions.c garden_landing_water.c)
-	set_source_files_properties(garden_landing_run.c garden_landing_model_file.c garden_landing_mutation.c garden_landing_ledger.c garden_landing_signal.c garden_landing_decisions.c garden_landing_water.c
+	target_sources(toy_factory_simulator_core PRIVATE garden_landing_run.c garden_landing_model_file.c garden_landing_mutation.c garden_landing_signal.c garden_landing_decisions.c garden_landing_water.c garden_landing_growth.c garden_landing_placement.c garden_landing_root_choice.c garden_landing_root_direction.c garden_landing_root_allocation.c)
+	set_source_files_properties(garden_landing_run.c garden_landing_model_file.c garden_landing_mutation.c garden_landing_ledger.c garden_landing_signal.c garden_landing_decisions.c garden_landing_water.c garden_landing_growth.c garden_landing_placement.c garden_landing_root_choice.c garden_landing_root_direction.c garden_landing_root_allocation.c
 		PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
-	add_executable(toy-factory-garden-landing garden_landing_cli.c garden_lifetimes.c garden_landing_ledger.c garden_landing_recruitment.c garden_landing_reach.c)
+	add_executable(toy-factory-garden-landing garden_landing_cli.c garden_lifetimes.c garden_landing_ledger.c garden_landing_recruitment.c garden_landing_reach.c garden_landing_plant_trace.c garden_landing_vacancy.c garden_landing_turnover.c garden_uptake_trace.c)
+	set_source_files_properties(garden_landing_vacancy.c garden_landing_turnover.c garden_gap.c PROPERTIES COMPILE_OPTIONS "-Wconversion;-Wsign-conversion")
 	add_executable(toy-factory-garden-landing-file-test garden_landing_file_test.c)
 	add_executable(toy-factory-garden-landing-training-test garden_landing_training_test.c garden_landing_ledger.c garden_lifetimes.c)
 	add_executable(toy-factory-garden-landing-signal-test garden_landing_signal_test.c)
@@ -613,6 +684,114 @@ if(NOT TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT AND NOT TOY_FACTORY_GARDEN_WATER_H
 	# The pilot deliberately rejects experimental ecology; native mutation/audit
 	# coverage above also runs for isolated dispersal variants.
 	if(NOT TOY_FACTORY_GARDEN_WIDE_DISPERSAL AND NOT TOY_FACTORY_GARDEN_FLOWER_DISPERSAL)
+		add_executable(toy-factory-garden-landing-growth-test garden_landing_growth_test.c)
+		target_link_libraries(toy-factory-garden-landing-growth-test PRIVATE toy_factory_simulator_core)
+		target_compile_options(toy-factory-garden-landing-growth-test PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+		if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+			target_compile_options(toy-factory-garden-landing-growth-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+			target_link_options(toy-factory-garden-landing-growth-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		endif()
+		add_test(NAME garden-landing-growth-native COMMAND toy-factory-garden-landing-growth-test)
+		add_executable(toy-factory-garden-placement-test garden_landing_placement_test.c)
+		target_link_libraries(toy-factory-garden-placement-test PRIVATE toy_factory_simulator_core)
+		target_compile_options(toy-factory-garden-placement-test PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+		if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+			target_compile_options(toy-factory-garden-placement-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+			target_link_options(toy-factory-garden-placement-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+		endif()
+		add_test(NAME garden-landing-placement-native COMMAND toy-factory-garden-placement-test)
+		add_test(NAME garden-landing-late-dispersal COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_late_dispersal.py --build ${CMAKE_BINARY_DIR})
+		foreach(test_kind IN ITEMS vacancy turnover seed-replacement gap-default order root-choice root-direction root-allocation)
+			if(test_kind STREQUAL "vacancy")
+				add_executable(toy-factory-garden-${test_kind}-test garden_landing_vacancy_test.c garden_landing_vacancy.c garden_lifetimes.c)
+			elseif(test_kind STREQUAL "turnover")
+				add_executable(toy-factory-garden-${test_kind}-test garden_landing_turnover_test.c garden_landing_turnover.c garden_landing_ledger.c garden_lifetimes.c)
+			elseif(test_kind STREQUAL "order")
+				add_executable(toy-factory-garden-${test_kind}-test garden_landing_order_test.c)
+			elseif(test_kind STREQUAL "seed-replacement")
+				add_executable(toy-factory-garden-${test_kind}-test garden_landing_seed_replacement_test.c garden_landing_ledger.c garden_lifetimes.c)
+			elseif(test_kind STREQUAL "root-choice")
+				add_executable(toy-factory-garden-${test_kind}-test garden_landing_root_choice_test.c garden_landing_plant_trace.c)
+			elseif(test_kind STREQUAL "root-direction")
+				add_executable(toy-factory-garden-${test_kind}-test garden_landing_root_direction_test.c garden_landing_plant_trace.c)
+			elseif(test_kind STREQUAL "root-allocation")
+				add_executable(toy-factory-garden-${test_kind}-test garden_landing_root_allocation_test.c garden_landing_plant_trace.c)
+			else()
+				add_executable(toy-factory-garden-${test_kind}-test garden_gap_test.c)
+			endif()
+			target_link_libraries(toy-factory-garden-${test_kind}-test PRIVATE toy_factory_simulator_core)
+			target_compile_options(toy-factory-garden-${test_kind}-test PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
+			if(TOY_FACTORY_SIMULATOR_SANITIZERS AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+				target_compile_options(toy-factory-garden-${test_kind}-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+				target_link_options(toy-factory-garden-${test_kind}-test PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+			endif()
+			add_test(NAME garden-landing-${test_kind}-native COMMAND toy-factory-garden-${test_kind}-test)
+		endforeach()
+		add_test(NAME garden-landing-growth COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_growth.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-root-choice COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_root_choice.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-root-energy COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_root_energy.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-energy-audit COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_energy_audit.py)
+		add_test(NAME garden-landing-light-audit COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_light_audit.py)
+		add_test(NAME garden-landing-dawn-audit COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_dawn_audit.py)
+		add_test(NAME garden-landing-afternoon COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_afternoon.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-continuous-energy COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_continuous_energy.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-daylight COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_daylight.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-dawn COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_dawn.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-population COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_population.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-population-audit COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_population_audit.py)
+		add_test(NAME garden-landing-uptake COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_uptake.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-directions COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_directions.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-root-direction COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_root_direction.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-root-direction-audit COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_root_direction_audit.py)
+		add_test(NAME garden-landing-root-allocation COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_root_allocation.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-root-allocation-audit COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_root_allocation_audit.py)
+		add_test(NAME garden-landing-seed-spending-audit COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_seed_spending_audit.py)
+		add_test(NAME garden-landing-drydown COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_drydown.py)
+		add_test(NAME garden-landing-soil-audit COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_soil_audit.py)
+		add_test(NAME garden-landing-root-reachability COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_root_reachability.py)
+		add_test(NAME garden-landing-founders COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_founders.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-budget COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_budget.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-budget-reach COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_budget_reach.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-placement COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_placement.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-vacancy COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_vacancy.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-disturbance COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_disturbance.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-second-opening COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_second_opening.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-seed-replacement COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_seed_replacement.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-recovery COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_recovery.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-order COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_order.py --build ${CMAKE_BINARY_DIR})
 		add_executable(toy-factory-garden-landing-water-test garden_landing_water_test.c)
 		target_link_libraries(toy-factory-garden-landing-water-test PRIVATE toy_factory_simulator_core)
 		target_compile_options(toy-factory-garden-landing-water-test PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
@@ -633,6 +812,8 @@ if(NOT TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT AND NOT TOY_FACTORY_GARDEN_WATER_H
 			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_arbitration.py --build ${CMAKE_BINARY_DIR})
 		add_test(NAME garden-landing-water COMMAND ${Python3_EXECUTABLE} -W error
 			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_water.py --build ${CMAKE_BINARY_DIR})
+		add_test(NAME garden-landing-adults COMMAND ${Python3_EXECUTABLE} -W error
+			${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_adults.py --build ${CMAKE_BINARY_DIR})
 		add_executable(toy-factory-garden-landing-reach-test garden_landing_reach_test.c garden_landing_reach.c)
 		target_link_libraries(toy-factory-garden-landing-reach-test PRIVATE toy_factory_simulator_core)
 		target_compile_options(toy-factory-garden-landing-reach-test PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -UNDEBUG)
@@ -866,6 +1047,18 @@ add_test(NAME garden-landing-stalls-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_stalls.py)
 add_test(NAME garden-landing-turnover-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_turnover.py)
+add_test(NAME garden-landing-species-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_species.py)
+add_test(NAME garden-landing-germination-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_germination.py)
+add_test(NAME garden-landing-placement-turnover-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_placement_turnover.py)
+add_test(NAME garden-landing-bank-access-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_bank_access.py)
+add_test(NAME garden-landing-order-regressions-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_order_regressions.py)
+add_test(NAME garden-landing-late-unit COMMAND ${Python3_EXECUTABLE}
+	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_landing_late.py)
 add_test(NAME garden-recruitment-recovery-unit COMMAND ${Python3_EXECUTABLE}
 	-W error ${CMAKE_CURRENT_LIST_DIR}/test_garden_recruitment_recovery.py)
 add_test(NAME garden-founder-independence-unit COMMAND ${Python3_EXECUTABLE}

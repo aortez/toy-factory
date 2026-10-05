@@ -17,7 +17,9 @@ static void setup(struct picosystem_garden_world *world)
 		world->plants[i].last_shoot_tip_index = (uint16_t)(i * 4U + 1U);
 		world->plants[i].last_root_tip_index = (uint16_t)(i * 4U + 3U);
 		world->plants[i].agent_memory.hidden[0] = (int8_t)i;
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 		world->leaf_condition[i * 4U + 1U] = (uint8_t)(100U + i);
+#endif
 	}
 	world->auto_gardener_enabled = false;
 	world->seeds[0] = (struct picosystem_garden_seed){
@@ -57,10 +59,14 @@ static void test_remap(void)
 				expected.nodes[i].parent_index =
 					(uint16_t)(expected.nodes[i].parent_index - 4U);
 			}
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 			expected.leaf_condition[i] = before.leaf_condition[i + 4U];
+#endif
 		}
 		memset(&expected.nodes[8], 0, 4U * sizeof(expected.nodes[0]));
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 		memset(&expected.leaf_condition[8], 0, 4U);
+#endif
 		expected.node_count = 8U;
 		expected.plant_count = 2U;
 		/* Only the derived light field may change in addition to explicit compaction. */

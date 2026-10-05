@@ -7,6 +7,39 @@
 
 #include "garden_agent.h"
 #include "garden_world.h"
+#include "garden_uptake_limit.h"
+
+static uint32_t test_tick_offset;
+
+static bool capped(void)
+{
+#if defined(TOY_FACTORY_GARDEN_WATER_HEADROOM)
+	return true;
+#elif defined(TOY_FACTORY_GARDEN_LATE_UPTAKE_LIMIT)
+	return test_tick_offset == PICOSYSTEM_GARDEN_UPTAKE_LIMIT_AFTER_TICK;
+#else
+	return false;
+#endif
+}
+
+static void check_late_limit(void)
+{
+	for (uint16_t stored = 0U; stored <= 513U; ++stored) {
+		for (unsigned int amount = 0U; amount <= UINT8_MAX; ++amount) {
+			const uint8_t available = (uint8_t)amount;
+			const unsigned int space = (stored < 512U) ? 512U - stored : 0U;
+			const unsigned int expected = (amount < space) ? amount : space;
+			assert(picosystem_garden_uptake_limit(available, stored, 626579U) ==
+			       available);
+			assert(picosystem_garden_uptake_limit(available, stored, 626580U) ==
+			       available);
+			assert(picosystem_garden_uptake_limit(available, stored, 626581U) ==
+			       expected);
+			assert(picosystem_garden_uptake_limit(available, stored, UINT32_MAX) ==
+			       expected);
+		}
+	}
+}
 
 static int wait_decide(const struct picosystem_garden_agent_observation *observation,
 		       const struct picosystem_garden_agent_memory *memory,
@@ -29,7 +62,9 @@ static void setup(struct picosystem_garden_world *world, enum picosystem_garden_
 	assert(picosystem_garden_world_reset(world, 123U) == 0);
 	assert(picosystem_garden_world_plant_seed(world, species, 0U) == 0);
 	memset(world->moisture, moisture, sizeof(world->moisture));
-	world->logic_tick_count = 14U;
+	world->logic_tick_count = test_tick_offset + 14U;
+	world->ecology_tick_count =
+		world->logic_tick_count / PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR;
 	/* Two roots share column zero. Uniform soil does not flow on this step. */
 	assert(world->node_count == 4U);
 	world->nodes[1].growth_progress = UINT8_MAX;
@@ -57,11 +92,9 @@ static void check_boundaries(void)
 				uint16_t uptake =
 					(moistures[soil] < potential) ? moistures[soil] : potential;
 				const uint16_t headroom = (uint16_t)(512U - stores[water]);
-#if defined(TOY_FACTORY_GARDEN_WATER_HEADROOM)
-				if (uptake > headroom) {
+				if (capped() && (uptake > headroom)) {
 					uptake = headroom;
 				}
-#endif
 				step(&world);
 				const uint16_t retained = (uptake < headroom) ? uptake : headroom;
 				assert(world.plants[0].stored_water == stores[water] + retained);
@@ -97,11 +130,7 @@ static void check_competition(void)
 		world.nodes[7].x = world.nodes[3].x;
 		world.plants[0].stored_water = full ? 512U : 32U;
 		step(&world);
-#if defined(TOY_FACTORY_GARDEN_WATER_HEADROOM)
-		const uint8_t first = full ? 0U : 5U;
-#else
-		const uint8_t first = 5U;
-#endif
+		const uint8_t first = (capped() && full) ? 0U : 5U;
 		assert(world.plants[0].last_water_income == first);
 		assert(world.plants[1].last_water_income == 5U - first);
 		assert(world.moisture[0] == 0U);
@@ -114,20 +143,20 @@ static void check_upkeep_and_failures(void)
 	struct picosystem_garden_world world;
 	setup(&world, PICOSYSTEM_GARDEN_SPECIES_FLOWER, 10U);
 	world.plants[0].stored_water = 512U;
-	world.ecology_tick_count = 3U;
-	world.logic_tick_count = 59U;
+	world.logic_tick_count = test_tick_offset + 59U;
+	world.ecology_tick_count = world.logic_tick_count / PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR;
 	step(&world);
 	assert(world.plants[0].stored_water == 511U);
-#if defined(TOY_FACTORY_GARDEN_WATER_HEADROOM)
-	assert(world.plants[0].last_water_income == 0U);
-#endif
+	if (capped()) {
+		assert(world.plants[0].last_water_income == 0U);
+	}
 	for (uint32_t tick = 0U; tick < 15U; ++tick) {
 		step(&world);
 	}
 	assert(world.plants[0].stored_water == 512U);
-#if defined(TOY_FACTORY_GARDEN_WATER_HEADROOM)
-	assert(world.plants[0].last_water_income == 1U);
-#endif
+	if (capped()) {
+		assert(world.plants[0].last_water_income == 1U);
+	}
 	world.plants[0].stored_water = 513U;
 	const struct picosystem_garden_world before = world;
 	assert(picosystem_garden_world_step_with_policy(&world, &wait_policy) == -EINVAL);
@@ -144,6 +173,11 @@ static void check_upkeep_and_failures(void)
 
 int main(void)
 {
+	check_late_limit();
+	check_boundaries();
+	check_competition();
+	check_upkeep_and_failures();
+	test_tick_offset = PICOSYSTEM_GARDEN_UPTAKE_LIMIT_AFTER_TICK;
 	check_boundaries();
 	check_competition();
 	check_upkeep_and_failures();

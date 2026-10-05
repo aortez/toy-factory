@@ -84,7 +84,7 @@ class ToolTests(unittest.TestCase):
             invalid = command.copy()
             invalid[3] = value
             self.native(*invalid, valid=False)
-        for value in ("", "-1", "983041", "4294967296", "1x"):
+        for value in ("", "-1", "1228801", "4294967296", "1x"):
             invalid = command.copy()
             invalid[5] = value
             self.native(*invalid, valid=False)
@@ -109,6 +109,31 @@ class ToolTests(unittest.TestCase):
         self.native("inspect", self.root / "absent", valid=False)
         self.native("inspect", self.root, valid=False)
         self.assertEqual(self.replay(model, seed="0xffffffff", ticks=983040)["tick"], 983040)
+
+    def test_followup_horizon_and_trace_boundaries(self):
+        model, _ = self.reference()
+        stop = 320 * 3840
+        trace = self.root / "adult.jsonl"
+        command = ["replay", model, "rainfed", "0xffffffff", "--ticks", str(stop),
+                   "--climate", "seasonal", "--ledger", "--adult-trace", trace,
+                   "--adult-start", str(stop), "--adult-stop", str(stop)]
+        for option, bad in (("--ticks", stop + 1), ("--adult-start", stop + 15),
+                            ("--adult-stop", stop + 15), ("--adult-start", stop - 1)):
+            invalid = command.copy()
+            invalid[invalid.index(option) + 1] = str(bad)
+            self.native(*invalid, valid=False)
+            self.assertFalse(trace.exists())
+        result = json.loads(self.native(*command))
+        self.assertEqual(result["tick"], stop)
+        rows = [json.loads(line) for line in trace.read_text().splitlines()]
+        self.assertEqual(rows[0], dict(schema="landing-adult-resources-v1", start=stop, stop=stop))
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[1]["tick"], stop)
+        self.assertEqual(rows[2], dict(complete=True, tick=stop))
+        plain = json.loads(self.native(*command[:command.index("--adult-trace")]))
+        self.assertEqual(result, plain)
+        # The general evaluator/training contract is deliberately not widened.
+        run([BUILD / "toy-factory-garden-eval", "--trials", "1", "--ticks", "983041"], valid=False)
 
     def test_explicit_ablation_preserves_weights_and_only_removes_inputs(self):
         for mode in ("off", "current", "history"):

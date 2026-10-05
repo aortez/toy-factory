@@ -67,7 +67,8 @@ class SignalTests(unittest.TestCase):
         command = self.command(model)
         for invalid in (command[:-2], command[:-4], [*command, "--resources", "low"],
                         [*command, "--occupancy", "open"], self.command(model, "unknown"),
-                        self.command(model, resources="unknown"), self.command(model, ticks=983041)):
+                        self.command(model, resources="unknown"),
+                        self.command(model, ticks=320 * 3840 + 1)):
             self.native(*invalid, "--framebuffer", raw, valid=False)
             self.assertFalse(raw.exists())
         self.native("replay", *command[1:], valid=False)

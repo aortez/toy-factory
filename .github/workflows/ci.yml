@@ -41,6 +41,11 @@ jobs:
       - name: Build and test opt-in Garden research configuration
         run: make host-research-check
 
+      - name: Build and test isolated late Garden research configurations
+        run: |
+          docker compose run --rm -T firmware bash scripts/container/host-late-dispersal-build.sh
+          docker compose run --rm -T firmware bash scripts/container/host-landing-seed-replacement-build.sh
+
       - name: Build and smoke-test interactive host player
         run: make host-player-check
 

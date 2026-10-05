@@ -596,6 +596,16 @@ the frozen models and both guarded and ordinary comparison baselines.
 separates seed supply, first-day failures and gaps between established generations
 from the saved histories, without new simulation runs.
 
+The [adult resources and renewal checkpoint](docs/garden-adult-resources-checkpoint.md)
+summarizes the subsequent host-only investigations into resource budgets,
+construction, seed placement, bank access and competition. It links the main
+findings, review boundaries and validation commands; the
+[seasonal evidence index](benchmarks/garden-seasons/README.md) retains individual
+protocols, results, counterexamples and screenshots.
+The [landing tool guide](docs/garden-landing-tools.md) documents the explicit
+replay, audit and intervention commands. These experiments do not change the
+playable Garden or firmware defaults, and do not yet qualify a sustainable ecology.
+
 For interactive work on Linux, `make host-play` builds pinned SDL3 sources in a
 separate Docker image, then launches the resulting self-contained player on the
 host. Arrow keys act as the D-pad; A, B, X, and Y match the labeled face

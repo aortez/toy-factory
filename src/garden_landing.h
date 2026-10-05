@@ -78,6 +78,30 @@ int picosystem_garden_world_step_landing_resources(
 	struct picosystem_garden_seed_audit *seeds,
 	struct picosystem_garden_resource_audit *resources);
 
+struct picosystem_garden_reproduction_audit;
+/* Same host-only contract, adding exact sequential reproduction gate receipts.
+ * Every output is required; no second world step or extra RNG draw is used.
+ * The reproduction audit's unsupported production experiments return -ENOTSUP.
+ */
+int picosystem_garden_world_step_landing_reproduction(
+	struct picosystem_garden_world *world, const struct picosystem_garden_agent_policy *policy,
+	struct picosystem_garden_landing_cache *cache, struct picosystem_garden_death_audit *deaths,
+	struct picosystem_garden_seed_audit *seeds,
+	struct picosystem_garden_resource_audit *resources,
+	struct picosystem_garden_reproduction_audit *reproduction);
+
+struct picosystem_garden_uptake_audit;
+/* Same contract, plus passive pre-maintenance light/root receipts. All outputs
+ * required/disjoint; experimental leaf/transmission/headroom modes unsupported.
+ */
+int picosystem_garden_world_step_landing_uptake(
+	struct picosystem_garden_world *world, const struct picosystem_garden_agent_policy *policy,
+	struct picosystem_garden_landing_cache *cache, struct picosystem_garden_death_audit *deaths,
+	struct picosystem_garden_seed_audit *seeds,
+	struct picosystem_garden_resource_audit *resources,
+	struct picosystem_garden_reproduction_audit *reproduction,
+	struct picosystem_garden_uptake_audit *uptake);
+
 /* Pure query using an already frozen cache. No RNG/clock/private memory input.
  * Output unchanged on error; root/OOB sources are explicitly invalid and zero.
  * The caller binds this cache to the correct world and pre-growth phase.

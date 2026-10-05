@@ -463,7 +463,7 @@ int picosystem_garden_world_reset(struct picosystem_garden_world *world, uint32_
 int picosystem_garden_world_enable_wet_germination(struct picosystem_garden_world *world);
 #endif
 
-#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+#if !defined(__ZEPHYR__)
 /* Host-only environmental death, inclusive ground columns. Retain tissue for ordinary
  * decomposition; preserve soil, seeds and RNG. Invalid input leaves the world unchanged.
  */
@@ -560,7 +560,7 @@ uint8_t picosystem_garden_world_dead_plant_count(const struct picosystem_garden_
 /* Hash persistent and presentation-visible state without structure padding. */
 uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *world);
 
-#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+#if !defined(__ZEPHYR__)
 /* Host assay only: export one living plant and its stores, without natural death/reclamation
  * counters or soil/seed/RNG changes. Refresh light; preserve survivor state through compaction.
  * Invalid/missing targets leave the complete world unchanged. Not a gardener action.

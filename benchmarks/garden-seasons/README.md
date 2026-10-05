@@ -4,6 +4,13 @@ Bounded follow-up to [winter/drought implementation](../../docs/garden-seasons.m
 Default device-sized ecology: 256 nodes, eight plant slots, eight seeds, no gardener
 or recurring irrigation. Climate remains v1 (2–4-day drought); no tuning is promoted.
 
+Start with the [adult resources and renewal checkpoint](../../docs/garden-adult-resources-checkpoint.md)
+for the current scope, grouped findings, review order and limitations. This page
+is a detailed evidence index in investigation order, not a list of current tasks.
+The latest completed comparison is [paid seed replacement](landing-seed-replacement.md):
+two first recruits gain purchases but neither gains a child. Earlier reports'
+next-step proposals and test counts describe their own checkpoints.
+
 The [landing-aware renewal training pilot](landing-training.md) completes the
 63-candidate off/current/history comparison with three search seeds, exact
 capture-free repetition and 108 generation-review images. Current-only improves
@@ -155,6 +162,328 @@ timings. Single /35 instead has a 41.3164-day birth-to-birth interval despite a
 /35's veto births frequently fail their first day. All 24 histories and 96
 periods recompute; eight offline tests pass. Next trace mature resource budgets
 and concurrent seed blockers before another policy. No promotion or new runs.
+
+The subsequent [adult resource trace](landing-adult-resources.md) closes that
+missing accounting on the frozen single /34 pair. All four lost adults die
+energy-short with substantial stored water, without growth/reproduction spending
+from day 124 to death. Every mature seed check during days 123–126 is
+spacing-blocked; cold and later dry landing sites delay replacements further.
+Two control adults bridge winter despite identical node/leaf counts. Both full
+collections preserve historical state, repeated traces and fourteen fixed
+screenshots. Next discuss maintenance-aware body growth as a single controlled
+intervention; no new policy, storage rule or ecology default is adopted.
+
+The [32-node construction comparison](landing-growth.md) now runs that fixed
+twelve-pair test. All six seasonal score comparisons improve versus eligible
+control, and late survivors rise 61 → 107. But steady renewal credit falls to
+zero in every late period, failing retention against eligible, veto and ordinary
+baselines. The selected winter gap closes with a different species/body mix,
+while an earlier drought gap lengthens. Historical controls, repeat traces,
+resource accounts and all prescribed images match. The cap remains host-only.
+The [offline species audit](landing-species.md) finds that capped seasonal
+flowers produce no seeds, while ground cover supplies 100 of 107 late renewal
+confirmations. All capped steady founders survive 192 days; four worlds
+produce seeds but never recruit, with every mature check spacing-blocked.
+The [matched founder trace](landing-founders.md) now identifies the construction
+failure: eleven capped seasonal flowers stop below flowering depth, and one
+reaches the threshold but never finishes its shoot. None forms a flower;
+763 visits have no other reproduction blocker. Two capped steady founders
+finish their shoots before exhausting the budget and do reproduce.
+The subsequent [shoot-reservation comparison](landing-budget.md) restores
+flowering and seeds in all 22 flower founders, with no early founder deaths,
+but fails the unchanged renewal screen. Seasonal late survivors fall 107 → 41,
+four final periods have zero credit, and steady renewal remains stalled.
+The eligibility-only control exactly matches the old cap in all twelve worlds;
+all 48 histories and fixed galleries verify. Keep the policy host-only.
+The [offline final-period germination audit](landing-budget-germination.md)
+now identifies living-neighbor spacing in all 261,888 mature checks across the
+four zero-credit periods, including 1,779 spacing-only checks. The two /34
+worlds also produce no new first-day survivors; their credit is carried in.
+All six reserved worlds have only aged-out established descendants at day 190.
+The [parent-reach follow-up](landing-budget-reach.md) now preserves all twelve
+historical results, raw recruitment traces and endpoint pixels. In the final
+reserved periods, 78 of 97 seeds have their entire reachable support blocked
+by spacing at every mature check. Nine of 49 new purchases have a spacing-clear
+alternative to the blocked actual landing, but only one has a fully open site
+at purchase. The [spacing-aware comparison](landing-placement.md) now tests
+that isolated rule with unchanged costs, fallback, draws and renewal gates.
+It redirects 49 of 712 purchases; 42 germinate, but only 17 children survive
+their first day. Seasonal late survivors fall 41 → 39 versus reservation, and
+the four zero-credit periods shift from /33 and /35 to /34 and /35. Greater
+total credit does not offset worse individual-world continuity. Both seasonal
+retention screens fail; the one steady renewal confirmation is not sustained
+recovery. All 108 full replays, controls, purchase masks and fixed endpoint
+images verify. Keep the candidate host-only. The subsequent
+[offline turnover diagnosis](landing-placement-turnover.md) finds no new
+first-day confirmations or established-plant deaths in any final seasonal
+period of either arm. The /33 gains are carry-in credit that expires later;
+the /34 candidates retain older occupants whose credit already expired.
+All 261,888 mature checks in the four focal candidates have spacing-blocked
+actual landings and entirely spacing-blocked reachable support. Living-neighbor
+witnesses explain every actual landing block. Both seedling exceptions and
+all unchanged scores are retained. The
+[controlled-vacancy follow-up](landing-vacancy.md) now runs all six pairs through
+day 256. Early vacancy births rise 1 → 20 versus control, with five first-day
+survivors but zero seed purchases by those replacements. Extended controls
+also resume reproduction after natural deaths around day 200. Across the full
+follow-up, reproducing new parents remain 27 → 27, and final-window confirmations
+fall 4 → 2. All 108 calls and their historical controls, repeats, raw traces and
+48 images verify. The [recovery-gate follow-up](landing-recovery-gates.md) finds
+ready flowers on all five early replacements and 3,394 bank-only production
+blocks. Their deaths and all 31 old-control deaths are verified water shortages,
+including the one control surviving until the next drought. All 36 unchanged
+replays, historical pixels, raw receipts and 167 host suites pass. Next audit
+saved bank ownership and released-slot access; no mortality, capacity or
+scoring change is promoted. The [offline bank-access audit](landing-bank-access.md)
+now finds only 16 lost openings among 3,394 otherwise-eligible focal blocks;
+3,378 begin with a full bank. Incumbents own all seeds resident during the
+five replacement lifetimes, yet those seeds later yield 23 posthumous births
+and 19 first-day survivors. Long residence has both costs and renewal value.
+The [rotating-order comparison](landing-order.md) now changes visit order alone,
+with the same capacity, viability and fees. It passes the aggregate screen:
+early parents with established children 0 → 4, all new reproducing parents
+54 → 66, closing confirmations 6 → 9. This is not uniform retention:
+no-removal closing confirmations fall 4 → 2, S34 vacancy loses its early
+survivor, and total first-day deaths rise 73 → 84. A rotated plant with evenly
+distributed time ranks still loses all four actual openings. All 120 declared
+calls, historical controls, repeats, raw reanalysis and twelve galleries verify.
+The [saved-event regression audit](landing-order-regressions.md) now separates
+S34's changed release/refill sequence and longer incumbent survival from S35's
+late seedling failures and M33's bank-only missed turns. Ten offline tests and
+exact re-extraction of 734 event observations verify the diagnosis with no
+new simulation. The [late-resource extension](landing-late-resources.md) now
+fills the S35 gap using four unchanged replays: all three late failures start
+with water shortages and never grow beyond two roots. Six of all eleven late
+births establish, three die and two remain pending. Historical ledgers, pixels,
+overlap and repeats match exactly. Water bounds resolve eighteen affordable
+root opportunities: seventeen lose to shoots, one to WAIT. All 172 host suites
+and twelve focused offline tests passed that step. The
+[one-root-choice counterfactual](landing-root-choice.md) then gives each failed
+seedling one early root: water income increases, but all three die earlier
+from energy shortage. Two successful harm checks still establish. All 40
+fixed calls, shared prefixes, historical controls and exact repeats verify.
+No controller, ecology or firmware rule was promoted. The subsequent
+[first-day energy comparison](landing-root-energy.md) rescues one of those
+failures through day 256; two live longer but still die overnight. Both
+successful checks are unchanged. The remaining failures cross the eight-to-nine
+node maintenance threshold after overestimated future income. Forty fixed calls,
+historical controls, repeats and offline reanalysis are retained with screenshots.
+The rescued plant still produces no seeds; the population policy remains unqualified.
+The [saved maintenance-forecast audit](landing-energy-audit.md) then reconciles
+all ten focal histories (eight after exact duplicate removal), including
+successful growth. Two clean afternoon errors are entirely overestimated income;
+six successful morning maintenance increases also require future income.
+The offline tool retains all events and rejected opportunities, without new
+simulations or policy changes. The subsequent
+[afternoon maintenance comparison](landing-afternoon.md) completes all forty
+fixed calls: one further seedling survives through day 256, one survives its
+first night but dies in the second, and all three successful checks are unchanged.
+The remaining failure buys a seventeenth node on the exact step protection
+expires. The new survivor still produces no seeds, and some other plants' seed
+production changes. Raw reanalysis and 177 host CTests pass. The subsequent
+[continuous energy comparison](landing-continuous-energy.md) completes forty
+calls: the remaining failure improves from 1.445 to 2.570 days, then dies in
+its third night; four successful checks are physically unchanged. The final
+purchase overestimates future income by 57 energy with no later spending.
+Other plants' lifetimes, seed records and all final paired screenshots match.
+Complete focal histories, raw reanalysis and 178 passing host CTests are retained.
+The [daylight income audit](landing-light-audit.md) now checks all 49,152 saved
+samples, including successful growth. Globally unproductive light accounts for
+50 of the final 57-energy forecast error. A current-light correction reduces that
+error to 4, but worsens overall mean absolute income error and would reject one
+successful purchase. The next paired test should evaluate its spending decisions,
+not presume a rescue. Exact night funding also leaves one dawn unfunded before
+useful light returns. This step adds no simulation or population/default policy.
+The subsequent [daylight spending comparison](landing-daylight.md) completes all
+forty paired calls. Rotating 49 now survives to day 256 at age 19.9140625 days;
+three survivor histories stay identical, and the fourth survives with altered
+roots after a two-step delay. All focal seed counts remain zero. The rescue
+preserves 54 energy by postponing growth, but still has dawn shortages and changes
+other plants' seed production and later recruitment. Complete raw/portable
+verification, paired screenshots and the 180-test pre-capture host suite are
+retained. The [subsequent dawn audit](landing-dawn-audit.md) finds two shortage
+episodes among 133 distinct morning windows. Their additional post-dawn needs
+are 21 and 15 energy, separate from a two-energy sunset forecast error in the
+second episode. One current-light reserve diagnostic would restrict five
+purchases on the rescued plant and two on a different survivor; it sometimes
+underestimates the later morning need. No policy changes or new simulations are
+made by that audit. The [paired dawn-reserve test](landing-dawn.md) now completes
+that forty-call replay: energy-shortage payments fall from eleven to zero on
+rotating 49; rotating 50 has four rather than six water shortages and two fewer
+final root nodes. All five survive, with unchanged life/seed ledgers and closing
+credit, and still no focal seeds. Full raw/portable verification, archived-source
+hashes, paired screenshots and the 182-test pre-capture host suite pass. The
+candidate stays host-only; next define a population-level qualification panel,
+including simultaneous offspring protection and fresh weather, without further
+tuning this selected panel or changing seed-bank rules at the same time.
+
+The [population qualification screen](landing-population.md) completes that
+next step with 32 fixed calls: one diagnostic and three fresh weather seeds,
+two reproduction orders, both arms and exact repeats. Only two of eight pairs
+pass the harm checks. Six pairs improve unpaid-unit rates, but reproduction and
+survival tradeoffs remain; f7ee4528 worsens both energy and water shortage rates.
+The candidate is not promoted. The [saved population audit](landing-population-audit.md)
+finds improved matched-cohort resources but deficits in different later cohorts,
+including finished bodies with no recent construction or seed spending. It
+retains every shortage window and performs no new simulation. The subsequent
+[passive uptake attribution](landing-uptake.md) reproduces those four worlds in
+eight observer-on/off calls and reconstructs every sampled light/root transfer.
+Self and live-neighbor shade both matter; selected water failures show locally
+dry soil rather than same-step consumption by other plants. Inspect existing
+construction choices before another reserve or ecology change. The subsequent
+[direction audit](landing-directions.md) completes that check with eight neutral
+replays and 3,952 paid-event receipts. In the fixed candidate, 106 of 476 root
+additions pass up a legal, affordable endpoint with higher immediate uptake
+potential. The highlighted light-failing plants never pass up a brighter legal
+shoot endpoint during construction. The subsequent
+[root-only ranking comparison](landing-root-direction.md) completes sixteen
+fixed calls with exact controls/repeats and first-effect witnesses. None of
+four pairs passes the existing harm checks; all lose descendant seed parents.
+Gross descendant water uptake rises slightly, but retained water falls in
+three pairs. The candidate stays opt-in. The
+[saved first-day audit](landing-root-direction-audit.md) finds one shared early
+A/B pair, not four independent trials: 87 extra water units taken up become
+108 extra overflow units, and no founder retains more. Earlier flower readiness,
+not a resource gate rescue, enables the earlier seed. Both arms produce seven
+first-day seeds and one eventual matched recruit. Twelve offline tests and
+raw/portable reanalysis pass. The [root allocation protocol](
+landing-root-allocation-protocol.md) now fixes a focal income-versus-maintenance
+test with sixteen fixed calls. The [completed comparison](landing-root-allocation.md)
+finds one root-for-shoot substitution per candidate world: focal lifespan rises
+from 13.97 to about 45.15 garden days, seeds rise one to two, and equal-exposure
+water shortages disappear. All four focal checks pass, but all four population
+checks fail as offspring water-shortage rates rise. Exact historical controls,
+repeats, complete receipts and paired final frames are retained; 191 host CTests
+pass. The [offline population decomposition](landing-root-allocation-audit.md)
+finds both changed cohorts and matched resource regressions: equal-exposure
+nonfocal water shortfalls rise by 36/15 units under daylight/dawn guards.
+Earlier death hides much of this in full-lifetime totals; two later matched
+failures also spend an extra seed's water. Fourteen focused tests, raw/portable
+verification and byte-identical repeated exports pass without new simulations.
+The [saved seed-spending follow-up](landing-seed-spending-audit.md) shows those
+costs refill within half a garden day. After later shared full stores, with no
+more construction or seeds, candidates retain 40/23 fewer water units. Fifteen
+new tests pass. The [passive drying capture](landing-drydown.md) now completes
+sixteen historically neutral replays. Both pairs have identical root endpoints,
+no foreign-root visits to those cells and complete extraction of their water
+each step. Reduced local supply explains the 40/23 retained-unit losses;
+the cause of that reduced supply remains open. All primary observations and
+raw/portable verification pass, as do fourteen new tests and all four related
+CTest entries. The [offline soil reconstruction](landing-soil-audit.md) then
+matches all 1728 transitions at every cell. Equal rain and reduced lateral
+inflow explain most of the gross supply difference. At the endpoint, 89–92%
+of soil water is below the selected roots, with no upward transport in the
+existing model. Raw/portable verification and identical exports pass without
+new simulation. The [root reachability audit](landing-root-reachability.md)
+then reconstructs both bodies and finds they already reach their maximum
+possible soil row. The bottom two rows are beyond every allowed genome and
+hold 54–59% of remaining soil water in these worlds. Seventeen new tests pass
+without new simulations. The [late upward-transfer experiment](landing-wicking.md)
+then completes 24 trials with exact controls/repeats and 11,156,992 independently
+reconstructed cell transitions. Selected plants gain 0.11–0.33 garden days but
+no seeds; 72–95% of extra common-window uptake is discarded at full storage.
+All eight comparisons improve water-shortfall rates, but none passes the whole
+population screen. Keep wicking off by default. The [late uptake-cap comparison](
+landing-uptake-limit.md) completes that 2×2 test in 48 calls. All rebuilt controls
+and candidate repeats match; post-onset overflow disappears and water-shortfall
+rates improve in all 16 cap comparisons. Some selected flowers survive at least
+102.19 days rather than about 14 days, but every comparison loses seed-producing
+descendant parents and neither capped variant has births in the last 32 days.
+No comparison passes all population checks. Full living-body capacity does not
+explain every stalled world. The [offline renewal-gate audit](landing-renewal-gates.md)
+then reconciles all 32 primary worlds: every capped final-period mature seed
+check fails spacing against another living plant, while each world still buys
+and expires eight seeds. Banks remain essentially full. With both rules,
+moisture blocks no such check; with the cap alone, actual pool capacity blocks
+none. The [offline dispersal and timing audit](landing-dispersal-timing.md) then
+finds all 128 late capped purchases already blocked, with spacing-clear columns
+elsewhere for 112. Bounds from recorded landings prove most later globally open
+sites outside the parent's reach, while retaining missing-trait uncertainty and
+one reachable-vacancy exception. The [late broader-dispersal comparison](landing-late-dispersal.md)
+then completes 48 trials retaining spacing, costs and viability. Post-onset
+births rise 36 → 66 with the cap alone and 18 → 37 with both water rules;
+confirmed 32-day survivors rise 32 → 48 and 12 → 22. Only four of sixteen
+comparisons pass every harm check: ten worsen energy-shortfall rates, and the
+fuller populations frequently exhaust plant slots. The [offline energy audit](
+landing-dispersal-energy-audit.md) reconciles all 877 plant histories and finds
+67% of the broader worlds' post-intervention energy deficits in confirmed
+32-day recruits. Ten comparisons contain a matched individual regression over
+equal exposure and demand, including one aggregate-screen pass. Prior occupants
+improve in aggregate but not universally. Nineteen new tests, related offline
+checks and byte-identical exports pass without simulation. The [selected mature
+plant's saved energy history](landing-energy-history.md) then identifies reduced
+winter income after common full stores, with no intervening growth or seed
+spending. Morning income falls 189 → 77 units; equal overnight costs leave the
+broader-world plant short at dawn, before it recovers. Nineteen further tests,
+raw/portable verification and identical exports pass without simulation. The
+[winter-light follow-up](landing-winter-light.md) then performs two neutral
+replays of archived binaries. A surviving offspring to the parent's left
+accounts for every observed target-leaf light difference; target geometry and
+self-shade are unchanged, and no dead foliage contributes. Frozen omission of
+that child's shade restores all 1,560 target leaf samples to the control.
+Nineteen new tests, four related offline CTests, raw/portable verification and
+byte-identical exports pass. The [placement-information audit](
+landing-placement-information.md) then finds only one reachable spacing-clear
+choice, so light-aware ranking alone would not change that landing. The child
+survives 86.11 observed days and produces nine seeds, but no grandchildren before
+the horizon; five seeds expire and four remain pending. Its 54,324 mature seed
+checks all fail spacing and all but one also find full plant slots. Twenty-three
+new tests, four related offline CTests, full raw reconciliation and identical
+exports pass without simulation. The [vacancy-sequence audit](landing-vacancy-sequence.md)
+then reconciles all 32 primary worlds and 16,640,021 seed checks. All 153
+post-onset deaths are reclaimed within 0.20–0.25 garden days. Broader worlds
+have 89 replacements in newly clear columns; 47 make seeds and 26 produce a
+germinated child. Five broader release events retain any clear column, four
+opening within roughly the last day. Empty ground can still wait for a plant
+slot elsewhere, while node limits also matter. Twenty-three tests, three related
+offline CTests and byte-identical raw/portable exports pass without simulation.
+The [day-288 follow-up](landing-followup.md) now completes 68 planned runs,
+preserving every day-256 baseline and all four exact repeats. All seven young
+replacements survive to age 32 days, but only two of the eleven late-born
+plants produce seeds and none produce a child. The extension has four births,
+no deaths and expiry of all 256 old pending seeds. Sixteen new tests pass;
+the only C change is the host CLI limit. The [reproductive-access audit](
+landing-reproductive-access.md) now finds 4,567 otherwise-eligible visits among
+the seven survivors, but only two seed purchases. Banks are full at 4,544 of
+those visits; earlier buyers fill openings at 21 more. Both seeds remain
+pending, with every mature check blocked by plant capacity and spacing. No
+water gate fails in these focal attempts. Sixteen tests and byte-identical
+offline raw re-extraction pass without simulation. The next proposed diagnostic
+is a controlled single vacancy, retaining decomposition and all pool sizes;
+no light, spacing or climate rule changes yet. These remain
+examined histories, not a promotion or fresh generalization panel.
+The [single-death comparison](landing-disturbance.md) now completes 20 planned
+calls with exact controls, repeats and observer neutrality. Normal decomposition
+frees a slot in each of five worlds, and a pre-event seed replaces the killed
+plant in every case. None is a child of the seven focal survivors. Two newcomers
+make seeds, none make children, and focal seed purchases fall from two to one
+with mixed per-world outcomes. No new natural deaths or maintenance shortfalls
+occur, but full-bank/full-stand stasis resumes. The report includes all five
+paired endpoint images and portable offline accounting. The subsequent
+[second opening through day 320](landing-second-opening.md) completes 25 calls
+with archived-identical baselines, exact repeats and observer neutrality.
+All five openings refill, two from post-event purchases, but none of the first
+recruits has a child. Their 32-day survival is confirmed; their two old seeds
+expire with persistent spacing blocks. New purchase affordability and later
+ordered bank access are distinct constraints. No new natural mortality or
+maintenance shortfalls occur. The subsequent
+[offline opportunity audit](landing-opening-opportunities.md) retains
+all twelve followed parents and both arms. It finds 49 eligible visits with
+reachable space; 35 also pass current mature-seed gates, all in W5. Every one
+faces a bank full at entry, with no same-tick order loss. Other visits remain
+energy-limited or out of reach. Unknown traits are bounded rather than guessed.
+The subsequent [paid-own-seed replacement test](landing-seed-replacement.md)
+completes twenty calls with unchanged pools, viability and reserves. Four
+replacements let two first recruits buy seeds, but older competing seeds fill
+the openings while those seeds remain dormant. No first recruit gains a child;
+each world still establishes one offspring from the same parent. W5 refills
+about 0.99 days sooner, with no additional establishment. Both arms make 42
+post-onset purchases, with no new natural deaths or maintenance shortfalls.
+Exact controls, repeats and observer checks pass; the useful-result criterion
+does not. Keep the rule off and inspect pending-seed competition before another
+ecological intervention. No default change follows. The original direction
+ranking and all spending guards remain unchanged. Canopy planning
+remains a separate unsolved question.
 
 The [subsequent recruitment diagnosis and wider-scattering screen](recruitment.md)
 find usable sites in every late seasonal world. Its frozen wider-scattering

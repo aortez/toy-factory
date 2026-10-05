@@ -10,6 +10,12 @@
 #include "garden_dispersal.h"
 #include "garden_light.h"
 #include "garden_leaf.h"
+#if defined(TOY_FACTORY_GARDEN_SOIL_WICKING)
+#include "garden_wicking.h"
+#endif
+#if defined(TOY_FACTORY_GARDEN_LATE_UPTAKE_LIMIT)
+#include "garden_uptake_limit.h"
+#endif
 #if defined(TOY_FACTORY_GARDEN_SEED_RESERVE)
 #include "garden_seed_reserve.h"
 #endif
@@ -28,6 +34,7 @@ struct picosystem_garden_reproduction_audit;
 struct picosystem_garden_flower_audit;
 struct picosystem_garden_landing_cache;
 struct picosystem_garden_resource_audit;
+struct picosystem_garden_uptake_audit;
 
 struct garden_step_audits {
 	struct picosystem_garden_water_audit *water;
@@ -37,6 +44,7 @@ struct garden_step_audits {
 	struct picosystem_garden_flower_audit *flower;
 	struct picosystem_garden_landing_cache *landing;
 	struct picosystem_garden_resource_audit *resources;
+	struct picosystem_garden_uptake_audit *uptake;
 };
 #if !defined(__ZEPHYR__)
 #include "garden_death_audit.h"
@@ -44,6 +52,7 @@ struct garden_step_audits {
 #include "garden_reproduction_audit.h"
 #include "garden_flower_audit.h"
 #include "garden_landing_internal.h"
+#include "garden_uptake_audit.h"
 
 static void audit_resource_stage(const struct picosystem_garden_world *world,
 				 struct picosystem_garden_resource_audit *audit,
@@ -751,7 +760,7 @@ static void update_rain(struct picosystem_garden_world *world)
 		world->rain_runoff, ((uint32_t)rate * PICOSYSTEM_GARDEN_GRID_COLUMNS) - deposited);
 }
 
-static void update_moisture(struct picosystem_garden_world *world)
+static int update_moisture(struct picosystem_garden_world *world)
 {
 	for (uint8_t row = 0U; row < (PICOSYSTEM_GARDEN_SOIL_ROWS - 1U); ++row) {
 		for (uint8_t column = 0U; column < PICOSYSTEM_GARDEN_GRID_COLUMNS; ++column) {
@@ -777,6 +786,13 @@ static void update_moisture(struct picosystem_garden_world *world)
 		}
 	}
 
+#if defined(TOY_FACTORY_GARDEN_SOIL_WICKING)
+	const int moved = picosystem_garden_wicking_step(world->moisture, sizeof(world->moisture),
+							 world->logic_tick_count);
+	if (moved < 0) {
+		return moved;
+	}
+#endif
 	if ((world->ecology_tick_count & 3U) == 0U) {
 		for (uint8_t column = 0U; column < PICOSYSTEM_GARDEN_GRID_COLUMNS; ++column) {
 			uint8_t *const surface = &world->moisture[soil_index(column, 0U)];
@@ -785,6 +801,7 @@ static void update_moisture(struct picosystem_garden_world *world)
 			}
 		}
 	}
+	return 0;
 }
 
 #if defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
@@ -832,8 +849,12 @@ static void wear_leaves(struct picosystem_garden_world *world)
 }
 #endif
 
-static int update_light(struct picosystem_garden_world *world)
+static int update_light_observed(struct picosystem_garden_world *world,
+				 struct picosystem_garden_uptake_audit *audit)
 {
+#if defined(__ZEPHYR__)
+	(void)audit;
+#endif
 	uint8_t shade[PICOSYSTEM_GARDEN_LIGHT_CELL_COUNT] = {0};
 	for (uint16_t index = 0U; index < world->node_count; ++index) {
 		const struct picosystem_garden_node *const node = &world->nodes[index];
@@ -858,6 +879,19 @@ static int update_light(struct picosystem_garden_world *world)
 		neighbor_shade =
 			(uint8_t)(neighbor_shade * world->leaf_condition[index] / UINT8_MAX);
 #endif
+#if !defined(__ZEPHYR__)
+		if (audit != NULL) {
+			audit->sources[audit->source_count++] =
+				(struct picosystem_garden_shade_source){
+					.lineage = plant->lineage_id,
+					.node = index,
+					.column = column,
+					.row = row,
+					.center = center_shade,
+					.neighbor = neighbor_shade,
+					.dead = plant_is_dead(plant)};
+		}
+#endif
 		shade[light_index(column, row)] =
 			saturating_add_u8(shade[light_index(column, row)], center_shade);
 		if (column > 0U) {
@@ -880,10 +914,27 @@ static int update_light(struct picosystem_garden_world *world)
 	return picosystem_garden_light_solve(shade, &sun, world->light);
 }
 
+static int update_light(struct picosystem_garden_world *world)
+{
+	return update_light_observed(world, NULL);
+}
+
 static void absorb_water_and_light(struct picosystem_garden_world *world,
-				   struct picosystem_garden_death_audit *death_audit)
+				   struct picosystem_garden_death_audit *death_audit,
+				   struct picosystem_garden_uptake_audit *audit)
 {
 	(void)death_audit;
+#if defined(__ZEPHYR__)
+	(void)audit;
+#else
+	if (audit != NULL) {
+		audit->ecology_step = true;
+		audit->tick = world->logic_tick_count;
+		audit->sun = picosystem_garden_world_sun(world);
+		memcpy(audit->soil_before, world->moisture, sizeof(audit->soil_before));
+		memcpy(audit->light, world->light, sizeof(audit->light));
+	}
+#endif
 	for (uint8_t plant_index = 0U; plant_index < world->plant_count; ++plant_index) {
 		struct picosystem_garden_plant *const plant = &world->plants[plant_index];
 		plant->last_energy_income = 0U;
@@ -924,6 +975,32 @@ static void absorb_water_and_light(struct picosystem_garden_world *world,
 					uptake = (uint8_t)headroom;
 				}
 #endif
+#if defined(TOY_FACTORY_GARDEN_LATE_UPTAKE_LIMIT)
+				_Static_assert(GARDEN_MAX_STORED_WATER ==
+						       PICOSYSTEM_GARDEN_UPTAKE_LIMIT_CAPACITY,
+					       "late uptake limit must match plant storage");
+				uptake = picosystem_garden_uptake_limit(uptake, plant->stored_water,
+									world->logic_tick_count);
+#endif
+#if !defined(__ZEPHYR__)
+				if (audit != NULL) {
+					audit->roots[audit->root_count++] =
+						(struct picosystem_garden_root_uptake){
+							.lineage = plant->lineage_id,
+							.node = node_index,
+							.slot = plant_index,
+							.column = column,
+							.row = row,
+							.limit = species->root_uptake,
+							.before = *moisture,
+							.taken = uptake,
+							.after = (uint8_t)(*moisture - uptake),
+							.stored_before = plant->stored_water,
+							.stored_after = saturating_add_u16_limit(
+								plant->stored_water, uptake,
+								GARDEN_MAX_STORED_WATER)};
+				}
+#endif
 				*moisture = (uint8_t)(*moisture - uptake);
 				gathered_water = (uint16_t)(gathered_water + uptake);
 				plant->stored_water = saturating_add_u16_limit(
@@ -933,6 +1010,20 @@ static void absorb_water_and_light(struct picosystem_garden_world *world,
 				    PICOSYSTEM_GARDEN_LEAF_ACTIVE_PROGRESS)) {
 				const uint8_t column = pixel_to_column(node->x);
 				const uint8_t row = pixel_to_canopy_row(node->y);
+#if !defined(__ZEPHYR__)
+				if (audit != NULL) {
+					const uint8_t light =
+						world->light[light_index(column, row)];
+					audit->leaves[audit->leaf_count++] =
+						(struct picosystem_garden_leaf_uptake){
+							.lineage = plant->lineage_id,
+							.node = node_index,
+							.column = column,
+							.row = row,
+							.light = light,
+							.income = (uint8_t)(light / 64U)};
+				}
+#endif
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 				energy_numerator += (world->light[light_index(column, row)] / 64U) *
 						    world->leaf_condition[node_index];
@@ -976,6 +1067,11 @@ static void absorb_water_and_light(struct picosystem_garden_world *world,
 		}
 #endif
 	}
+#if !defined(__ZEPHYR__)
+	if (audit != NULL) {
+		memcpy(audit->soil_after, world->moisture, sizeof(audit->soil_after));
+	}
+#endif
 }
 
 static uint16_t plant_shoot_node_count(const struct picosystem_garden_world *world,
@@ -1388,7 +1484,7 @@ static int reclaim_plant(struct picosystem_garden_world *world, uint8_t plant_in
 	return 0;
 }
 
-#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
+#if !defined(__ZEPHYR__)
 int picosystem_garden_world_experimental_kill_patch(struct picosystem_garden_world *world,
 						    uint8_t first_column, uint8_t last_column)
 {
@@ -1420,7 +1516,9 @@ int picosystem_garden_world_experimental_kill_patch(struct picosystem_garden_wor
 	*world = candidate;
 	return 0;
 }
+#endif
 
+#if !defined(__ZEPHYR__)
 int picosystem_garden_world_experimental_clear(struct picosystem_garden_world *world,
 					       uint32_t lineage_id)
 {
@@ -2265,17 +2363,19 @@ static uint8_t seed_origin_column(const struct picosystem_garden_world *world, u
 }
 
 static uint8_t dispersed_seed_column(const struct picosystem_garden_plant *plant, uint8_t origin,
-				     uint32_t random)
+				     uint32_t random, uint32_t tick)
 {
-	return picosystem_garden_dispersed_column(origin, plant->genome.dispersal, random);
+	return picosystem_garden_dispersed_column_at(origin, plant->genome.dispersal, random, tick);
 }
 
 #if !defined(__ZEPHYR__)
-static uint32_t dispersal_columns(const struct picosystem_garden_plant *plant, uint8_t origin)
+static uint32_t dispersal_columns(const struct picosystem_garden_plant *plant, uint8_t origin,
+				  uint32_t tick)
 {
 	uint32_t columns = 0U;
-	for (uint32_t choice = 0U; choice < 2U * PICOSYSTEM_GARDEN_DISPERSAL_CHOICES; ++choice) {
-		columns |= UINT32_C(1) << dispersed_seed_column(plant, origin, choice);
+	for (uint32_t choice = 0U; choice < picosystem_garden_dispersal_choices_at(tick);
+	     ++choice) {
+		columns |= UINT32_C(1) << dispersed_seed_column(plant, origin, choice, tick);
 	}
 	return columns;
 }
@@ -2293,16 +2393,17 @@ static void audit_flower_purchase(const struct picosystem_garden_world *world, u
 		&audit->purchases[audit->count++];
 	*purchase = (struct picosystem_garden_flower_purchase){
 		.lineage = plant->lineage_id,
-		.columns = dispersal_columns(plant, origin),
+		.columns = dispersal_columns(plant, origin, world->logic_tick_count),
 		.flower_offset = audit->flower_count,
 		.selected_flower = selected_flower,
 		.base_column = plant->base_column,
 		.origin = origin,
 		.species = plant->species_id,
 		.dispersal = plant->genome.dispersal,
-		.choice = (uint8_t)(2U * ((random >> 1U) % PICOSYSTEM_GARDEN_DISPERSAL_CHOICES) +
-				    (random & 1U)),
-		.landed_column = dispersed_seed_column(plant, origin, random),
+		.choice = (uint8_t)(random % picosystem_garden_dispersal_choices_at(
+						     world->logic_tick_count)),
+		.landed_column =
+			dispersed_seed_column(plant, origin, random, world->logic_tick_count),
 	};
 	for (uint16_t index = 0U; index < world->node_count; ++index) {
 		const struct picosystem_garden_node *const node = &world->nodes[index];
@@ -2310,7 +2411,8 @@ static void audit_flower_purchase(const struct picosystem_garden_world *world, u
 			continue;
 		}
 		audit->flowers[audit->flower_count++] = (struct picosystem_garden_flower_reach){
-			.columns = dispersal_columns(plant, pixel_to_column(node->x)),
+			.columns = dispersal_columns(plant, pixel_to_column(node->x),
+						     world->logic_tick_count),
 			.node_index = index,
 			.x = node->x,
 			.y = node->y,
@@ -2531,13 +2633,70 @@ static bool focal_seed_purchase_vetoed(const struct picosystem_garden_world *wor
 }
 #endif
 
-static void update_reproduction(struct picosystem_garden_world *world,
-				struct picosystem_garden_reproduction_audit *audit,
-				struct picosystem_garden_flower_audit *flower_audit)
+#if !defined(__ZEPHYR__)
+static uint8_t replacement_seed_index(const struct picosystem_garden_world *world,
+				      uint8_t plant_index, uint16_t flower_index)
+{
+	if ((world->plant_count >= PICOSYSTEM_GARDEN_MAX_PLANTS) ||
+	    (world->node_count + 4U > PICOSYSTEM_GARDEN_MAX_NODES)) {
+		return UINT8_MAX;
+	}
+	const struct picosystem_garden_plant *const parent = &world->plants[plant_index];
+	const uint8_t origin = seed_origin_column(world, plant_index, flower_index);
+	bool clear = false;
+	for (uint8_t choice = 0U;
+	     choice < picosystem_garden_dispersal_choices_at(world->logic_tick_count); ++choice) {
+		clear |= plant_spacing_is_available(
+			world,
+			dispersed_seed_column(parent, origin, choice, world->logic_tick_count));
+	}
+	if (!clear) {
+		return UINT8_MAX;
+	}
+	uint8_t selected = UINT8_MAX;
+	for (uint8_t i = 0U; i < world->seed_count; ++i) {
+		const struct picosystem_garden_seed *const seed = &world->seeds[i];
+		if ((seed->parent_lineage_id == parent->lineage_id) &&
+		    !plant_spacing_is_available(world, seed->column) &&
+		    ((selected == UINT8_MAX) ||
+		     (seed->age_ecology_ticks > world->seeds[selected].age_ecology_ticks))) {
+			selected = i;
+		}
+	}
+	return selected;
+}
+#endif
+
+static int update_reproduction(struct picosystem_garden_world *world,
+			       struct picosystem_garden_reproduction_audit *audit,
+			       struct picosystem_garden_flower_audit *flower_audit,
+			       struct picosystem_garden_seed_audit *seed_audit,
+			       const struct picosystem_garden_agent_policy *policy)
 {
 	(void)audit;
 	(void)flower_audit;
+	(void)seed_audit;
+	(void)policy;
 #if !defined(__ZEPHYR__)
+	uint8_t rotation = 0U;
+	if ((policy != NULL) && (policy->reproduction_rotation_after != 0U)) {
+		const uint32_t after = policy->reproduction_rotation_after;
+		const uint32_t period = PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR *
+					PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR;
+		if (after % period != 0U) {
+			return -ERANGE;
+		}
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+		if (world->seed_order_rotating) {
+			return -ENOTSUP;
+		}
+#endif
+		if ((world->logic_tick_count > after) && (world->logic_tick_count % period == 0U) &&
+		    (world->plant_count != 0U)) {
+			rotation = (uint8_t)(((world->logic_tick_count - after) / period) %
+					     world->plant_count);
+		}
+	}
 	if (audit != NULL) {
 		audit->ecology_step = true;
 	}
@@ -2558,6 +2717,11 @@ static void update_reproduction(struct picosystem_garden_world *world,
 	const uint8_t plant_count = world->plant_count;
 	for (uint8_t visit = 0U; visit < plant_count; ++visit) {
 		uint8_t plant_index = visit;
+#if !defined(__ZEPHYR__)
+		if (rotation != 0U) {
+			plant_index = (uint8_t)((rotation + visit) % plant_count);
+		}
+#endif
 #if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
 		if (world->seed_order_rotating) {
 			const uint8_t start = picosystem_garden_seed_order_start(
@@ -2572,11 +2736,15 @@ static void update_reproduction(struct picosystem_garden_world *world,
 #if !defined(__ZEPHYR__)
 		struct picosystem_garden_reproduction_visit *const receipt =
 			audit_reproduction_visit(world, plant_index, sun.strength, audit);
+		const bool may_replace = (policy->seed_replacement_after != 0U) &&
+					 (world->logic_tick_count > policy->seed_replacement_after);
+#else
+		const bool may_replace = false;
 #endif
 		if ((plant->reproduction_cooldown != 0U) ||
 		    ((world->ecology_tick_count % PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR) !=
 		     0U) ||
-		    (world->seed_count >= PICOSYSTEM_GARDEN_MAX_SEEDS) ||
+		    ((world->seed_count >= PICOSYSTEM_GARDEN_MAX_SEEDS) && !may_replace) ||
 		    !plant_can_reproduce(world, plant_index, sun.strength)) {
 			continue;
 		}
@@ -2585,6 +2753,15 @@ static void update_reproduction(struct picosystem_garden_world *world,
 		if (flower_index == PICOSYSTEM_GARDEN_NODE_NONE) {
 			continue;
 		}
+		uint8_t seed_index = world->seed_count;
+#if !defined(__ZEPHYR__)
+		if (seed_index == PICOSYSTEM_GARDEN_MAX_SEEDS) {
+			seed_index = replacement_seed_index(world, plant_index, flower_index);
+			if (seed_index == UINT8_MAX) {
+				continue;
+			}
+		}
+#endif
 #if defined(TOY_FACTORY_GARDEN_FOCAL_SEED_VETO)
 		if (focal_seed_purchase_vetoed(world, plant_index)) {
 			continue;
@@ -2597,25 +2774,73 @@ static void update_reproduction(struct picosystem_garden_world *world,
 			continue;
 		}
 #endif
-		const uint32_t dispersal_random = random_next(&plant->random_state);
+		uint32_t next_random_state = plant->random_state;
+		const uint32_t dispersal_random = random_next(&next_random_state);
 #if !defined(__ZEPHYR__)
 		audit_flower_purchase(world, plant_index, flower_index, dispersal_random,
 				      flower_audit);
 #endif
 		const uint8_t origin = seed_origin_column(world, plant_index, flower_index);
-		struct picosystem_garden_seed *const seed = &world->seeds[world->seed_count];
+		uint8_t column = dispersed_seed_column(plant, origin, dispersal_random,
+						       world->logic_tick_count);
+#if !defined(__ZEPHYR__)
+		if (policy->place_seed != NULL) {
+			struct picosystem_garden_seed_placement observation = {
+				.parent = plant->lineage_id,
+				.random = dispersal_random,
+				.logic_tick = world->logic_tick_count,
+				.origin = origin,
+				.dispersal = plant->genome.dispersal};
+			const uint8_t choices =
+				picosystem_garden_dispersal_choices_at(world->logic_tick_count);
+			for (uint8_t c = 0U; c < choices; ++c) {
+				observation.columns[c] = dispersed_seed_column(
+					plant, origin, c, world->logic_tick_count);
+				if (!plant_spacing_is_available(world, observation.columns[c])) {
+					observation.blocked_choices |= (uint16_t)(1U << c);
+				}
+			}
+			uint8_t choice = (uint8_t)(dispersal_random % choices);
+			const int err = policy->place_seed(&observation, &choice,
+							   policy->placement_context);
+			if (err != 0) {
+				return err;
+			}
+			if (choice >= choices) {
+				return -ERANGE;
+			}
+			column = observation.columns[choice];
+		}
+		if (seed_index < world->seed_count) {
+			if (!plant_spacing_is_available(world, column) ||
+			    ((seed_audit != NULL) &&
+			     (seed_audit->replacement_count >= PICOSYSTEM_GARDEN_MAX_PLANTS))) {
+				return -ERANGE;
+			}
+			if (seed_audit != NULL) {
+				seed_audit->replacements[seed_audit->replacement_count++] =
+					(struct picosystem_garden_seed_replacement){
+						.previous = world->seeds[seed_index],
+						.new_column = column};
+			}
+		}
+#endif
+		struct picosystem_garden_seed *const seed = &world->seeds[seed_index];
 		*seed = (struct picosystem_garden_seed){
 			.genome = plant->genome,
 			.parent_lineage_id = plant->lineage_id,
 			.generation = (uint16_t)(plant->generation + 1U),
-			.column = dispersed_seed_column(plant, origin, dispersal_random),
+			.column = column,
 			.species_id = plant->species_id,
 			.visual_offset = (int8_t)((int32_t)((dispersal_random >> 8U) % 5U) - 2),
 		};
-		if (mutate_genome(&seed->genome, &plant->random_state)) {
+		if (mutate_genome(&seed->genome, &next_random_state)) {
 			world->mutation_count = saturating_add_u32(world->mutation_count, 1U);
 		}
-		++world->seed_count;
+		plant->random_state = next_random_state;
+		if (seed_index == world->seed_count) {
+			++world->seed_count;
+		}
 		world->nodes[flower_index].flags |= PICOSYSTEM_GARDEN_NODE_FLOWER_SEEDED;
 		plant->stored_energy =
 			(uint16_t)(plant->stored_energy - GARDEN_REPRODUCTION_ENERGY_COST);
@@ -2629,6 +2854,7 @@ static void update_reproduction(struct picosystem_garden_world *world,
 		}
 #endif
 	}
+	return 0;
 }
 
 static void remove_seed(struct picosystem_garden_world *world, uint8_t seed_index)
@@ -3218,6 +3444,27 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 		return -EINVAL;
 	}
 #if !defined(__ZEPHYR__)
+	if (policy->seed_replacement_after != 0U) {
+		if ((policy->place_seed == NULL) || world->auto_gardener_enabled ||
+		    (policy->seed_replacement_after %
+			     (PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR *
+			      PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR) !=
+		     0U)) {
+			return -EINVAL;
+		}
+#if defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL) || defined(TOY_FACTORY_GARDEN_FLOWER_DISPERSAL) ||  \
+	defined(TOY_FACTORY_GARDEN_WATER_HEADROOM) ||                                              \
+	defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) || defined(TOY_FACTORY_GARDEN_LARGE_POOL) ||  \
+	defined(TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK)
+		return -ENOTSUP;
+#endif
+	}
+	/* The placement observation describes ordinary base-origin dispersal only. */
+#if defined(TOY_FACTORY_GARDEN_WIDE_DISPERSAL) || defined(TOY_FACTORY_GARDEN_FLOWER_DISPERSAL)
+	if (policy->place_seed != NULL) {
+		return -ENOTSUP;
+	}
+#endif
 	if ((policy->eligible != NULL) &&
 	    (policy->arbitration != PICOSYSTEM_GARDEN_AGENT_ARBITRATION_ALL_TIPS)) {
 		return -EINVAL;
@@ -3259,7 +3506,10 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 #endif
 	update_rain(world);
 	AUDIT_WATER(RAIN);
-	update_moisture(world);
+	int err = update_moisture(world);
+	if (err != 0) {
+		return err;
+	}
 #if defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
 	const uint32_t drained = drain_bottom(world);
 	if (water_audit != NULL) {
@@ -3267,11 +3517,11 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 	}
 #endif
 	AUDIT_WATER(TRANSPORT);
-	int err = update_light(world);
+	err = update_light_observed(world, audits ? audits->uptake : NULL);
 	if (err != 0) {
 		return err;
 	}
-	absorb_water_and_light(world, death_audit);
+	absorb_water_and_light(world, death_audit, audits ? audits->uptake : NULL);
 	AUDIT_RESOURCE(UPTAKE);
 	AUDIT_WATER(UPTAKE);
 	err = update_decomposition(world);
@@ -3305,7 +3555,10 @@ static int step_input_with_policy(struct picosystem_garden_world *world, int8_t 
 	AUDIT_WATER(GROWTH);
 	AUDIT_SEED(AFTER_GROWTH);
 	AUDIT_RESOURCE(GROWTH);
-	update_reproduction(world, reproduction_audit, flower_audit);
+	err = update_reproduction(world, reproduction_audit, flower_audit, seed_audit, policy);
+	if (err != 0) {
+		return err;
+	}
 	AUDIT_RESOURCE(REPRODUCTION);
 	AUDIT_SEED(AFTER_REPRODUCTION);
 	AUDIT_WATER(REPRODUCTION);
@@ -3360,7 +3613,9 @@ static int step_landing(struct picosystem_garden_world *world,
 			struct picosystem_garden_landing_cache *cache,
 			struct picosystem_garden_death_audit *audit,
 			struct picosystem_garden_seed_audit *seed_audit,
-			struct picosystem_garden_resource_audit *resource_audit)
+			struct picosystem_garden_resource_audit *resource_audit,
+			struct picosystem_garden_reproduction_audit *reproduction_audit,
+			struct picosystem_garden_uptake_audit *uptake_audit)
 {
 	if (!world_is_valid(world) || world->auto_gardener_enabled ||
 	    !picosystem_garden_landing_cache_is_valid(cache) ||
@@ -3377,6 +3632,8 @@ static int step_landing(struct picosystem_garden_world *world,
 	(void)audit;
 	(void)seed_audit;
 	(void)resource_audit;
+	(void)reproduction_audit;
+	(void)uptake_audit;
 	return -ENOTSUP;
 #else
 	/* Publish before callbacks, but do not retain a sample from a failed step. */
@@ -3384,11 +3641,18 @@ static int step_landing(struct picosystem_garden_world *world,
 	struct picosystem_garden_death_audit deaths = {0};
 	struct picosystem_garden_seed_audit seeds = {0};
 	struct picosystem_garden_resource_audit resources = {0};
-	const struct garden_step_audits audits = {.landing = cache,
-						  .death = (audit != NULL) ? &deaths : NULL,
-						  .seed = (seed_audit != NULL) ? &seeds : NULL,
-						  .resources = (resource_audit != NULL) ? &resources
-											: NULL};
+	struct picosystem_garden_reproduction_audit reproduction = {0};
+	struct picosystem_garden_uptake_audit uptake;
+	if (uptake_audit != NULL) {
+		memset(&uptake, 0, sizeof(uptake));
+	}
+	const struct garden_step_audits audits = {
+		.landing = cache,
+		.death = (audit != NULL) ? &deaths : NULL,
+		.seed = (seed_audit != NULL) ? &seeds : NULL,
+		.resources = (resource_audit != NULL) ? &resources : NULL,
+		.reproduction = (reproduction_audit != NULL) ? &reproduction : NULL,
+		.uptake = (uptake_audit != NULL) ? &uptake : NULL};
 	const int err = step_input_with_policy(world, 0, 0, policy, &audits);
 	if (err != 0) {
 		*cache = before;
@@ -3403,6 +3667,12 @@ static int step_landing(struct picosystem_garden_world *world,
 	if ((err == 0) && (seed_audit != NULL)) {
 		*seed_audit = seeds;
 	}
+	if ((err == 0) && (reproduction_audit != NULL)) {
+		*reproduction_audit = reproduction;
+	}
+	if ((err == 0) && (uptake_audit != NULL)) {
+		*uptake_audit = uptake;
+	}
 	return err;
 #endif
 }
@@ -3411,7 +3681,7 @@ int picosystem_garden_world_step_landing(struct picosystem_garden_world *world,
 					 const struct picosystem_garden_agent_policy *policy,
 					 struct picosystem_garden_landing_cache *cache)
 {
-	return step_landing(world, policy, cache, NULL, NULL, NULL);
+	return step_landing(world, policy, cache, NULL, NULL, NULL, NULL, NULL);
 }
 
 int picosystem_garden_world_step_landing_death_audit(
@@ -3421,7 +3691,7 @@ int picosystem_garden_world_step_landing_death_audit(
 	if (audit == NULL) {
 		return -EINVAL;
 	}
-	return step_landing(world, policy, cache, audit, NULL, NULL);
+	return step_landing(world, policy, cache, audit, NULL, NULL, NULL, NULL);
 }
 
 int picosystem_garden_world_step_landing_audits(struct picosystem_garden_world *world,
@@ -3432,7 +3702,7 @@ int picosystem_garden_world_step_landing_audits(struct picosystem_garden_world *
 {
 	return ((deaths == NULL) || (seeds == NULL))
 		       ? -EINVAL
-		       : step_landing(world, policy, cache, deaths, seeds, NULL);
+		       : step_landing(world, policy, cache, deaths, seeds, NULL, NULL, NULL);
 }
 
 int picosystem_garden_world_step_landing_resources(
@@ -3443,7 +3713,53 @@ int picosystem_garden_world_step_landing_resources(
 {
 	return ((deaths == NULL) || (seeds == NULL) || (resources == NULL))
 		       ? -EINVAL
-		       : step_landing(world, policy, cache, deaths, seeds, resources);
+		       : step_landing(world, policy, cache, deaths, seeds, resources, NULL, NULL);
+}
+
+int picosystem_garden_world_step_landing_reproduction(
+	struct picosystem_garden_world *world, const struct picosystem_garden_agent_policy *policy,
+	struct picosystem_garden_landing_cache *cache, struct picosystem_garden_death_audit *deaths,
+	struct picosystem_garden_seed_audit *seeds,
+	struct picosystem_garden_resource_audit *resources,
+	struct picosystem_garden_reproduction_audit *reproduction)
+{
+	if ((world == NULL) || (deaths == NULL) || (seeds == NULL) || (resources == NULL) ||
+	    (reproduction == NULL)) {
+		return -EINVAL;
+	}
+#if defined(TOY_FACTORY_GARDEN_SEED_RESERVE) || defined(TOY_FACTORY_GARDEN_FOCAL_SEED_VETO) ||     \
+	defined(TOY_FACTORY_GARDEN_DARK_GUARD) || defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+	(void)policy;
+	(void)cache;
+	return -ENOTSUP;
+#else
+	return step_landing(world, policy, cache, deaths, seeds, resources, reproduction, NULL);
+#endif
+}
+
+int picosystem_garden_world_step_landing_uptake(
+	struct picosystem_garden_world *world, const struct picosystem_garden_agent_policy *policy,
+	struct picosystem_garden_landing_cache *cache, struct picosystem_garden_death_audit *deaths,
+	struct picosystem_garden_seed_audit *seeds,
+	struct picosystem_garden_resource_audit *resources,
+	struct picosystem_garden_reproduction_audit *reproduction,
+	struct picosystem_garden_uptake_audit *uptake)
+{
+	if ((world == NULL) || (deaths == NULL) || (seeds == NULL) || (resources == NULL) ||
+	    (reproduction == NULL) || (uptake == NULL)) {
+		return -EINVAL;
+	}
+#if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) ||                                                \
+	defined(TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION) ||                                         \
+	defined(TOY_FACTORY_GARDEN_WATER_HEADROOM) || defined(TOY_FACTORY_GARDEN_SEED_RESERVE) ||  \
+	defined(TOY_FACTORY_GARDEN_FOCAL_SEED_VETO) || defined(TOY_FACTORY_GARDEN_DARK_GUARD) ||   \
+	defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+	(void)policy;
+	(void)cache;
+	return -ENOTSUP;
+#else
+	return step_landing(world, policy, cache, deaths, seeds, resources, reproduction, uptake);
+#endif
 }
 
 int picosystem_garden_world_step_death_audit(struct picosystem_garden_world *world,
@@ -3622,10 +3938,11 @@ int picosystem_garden_world_seed_sites(const struct picosystem_garden_world *wor
 		/* The placement helper uses one direction bit and a fixed distance range.
 		 * Enumerate their support, not probabilities or the parent's next RNG draw.
 		 */
-		for (uint32_t choice = 0U; choice < 2U * PICOSYSTEM_GARDEN_DISPERSAL_CHOICES;
+		for (uint32_t choice = 0U;
+		     choice < picosystem_garden_dispersal_choices_at(world->logic_tick_count);
 		     ++choice) {
-			const uint8_t column =
-				dispersed_seed_column(&world->plants[index], origin, choice);
+			const uint8_t column = dispersed_seed_column(
+				&world->plants[index], origin, choice, world->logic_tick_count);
 			result.dispersal_columns[index] |= UINT32_C(1) << column;
 		}
 	}
@@ -3713,6 +4030,25 @@ uint32_t picosystem_garden_world_hash(const struct picosystem_garden_world *worl
 #endif
 #if defined(TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE)
 	hash = fnv1a_u32(hash, UINT32_C(0x44524e31)); /* DRN1 rule identity. */
+#endif
+#if defined(TOY_FACTORY_GARDEN_SOIL_WICKING)
+	hash = fnv1a_u32(hash, UINT32_C(0x57494331)); /* WIC1 rule identity, even before onset. */
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_WICKING_VERSION);
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_WICKING_AFTER_TICK);
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_WICKING_PERIOD);
+#endif
+#if defined(TOY_FACTORY_GARDEN_LATE_UPTAKE_LIMIT)
+	hash = fnv1a_u32(hash, UINT32_C(0x554c5431)); /* ULT1 identity, even before onset. */
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_UPTAKE_LIMIT_VERSION);
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_UPTAKE_LIMIT_AFTER_TICK);
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_UPTAKE_LIMIT_CAPACITY);
+#endif
+#if defined(TOY_FACTORY_GARDEN_LATE_DISPERSAL)
+	hash = fnv1a_u32(hash, UINT32_C(0x4c445331)); /* LDS1 identity, even before onset. */
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_LATE_DISPERSAL_VERSION);
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_LATE_DISPERSAL_AFTER_TICK);
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_LATE_DISPERSAL_MINIMUM);
+	hash = fnv1a_u32(hash, PICOSYSTEM_GARDEN_LATE_DISPERSAL_DISTANCES);
 #endif
 	/* Weather has its own identity, independent of plant randomness. */
 	if (world->weather_seed != 0U) {

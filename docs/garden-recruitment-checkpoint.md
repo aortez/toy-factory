@@ -11,6 +11,10 @@ The broader [A-life roadmap](garden-alife-roadmap.md) and
 The [earlier foundation checkpoint](garden-merge-checkpoint.md) describes
 PR #31, not this branch's validation results.
 
+The subsequent [adult resources and renewal checkpoint](garden-adult-resources-checkpoint.md)
+now records that follow-up's scope and findings. It does not expand this
+historical recruitment checkpoint or retroactively change its conclusions.
+
 ## Included work
 
 - Exact host observations of seed production, germination blockers, first-day

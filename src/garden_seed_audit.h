@@ -12,6 +12,8 @@ enum picosystem_garden_seed_outcome {
 	PICOSYSTEM_GARDEN_SEED_WAIT,
 	PICOSYSTEM_GARDEN_SEED_EXPIRED,
 	PICOSYSTEM_GARDEN_SEED_GERMINATED,
+	/* Production-phase terminal fate, never a germination-check outcome. */
+	PICOSYSTEM_GARDEN_SEED_REPLACED,
 };
 
 enum picosystem_garden_seed_stage {
@@ -48,6 +50,11 @@ struct picosystem_garden_seed_attempt {
 	uint8_t sites[PICOSYSTEM_GARDEN_GRID_COLUMNS];
 };
 
+struct picosystem_garden_seed_replacement {
+	struct picosystem_garden_seed previous;
+	uint8_t new_column;
+};
+
 struct picosystem_garden_seed_audit {
 	bool ecology_step;
 	uint8_t count;
@@ -58,6 +65,8 @@ struct picosystem_garden_seed_audit {
 	uint32_t dispersal_columns[PICOSYSTEM_GARDEN_SPECIES_COUNT];
 	struct picosystem_garden_seed_inventory stages[PICOSYSTEM_GARDEN_SEED_STAGE_COUNT];
 	struct picosystem_garden_seed_attempt attempts[PICOSYSTEM_GARDEN_MAX_SEEDS];
+	uint8_t replacement_count;
+	struct picosystem_garden_seed_replacement replacements[PICOSYSTEM_GARDEN_MAX_PLANTS];
 };
 
 /* Same authoritative step, no callbacks, global observer, RNG draws or world

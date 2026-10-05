@@ -78,7 +78,8 @@ int toy_factory_garden_lifetimes_death(struct toy_factory_garden_lifetimes *ledg
 		return -EINVAL;
 	}
 	struct toy_factory_garden_lifetime *const record = &ledger->records[lineage_id];
-	if (record->death_cause != TOY_FACTORY_GARDEN_LIFETIME_CAUSES) {
+	if ((record->death_cause != TOY_FACTORY_GARDEN_LIFETIME_CAUSES) ||
+	    (record->removal_tick != 0U)) {
 		return -EEXIST;
 	}
 	const uint8_t shortage = plant_flags & (PICOSYSTEM_GARDEN_PLANT_ENERGY_SHORTAGE |
@@ -93,6 +94,31 @@ int toy_factory_garden_lifetimes_death(struct toy_factory_garden_lifetimes *ledg
 	}
 	record->death_tick = tick;
 	record->death_cause = cause;
+	ledger->last_event_tick = tick;
+	return 0;
+}
+
+int toy_factory_garden_lifetimes_remove_adult(struct toy_factory_garden_lifetimes *ledger,
+					      uint32_t lineage_id, uint32_t tick)
+{
+	if (ledger == NULL) {
+		return -EINVAL;
+	}
+	if ((ledger->count > TOY_FACTORY_GARDEN_EVALUATION_MAX_TRACKED_LINEAGES) ||
+	    (lineage_id == 0U) || (lineage_id > ledger->count) ||
+	    (tick < ledger->last_event_tick)) {
+		return -ERANGE;
+	}
+	struct toy_factory_garden_lifetime *const record = &ledger->records[lineage_id];
+	if ((record->death_cause != TOY_FACTORY_GARDEN_LIFETIME_CAUSES) ||
+	    (record->removal_tick != 0U)) {
+		return -EEXIST;
+	}
+	if ((tick < record->birth_tick) ||
+	    ((tick - record->birth_tick) <= TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS)) {
+		return -EINVAL;
+	}
+	record->removal_tick = tick;
 	ledger->last_event_tick = tick;
 	return 0;
 }
@@ -141,11 +167,12 @@ static void record_metrics(struct toy_factory_garden_lifetime_metrics *metrics,
 			   const struct toy_factory_garden_lifetime *record, uint32_t cutoff,
 			   bool has_surviving_child)
 {
-	const bool alive = record->death_cause == TOY_FACTORY_GARDEN_LIFETIME_CAUSES;
+	const bool dead = record->death_cause != TOY_FACTORY_GARDEN_LIFETIME_CAUSES;
+	const bool alive = !dead && (record->removal_tick == 0U);
 	if (record->parent_id == 0U) {
 		metrics->founders_living_at_end += alive ? 1U : 0U;
 		metrics->founders_with_surviving_child += has_surviving_child ? 1U : 0U;
-		if (!alive) {
+		if (dead) {
 			record_mortality(&metrics->founder_mortality, record);
 		}
 		return;
@@ -169,7 +196,7 @@ static void record_metrics(struct toy_factory_garden_lifetime_metrics *metrics,
 		}
 	}
 	metrics->offspring_with_surviving_child += has_surviving_child ? 1U : 0U;
-	if (!alive) {
+	if (dead) {
 		record_mortality(&metrics->offspring_mortality, record);
 	}
 }

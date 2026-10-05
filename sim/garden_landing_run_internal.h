@@ -4,6 +4,7 @@
 
 #include "garden_landing_signal.h"
 #include "garden_landing_water.h"
+#include "garden_landing_growth.h"
 
 /* Internal bridge: signal_run owns/validates config and includes it in identity.
  * All step paths share the same world/cache/audit rollback implementation.
@@ -29,5 +30,15 @@ int toy_factory_garden_landing_run_step_water_internal(
 	struct picosystem_garden_death_audit *deaths, struct picosystem_garden_seed_audit *seeds,
 	struct picosystem_garden_resource_audit *resources,
 	struct toy_factory_garden_landing_water_audit *audit);
+
+int toy_factory_garden_landing_run_step_growth_internal(
+	struct toy_factory_garden_landing_run *run, uint8_t node_limit, uint8_t budget_mode,
+	struct picosystem_garden_death_audit *deaths, struct picosystem_garden_seed_audit *seeds,
+	struct picosystem_garden_resource_audit *resources,
+	const struct toy_factory_garden_growth_observer *observer,
+	const struct toy_factory_garden_placement_config *placement,
+	struct toy_factory_garden_placement_audit *placement_audit, uint32_t seed_order_after,
+	const struct toy_factory_garden_root_choice *root_choice,
+	const struct toy_factory_garden_root_allocation *root_allocation);
 
 #endif

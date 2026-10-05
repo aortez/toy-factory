@@ -66,11 +66,13 @@ int toy_factory_garden_reach_print(FILE *stream, const struct picosystem_garden_
 			first ? "" : ",", p->lineage_id, world->seeds[i].column, p->base_column,
 			p->genome.dispersal);
 		first = false;
-		for (uint32_t choice = 0U; choice < 2U * PICOSYSTEM_GARDEN_DISPERSAL_CHOICES;
+		for (uint32_t choice = 0U;
+		     choice < picosystem_garden_dispersal_choices_at(world->logic_tick_count);
 		     ++choice) {
 			fprintf(stream, "%s%u", choice ? "," : "",
-				picosystem_garden_dispersed_column(p->base_column,
-								   p->genome.dispersal, choice));
+				picosystem_garden_dispersed_column_at(p->base_column,
+								      p->genome.dispersal, choice,
+								      world->logic_tick_count));
 		}
 		fputs("],\"sites\":", stream);
 		print_sites(stream, sites.blockers);

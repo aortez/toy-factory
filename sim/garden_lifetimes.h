@@ -23,9 +23,13 @@ struct toy_factory_garden_lifetime {
 	uint32_t parent_id;
 	uint32_t birth_tick;
 	uint32_t death_tick;
+	/* Explicit host export of an established adult; zero means not removed.
+	 * Never a natural death, and cannot truncate first-day follow-up.
+	 */
+	uint32_t removal_tick;
 	uint8_t species_id;
 	uint8_t founder_index;
-	/* energy, water, combined, other; CAUSES means still living. */
+	/* energy, water, combined, other; CAUSES means no natural death. */
 	uint8_t death_cause;
 };
 
@@ -80,6 +84,8 @@ int toy_factory_garden_lifetimes_birth(struct toy_factory_garden_lifetimes *ledg
 				       uint32_t tick);
 int toy_factory_garden_lifetimes_death(struct toy_factory_garden_lifetimes *ledger,
 				       uint32_t lineage_id, uint32_t tick, uint8_t plant_flags);
+int toy_factory_garden_lifetimes_remove_adult(struct toy_factory_garden_lifetimes *ledger,
+					      uint32_t lineage_id, uint32_t tick);
 
 /* Require at least a complete cycle of potential follow-up for the rate's cohort.
  * Alive at birth+cycle passes; death exactly on that boundary fails. Recent deaths

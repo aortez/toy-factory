@@ -16,4 +16,14 @@ int toy_factory_garden_recruitment_print(FILE *stream, const struct picosystem_g
 					 const struct picosystem_garden_seed_audit *seeds,
 					 const struct picosystem_garden_resource_audit *resources);
 
+/* All living plants and this step's deaths, including founders and adults.
+ * Same receipts as the first-day trace; caller owns the bounded time window.
+ * Older corpses are omitted. Plant IDs remain stable through slot compaction.
+ */
+int toy_factory_garden_adult_resources_print(
+	FILE *stream, const struct picosystem_garden_world *world,
+	const struct toy_factory_garden_lifetimes *lifetimes,
+	const struct picosystem_garden_seed_audit *seeds,
+	const struct picosystem_garden_resource_audit *resources);
+
 #endif

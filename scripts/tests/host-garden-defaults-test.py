@@ -63,16 +63,22 @@ class HostGardenDefaultsTest(unittest.TestCase):
 
     def test_real_cached_research_configuration_is_cleared(self):
         # No compile, training or removal of the user's ordinary build trees.
-        with tempfile.TemporaryDirectory(prefix="garden-build-cache-") as tmp:
-            command = ["cmake", "-S", str(ROOT / "sim"), "-B", tmp, "-G", "Ninja"]
-            enabled = ["WIDE_DISPERSAL", "WATER_HEADROOM", "COMBINED_EXPERIMENT",
-                       "LARGE_POOL", "LEAF_MAINTENANCE"]
-            for options in ([f"-DTOY_FACTORY_GARDEN_{name}=ON" for name in enabled], default_options()):
-                result = subprocess.run([*command, *options], capture_output=True, text=True, timeout=60)
-                self.assertEqual(result.returncode, 0, result.stderr)
-            flags = re.findall(r"^(TOY_FACTORY_GARDEN_\w+):BOOL=(\w+)$",
-                               (Path(tmp) / "CMakeCache.txt").read_text(), re.MULTILINE)
-            self.assertEqual({f"-D{name}={value}" for name, value in flags}, set(default_options()))
+        configurations = (
+            ("WIDE_DISPERSAL", "WATER_HEADROOM", "COMBINED_EXPERIMENT",
+             "LARGE_POOL", "LEAF_MAINTENANCE"),
+            ("SOIL_WICKING",),
+            ("LATE_UPTAKE_LIMIT", "LATE_DISPERSAL"),
+            ("LATE_UPTAKE_LIMIT", "LATE_DISPERSAL", "SOIL_WICKING"),
+        )
+        for enabled in configurations:
+            with self.subTest(enabled=enabled), tempfile.TemporaryDirectory(prefix="garden-build-cache-") as tmp:
+                command = ["cmake", "-S", str(ROOT / "sim"), "-B", tmp, "-G", "Ninja"]
+                for options in ([f"-DTOY_FACTORY_GARDEN_{name}=ON" for name in enabled], default_options()):
+                    result = subprocess.run([*command, *options], capture_output=True, text=True, timeout=60)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                flags = re.findall(r"^(TOY_FACTORY_GARDEN_\w+):BOOL=(\w+)$",
+                                   (Path(tmp) / "CMakeCache.txt").read_text(), re.MULTILINE)
+                self.assertEqual({f"-D{name}={value}" for name, value in flags}, set(default_options()))
 
 
 if __name__ == "__main__":
