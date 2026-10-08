@@ -8,6 +8,7 @@
 #define PICOSYSTEM_GARDEN_AGENT_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "garden_world.h"
@@ -183,6 +184,20 @@ struct picosystem_garden_agent_policy {
 	 * storage, growth and germination order are never changed.
 	 */
 	uint32_t reproduction_rotation_after;
+	/* Host-only purchase order: begin after this stable lineage ID, wrapping
+	 * over living plants. The enclosing run owns and commits the cursor;
+	 * this policy is immutable. Incompatible with rotation/replacement.
+	 */
+	bool reproduction_purchase_order;
+	uint32_t reproduction_after_lineage;
+	/* Optional host-only permutation of current stored plant indices. The
+	 * callback runs after germination/growth, before visits; core validates
+	 * the complete permutation. Gates, fees and germination order are unchanged.
+	 * Context is immutable; the enclosing run commits state only on success.
+	 */
+	int (*reproduction_order)(const struct picosystem_garden_world *world, uint8_t *order,
+				  size_t capacity, const void *context);
+	const void *reproduction_order_context;
 	/* Host-only paid replacement of an owned spacing-blocked seed, strictly
 	 * after this maintenance-aligned tick. Zero leaves production unchanged.
 	 * Requires a spacing-aware place_seed callback; no new world/model fields.

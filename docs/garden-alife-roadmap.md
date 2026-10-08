@@ -14,16 +14,119 @@ diagnostics, opt-in interventions, and reproducible positive and negative
 evidence. Ordinary host/device defaults are unchanged.
 
 We are still in **environment qualification**. Resource budgets, crowding,
-seed-bank access and landing competition now have measured explanations, but
-the tested interventions do not yet establish robust multi-generation renewal.
-The latest paid seed-replacement comparison is complete: two first recruits
-gain seed purchases, neither gains a child, and established offspring counts
-do not increase. No new experiment is needed to close this checkpoint.
+seed-bank access and landing competition now have measured explanations.
+Repeated spatial dieback now passes a prospective fresh-weather renewal screen,
+but mixed-species persistence and suitability for training remain unproven.
+The earlier paid seed-replacement comparison did not: two first recruits gained purchases but
+neither gained a child. No new experiment is needed to close that checkpoint.
 
-Next, review and integrate this bounded body of work. Then discuss a separate
-pending-seed competition investigation before changing another rule. Broad
-training, a revised fitness objective, deployment and on-device evolution are
-not part of this checkpoint.
+The separately scoped [pending-seed competition audit](../benchmarks/garden-seasons/landing-seed-competition.md)
+now follows checkpoint commit `1791347`. It finds current placement alternatives,
+but only one available plant slot in every examined opening. New recruit seeds
+remain dormant when that slot fills. The audit uses saved data; no rules changed.
+
+The approved [fixed spatial-dieback test](../benchmarks/garden-seasons/landing-patch-sweep.md)
+now completes all 25 calls, preserving the original twelve after the documented
+auditor-only correction. All five treatments have 8–11 qualifying post-onset
+parent–child pairs versus zero in controls, four-plant established ancestry
+chains, and no empty worlds. Repeats, observer-free checks, raw accounting and
+all ten endpoint frames verify. Later sweeps also kill young recruits, two
+worlds have more natural deaths/shortfalls, and one loses its second species.
+This passes the diagnostic gate, not environmental qualification.
+
+The [fresh-condition confirmation](../benchmarks/garden-seasons/landing-patch-confirmation.md)
+now completes 26 calls using unchanged W2, three new world seeds and both
+existing layouts. All six treatments have 9–10 qualifying pairs versus zero
+in controls, with no empty worlds. Established chains span two to four plants;
+several deeper births are still censored. Eleven young plants are killed by
+the sweep, natural deaths rise overall, and one case loses its shrub species.
+Anchors, repeats, observer-free checks, full raw audits and all twelve frames
+verify.
+
+The approved [day 352 follow-up](../benchmarks/garden-seasons/landing-patch-followup.md)
+completes all 36 calls without new sweep events. All eight outstanding
+sixteen-day observations become survivors; established pairs rise from 56 to
+64 and chains reach three to four plants. However, the added 32 days produce
+only one new treatment birth, which dies before establishing. Controls have
+no new births or deaths. This resolves censoring, not sustained renewal.
+The subsequent [offline renewal audit](../benchmarks/garden-seasons/landing-patch-renewal.md)
+finds energy starvation with ample water in both successive column-9 occupants.
+It separates unused capacity from spacing and seed-reach limits, and shows
+ordered bank access denying some otherwise eligible parents purchases.
+No new intervention or simulation is part of that audit.
+The subsequent [purchase-driven seed-bank comparison](../benchmarks/garden-seasons/landing-seed-cursor.md)
+completes 36 host-only calls through day 384. The fixed `(320,352]` birth cohort
+has six 32-day survivors versus zero under fixed order, with gains in three
+gardens. Broader seed access is useful, but one additional pre-existing adult
+dies energy-short; the predeclared harm gate therefore fails. Species retention
+and aggregate deaths do not erase that paired regression. The subsequent
+[offline diagnosis](../benchmarks/garden-seasons/landing-cursor-energy.md)
+finds a 30-unit winter income deficit, not an unrecovered seed expense. Existing
+adult bodies and upkeep match; the income gap follows the new neighbor's growth.
+The subsequent [passive shadow attribution](../benchmarks/garden-seasons/landing-cursor-shade.md)
+uses two exact replays to establish that the new neighbor's shade accounts for
+all 30 lost winter energy units. The local mechanism is resolved, not long-run
+viability. The subsequent
+[competitive-renewal follow-up](../benchmarks/garden-seasons/landing-competitive-renewal.md)
+completes 60 planned calls through day 512 with individual deaths permitted.
+All twelve worlds pass the population floors and retain their existing species
+and founder families. Cursor primary-cohort 32-day survivors are four versus two
+under fixed order, but no world passes sustained renewal. No post-day-384 recruit
+produces a child: new cursor recruits buy five seeds, four expire and one remains
+pending; new fixed-order recruits buy none. The subsequent
+[offline recruit seed audit](../benchmarks/garden-seasons/landing-recruit-seeds.md)
+retains all fifteen recruits and narrows the four expired seeds: two face full
+living capacity throughout, one remains spacing-blocked during a vacancy, and
+one has 63 unresolved checks before an older seed fills the same landing.
+The subsequent [passive handoff diagnostic](../benchmarks/garden-seasons/landing-seed-handoff.md)
+completes two exact frozen replays. Dead parent 35 retains its slot and 32 nodes
+through all 63 checks; the older seed consumes the opening in the same step
+as reclamation. Cold/light restrictions overlap earlier. These establishment
+cases are resolved, not the renewal problem. The subsequent
+[full-life non-buyer diagnostic](../benchmarks/garden-seasons/landing-nonbuyer.md)
+completes two exact replays of S2 ordinary cursor plant 41's 97-day life. It has
+a ready flower within one day, but loses thirteen otherwise eligible openings
+to earlier buyers; nine other openings reach it while energy alone blocks it.
+The current cursor does not guarantee successful access. The subsequent
+[waiting-time priority comparison](../benchmarks/garden-seasons/landing-seed-wait.md)
+completes all 48 planned calls with unchanged resource and renewal gates.
+Primary-cohort 32-day survivors rise from four to five, but neither arm produces
+a child of any post-day-384 recruit or passes sustained renewal. All twelve
+worlds remain viable and retain baseline variety; waiting priority adds two
+natural deaths and lowers one endpoint from eight to seven plants. Keep this
+policy experimental. The subsequent
+[recurring winter comparison](../benchmarks/garden-seasons/landing-patch-recurring.md)
+completes all 48 calls with four additional spatial diebacks and the cursor held
+fixed. Primary 32-day survivors rise from 4 to 25; every treatment has children
+of new recruits, but only two of six pass sustained renewal. All worlds stay
+viable and retain baseline variety. The hazard kills 28 plants, including two
+young recruits; natural deaths rise from 8 to 14. Six parent–child links have
+living children still too young to assess. The
+[day-544 follow-up](../benchmarks/garden-seasons/landing-recurring-followup.md)
+now resolves those links: five children establish and one is killed by the
+scheduled day-524 patch at age 29.133. Ten of eleven late-born survivors reach
+age 32. All six populations stay viable and end at eight, but eight imposed
+deaths, three natural deaths and a founder-family loss remain visible. Every
+baseline species remains represented. All 24 calls and paired images verify;
+the earlier 2-of-6 result stays closed. Three of those gardens remain
+monocultures; that follow-up is not general qualification. The subsequent
+[fresh-weather comparison](../benchmarks/garden-seasons/landing-recurring-fresh.md)
+completes all 66 calls, keeping model and cadence unchanged. With new
+prospective 64-day birth windows, all six recurring gardens pass renewal
+versus none of the stopped controls. Primary 32-day survivors are 44 of 52
+versus two of two; 21 established parent–child links form chains of two to four
+plants. Every population stays viable. Fifty imposed deaths, five young;
+seven natural deaths versus one; and one founder-family extinction remain
+explicit. All six fresh gardens were already flower-only at onset, so the
+declared renewal screen passes without establishing mixed-species persistence.
+All 24 paired images and compact evidence verify. Review this as an integration
+checkpoint; next propose a separate offline audit of the earlier species
+losses, not another renewal-window change or automatic training promotion.
+The original harm gate still fails; no promotion or training follows automatically.
+The [artifact cleanup](artifact-storage.md)
+reclaims 257.7 GiB while preserving compressed evidence and restoration indices.
+Review/integrate the earlier checkpoint separately. Broad training, a revised
+fitness objective, deployment and on-device evolution remain outside this work.
 
 The [research history](garden-research-history.md) preserves the accumulated
 experiment notes, including superseded next steps and older validation counts.

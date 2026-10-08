@@ -39,6 +39,8 @@ int toy_factory_garden_landing_run_step_growth_internal(
 	const struct toy_factory_garden_placement_config *placement,
 	struct toy_factory_garden_placement_audit *placement_audit, uint32_t seed_order_after,
 	const struct toy_factory_garden_root_choice *root_choice,
-	const struct toy_factory_garden_root_allocation *root_allocation);
+	const struct toy_factory_garden_root_allocation *root_allocation,
+	struct toy_factory_garden_seed_cursor *seed_cursor,
+	struct toy_factory_garden_seed_wait *seed_wait);
 
 #endif

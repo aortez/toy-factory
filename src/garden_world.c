@@ -2679,6 +2679,66 @@ static int update_reproduction(struct picosystem_garden_world *world,
 	(void)policy;
 #if !defined(__ZEPHYR__)
 	uint8_t rotation = 0U;
+	uint8_t ordered[PICOSYSTEM_GARDEN_MAX_PLANTS];
+	const bool custom_order = (policy != NULL) && (policy->reproduction_order != NULL);
+	if (custom_order) {
+		if (policy->reproduction_purchase_order ||
+		    (policy->reproduction_rotation_after != 0U) ||
+		    (policy->seed_replacement_after != 0U)) {
+			return -ERANGE;
+		}
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+		if (world->seed_order_rotating) {
+			return -ENOTSUP;
+		}
+#endif
+		/* Sentinel initialization also catches callbacks that leave holes. */
+		memset(ordered, UINT8_MAX, sizeof(ordered));
+		const int err = policy->reproduction_order(world, ordered, sizeof(ordered),
+							   policy->reproduction_order_context);
+		if (err != 0) {
+			return err;
+		}
+		_Static_assert(PICOSYSTEM_GARDEN_MAX_PLANTS <= 32U, "Order validation bitset");
+		uint32_t seen = 0U;
+		for (uint8_t i = 0U; i < world->plant_count; ++i) {
+			if ((ordered[i] >= world->plant_count) ||
+			    ((seen & (UINT32_C(1) << ordered[i])) != 0U)) {
+				return -ERANGE;
+			}
+			seen |= UINT32_C(1) << ordered[i];
+		}
+	}
+	if ((policy != NULL) && policy->reproduction_purchase_order) {
+		if ((policy->reproduction_rotation_after != 0U) ||
+		    (policy->seed_replacement_after != 0U) ||
+		    (policy->reproduction_after_lineage > world->lineage_sequence)) {
+			return -ERANGE;
+		}
+#if defined(TOY_FACTORY_GARDEN_SEED_ORDER)
+		if (world->seed_order_rotating) {
+			return -ENOTSUP;
+		}
+#endif
+		uint8_t first = UINT8_MAX;
+		uint8_t successor = UINT8_MAX;
+		for (uint8_t i = 0U; i < world->plant_count; ++i) {
+			const struct picosystem_garden_plant *const plant = &world->plants[i];
+			if (plant_is_dead(plant)) {
+				continue;
+			}
+			if ((first == UINT8_MAX) ||
+			    (plant->lineage_id < world->plants[first].lineage_id)) {
+				first = i;
+			}
+			if ((plant->lineage_id > policy->reproduction_after_lineage) &&
+			    ((successor == UINT8_MAX) ||
+			     (plant->lineage_id < world->plants[successor].lineage_id))) {
+				successor = i;
+			}
+		}
+		rotation = successor != UINT8_MAX ? successor : first != UINT8_MAX ? first : 0U;
+	}
 	if ((policy != NULL) && (policy->reproduction_rotation_after != 0U)) {
 		const uint32_t after = policy->reproduction_rotation_after;
 		const uint32_t period = PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR *
@@ -2718,7 +2778,9 @@ static int update_reproduction(struct picosystem_garden_world *world,
 	for (uint8_t visit = 0U; visit < plant_count; ++visit) {
 		uint8_t plant_index = visit;
 #if !defined(__ZEPHYR__)
-		if (rotation != 0U) {
+		if (custom_order) {
+			plant_index = ordered[visit];
+		} else if (rotation != 0U) {
 			plant_index = (uint8_t)((rotation + visit) % plant_count);
 		}
 #endif

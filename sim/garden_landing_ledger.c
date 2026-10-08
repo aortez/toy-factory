@@ -198,27 +198,48 @@ int toy_factory_garden_landing_ledger_print_environmental_pair(
 	FILE *stream, const struct toy_factory_garden_landing_ledger *ledger,
 	const struct toy_factory_garden_lifetimes *lifetimes, uint32_t first_id, uint32_t second_id)
 {
+	if ((second_id != 0U) && (first_id == 0U)) {
+		return -EINVAL;
+	}
+	const uint32_t ids[] = {first_id, second_id};
+	return toy_factory_garden_landing_ledger_print_environmental_ids(stream, ledger, lifetimes,
+									 ids,
+									 second_id  ? 2U
+									 : first_id ? 1U
+										    : 0U);
+}
+
+int toy_factory_garden_landing_ledger_print_environmental_ids(
+	FILE *stream, const struct toy_factory_garden_landing_ledger *ledger,
+	const struct toy_factory_garden_lifetimes *lifetimes, const uint32_t *ids, size_t count)
+{
 	if ((stream == NULL) || (ledger == NULL) || (lifetimes == NULL) ||
 	    (ledger->count != lifetimes->count) ||
 	    (ledger->count > TOY_FACTORY_GARDEN_EVALUATION_MAX_TRACKED_LINEAGES) ||
-	    (ledger->seed_count > TOY_FACTORY_GARDEN_LANDING_MAX_PURCHASES)) {
+	    (ledger->seed_count > TOY_FACTORY_GARDEN_LANDING_MAX_PURCHASES) ||
+	    (count > ledger->count) || ((count != 0U) && (ids == NULL))) {
 		return -EINVAL;
 	}
-	if ((second_id != 0U) && ((first_id == 0U) || (first_id == second_id))) {
-		return -EINVAL;
-	}
-	const uint32_t events[] = {first_id, second_id};
-	for (size_t i = 0U; i < sizeof(events) / sizeof(events[0]); ++i) {
-		const uint32_t id = events[i];
-		if ((id > lifetimes->count) ||
-		    ((id != 0U) && ((lifetimes->records[id].death_cause != 3U) ||
-				    (lifetimes->records[id].removal_tick != 0U)))) {
+	for (size_t i = 0U; i < count; ++i) {
+		const uint32_t id = ids[i];
+		if ((id == 0U) || (id > lifetimes->count) ||
+		    (lifetimes->records[id].death_cause != 3U) ||
+		    (lifetimes->records[id].removal_tick != 0U)) {
 			return -EINVAL;
+		}
+		for (size_t j = 0U; j < i; ++j) {
+			if (ids[j] == id) {
+				return -EINVAL;
+			}
 		}
 	}
 	fputs("\"ledger_start_tick\":0,\"lineages\":[", stream);
 	for (uint32_t id = 1U; id <= ledger->count; ++id) {
 		const struct toy_factory_garden_lifetime *r = &lifetimes->records[id];
+		bool environmental = false;
+		for (size_t i = 0U; i < count; ++i) {
+			environmental = environmental || (ids[i] == id);
+		}
 		fprintf(stream,
 			"%s{\"id\":%" PRIu32 ",\"parent\":%" PRIu32 ",\"birth_tick\":%" PRIu32
 			",\"death_tick\":",
@@ -235,9 +256,9 @@ int toy_factory_garden_landing_ledger_print_environmental_pair(
 			",\"environmental_death\":%s,\"column\":%u,\"generation\":%u,"
 			"\"species\":%u,"
 			"\"seeds_created\":%" PRIu32 ",\"late_seeds_created\":%" PRIu32 "}",
-			(id == first_id) || (id == second_id) ? "true" : "false",
-			ledger->plants[id].column, ledger->plants[id].generation, r->species_id,
-			ledger->plants[id].purchases, ledger->plants[id].purchases);
+			environmental ? "true" : "false", ledger->plants[id].column,
+			ledger->plants[id].generation, r->species_id, ledger->plants[id].purchases,
+			ledger->plants[id].purchases);
 	}
 	fputs("],\"seeds\":[", stream);
 	for (uint32_t i = 0U; i < ledger->seed_count; ++i) {

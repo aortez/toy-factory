@@ -7,6 +7,7 @@
 #include "garden_landing_placement.h"
 #include "garden_landing_root_choice.h"
 #include "garden_landing_root_allocation.h"
+#include "garden_landing_seed_wait.h"
 #include "garden_uptake_audit.h"
 
 #define TOY_FACTORY_GARDEN_LANDING_GROWTH_VERSION 1U
@@ -17,6 +18,14 @@ enum toy_factory_garden_budget_mode {
 	TOY_FACTORY_GARDEN_BUDGET_ELIGIBLE,
 	TOY_FACTORY_GARDEN_BUDGET_SHOOT,
 	TOY_FACTORY_GARDEN_BUDGET_COUNT,
+};
+
+/* Zero configuration is the historical fixed order. Stable IDs survive slot
+ * reclamation; last_buyer advances only after a successful, paid purchase.
+ */
+struct toy_factory_garden_seed_cursor {
+	uint32_t after;
+	uint32_t last_buyer;
 };
 
 /* Host-only construction experiment, always using water-eligible arbitration.
@@ -34,6 +43,8 @@ struct toy_factory_garden_landing_growth_run {
 	 * part of run identity; only placement runs may opt in.
 	 */
 	uint32_t seed_order_after;
+	struct toy_factory_garden_seed_cursor seed_cursor;
+	struct toy_factory_garden_seed_wait seed_wait;
 	struct toy_factory_garden_root_choice root_choice;
 	struct toy_factory_garden_root_allocation root_allocation;
 };

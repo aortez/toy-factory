@@ -1141,6 +1141,669 @@ This is a research switch, not a normal host or device setting. More purchases
 do not establish benefit: compare offspring survival, lost opportunities in
 other lineages, matched-parent maintenance and natural mortality.
 
+## Audit pending-seed competition
+
+The [offline plan](../benchmarks/garden-seasons/landing-seed-competition-protocol.md)
+uses all five paid-replacement worlds and both arms. It retains the exact queue
+from one step before reclamation through one step after refill, plus purchase
+receipts for every competing seed. It separates reachable sites, the original
+purchase filter, maturity, sequential admission and geometric/global capacity.
+No simulator, trainer or firmware tool is invoked.
+
+```sh
+# Needs the ignored original raw bundle; requires a fresh output file.
+make host-audit-landing-seed-competition \
+  GARDEN_LANDING_SEED_REPLACEMENT_OUT=artifacts/garden-landing-seed-replacement-v1 \
+  GARDEN_LANDING_SEED_COMPETITION_OUT=artifacts/new-seed-competition.json.gz
+
+# Works from a clone's portable evidence, using only Python's standard library.
+docker compose run --rm -T firmware python3 sim/garden_landing_seed_competition.py \
+  --verify benchmarks/garden-seasons/landing-seed-competition-results.json.gz
+
+# Also authenticate raw traces and re-extract the retained windows.
+docker compose run --rm -T firmware python3 sim/garden_landing_seed_competition.py \
+  --verify benchmarks/garden-seasons/landing-seed-competition-results.json.gz \
+  --bundle artifacts/garden-landing-seed-replacement-v1
+```
+
+Verification includes the existing capture's provenance checks, so it takes
+longer than reading the small new artifact. The selected raw traces are fully
+hash-checked and their clocks read to completion; this does not repeat the older
+full resource-accounting audit. The report distinguishes current alternatives
+from counterfactual success. No rule or controller is promoted.
+
+## Test repeated spatial dieback
+
+The [experiment report](../benchmarks/garden-seasons/landing-patch-sweep.md)
+records the initial interruption and the approved continuation. The original
+twelve calls remain intact. The fresh-run command below is not an automatic
+resume and rejects an existing directory.
+
+The [fixed patch sweep protocol](../benchmarks/garden-seasons/landing-patch-sweep-protocol.md)
+compares five unforced worlds with the same worlds under fifteen local dieback
+events, after ordinary observations on days 192 through 304. A four-column
+patch moves left to right every eight days, wrapping after column 27. Every
+living base in the patch is killed, regardless of age or ancestry; empty hits
+are recorded. Corpses, seeds and normal decomposition remain in the world.
+
+This is a host diagnostic, not a new climate setting. Both arms omit the
+previous named deaths and paid seed replacement. `placement-replay --patch-sweep
+on` requires `--ledger` and rejects those interventions and vacancy export.
+The enabled run has kind `landing-patch-sweep-replay`, a schedule-tagged run
+hash and explicit victim ages, stores and before/after state hashes. The
+ordinary command's output and behavior remain unchanged.
+
+```sh
+# Needs the previously captured model and at least 12 GiB of free disk space.
+# Builds and tests the two isolated variants; makes exactly 25 research calls.
+make host-probe-landing-patch-sweep \
+  GARDEN_LANDING_PATCH_SWEEP_OUT=artifacts/new-patch-sweep \
+  GARDEN_LANDING_PATCH_SWEEP_CAPTURE=artifacts/new-patch-sweep.json.gz
+
+# Validate the portable capture without launching native processes.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_sweep.py \
+  --verify artifacts/new-patch-sweep.json.gz
+
+# Also authenticate the complete raw bundle and redo all resource accounting.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_sweep.py \
+  --verify artifacts/new-patch-sweep.json.gz --bundle artifacts/new-patch-sweep
+```
+
+The collector defaults to the model in
+`artifacts/garden-landing-seed-replacement-v1/model.tgl`. Direct invocation
+accepts `--model PATH`, but requires the same pinned bytes. It verifies five
+archived baselines and all five new controls before treatments, then requires
+exact treatment repeats and observer-free result/pixel equality. Failures
+retain their evidence and stop the experiment; outputs cannot be overwritten
+or automatically resumed.
+
+Portable verification checks provenance, cohort and event ledgers, accounting
+conservation and exposure, daily census, repeats and the decision criterion.
+The raw check additionally rereads every recorded observation in all fifteen
+new traced calls. A shortfall total in the portable summary alone does not
+independently prove its underlying resource observations. Neither mode runs
+simulations or training. The primary outcome counts post-day-192 parents and
+their children that both survive sixteen days, not just vacancy refills.
+
+The [continuation addendum](../benchmarks/garden-seasons/landing-patch-sweep-continuation.md)
+authorizes only the thirteen calls missing from the pinned interruption record.
+It uses the original binaries and model, and refuses changed evidence or a
+previously started continuation. It does not support arbitrary partial bundles.
+
+```sh
+# Historical continuation invocation; refuses this bundle once already started.
+make host-continue-landing-patch-sweep
+
+# Portable verification includes preservation of the original twelve calls.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_sweep_continue.py \
+  --verify benchmarks/garden-seasons/landing-patch-sweep-results.json.gz
+
+# Also re-audit all raw accounting and reproduce the ten-image gallery offline.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_sweep_continue.py \
+  --verify benchmarks/garden-seasons/landing-patch-sweep-results.json.gz \
+  --bundle artifacts/garden-landing-patch-sweep-v1
+```
+
+The original source archive retains the earlier auditor. The continuation
+separately records the birth-step age correction, corrected auditor, runner
+and addendum, without rewriting that archive or the interrupted batch receipt.
+
+## Confirm spatial dieback across starting conditions
+
+The separate [spatial-dieback confirmation protocol](../benchmarks/garden-seasons/landing-patch-confirmation-protocol.md)
+uses the pilot's unchanged W2 recipe across three new world seeds and both
+rain-fed starting layouts. W2 has no historical named-plant selector. This is
+six paired cases, not a search across recipes, and the layouts also differ in
+founder counts and starting water.
+
+The [completed confirmation report](../benchmarks/garden-seasons/landing-patch-confirmation.md)
+retains all six comparisons, all twelve endpoint frames and the costs alongside
+the positive renewal result. The original 26 calls are complete; collection
+refuses to overwrite that bundle.
+
+```sh
+# Needs the pilot bundle, fresh outputs and at least 14 GiB free; no rebuild.
+# Two historical anchors, six controls, six treatments, six repeats, six plain.
+make host-confirm-landing-patch-sweep
+
+# Portable verification without launching simulations.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_confirmation.py \
+  --verify benchmarks/garden-seasons/landing-patch-confirmation-results.json.gz
+
+# Reconcile all twenty traced calls and reproduce the twelve-image gallery.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_confirmation.py \
+  --verify benchmarks/garden-seasons/landing-patch-confirmation-results.json.gz \
+  --bundle artifacts/garden-landing-patch-confirmation-v1
+```
+
+Collection stops on a failed validation, preserves evidence and does not retry
+or resume automatically. A successful gate does not promote a controller or
+ecology. The acceptance rule and all unchanged settings are in the protocol.
+
+## Follow the same histories through day 352
+
+The [follow-up protocol](../benchmarks/garden-seasons/landing-patch-followup-protocol.md)
+adds 32 days of observation to the six confirmation pairs, without extending
+the dieback schedule beyond day 304. That follow-up extended the CLI to 1,351,680
+ticks; evaluator/training bounds were unchanged. Twelve exact day 320 anchors
+gate the rebuilt executable before any longer run. The complete experiment
+has 36 calls, including traced and observer-free treatment repeats.
+
+The [completed report](../benchmarks/garden-seasons/landing-patch-followup.md)
+resolves the original cohort's censoring but finds only one later birth, which
+dies before establishing. All 36 calls, offline checks and twelve endpoint
+images are retained. Collection refuses to overwrite the completed bundle.
+
+```sh
+make host-followup-landing-patch-sweep
+
+# Verify the saved capture without launching native processes.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_followup.py \
+  --verify benchmarks/garden-seasons/landing-patch-followup-results.json.gz \
+  --bundle artifacts/garden-landing-patch-followup-v1
+```
+
+This collector retains byte-verified gzip traces without redundant raw copies.
+Read [artifact storage and recovery](artifact-storage.md) before running older
+full-bundle audits on compacted evidence. It separates resolution of the
+original day 320 cohort from births in the extension, and retains all twelve
+control/treatment endpoint images. It does not change or promote ecology.
+
+## Audit winter deaths and unfilled space
+
+The [renewal audit](../benchmarks/garden-seasons/landing-patch-renewal.md) reads
+the saved day-352 traces without compiling or running a simulation. It retains
+every seed check and ordered reproduction visit during `(320,352]` for all
+twelve histories, plus complete resource histories for S1 ordinary treatment
+plants 46, 47 and 48. Actual purchase witnesses preserve each queued parent's
+dispersal choices and the spacing filter at purchase time.
+
+```sh
+# Fresh output defaults to artifacts/garden-landing-patch-renewal-v1.json.gz.
+make host-audit-landing-patch-renewal
+
+# Recompute the portable accounts without needing the local trace bundle.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_renewal.py \
+  --verify benchmarks/garden-seasons/landing-patch-renewal-results.json.gz
+
+# Also authenticate and re-extract all 36 selected compressed traces.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_renewal.py \
+  --verify benchmarks/garden-seasons/landing-patch-renewal-results.json.gz \
+  --bundle artifacts/garden-landing-patch-followup-v1
+```
+
+`GARDEN_LANDING_PATCH_FOLLOWUP_OUT` selects the input bundle and
+`GARDEN_LANDING_PATCH_RENEWAL_OUT` selects a fresh output path. Existing files
+and dangling symlinks are refused. Verification cannot write an output.
+Extraction checks the pinned input/manifest, gzip and restored-byte hashes,
+header/footer and selected clocks; it does not materialize raw JSONL copies.
+The approximately 7 MiB portable result revalidates sequential germination,
+off-column spacing/capacity/cold gates, full seed inventory, ordered bank
+access and resource conservation, including terminal discard.
+
+The thirteen Python tests run with
+`python3 -W error sim/test_garden_landing_patch_renewal.py`; CTest registers
+them as `garden-landing-patch-renewal`. Both portable verification and full
+trace re-extraction have passed with native process launches forbidden.
+The report proposes discussing a seed-bank allocation comparison, but this
+tool neither launches nor changes one.
+
+## Compare purchase-driven seed priority
+
+The [completed comparison](../benchmarks/garden-seasons/landing-seed-cursor.md)
+has six primary-cohort 32-day survivors versus zero, but one extra pre-existing
+adult death; the diagnostic gate fails. All 36 calls and twelve frames are
+retained. Do not rerun the collector into its completed bundle.
+
+The [seed-cursor protocol](../benchmarks/garden-seasons/landing-seed-cursor-protocol.md)
+compares the six prior dieback histories under fixed order and a host-only
+purchase-driven cursor. Activation is strictly after day 320; both arms end
+at day 384. Births during `(320,352]` have complete potential sixteen- and
+thirty-two-day follow-up. More buyers alone cannot pass the survival/harm gate.
+
+`placement-replay --seed-cursor-after TICK` requires spacing placement,
+`--ledger`, and a positive maintenance-aligned onset. It rejects clock rotation
+and paid replacement. The last successful buyer's stable lineage ID persists
+through full banks, skipped purchases and slot reclamation. Configuration and
+state are tagged `GSC1` in run identity; no world/model ABI or firmware state
+is added. Existing costs, cooldowns, random draws and placement rules remain.
+
+That comparison used the 1,474,560-tick (384-day) replay bound. The later
+competitive-renewal follow-up below extends it to 512 days; training and general
+evaluator limits remain unchanged. The dedicated cursor build directory is
+`build-host-seed-cursor`, with the same isolated late uptake/dispersal settings
+as the preceding follow-up. Ordinary build wrappers still disable those rules.
+
+```sh
+# Fresh outputs; 36 planned native calls, not a training job.
+make host-probe-landing-seed-cursor
+
+# The portable receipt checks provenance, anchors, repeats and outcome math.
+docker compose run --rm -T firmware python3 sim/garden_landing_seed_cursor.py \
+  --verify benchmarks/garden-seasons/landing-seed-cursor-results.json.gz
+
+# Full verification also re-extracts traces and independently checks every
+# cursor visit, seed admission and resource transfer. It launches no simulator.
+docker compose run --rm -T firmware python3 sim/garden_landing_seed_cursor.py \
+  --verify benchmarks/garden-seasons/landing-seed-cursor-results.json.gz \
+  --bundle artifacts/garden-landing-seed-cursor-v1
+```
+
+`GARDEN_LANDING_SEED_CURSOR_OUT` and `GARDEN_LANDING_SEED_CURSOR_CAPTURE` select
+fresh bundle/result paths. A failed collection is preserved, never overwritten
+or automatically retried. Day-320 cursor anchors and day-352 fixed anchors gate
+all longer calls. Exact traced repeats and observer-free cursor runs follow.
+All twelve comparison frames are retained in the declared panel order. Only
+verified, freshly generated raw trace duplicates are removed after durable
+receipts; their gzip copies and restored-byte identities remain.
+
+The older renewal auditor now validates historical evidence against its
+captured implementation, not the moving worktree. Its original immutable
+receipt is explicitly pinned and reanalyzed; arbitrary rehashed legacy
+identities are rejected. This compatibility fix does not revise old findings.
+
+## Diagnose the cursor adult death
+
+The [offline diagnosis](../benchmarks/garden-seasons/landing-cursor-energy.md)
+compares S2 ordinary adult 37 over identical time intervals. It separates the
+replenished seed expense from the terminal 30-unit winter income deficit.
+It does not launch the simulator or claim per-leaf shade attribution from
+morphology counts.
+
+```sh
+# Recompute the portable histories, budgets and summary. No local bundle needed.
+docker compose run --rm -T firmware python3 sim/garden_landing_cursor_energy.py \
+  --verify benchmarks/garden-seasons/landing-cursor-energy-results.json.gz
+
+# Authenticate and re-extract all four original stand/resource gzip traces.
+docker compose run --rm -T firmware python3 sim/garden_landing_cursor_energy.py \
+  --verify benchmarks/garden-seasons/landing-cursor-energy-results.json.gz \
+  --bundle artifacts/garden-landing-seed-cursor-v1
+
+# Optional reproduction to a NEW path, never over the retained evidence.
+docker compose run --rm -T firmware python3 sim/garden_landing_cursor_energy.py \
+  --bundle artifacts/garden-landing-seed-cursor-v1 \
+  --out artifacts/garden-landing-cursor-energy-check.json.gz
+```
+
+The input is the exact pinned cursor capture. The portable result includes
+complete focal histories and population morphology changes; raw verification
+also proves their extraction from the authenticated source traces. Output
+creation is exclusive. `garden-landing-cursor-energy` is the offline CTest.
+The subsequent passive uptake replay is described below; it is separate from
+this zero-replay energy audit.
+
+## Attribute the cursor neighbor shadow
+
+The [completed shadow diagnostic](../benchmarks/garden-seasons/landing-cursor-shade.md)
+adds two passive replays using the prior frozen executable and model. It
+records 704 uptake samples per arm, verifies exact original endpoints, pixels
+and overlapping stand rows, then isolates plant 39's shade on the recorded
+geometry. This explains the local 30-unit winter loss without changing ecology
+or claiming long-run rescue.
+
+```sh
+# Portable reconstruction of all grids, leaves and paired income differences.
+docker compose run --rm -T firmware python3 sim/garden_landing_cursor_shade.py \
+  --verify benchmarks/garden-seasons/landing-cursor-shade-results.json.gz
+
+# Also authenticate the full bundle and recompare original stand histories.
+docker compose run --rm -T firmware python3 sim/garden_landing_cursor_shade.py \
+  --verify benchmarks/garden-seasons/landing-cursor-shade-results.json.gz \
+  --bundle artifacts/garden-landing-cursor-shade-v1 \
+  --origin artifacts/garden-landing-seed-cursor-v1
+
+# Optional NEW collection: exactly two native replays, no build or training.
+# Never reuse the completed bundle name.
+docker compose run --rm -T firmware python3 sim/garden_landing_cursor_shade_capture.py \
+  --out artifacts/garden-landing-cursor-shade-repeat
+```
+
+The analyzer authenticates the original completed capture; a new collection
+is not silently substituted for it. The existing protocol fixes observation
+windows. `garden-landing-cursor-shade` tests the offline analyzer, including
+saturated opacity, integer income thresholds and exclusion of the post-death
+sample from paired attribution. Verification launches no simulator. Collection
+compacts only its own verified raw duplicates and retains gzip restoration
+identities; historical bundles remain untouched.
+
+## Competitive-renewal follow-up
+
+The [protocol](../benchmarks/garden-seasons/landing-competitive-renewal-protocol.md)
+fixes the same twelve histories through day 512, with fixed recruitment
+cohorts, population floors and separate species/ancestry retention. Individual
+deaths are reported rather than automatically vetoed. It does not revise the
+old cursor comparison's failed gate or introduce a new training score.
+
+The [completed result](../benchmarks/garden-seasons/landing-competitive-renewal.md)
+passes viability in all twelve worlds but renewal in none. The replay CLI now
+accepts 1,966,080 ticks (512 days). Its only production-code changes are the
+host bound and help text; training/evaluator limits and firmware are unchanged.
+Existing complete ledgers and endpoint captures suffice, with no new per-step
+observer or full resource/reach trace.
+
+```sh
+# Optional NEW collection; never reuse the completed bundle name.
+make host-follow-landing-competitive-renewal \
+  GARDEN_LANDING_COMPETITIVE_RENEWAL_OUT=artifacts/new-competitive-renewal \
+  GARDEN_LANDING_COMPETITIVE_RENEWAL_CAPTURE=artifacts/new-competitive-renewal.json.gz
+
+# Verify published metrics and all recorded calls without simulator execution.
+docker compose run --rm -T firmware python3 sim/garden_landing_competitive_renewal.py \
+  --verify benchmarks/garden-seasons/landing-competitive-renewal-results.json.gz
+
+# Also authenticate the local bundle and reconstruct PNG/gallery bytes.
+docker compose run --rm -T firmware python3 sim/garden_landing_competitive_renewal.py \
+  --verify benchmarks/garden-seasons/landing-competitive-renewal-results.json.gz \
+  --bundle artifacts/garden-landing-competitive-renewal-v1
+```
+
+The isolated `build-host-competitive-renewal` uses the same W2 build settings.
+Collection makes exactly 60 research calls with at most two workers: twelve
+compatibility anchors, two fixed image checkpoints, endpoint repeats and
+capture-free checks. It preserves failures without automatic retries or resume.
+The source archive excludes generated build trees and unrelated historical
+datasets; earlier bundles remain untouched. `garden-landing-competitive-renewal`
+is the focused offline CTest, including portable captured-evidence checks.
+
+## Recruit seed audit
+
+The [completed audit](../benchmarks/garden-seasons/landing-recruit-seeds.md)
+joins every post-day-384 recruit to its purchases and children through day 512.
+It reconstructs living headcount and sufficient spacing exclusions at each
+mature seed check, including earlier germinations in the same step. Stored
+dead plant slots, node capacity, resource conditions and purchase eligibility
+remain unknown; a headcount vacancy is not labeled a valid opportunity.
+Primary and late cohorts, expired seeds and the pending seed remain separate.
+
+```sh
+# Recompute entirely from the pinned portable capture; no build or replay.
+make host-audit-landing-recruit-seeds \
+  GARDEN_LANDING_RECRUIT_SEEDS_OUT=artifacts/new-recruit-seeds.json.gz
+
+docker compose run --rm -T firmware python3 sim/garden_landing_recruit_seeds.py \
+  --verify benchmarks/garden-seasons/landing-recruit-seeds-results.json.gz
+```
+
+The fresh-output export is only 2,241 bytes. It needs neither the raw bundle nor
+another source archive. The original capture and complete cohort coverage are
+validated before analysis. `garden-landing-recruit-seeds` is the focused CTest;
+its captured-evidence checks forbid native process execution.
+
+## Seed handoff diagnostic
+
+The [completed diagnostic](../benchmarks/garden-seasons/landing-seed-handoff.md)
+uses two identical frozen day-512 replays of S2 crowded's cursor arm, logging
+only ticks 1,838,385 through 1,839,360. Existing adult and stand observers capture
+66 ecology steps around parent 35's death and the competing seed's germination.
+Stored plant IDs and node accounting explain all 63 previously unresolved
+checks, including the older seed's within-step priority at reclamation.
+
+```sh
+# Normal use: verify the published result entirely offline.
+docker compose run --rm -T firmware python3 sim/garden_landing_seed_handoff.py \
+  --verify benchmarks/garden-seasons/landing-seed-handoff-results.json.gz
+
+# Also check every local bundle file, process result and raw trace.
+docker compose run --rm -T firmware python3 sim/garden_landing_seed_handoff.py \
+  --verify benchmarks/garden-seasons/landing-seed-handoff-results.json.gz \
+  --bundle artifacts/garden-landing-seed-handoff-v1
+
+# Optional NEW native collection; never reuse the completed bundle name.
+make host-trace-landing-seed-handoff \
+  GARDEN_LANDING_SEED_HANDOFF_OUT=artifacts/new-seed-handoff
+
+# Re-export the pinned completed bundle; no native execution.
+make host-audit-landing-seed-handoff \
+  GARDEN_LANDING_SEED_HANDOFF_RESULTS=artifacts/new-seed-handoff-audit.json.gz
+```
+
+Fresh collection requires the saved competitive-renewal bundle's executable,
+model and authenticated manifest; it does not rebuild or duplicate its source
+archive. Its two bounded traces and endpoint outputs must match exactly. The
+offline auditor is pinned to the completed capture and manifest, not arbitrary
+new bundles. The portable result contains all raw trace bytes once and both
+call receipts in 38,572 bytes. `garden-landing-seed-handoff` is the focused CTest.
+
+## Long-lived non-buyer diagnostic
+
+The [completed diagnostic](../benchmarks/garden-seasons/landing-nonbuyer.md)
+replays S2 ordinary cursor plant 41's entire observed life. It records all 24,838
+ecology checks, ordered reproduction visits and focal morphology/growth bids.
+Both frozen replays match the original day-512 result, ledgers and framebuffer,
+and their full stand traces are byte-identical. No C change or build is required.
+
+```sh
+# Portable audit: no simulation and no local raw bundle needed.
+docker compose run --rm -T firmware python3 sim/garden_landing_nonbuyer.py \
+  --verify benchmarks/garden-seasons/landing-nonbuyer-results.json.gz
+
+# Also decompress both full traces and verify exact extraction.
+docker compose run --rm -T firmware python3 sim/garden_landing_nonbuyer.py \
+  --verify benchmarks/garden-seasons/landing-nonbuyer-results.json.gz \
+  --bundle artifacts/garden-landing-nonbuyer-v1
+
+# Optional recollection: exactly two native calls, fresh output required.
+make host-trace-landing-nonbuyer \
+  GARDEN_LANDING_NONBUYER_OUT=artifacts/new-nonbuyer
+
+# Offline export from the completed original bundle; do not overwrite evidence.
+make host-audit-landing-nonbuyer \
+  GARDEN_LANDING_NONBUYER_RESULTS=artifacts/new-nonbuyer-audit.json.gz
+```
+
+Collection requires the original competitive-renewal executable/model/source
+bundle and at least 2 GiB temporary free space; these inputs are authenticated
+but not copied. Full traces are losslessly compressed and verified before only
+their newly generated raw duplicates are removed. The local bundle retains
+about 4.5 MB; the portable export is 756,387 bytes. Existing output paths are
+refused. `garden-landing-nonbuyer` is the focused CTest; its seventeen tests and
+the portable verifier never launch the simulator. This diagnostic added no
+purchase policy; the separate comparison below implements the follow-up.
+
+## Waiting-time purchase comparison
+
+The [completed comparison](../benchmarks/garden-seasons/landing-seed-wait.md)
+uses the frozen six-world cursor panel with identical history through day 384.
+The treatment switches to oldest last-successful-purchase tick (birth tick for
+never-buyers), breaking ties by stable lineage ID. Existing gates skip ineligible
+parents without reserving a slot; costs, capacity and germination order are fixed.
+
+`placement-replay --seed-wait-after TICK` requires spacing placement and an
+earlier `--seed-cursor-after TICK`. Both onsets are positive maintenance-aligned
+ticks. Waiting priority rejects rotation, replacement, vacancy and turnover
+combinations; the declared patch-sweep history is supported. Waiting timestamps
+are tracked from tick zero and committed only after successful steps. `GSW1`
+identities include policy state; omitted flags preserve old results/hashes.
+The JSON `seed_wait_probe` exposes final history and historical sweep receipts
+for independent ledger reconciliation. It is not a device/model ABI extension.
+
+```sh
+# Offline: recompute outcomes and verify all 48 call receipts in the portable data.
+docker compose run --rm -T firmware python3 sim/garden_landing_seed_wait.py \
+  --verify benchmarks/garden-seasons/landing-seed-wait-results.json.gz
+
+# Also authenticate the complete local bundle and regenerate the paired gallery.
+# This does not execute its saved binary.
+docker compose run --rm -T firmware python3 sim/garden_landing_seed_wait.py \
+  --verify benchmarks/garden-seasons/landing-seed-wait-results.json.gz \
+  --bundle artifacts/garden-landing-seed-wait-v1
+
+# Optional fresh collection: rebuild the isolated host executable, then 48 calls.
+make host-compare-landing-seed-wait \
+  GARDEN_LANDING_SEED_WAIT_OUT=artifacts/new-seed-wait \
+  GARDEN_LANDING_SEED_WAIT_CAPTURE=artifacts/new-seed-wait.json.gz
+```
+
+Collection uses `build-host-seed-wait`, the exact W2 source model and the original
+competitive-renewal bundle. It freezes actual source/build inputs, limits native
+workers to two, requires fresh destinations and 1 GiB free space, and stops on
+any mismatch without automatic retries. Twelve anchors gate endpoints, exact
+repeats and framebuffer-free runs. No large per-step trace is produced. The
+completed bundle is 25.8 MiB; portable data and the paired gallery add about
+290 KiB. `garden-landing-seed-wait-native` and `garden-landing-seed-wait` cover
+native contracts, short CLI order oracles and offline result integrity. Neither
+collector nor Make target changes firmware or starts training.
+
+## Recurring winter comparison
+
+The [fixed protocol](../benchmarks/garden-seasons/landing-patch-recurring-protocol.md)
+compares the six saved cursor gardens with four additional spatial diebacks.
+The [completed result and paired images](../benchmarks/garden-seasons/landing-patch-recurring.md)
+retain all worlds, mortality costs and unresolved offspring.
+`placement-replay --patch-recurring on` requires `--patch-sweep on`, an explicit
+ledger, spacing placement and a seed cursor beginning before day 396. It rejects
+waiting priority, rotation, replacement, named deaths and vacancy export.
+Omitting the option preserves historical results, receipts and hashes.
+
+The preset acts after ordinary steps on days 396, 428, 460 and 492, killing
+living plants based in columns 4–7, 8–11, 12–15 and 16–19 respectively. These
+are starts of every other winter. Empty hits are retained; no alternate site,
+age protection or immediate slot reclamation is supplied. A separate
+`patch_recurring_probe` records victims, their ages/stores and before/after
+hashes. `GPR1` wraps the existing `GPS1` run identity without changing the old
+fifteen-event receipt. Imposed deaths remain distinguishable from natural ones
+in the complete ledger. Neither the device world nor model ABI changes.
+
+```sh
+# Offline verification of portable results, including all event victim sets.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_recurring.py \
+  --verify benchmarks/garden-seasons/landing-patch-recurring-results.json.gz
+
+# Also authenticate local artifacts and regenerate every PNG and the gallery.
+# Does not execute a saved binary.
+docker compose run --rm -T firmware python3 sim/garden_landing_patch_recurring.py \
+  --verify benchmarks/garden-seasons/landing-patch-recurring-results.json.gz \
+  --bundle artifacts/garden-landing-patch-recurring-v1
+
+# Optional fresh collection: isolated build followed by exactly 48 research calls.
+make host-compare-landing-patch-recurring \
+  GARDEN_LANDING_PATCH_RECURRING_OUT=artifacts/new-patch-recurring \
+  GARDEN_LANDING_PATCH_RECURRING_CAPTURE=artifacts/new-patch-recurring.json.gz
+```
+
+Collection uses `build-host-patch-recurring` and the unchanged W2 model from the
+completed waiting-time bundle. Both arms keep the purchase cursor; the waiting
+policy is disabled. Twelve day-384 anchors gate day-512 endpoints, repeats and
+capture-free runs, with at most two workers. Fresh paths and 1 GiB free space
+are required. Collection preserves failures, does not retry, and writes no large
+per-step traces. `garden-landing-patch-sweep-native` covers both fixed schedules;
+`garden-landing-patch-recurring` covers CLI, event reconciliation, mortality
+classification and offline capture integrity. The population and renewal gates
+are inherited unchanged from the competitive-renewal comparison.
+The retained bundle is 25.2 MiB; portable results and gallery add about 293 KiB.
+
+## Recurring winter offspring follow up
+
+The [fixed follow-up protocol](../benchmarks/garden-seasons/landing-recurring-followup-protocol.md)
+tracks the same six treatment gardens from day 512 to day 544, preserving the
+next winter disturbance. It follows six previously censored parent–child links
+and all eleven late-born survivors. This does not rescore the earlier primary
+cohort or supply a new control arm.
+
+`placement-replay --patch-recurring-followup on` requires
+`--patch-recurring on` and inherits its prerequisites and exclusions. It adds
+one event at day 524 in columns 20–23, using the existing all-age spatial death
+operation. Its separate `patch_recurring_followup_probe` and `GPF1` hash wrapper
+preserve the old fifteen-event and four-event receipts. This opt-in mode
+extends `--ticks` to 2,088,960 (544 days). Ordinary replay retains the 512-day
+limit; the separate fresh-panel mode below allows 608 days. Trace-window limits
+and evaluator/training horizons are unchanged.
+
+```sh
+# Verify the portable results without executing any simulator.
+docker compose run --rm -T firmware python3 sim/garden_landing_recurring_followup.py \
+  --verify benchmarks/garden-seasons/landing-recurring-followup-results.json.gz
+
+# Also authenticate local receipts and regenerate all PNGs and the gallery.
+docker compose run --rm -T firmware python3 sim/garden_landing_recurring_followup.py \
+  --verify benchmarks/garden-seasons/landing-recurring-followup-results.json.gz \
+  --bundle artifacts/garden-landing-recurring-followup-v1
+
+# Optional fresh collection, never overwriting the completed experiment.
+make host-followup-landing-recurring \
+  GARDEN_LANDING_RECURRING_FOLLOWUP_OUT=artifacts/new-recurring-followup \
+  GARDEN_LANDING_RECURRING_FOLLOWUP_CAPTURE=artifacts/new-recurring-followup.json.gz
+```
+
+The target reuses the isolated sanitized `build-host-patch-recurring` build and
+copies the unchanged W2 model from the preceding recurring bundle. It makes
+exactly 24 research calls with at most two workers: six anchors, endpoints,
+repeats and capture-free runs each. All anchors must reproduce the saved
+day-512 state and pixels before endpoints run. The collector freezes sources,
+model, executable, build settings and protocol; it requires fresh paths and
+1 GiB free, retains failures and never automatically retries. Complete lifetime
+and seed ledgers replace large per-step traces. Native patch tests and
+`garden-landing-recurring-followup` cover schedule transactions, old-mode
+compatibility, CLI bounds, fixed cohorts, age/death boundaries and offline
+integrity. No firmware deployment or training is performed.
+The [completed results and paired images](../benchmarks/garden-seasons/landing-recurring-followup.md)
+retain the five confirmed focal children, one imposed failure and the lost
+founder family. The bundle is about 16.2 MiB; portable data and gallery add
+about 190 KiB. The earlier sustained-renewal score is retained unchanged.
+
+## Fresh-seed recurring comparison
+
+The [frozen protocol](../benchmarks/garden-seasons/landing-recurring-fresh-protocol.md)
+compares recurring and stopped disturbance on three deterministically derived
+new weather seeds, each in both existing layouts. The controller, resources,
+cursor, capacities and disturbance mechanism stay fixed. The primary birth
+cohort is `(384,576]`, followed through day 608. Its three 64-day birth windows
+are a new prospective criterion, not a revision of the earlier 32-day windows.
+Establishment still requires survival past age 32, and renewal still requires
+an established parent and child from the primary cohort.
+
+`placement-replay --patch-renewal stopped|recurring` requires `--patch-sweep on`,
+an explicit ledger, spacing placement and a cursor onset before day 396.
+It rejects the older recurring/follow-up flags, waiting priority, rotation,
+paid replacement, named deaths and vacancy export. Only this explicit mode
+allows `--ticks` through 2,334,720 (608 days). Both arms emit a
+`patch_renewal_probe` with an explicit enabled flag and a distinct `GPN1` hash
+wrapper. Stopped performs no new events; recurring uses seven events on days
+396, 428, 460, 492, 524, 556 and 588, covering columns 4–7 through 24–27 before
+wrapping to 0–3. Empty hits remain recorded. No age or family is protected.
+
+```sh
+# Portable verification; no simulator is executed.
+docker compose run --rm -T firmware python3 sim/garden_landing_recurring_fresh.py \
+  --verify benchmarks/garden-seasons/landing-recurring-fresh-results.json.gz
+
+# Also authenticate both binaries, full call receipts and all saved images.
+docker compose run --rm -T firmware python3 sim/garden_landing_recurring_fresh.py \
+  --verify benchmarks/garden-seasons/landing-recurring-fresh-results.json.gz \
+  --bundle artifacts/garden-landing-recurring-fresh-v1
+
+# Optional fresh collection: new paths, unchanged frozen reference required.
+make host-compare-landing-recurring-fresh \
+  GARDEN_LANDING_RECURRING_FRESH_OUT=artifacts/new-recurring-fresh \
+  GARDEN_LANDING_RECURRING_FRESH_CAPTURE=artifacts/new-recurring-fresh.json.gz
+```
+
+The target reuses the isolated sanitized `build-host-patch-recurring` build.
+It needs the frozen day-544 bundle for the original W2 model and reference
+executable, not just a new build of that source. Its 66 research calls comprise
+six day-384 frozen-executable references, twelve new day-384 anchors, twelve
+day-512 captures, twelve day-608 endpoints, twelve repeats and twelve
+capture-free endpoints. All anchors must match reference state, complete
+ledgers and pixels before any longer call. Endpoints must preserve both anchor
+and intermediate histories. Sources, binaries, build cache, model and protocol
+are frozen before collection and reauthenticated afterward.
+
+Collection uses at most two workers, requires fresh paths and 1 GiB free space,
+retains failures, never retries automatically and writes no per-step traces.
+The review gallery retains all 24 paired intermediate/endpoint frames. Offline
+verification regenerates all 54 captured PNGs and the gallery; it also checks
+spatial victims, exact survival boundaries, repeats and capture neutrality.
+`garden-landing-patch-sweep-native` and `garden-landing-recurring-fresh` cover
+schedule transactions, legacy compatibility, CLI bounds, prospective cohorts,
+posthumous children, diversity gaps and evidence integrity. Population viability,
+renewal and species/family costs are separate results. No training, firmware
+deployment or ordinary ecology change is included.
+The [completed comparison and images](../benchmarks/garden-seasons/landing-recurring-fresh.md)
+record six renewal passes versus none, alongside the mortality and family-loss
+costs. The local bundle is about 37.1 MiB; portable data and gallery add about
+398 KiB. Earlier protocols and scores remain unchanged.
+
 ## Start with an explicit model
 
 ```sh

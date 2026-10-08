@@ -15,6 +15,7 @@
 #include "garden_uptake_trace.h"
 #include "garden_landing_vacancy.h"
 #include "garden_landing_turnover.h"
+#include "garden_landing_patch_sweep.h"
 #include "garden_lifetimes.h"
 #include "garden_model_file.h"
 #if defined(TOY_FACTORY_GARDEN_SOIL_WICKING)
@@ -36,11 +37,35 @@
 /* Bounded host follow-up only; evaluator/training horizons remain unchanged.
  * Append ledgers retain their independent fail-closed capacity checks.
  */
-#define MAX_TICKS (320U * TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS)
+#define MAX_TICKS          (512U * TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS)
+#define FOLLOWUP_MAX_TICKS (544U * TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS)
+#define RENEWAL_MAX_TICKS  (608U * TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS)
+
+enum patch_renewal_mode {
+	PATCH_RENEWAL_NONE,
+	PATCH_RENEWAL_STOPPED,
+	PATCH_RENEWAL_RECURRING
+};
 
 /* One trial per process; this bounded host ledger outlives compacted slots. */
 static struct toy_factory_garden_lifetimes ledger;
 static struct toy_factory_garden_landing_ledger history;
+static struct toy_factory_garden_patch_sweep patch_sweep;
+static struct toy_factory_garden_patch_sweep patch_recurring;
+static struct toy_factory_garden_patch_sweep patch_followup;
+static struct toy_factory_garden_patch_sweep patch_renewal;
+/* Passive identity receipts, not simulation state or an unbounded trace. */
+static struct toy_factory_garden_seed_wait wait_at_sweep[TOY_FACTORY_GARDEN_PATCH_EVENTS];
+
+static void print_wait_entries(const struct toy_factory_garden_seed_wait *state)
+{
+	fputc('[', stdout);
+	for (uint8_t i = 0U; i < state->count; ++i) {
+		printf("%s[%" PRIu32 ",%" PRIu32 "]", i ? "," : "", state->entries[i].lineage,
+		       state->entries[i].since);
+	}
+	fputc(']', stdout);
+}
 static struct toy_factory_garden_decision_trace decision_trace;
 /* Always closed in main, including partial-trace failure paths. */
 static FILE *decision_stream;
@@ -113,6 +138,15 @@ static void usage(FILE *stream)
 	      "  optionally --second-turnover-at TICK --second-turnover-lineage ID (later, "
 	      "distinct)\n"
 	      "  (post-observation environmental deaths; normal decomposition; TICK <= stop).\n"
+	      "  Alternatively --patch-sweep on enables the fixed v1 spatial dieback schedule;\n"
+	      "  --patch-recurring on adds four every-other-winter events after day 384;\n"
+	      "  requires --patch-sweep on and a prior seed cursor; excludes waiting priority.\n"
+	      "  requires --ledger; excludes named deaths, vacancy and seed replacement.\n"
+	      "  --patch-recurring-followup on requires --patch-recurring on and adds day 524\n"
+	      "  at columns 20..23; only this flag extends the replay limit to day 544.\n"
+	      "  --patch-renewal stopped|recurring enables the separate day-608 comparison;\n"
+	      "  requires sweep/cursor, excludes the other recurring modes, and continues\n"
+	      "  the same seven-band cycle through day 588 only in its recurring arm.\n"
 	      "placement/vacancy accept --stand-trace NEW.jsonl --stand-start TICK\n"
 	      "  --stand-stop TICK (all plants; requires --ledger; not --placement-trace).\n"
 	      "  Add --stand-order to retain the unrotated array inventory in a new trace schema.\n"
@@ -125,9 +159,13 @@ static void usage(FILE *stream)
 	      "  requires all-offspring daylight guards; incompatible with wet direction.\n"
 	      "  Optional --seed-order rotating --seed-order-after TICK (positive multiple of 60;\n"
 	      "  requires --ledger; fixed order through TICK; host-only, separately identified).\n"
+	      "  Optional --seed-cursor-after TICK advances order after paid purchases; requires\n"
+	      "  spacing placement and --ledger; excludes rotation and seed replacement.\n"
+	      "  Optional --seed-wait-after TICK switches to longest waiting eligible parent;\n"
+	      "  requires an earlier --seed-cursor-after; tracks purchases from tick zero.\n"
 	      "Signal probes and traces require current-only, flags=0; model bytes never change.\n"
 	      "Host-only; gardener off; masks are fixed in the model, never load overrides.\n"
-	      "Replay supports 0..1228800 logic ticks (320 Garden days), nonzero u32 seeds.\n"
+	      "Replay supports 0..1966080 logic ticks (512 Garden days), nonzero u32 seeds.\n"
 	      "Outputs JSON; files must not exist. No device defaults change.\n",
 	      stream);
 }
@@ -434,6 +472,10 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 	struct toy_factory_garden_landing_turnover turnover_event = {0};
 	uint32_t second_turnover_tick = 0U, second_turnover_lineage = 0U;
 	struct toy_factory_garden_landing_turnover second_turnover_event = {0};
+	bool sweep_enabled = false;
+	bool recurring_enabled = false;
+	bool followup_enabled = false;
+	enum patch_renewal_mode renewal_mode = PATCH_RENEWAL_NONE;
 	const char *water_path = NULL;
 	const char *adult_path = NULL;
 	uint32_t adult_start = 0U, adult_stop = 0U;
@@ -452,6 +494,8 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 	struct toy_factory_garden_root_choice root_choice = {0};
 	struct toy_factory_garden_root_allocation root_allocation = {0};
 	uint32_t rotation_after = 0U;
+	uint32_t cursor_after = 0U;
+	uint32_t wait_after = 0U;
 	bool water_set = false;
 	bool limit_set = false;
 	uint8_t node_limit = 0U;
@@ -558,10 +602,37 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 			return -EINVAL;
 		}
 		if ((strcmp(argv[i], "--ticks") == 0) && !ticks_set) {
-			if (parse_u32(argv[i + 1], MAX_TICKS, &ticks) != 0) {
+			if (parse_u32(argv[i + 1], RENEWAL_MAX_TICKS, &ticks) != 0) {
 				return -EINVAL;
 			}
 			ticks_set = true;
+		} else if (placing && !vacancy && !sweep_enabled &&
+			   (strcmp(argv[i], "--patch-sweep") == 0)) {
+			if (strcmp(argv[i + 1], "on") != 0) {
+				return -EINVAL;
+			}
+			sweep_enabled = true;
+		} else if (placing && !vacancy && !recurring_enabled &&
+			   (strcmp(argv[i], "--patch-recurring") == 0)) {
+			if (strcmp(argv[i + 1], "on") != 0) {
+				return -EINVAL;
+			}
+			recurring_enabled = true;
+		} else if (placing && !vacancy && !followup_enabled &&
+			   (strcmp(argv[i], "--patch-recurring-followup") == 0)) {
+			if (strcmp(argv[i + 1], "on") != 0) {
+				return -EINVAL;
+			}
+			followup_enabled = true;
+		} else if (placing && !vacancy && (renewal_mode == PATCH_RENEWAL_NONE) &&
+			   (strcmp(argv[i], "--patch-renewal") == 0)) {
+			if (strcmp(argv[i + 1], "stopped") == 0) {
+				renewal_mode = PATCH_RENEWAL_STOPPED;
+			} else if (strcmp(argv[i + 1], "recurring") == 0) {
+				renewal_mode = PATCH_RENEWAL_RECURRING;
+			} else {
+				return -EINVAL;
+			}
 		} else if (placing && !vacancy && (root_choice.tick == 0U) &&
 			   (strcmp(argv[i], "--root-choice-at") == 0)) {
 			if ((parse_u32(argv[i + 1], MAX_TICKS, &root_choice.tick) != 0) ||
@@ -752,6 +823,18 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 			    (rotation_after == 0U)) {
 				return -EINVAL;
 			}
+		} else if (placing && (cursor_after == 0U) &&
+			   (strcmp(argv[i], "--seed-cursor-after") == 0)) {
+			if ((parse_u32(argv[i + 1], MAX_TICKS, &cursor_after) != 0) ||
+			    (cursor_after == 0U)) {
+				return -EINVAL;
+			}
+		} else if (placing && (wait_after == 0U) &&
+			   (strcmp(argv[i], "--seed-wait-after") == 0)) {
+			if ((parse_u32(argv[i + 1], MAX_TICKS, &wait_after) != 0) ||
+			    (wait_after == 0U)) {
+				return -EINVAL;
+			}
 		} else if (placing && (placement_path == NULL) &&
 			   (strcmp(argv[i], "--placement-trace") == 0) && (*argv[i + 1] != '\0')) {
 			placement_path = argv[i + 1];
@@ -788,6 +871,10 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 	     (!export_ledger || (turnover_tick <= TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS) ||
 	      (turnover_tick > ticks) ||
 	      (turnover_tick % PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR != 0U)))) {
+		return -EINVAL;
+	}
+	if (sweep_enabled && (!export_ledger || (turnover_tick != 0U) ||
+			      (second_turnover_tick != 0U) || (replace_after != 0U))) {
 		return -EINVAL;
 	}
 	if (((second_turnover_tick != 0U) != (second_turnover_lineage != 0U)) ||
@@ -831,6 +918,34 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 	     (!export_ledger || (rotation_after % (PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR *
 						   PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR) !=
 				 0U)))) {
+		return -EINVAL;
+	}
+	if ((cursor_after != 0U) &&
+	    (!export_ledger || !seed_placement || rotation_set || (replace_after != 0U) ||
+	     (cursor_after % (PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR *
+			      PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR) !=
+	      0U))) {
+		return -EINVAL;
+	}
+	if ((wait_after != 0U) &&
+	    ((cursor_after == 0U) || (wait_after <= cursor_after) || vacancy ||
+	     (turnover_tick != 0U) || (second_turnover_tick != 0U) ||
+	     (wait_after % (PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR *
+			    PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR) !=
+	      0U))) {
+		return -EINVAL;
+	}
+	if ((recurring_enabled || (renewal_mode != PATCH_RENEWAL_NONE)) &&
+	    (!sweep_enabled || (wait_after != 0U) || (cursor_after == 0U) ||
+	     (cursor_after >=
+	      TOY_FACTORY_GARDEN_RECURRING_FIRST_DAY * TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS))) {
+		return -EINVAL;
+	}
+	const uint32_t tick_limit = renewal_mode != PATCH_RENEWAL_NONE ? RENEWAL_MAX_TICKS
+				    : followup_enabled                 ? FOLLOWUP_MAX_TICKS
+								       : MAX_TICKS;
+	if ((followup_enabled && !recurring_enabled) || (ticks > tick_limit) ||
+	    ((renewal_mode != PATCH_RENEWAL_NONE) && (recurring_enabled || followup_enabled))) {
 		return -EINVAL;
 	}
 	if (adult_path != NULL) {
@@ -895,10 +1010,14 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 	}
 	if (err == 0) {
 		growth.seed_order_after = rotation_after;
+		growth.seed_cursor.after = cursor_after;
 		growth.placement.replace_after = replace_after;
 		growth.root_choice = root_choice;
 		growth.root_allocation = root_allocation;
-		err = toy_factory_garden_lifetimes_reset(&ledger);
+		err = toy_factory_garden_seed_wait_init(&initial, wait_after, &growth.seed_wait);
+		if (err == 0) {
+			err = toy_factory_garden_lifetimes_reset(&ledger);
+		}
 	}
 	if (err == 0) {
 		err = record_births(&initial);
@@ -1180,6 +1299,37 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 				return err;
 			}
 		}
+		if (sweep_enabled) {
+			const uint8_t before = patch_sweep.count;
+			err = toy_factory_garden_patch_sweep_step(&growth, &ledger, &patch_sweep);
+			if (err != 0) {
+				return err;
+			}
+			if ((wait_after != 0U) && (before < patch_sweep.count)) {
+				wait_at_sweep[before] = growth.seed_wait;
+			}
+		}
+		if (recurring_enabled) {
+			err = toy_factory_garden_patch_recurring_step(&growth, &ledger,
+								      &patch_recurring);
+			if (err != 0) {
+				return err;
+			}
+		}
+		if (followup_enabled) {
+			err = toy_factory_garden_patch_followup_step(&growth, &ledger,
+								     &patch_followup);
+			if (err != 0) {
+				return err;
+			}
+		}
+		if (renewal_mode == PATCH_RENEWAL_RECURRING) {
+			err = toy_factory_garden_patch_renewal_step(&growth, &ledger,
+								    &patch_renewal);
+			if (err != 0) {
+				return err;
+			}
+		}
 		descendant_live_ticks += descendants(&run->world);
 	}
 	struct toy_factory_garden_lifetime_report report;
@@ -1232,20 +1382,37 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 			return err;
 		}
 	}
+	if (sweep_enabled) {
+		hash = toy_factory_garden_patch_sweep_hash(hash);
+	}
+	if (recurring_enabled) {
+		hash = toy_factory_garden_patch_recurring_hash(hash);
+	}
+	if (followup_enabled) {
+		hash = toy_factory_garden_patch_followup_hash(hash);
+	}
+	if (renewal_mode != PATCH_RENEWAL_NONE) {
+		hash = toy_factory_garden_patch_renewal_hash(hash, renewal_mode ==
+									   PATCH_RENEWAL_RECURRING);
+	}
 	printf("{\"schema_version\":1,\"kind\":\"%s\",\"run_version\":%u,"
 	       "\"rules\":%" PRIu32 ",\"scenario\":\"%s\",\"seed\":\"%08" PRIx32
 	       "\",\"tick\":%" PRIu32 ",\"world_hash\":\"%08" PRIx32 "\",\"run_hash\":\"%08" PRIx32
 	       "\",\"model\":",
-	       second_turnover_tick ? "landing-turnover-pair-replay"
-	       : turnover_tick      ? "landing-turnover-replay"
-	       : vacancy            ? "landing-vacancy-replay"
-	       : placing            ? "landing-placement-replay"
-	       : budgeting          ? "landing-budget-replay"
-	       : growing            ? "landing-growth-replay"
-	       : arbitrating        ? "landing-arbitration-replay"
-	       : watering           ? "landing-water-replay"
-	       : probing            ? "landing-signal-replay"
-				    : "landing-replay",
+	       renewal_mode != PATCH_RENEWAL_NONE ? "landing-patch-renewal-replay"
+	       : followup_enabled                 ? "landing-patch-recurring-followup-replay"
+	       : recurring_enabled                ? "landing-patch-recurring-replay"
+	       : sweep_enabled                    ? "landing-patch-sweep-replay"
+	       : second_turnover_tick             ? "landing-turnover-pair-replay"
+	       : turnover_tick                    ? "landing-turnover-replay"
+	       : vacancy                          ? "landing-vacancy-replay"
+	       : placing                          ? "landing-placement-replay"
+	       : budgeting                        ? "landing-budget-replay"
+	       : growing                          ? "landing-growth-replay"
+	       : arbitrating                      ? "landing-arbitration-replay"
+	       : watering                         ? "landing-water-replay"
+	       : probing                          ? "landing-signal-replay"
+						  : "landing-replay",
 	       run->version, run->rules, scenario->name, seed, ticks,
 	       picosystem_garden_world_hash(world), hash);
 	err = print_model(&model);
@@ -1307,6 +1474,23 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 		printf("\"seed_order_probe\":{\"version\":1,\"after\":%" PRIu32 "},",
 		       rotation_after);
 	}
+	if (cursor_after != 0U) {
+		printf("\"seed_cursor_probe\":{\"version\":1,\"after\":%" PRIu32
+		       ",\"last_buyer\":%" PRIu32 "},",
+		       cursor_after, growth.seed_cursor.last_buyer);
+	}
+	if (wait_after != 0U) {
+		printf("\"seed_wait_probe\":{\"version\":1,\"after\":%" PRIu32 ",\"entries\":",
+		       wait_after);
+		print_wait_entries(&growth.seed_wait);
+		fputs(",\"events\":[", stdout);
+		for (uint8_t i = 0U; i < patch_sweep.count; ++i) {
+			printf("%s[%" PRIu32 ",", i ? "," : "", patch_sweep.events[i].tick);
+			print_wait_entries(&wait_at_sweep[i]);
+			fputc(']', stdout);
+		}
+		fputs("]},", stdout);
+	}
 	if (vacancy && (err == 0)) {
 		err = toy_factory_garden_landing_vacancy_print(stdout, vacancy_tick,
 							       vacancy_lineage, &vacancy_event);
@@ -1327,6 +1511,20 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 	if (placing) {
 		printf("\"placement_probe\":{\"version\":%u,\"enabled\":%s},",
 		       growth.placement.version, seed_placement ? "true" : "false");
+	}
+	if (sweep_enabled && (err == 0)) {
+		err = toy_factory_garden_patch_sweep_print(stdout, &patch_sweep);
+		printf("\"placement_run_hash\":\"%08" PRIx32 "\",", placement_hash);
+	}
+	if (recurring_enabled && (err == 0)) {
+		err = toy_factory_garden_patch_recurring_print(stdout, &patch_recurring);
+	}
+	if (followup_enabled && (err == 0)) {
+		err = toy_factory_garden_patch_followup_print(stdout, &patch_followup);
+	}
+	if ((renewal_mode != PATCH_RENEWAL_NONE) && (err == 0)) {
+		err = toy_factory_garden_patch_renewal_print(
+			stdout, &patch_renewal, renewal_mode == PATCH_RENEWAL_RECURRING);
 	}
 	if (budgeting) {
 		printf("\"budget_probe\":{\"version\":%u,\"node_limit\":%u,"
@@ -1379,8 +1577,39 @@ static int replay(int argc, char **argv, bool probing, bool tracing, bool wateri
 	}
 	if (export_ledger) {
 		putchar(',');
-		err = toy_factory_garden_landing_ledger_print_environmental_pair(
-			stdout, &history, &ledger, turnover_lineage, second_turnover_lineage);
+		if (sweep_enabled) {
+			uint32_t ids[TOY_FACTORY_GARDEN_PATCH_MAX_VICTIMS +
+				     TOY_FACTORY_GARDEN_RECURRING_MAX_VICTIMS +
+				     TOY_FACTORY_GARDEN_PATCH_FOLLOWUP_MAX_VICTIMS +
+				     TOY_FACTORY_GARDEN_PATCH_RENEWAL_MAX_VICTIMS];
+			size_t count = 0U;
+			for (uint8_t i = 0U; i < patch_sweep.count; ++i) {
+				for (uint8_t j = 0U; j < patch_sweep.events[i].count; ++j) {
+					ids[count++] = patch_sweep.events[i].victims[j].lineage;
+				}
+			}
+			for (uint8_t i = 0U; i < patch_recurring.count; ++i) {
+				for (uint8_t j = 0U; j < patch_recurring.events[i].count; ++j) {
+					ids[count++] = patch_recurring.events[i].victims[j].lineage;
+				}
+			}
+			for (uint8_t i = 0U; i < patch_followup.count; ++i) {
+				for (uint8_t j = 0U; j < patch_followup.events[i].count; ++j) {
+					ids[count++] = patch_followup.events[i].victims[j].lineage;
+				}
+			}
+			for (uint8_t i = 0U; i < patch_renewal.count; ++i) {
+				for (uint8_t j = 0U; j < patch_renewal.events[i].count; ++j) {
+					ids[count++] = patch_renewal.events[i].victims[j].lineage;
+				}
+			}
+			err = toy_factory_garden_landing_ledger_print_environmental_ids(
+				stdout, &history, &ledger, ids, count);
+		} else {
+			err = toy_factory_garden_landing_ledger_print_environmental_pair(
+				stdout, &history, &ledger, turnover_lineage,
+				second_turnover_lineage);
+		}
 	}
 	puts("}");
 	if ((err == 0) && (replacement_stream != NULL)) {

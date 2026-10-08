@@ -5,6 +5,10 @@
 /build-host-uptake-limit-wicking/
 /build-host-late-dispersal/
 /build-host-late-dispersal-wicking/
+/build-host-seed-cursor/
+/build-host-competitive-renewal/
+/build-host-seed-wait/
+/build-host-patch-recurring/
 /build-host-profile/
 /build-host-player/
 /build-pio/

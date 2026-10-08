@@ -52,6 +52,12 @@ int toy_factory_garden_landing_ledger_print_environmental_pair(
 	FILE *stream, const struct toy_factory_garden_landing_ledger *ledger,
 	const struct toy_factory_garden_lifetimes *lifetimes, uint32_t first_id,
 	uint32_t second_id);
+/* General imposed-death set. Reject duplicates/invalid causes before printing.
+ * Empty input preserves the ordinary export. All IDs must be nonzero.
+ */
+int toy_factory_garden_landing_ledger_print_environmental_ids(
+	FILE *stream, const struct toy_factory_garden_landing_ledger *ledger,
+	const struct toy_factory_garden_lifetimes *lifetimes, const uint32_t *ids, size_t count);
 
 /* One production-phase row per ecology step, including no-replacement rows. */
 int toy_factory_garden_landing_replacements_print(FILE *stream, uint32_t tick,

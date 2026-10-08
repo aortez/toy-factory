@@ -84,7 +84,7 @@ class ToolTests(unittest.TestCase):
             invalid = command.copy()
             invalid[3] = value
             self.native(*invalid, valid=False)
-        for value in ("", "-1", "1228801", "4294967296", "1x"):
+        for value in ("", "-1", "1966081", "4294967296", "1x"):
             invalid = command.copy()
             invalid[5] = value
             self.native(*invalid, valid=False)
@@ -112,7 +112,7 @@ class ToolTests(unittest.TestCase):
 
     def test_followup_horizon_and_trace_boundaries(self):
         model, _ = self.reference()
-        stop = 320 * 3840
+        stop = 512 * 3840
         trace = self.root / "adult.jsonl"
         command = ["replay", model, "rainfed", "0xffffffff", "--ticks", str(stop),
                    "--climate", "seasonal", "--ledger", "--adult-trace", trace,

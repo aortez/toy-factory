@@ -76,6 +76,25 @@ class HostGardenDefaultsTest(unittest.TestCase):
                 for options in ([f"-DTOY_FACTORY_GARDEN_{name}=ON" for name in enabled], default_options()):
                     result = subprocess.run([*command, *options], capture_output=True, text=True, timeout=60)
                     self.assertEqual(result.returncode, 0, result.stderr)
+                    flags = dict(re.findall(r"^(TOY_FACTORY_GARDEN_\w+):BOOL=(\w+)$",
+                                            (Path(tmp) / "CMakeCache.txt").read_text(), re.MULTILINE))
+                    has_replay = not any(flags['TOY_FACTORY_GARDEN_' + name] == 'ON'
+                                         for name in ('COMBINED_EXPERIMENT', 'WATER_HEADROOM',
+                                                      'SEASONAL_SEED_BANK'))
+                    suites = {name: ['OfflineTests'] for name in
+                              ('recurring-fresh', 'recurring-followup', 'patch-recurring', 'seed-wait')}
+                    suites['seed-cursor'] = ['OracleTests', 'CapturedTests']
+                    listed = subprocess.run(['ctest', '--test-dir', tmp, '--show-only=json-v1', '-R',
+                        '^garden-landing-(' + '|'.join(suites) + ')$'],
+                        capture_output=True, text=True, timeout=30)
+                    self.assertEqual(listed.returncode, 0, listed.stderr)
+                    tests = {t['name']: t['command'] for t in json.loads(listed.stdout)['tests']}
+                    self.assertEqual(set(tests), {'garden-landing-' + name for name in suites})
+                    for name, offline in suites.items():
+                        args = tests['garden-landing-' + name]
+                        i = args.index('--build')
+                        self.assertEqual(args[i + 1], tmp)
+                        self.assertEqual(args[i + 2:], [] if has_replay else offline)
                 flags = re.findall(r"^(TOY_FACTORY_GARDEN_\w+):BOOL=(\w+)$",
                                    (Path(tmp) / "CMakeCache.txt").read_text(), re.MULTILINE)
                 self.assertEqual({f"-D{name}={value}" for name, value in flags}, set(default_options()))

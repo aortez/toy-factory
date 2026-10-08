@@ -41,6 +41,23 @@ static int validate(const struct toy_factory_garden_landing_growth_run *run)
 	      0U))) {
 		return -ERANGE;
 	}
+	const struct toy_factory_garden_seed_cursor *const cursor = &run->seed_cursor;
+	if ((toy_factory_garden_seed_wait_validate(&run->seed_wait, &run->base.world) != 0) ||
+	    ((run->seed_wait.after != 0U) &&
+	     ((cursor->after == 0U) || (run->seed_wait.after <= cursor->after)))) {
+		return -ERANGE;
+	}
+	if ((cursor->after == 0U && cursor->last_buyer != 0U) ||
+	    (cursor->after != 0U &&
+	     ((run->placement.version == 0U) || (run->placement.enabled != 1U) ||
+	      (run->seed_order_after != 0U) || (run->placement.replace_after != 0U) ||
+	      (cursor->after % (PICOSYSTEM_GARDEN_ECOLOGY_TICK_DIVISOR *
+				PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR) !=
+	       0U) ||
+	      (cursor->last_buyer > run->base.world.lineage_sequence) ||
+	      (run->base.world.logic_tick_count <= cursor->after && cursor->last_buyer != 0U)))) {
+		return -ERANGE;
+	}
 	if ((toy_factory_garden_root_allocation_validate(&run->root_allocation, &run->root_choice,
 							 run->budget_mode) != 0) ||
 	    (toy_factory_garden_root_choice_validate(&run->root_choice) != 0) ||
@@ -207,7 +224,8 @@ int toy_factory_garden_landing_growth_step(struct toy_factory_garden_landing_gro
 		   : toy_factory_garden_landing_run_step_growth_internal(
 			     &run->base, run->node_limit, run->budget_mode, deaths, seeds,
 			     resources, NULL, run->placement.version ? &run->placement : NULL, NULL,
-			     run->seed_order_after, &run->root_choice, &run->root_allocation);
+			     run->seed_order_after, &run->root_choice, &run->root_allocation,
+			     &run->seed_cursor, &run->seed_wait);
 }
 
 int toy_factory_garden_landing_growth_step_placement(
@@ -225,7 +243,8 @@ int toy_factory_garden_landing_growth_step_placement(
 		   : toy_factory_garden_landing_run_step_growth_internal(
 			     &run->base, run->node_limit, run->budget_mode, deaths, seeds,
 			     resources, NULL, &run->placement, placement, run->seed_order_after,
-			     &run->root_choice, &run->root_allocation);
+			     &run->root_choice, &run->root_allocation, &run->seed_cursor,
+			     &run->seed_wait);
 }
 
 int toy_factory_garden_landing_growth_step_observed(
@@ -243,7 +262,8 @@ int toy_factory_garden_landing_growth_step_observed(
 		   : toy_factory_garden_landing_run_step_growth_internal(
 			     &run->base, run->node_limit, run->budget_mode, deaths, seeds,
 			     resources, observer, run->placement.version ? &run->placement : NULL,
-			     NULL, run->seed_order_after, &run->root_choice, &run->root_allocation);
+			     NULL, run->seed_order_after, &run->root_choice, &run->root_allocation,
+			     &run->seed_cursor, &run->seed_wait);
 }
 
 int toy_factory_garden_landing_budget_init(const struct picosystem_garden_world *world,
@@ -489,6 +509,19 @@ int toy_factory_garden_landing_growth_hash(const struct toy_factory_garden_landi
 			}
 		}
 	}
-	*hash = h;
+	if (run->seed_cursor.after != 0U) {
+		const uint8_t tag[] = {'G', 'S', 'C', '1'};
+		const uint32_t words[] = {h, run->seed_cursor.after, run->seed_cursor.last_buyer};
+		h = UINT32_C(2166136261);
+		for (size_t i = 0U; i < sizeof(tag); ++i) {
+			h = (h ^ tag[i]) * UINT32_C(16777619);
+		}
+		for (size_t i = 0U; i < sizeof(words) / sizeof(words[0]); ++i) {
+			for (uint8_t byte = 0U; byte < 4U; ++byte) {
+				h = (h ^ (uint8_t)(words[i] >> (byte * 8U))) * UINT32_C(16777619);
+			}
+		}
+	}
+	*hash = toy_factory_garden_seed_wait_hash(&run->seed_wait, h);
 	return 0;
 }

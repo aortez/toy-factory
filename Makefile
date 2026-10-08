@@ -133,6 +133,31 @@ GARDEN_LANDING_SECOND_OPENING_AUDIT ?= artifacts/garden-landing-second-opening-a
 GARDEN_LANDING_OPENING_OPPORTUNITIES_OUT ?= artifacts/garden-landing-opening-opportunities-v1.json.gz
 GARDEN_LANDING_SEED_REPLACEMENT_OUT ?= artifacts/garden-landing-seed-replacement-v1
 GARDEN_LANDING_SEED_REPLACEMENT_CAPTURE ?= artifacts/garden-landing-seed-replacement-v1.json.gz
+GARDEN_LANDING_SEED_COMPETITION_OUT ?= artifacts/garden-landing-seed-competition-v1.json.gz
+GARDEN_LANDING_PATCH_SWEEP_OUT ?= artifacts/garden-landing-patch-sweep-v1
+GARDEN_LANDING_PATCH_SWEEP_CAPTURE ?= artifacts/garden-landing-patch-sweep-v1.json.gz
+GARDEN_LANDING_PATCH_CONFIRMATION_OUT ?= artifacts/garden-landing-patch-confirmation-v1
+GARDEN_LANDING_PATCH_CONFIRMATION_CAPTURE ?= artifacts/garden-landing-patch-confirmation-v1.json.gz
+GARDEN_LANDING_PATCH_FOLLOWUP_OUT ?= artifacts/garden-landing-patch-followup-v1
+GARDEN_LANDING_PATCH_FOLLOWUP_CAPTURE ?= artifacts/garden-landing-patch-followup-v1.json.gz
+GARDEN_LANDING_PATCH_RENEWAL_OUT ?= artifacts/garden-landing-patch-renewal-v1.json.gz
+GARDEN_LANDING_SEED_CURSOR_OUT ?= artifacts/garden-landing-seed-cursor-v1
+GARDEN_LANDING_SEED_CURSOR_CAPTURE ?= artifacts/garden-landing-seed-cursor-v1.json.gz
+GARDEN_LANDING_COMPETITIVE_RENEWAL_OUT ?= artifacts/garden-landing-competitive-renewal-v1
+GARDEN_LANDING_COMPETITIVE_RENEWAL_CAPTURE ?= artifacts/garden-landing-competitive-renewal-v1.json.gz
+GARDEN_LANDING_RECRUIT_SEEDS_OUT ?= artifacts/garden-landing-recruit-seeds-v1.json.gz
+GARDEN_LANDING_SEED_HANDOFF_OUT ?= artifacts/garden-landing-seed-handoff-v1
+GARDEN_LANDING_SEED_HANDOFF_RESULTS ?= artifacts/garden-landing-seed-handoff-v1.json.gz
+GARDEN_LANDING_NONBUYER_OUT ?= artifacts/garden-landing-nonbuyer-v1
+GARDEN_LANDING_NONBUYER_RESULTS ?= artifacts/garden-landing-nonbuyer-v1.json.gz
+GARDEN_LANDING_SEED_WAIT_OUT ?= artifacts/garden-landing-seed-wait-v1
+GARDEN_LANDING_SEED_WAIT_CAPTURE ?= artifacts/garden-landing-seed-wait-v1.json.gz
+GARDEN_LANDING_PATCH_RECURRING_OUT ?= artifacts/garden-landing-patch-recurring-v1
+GARDEN_LANDING_PATCH_RECURRING_CAPTURE ?= artifacts/garden-landing-patch-recurring-v1.json.gz
+GARDEN_LANDING_RECURRING_FOLLOWUP_OUT ?= artifacts/garden-landing-recurring-followup-v1
+GARDEN_LANDING_RECURRING_FOLLOWUP_CAPTURE ?= artifacts/garden-landing-recurring-followup-v1.json.gz
+GARDEN_LANDING_RECURRING_FRESH_OUT ?= artifacts/garden-landing-recurring-fresh-v1
+GARDEN_LANDING_RECURRING_FRESH_CAPTURE ?= artifacts/garden-landing-recurring-fresh-v1.json.gz
 GARDEN_LANDING_DAWN_AUDIT_OUT ?= artifacts/garden-landing-dawn-audit-v1
 GARDEN_LANDING_ARBITRATION_ARGS ?=
 GARDEN_AUDIT_BUNDLE ?= artifacts/garden-experiment
@@ -638,6 +663,97 @@ host-probe-landing-seed-replacement: image ## Test paid own-seed replacement (20
 	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_seed_replacement.py \
 		--collect "$(GARDEN_LANDING_SEED_REPLACEMENT_OUT)" --out "$(GARDEN_LANDING_SEED_REPLACEMENT_CAPTURE)" \
 		--original "$(GARDEN_LANDING_SECOND_OPENING_OUT)"
+
+.PHONY: host-audit-landing-seed-competition
+host-audit-landing-seed-competition: ## Audit pending seeds and opening capacity (offline; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_seed_competition.py \
+		--bundle "$(GARDEN_LANDING_SEED_REPLACEMENT_OUT)" --out "$(GARDEN_LANDING_SEED_COMPETITION_OUT)"
+
+.PHONY: host-probe-landing-patch-sweep
+host-probe-landing-patch-sweep: image ## Test fixed repeated spatial dieback (25 calls; fresh outputs)
+	$(COMPOSE) run --rm -T firmware bash scripts/container/host-landing-patch-sweep-build.sh
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_patch_sweep.py \
+		--collect "$(GARDEN_LANDING_PATCH_SWEEP_OUT)" --out "$(GARDEN_LANDING_PATCH_SWEEP_CAPTURE)"
+
+.PHONY: host-continue-landing-patch-sweep
+host-continue-landing-patch-sweep: ## Complete the pinned interrupted sweep (13 missing calls; no rebuild)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_patch_sweep_continue.py \
+		--continue-bundle "$(GARDEN_LANDING_PATCH_SWEEP_OUT)" --out "$(GARDEN_LANDING_PATCH_SWEEP_CAPTURE)"
+
+.PHONY: host-confirm-landing-patch-sweep
+host-confirm-landing-patch-sweep: ## Confirm dieback on six fresh seed/layout pairs (26 calls; frozen binary)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_patch_confirmation.py \
+		--collect "$(GARDEN_LANDING_PATCH_CONFIRMATION_OUT)" --out "$(GARDEN_LANDING_PATCH_CONFIRMATION_CAPTURE)"
+
+.PHONY: host-followup-landing-patch-sweep
+host-followup-landing-patch-sweep: ## Follow six dieback pairs to day 352 (36 calls; no added events)
+	$(COMPOSE) run --rm -T firmware bash scripts/container/host-landing-patch-followup-build.sh
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_patch_followup.py \
+		--collect "$(GARDEN_LANDING_PATCH_FOLLOWUP_OUT)" --out "$(GARDEN_LANDING_PATCH_FOLLOWUP_CAPTURE)"
+
+.PHONY: host-audit-landing-patch-renewal
+host-audit-landing-patch-renewal: ## Audit saved day-352 winter deaths and recruitment gates (offline; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_patch_renewal.py \
+		--bundle "$(GARDEN_LANDING_PATCH_FOLLOWUP_OUT)" --out "$(GARDEN_LANDING_PATCH_RENEWAL_OUT)"
+
+.PHONY: host-probe-landing-seed-cursor
+host-probe-landing-seed-cursor: ## Compare purchase-driven seed priority (36 calls; host only; fresh output)
+	$(COMPOSE) run --rm -T firmware bash scripts/container/host-landing-seed-cursor-build.sh
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_seed_cursor.py \
+		--collect "$(GARDEN_LANDING_SEED_CURSOR_OUT)" --out "$(GARDEN_LANDING_SEED_CURSOR_CAPTURE)"
+
+.PHONY: host-follow-landing-competitive-renewal
+host-follow-landing-competitive-renewal: ## Follow competitive renewal through day 512 (60 calls; fresh output)
+	$(COMPOSE) run --rm -T firmware bash scripts/container/host-landing-competitive-renewal-build.sh
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_competitive_renewal_capture.py \
+		--collect "$(GARDEN_LANDING_COMPETITIVE_RENEWAL_OUT)" --out "$(GARDEN_LANDING_COMPETITIVE_RENEWAL_CAPTURE)"
+
+.PHONY: host-audit-landing-recruit-seeds
+host-audit-landing-recruit-seeds: ## Audit saved recruit seeds and living headcount (offline; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_recruit_seeds.py \
+		--out "$(GARDEN_LANDING_RECRUIT_SEEDS_OUT)"
+
+.PHONY: host-trace-landing-seed-handoff host-audit-landing-seed-handoff
+host-trace-landing-seed-handoff: ## Trace the frozen seed handoff (two replays; 66-step logs; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_seed_handoff_capture.py \
+		--out "$(GARDEN_LANDING_SEED_HANDOFF_OUT)"
+
+host-audit-landing-seed-handoff: ## Verify the completed seed handoff bundle (offline; fresh export)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_seed_handoff.py \
+		--bundle "$(GARDEN_LANDING_SEED_HANDOFF_OUT)" --out "$(GARDEN_LANDING_SEED_HANDOFF_RESULTS)"
+
+.PHONY: host-trace-landing-nonbuyer host-audit-landing-nonbuyer
+.PHONY: host-compare-landing-seed-wait
+.PHONY: host-compare-landing-patch-recurring
+.PHONY: host-followup-landing-recurring
+.PHONY: host-compare-landing-recurring-fresh
+host-compare-landing-recurring-fresh: ## Compare fresh winter renewal pairs to day 608 (66 calls; fresh output)
+	$(COMPOSE) run --rm -T firmware bash scripts/container/host-landing-patch-recurring-build.sh
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_recurring_fresh.py \
+		--collect "$(GARDEN_LANDING_RECURRING_FRESH_OUT)" --out "$(GARDEN_LANDING_RECURRING_FRESH_CAPTURE)"
+
+host-followup-landing-recurring: ## Follow winter offspring to day 544 (24 calls; host only; fresh output)
+	$(COMPOSE) run --rm -T firmware bash scripts/container/host-landing-patch-recurring-build.sh
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_recurring_followup.py \
+		--collect "$(GARDEN_LANDING_RECURRING_FOLLOWUP_OUT)" --out "$(GARDEN_LANDING_RECURRING_FOLLOWUP_CAPTURE)"
+
+host-compare-landing-patch-recurring: ## Compare recurring winter openings (48 calls; host only; fresh output)
+	$(COMPOSE) run --rm -T firmware bash scripts/container/host-landing-patch-recurring-build.sh
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_patch_recurring.py \
+		--collect "$(GARDEN_LANDING_PATCH_RECURRING_OUT)" --out "$(GARDEN_LANDING_PATCH_RECURRING_CAPTURE)"
+
+host-compare-landing-seed-wait: ## Compare waiting-time purchase priority (48 calls; host only; fresh output)
+	$(COMPOSE) run --rm -T firmware bash scripts/container/host-landing-seed-wait-build.sh
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_seed_wait.py \
+		--collect "$(GARDEN_LANDING_SEED_WAIT_OUT)" --out "$(GARDEN_LANDING_SEED_WAIT_CAPTURE)"
+
+host-trace-landing-nonbuyer: ## Trace a frozen non-buyer's full life (two passive replays; fresh output)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_nonbuyer_capture.py \
+		--out "$(GARDEN_LANDING_NONBUYER_OUT)"
+
+host-audit-landing-nonbuyer: ## Audit saved reproduction gates and bank access (offline; fresh export)
+	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_nonbuyer.py \
+		--bundle "$(GARDEN_LANDING_NONBUYER_OUT)" --out "$(GARDEN_LANDING_NONBUYER_RESULTS)"
 
 host-audit-landing-root-direction: ## Explain saved first-day water and seed timing (offline; fresh output)
 	$(COMPOSE) run --rm -T firmware python3 sim/garden_landing_root_direction_audit.py \

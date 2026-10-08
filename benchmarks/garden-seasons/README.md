@@ -7,9 +7,108 @@ or recurring irrigation. Climate remains v1 (2–4-day drought); no tuning is pr
 Start with the [adult resources and renewal checkpoint](../../docs/garden-adult-resources-checkpoint.md)
 for the current scope, grouped findings, review order and limitations. This page
 is a detailed evidence index in investigation order, not a list of current tasks.
-The latest completed comparison is [paid seed replacement](landing-seed-replacement.md):
-two first recruits gain purchases but neither gains a child. Earlier reports'
-next-step proposals and test counts describe their own checkpoints.
+The latest [competitive-renewal follow-up](landing-competitive-renewal.md)
+completes all 60 planned calls through day 512. All twelve worlds pass population
+viability and retain existing species/families, but none passes sustained renewal.
+Cursor primary-cohort 32-day survivors are four versus two under fixed order;
+no post-day-384 recruit produces a child. The subsequent
+[offline recruit seed audit](landing-recruit-seeds.md) separates purchase access
+from establishment across all fifteen recruits. Two expired seeds face full
+living capacity throughout; a third remains spacing-blocked during a vacancy.
+The fourth leaves 63 unresolved checks before an older seed fills the same
+landing. The subsequent [passive handoff diagnostic](landing-seed-handoff.md)
+completes two exact frozen replays. The dead parent retains its slot and 32 nodes
+through all 63 checks, and the older seed consumes the opening in the reclamation
+step. All four expired cases now have sufficient capacity/spacing explanations;
+the pending seed remains censored. The subsequent
+[full-life non-buyer diagnostic](landing-nonbuyer.md) completes two exact replays:
+the 97-day-old recruit becomes fertile within one day but loses thirteen
+otherwise eligible openings to earlier buyers. Nine openings reach it while
+energy alone blocks purchase. The subsequent
+[waiting-time priority comparison](landing-seed-wait.md) completes all 48 calls.
+Primary-cohort 32-day survivors rise from four to five, but neither arm gains a
+child of any post-day-384 recruit or passes sustained renewal. Waiting priority
+adds two natural deaths and leaves one endpoint with seven plants instead of
+eight; all twelve worlds remain viable and retain baseline variety. All twelve
+new paired endpoint images and compact results are retained alongside the older
+24-frame panel. The subsequent [recurring winter comparison](landing-patch-recurring.md)
+completes all 48 calls with four additional spatial diebacks. Primary 32-day
+survivors rise from 4 to 25, and every treatment produces a child of a new
+recruit. Only two of six pass sustained renewal, so the broad-signal gate fails.
+All populations stay viable and retain baseline variety, but the hazard kills
+28 plants, two young, and natural deaths rise from 8 to 14. Six parent–child
+links have living children too young to assess. All twelve new endpoint images
+and compact receipts are retained. The subsequent
+[day-544 offspring follow-up](landing-recurring-followup.md) resolves all six
+links with five established children and one killed by the next patch at age
+29.133 days. Ten of eleven late-born survivors establish. All six populations
+stay viable and end at eight, but the interval has eight imposed deaths,
+three natural deaths and one founder-family loss after its last seed expires.
+All baseline species remain represented. All 24 calls and paired images verify;
+the earlier 2-of-6 result stays closed. The subsequent
+[fresh-weather comparison](landing-recurring-fresh.md) completes all 66 calls
+with unchanged model/cadence and prospectively wider 64-day birth windows.
+All six recurring gardens pass renewal versus none of the stopped controls;
+32-day primary survivors are 44 of 52 versus two of two, with 21 established
+parent–child links. All populations remain viable, but there are 50 imposed
+deaths, five young; seven natural deaths versus one; and one founder-family
+extinction. All six fresh gardens were already flower-only before the arms
+diverged. This passes the declared renewal screen, not mixed-species
+qualification. All 24 paired images and compact receipts verify. Next review
+this checkpoint and propose a separate offline species-loss audit; no rule,
+controller or training objective is promoted.
+
+The preceding [neighbor-shade attribution](landing-cursor-shade.md) confirms that
+the new neighbor accounts for all 30 missing winter energy units in the cursor
+comparison's extra adult death. Two passive replays reproduce the original
+results and pixels; omitting only that neighbor's shade restores the paired
+income at every sampled pre-death step. This confirms local competition, not
+a simulated rescue or long-run viability. It motivated the
+[competitive-renewal protocol](landing-competitive-renewal-protocol.md), which
+allows individual deaths while assessing population-level outcomes. The original
+cursor experiment's failed harm gate is unchanged.
+The preceding [offline adult diagnosis](landing-cursor-energy.md) rules out
+an unrecovered seed expense and retains the matched resource budgets.
+The preceding [purchase-driven seed priority comparison](landing-seed-cursor.md) has
+six offspring in the fixed day-320-to-352 birth cohort survive 32 days versus
+zero under fixed order. Three gardens improve, but one extra pre-existing adult
+dies energy-short, failing the declared harm gate. All 36 calls and twelve
+endpoint images are retained. No experimental rule is promoted.
+The preceding [offline renewal audit](landing-patch-renewal.md) found:
+the failed replacement runs out of energy in winter with ample water, while
+unused space is separated into capacity, spacing and queued-parent reach
+barriers. Ordered seed-bank access excludes some otherwise eligible parents.
+The [day 352 follow-up](landing-patch-followup.md) still has only one new birth,
+which dies young. The [fresh-condition confirmation](landing-patch-confirmation.md) remains
+the unchanged six-pair day 320 comparison, including its harms and species loss.
+Earlier reports' next-step proposals and test counts describe their own
+checkpoints.
+
+The preceding [pending-seed competition audit](landing-seed-competition.md)
+reanalyzes all ten saved histories without simulation. Mature seeds sometimes
+have alternative landings, but each opening admits at most one plant; the two
+new recruit seeds are still dormant at refill. The subsequent
+[fixed environmental turnover test](landing-patch-sweep.md) completes all 25
+calls: every treatment gains 8–11 qualifying pairs versus zero in controls,
+with four-plant established ancestry chains and no empty worlds. The approved
+continuation preserves the original twelve calls and recorded auditor correction.
+Repeats, observer-free checks, raw accounting and all ten endpoint images verify.
+The [confirmation](landing-patch-confirmation.md) adds three new seeds and both
+layouts, with the original W2 recipe unchanged. All 26 calls verify; every
+treatment gains 9–10 pairs versus zero in controls. Established chains span
+two to four plants, with deeper births sometimes still censored. All twelve
+frames and complete resource audits are retained. The [follow-up](landing-patch-followup.md)
+completes 36 calls with no additional sweep events: established pairs rise from
+56 to 64 through maturation of existing offspring, not new durable recruitment.
+The [saved-trace audit](landing-patch-renewal.md) now explains that failure and
+the remaining gaps across all twelve histories. The subsequent
+[seed-bank cursor comparison](landing-seed-cursor.md) improves recruitment but
+retains an adult-survival regression. The [paired resource diagnosis](landing-cursor-energy.md)
+isolates the terminal income deficit, and the [passive shadow diagnostic](landing-cursor-shade.md)
+attributes it exactly to the new neighbor. No protection rule, gate revision
+or training follows automatically.
+[Storage compaction](../../docs/artifact-storage.md)
+reclaims 257.7 GiB from verified duplicate traces; compressed evidence remains.
 
 The [landing-aware renewal training pilot](landing-training.md) completes the
 63-candidate off/current/history comparison with three search seeds, exact
