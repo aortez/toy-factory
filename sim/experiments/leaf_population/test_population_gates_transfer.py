@@ -10,11 +10,13 @@ import unittest
 from unittest import mock
 import subprocess
 
+import local_results
 import population_gates_transfer as transfer
 
 follow, gates = transfer.follow, transfer.gates
 
 
+@local_results.needs('leaf-population-results.json.gz')
 class TransferTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -79,6 +81,7 @@ class TransferTests(unittest.TestCase):
             self.assertFalse(output.exists())
 
 
+@local_results.needs('leaf-population-gates-transfer-results.json.gz')
 class PublishedTransferTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -12,6 +12,7 @@ import zlib
 from unittest import mock
 
 import collect_population as collect
+import local_results
 import population_evidence as evidence
 import population_score as score
 import prepare
@@ -20,6 +21,7 @@ ARCHIVE = collect.ROOT / 'benchmarks/garden-seasons/leaf-population-results.json
 ARCHIVE_SHA = '3aae48b92ed9787f9dc1601052330cdbf96ed9d72f3d845e0b9932d50112af49'
 
 
+@local_results.needs('leaf-population-results.json.gz')
 class EvidenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -10,11 +10,13 @@ import tempfile
 import unittest
 from unittest import mock
 
+import local_results
 import population_gates_panel as panel
 
 follow, gates, score = panel.follow, panel.gates, panel.score
 
 
+@local_results.needs('leaf-population-results.json.gz')
 class PanelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -89,6 +91,7 @@ class PanelTests(unittest.TestCase):
             self.assertFalse(output.exists())
 
 
+@local_results.needs('leaf-population-gates-panel-results.json.gz')
 class PublishedPanelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

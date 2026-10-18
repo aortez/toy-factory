@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import local_results
 import population_foliage as foliage
 
 
@@ -145,6 +146,7 @@ class FoliageTests(unittest.TestCase):
         self.assertIsNone(foliage.summary([row])['weighted_condition_fraction'])
 
 
+@local_results.needs('leaf-population-foliage-results.json.gz')
 class PublishedFoliageTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import local_results
 import population_purchases as purchase
 
 
@@ -103,6 +104,7 @@ class PurchaseTests(unittest.TestCase):
                 stage.adapt(wrong)
 
 
+@local_results.needs('leaf-population-purchases-results.json.gz')
 class PublishedPurchaseTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

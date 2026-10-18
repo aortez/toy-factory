@@ -25,3 +25,8 @@ __pycache__/
 *.swp
 *.swo
 .DS_Store
+
+# Experiment results stay local; reports name the files and how to reproduce them.
+/benchmarks/**/*.json.gz
+/benchmarks/garden-seasons/*.json
+/benchmarks/garden-seasons/frames/**/*.png

@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import local_results
 import population_budget as budget
 
 
@@ -145,6 +146,7 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(funded['visit']['blockers'], 4)
 
 
+@local_results.needs('leaf-population-budget-results.json.gz')
 class PublishedBudgetTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -6,6 +6,7 @@ import subprocess
 import unittest
 from unittest import mock
 
+import local_results
 import population_dawn as dawn
 
 PUBLISHED = dawn.collect.ROOT / 'benchmarks/garden-seasons/leaf-population-dawn.json'
@@ -82,6 +83,7 @@ class DawnAccountingTests(unittest.TestCase):
             dawn.compare_days(cases)
 
 
+@local_results.needs('leaf-population-dawn.json', 'leaf-population-reproduction-results.json.gz')
 class PublishedDawnTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -9,6 +9,7 @@ import unittest
 from unittest import mock
 
 import collect_population as collect
+import local_results
 import population_losses as losses
 import population_score as score
 from test_population_analysis import history
@@ -113,6 +114,7 @@ class LossTests(unittest.TestCase):
             losses.panel({})
 
 
+@local_results.needs('leaf-population-losses.json', 'leaf-population-results.json.gz')
 class PublishedLossTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

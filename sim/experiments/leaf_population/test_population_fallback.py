@@ -10,9 +10,11 @@ import tempfile
 import unittest
 from unittest import mock
 
+import local_results
 import population_fallback as fallback
 
 
+@local_results.needs('leaf-population-purchases-results.json.gz')
 class FallbackTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -111,6 +113,7 @@ class FallbackTests(unittest.TestCase):
                     adapt(wrong)
 
 
+@local_results.needs('leaf-population-fallback-results.json.gz')
 class PublishedFallbackTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

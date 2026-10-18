@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import local_results
 import population_gates_early as early
 
 PUBLISHED = early.collect.ROOT / 'benchmarks/garden-seasons/leaf-population-gates-early.json'
@@ -65,6 +66,7 @@ class EarlyAccountingTests(unittest.TestCase):
                 early.archive(path, early.ARCHIVE_SHA, early.panel.ARCHIVE_SCHEMA)
 
 
+@local_results.needs('leaf-population-gates-early.json', 'leaf-population-gates-panel-results.json.gz')
 class PublishedEarlyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

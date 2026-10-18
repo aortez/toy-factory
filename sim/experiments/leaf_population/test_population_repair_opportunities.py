@@ -9,6 +9,7 @@ import unittest
 from unittest import mock
 import zlib
 
+import local_results
 import population_repair_opportunities as repair
 
 PUBLISHED = repair.collect.ROOT / 'benchmarks/garden-seasons/leaf-population-repair-opportunities.json'
@@ -146,6 +147,7 @@ class RepairOpportunityTests(unittest.TestCase):
                 self.assertNotEqual((start + phase + 256 + lineage) % count, first)
 
 
+@local_results.needs('leaf-population-foliage-results.json.gz', 'leaf-population-repair-opportunities.json')
 class PublishedRepairOpportunityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

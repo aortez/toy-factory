@@ -12,6 +12,7 @@ from unittest import mock
 import subprocess
 import zlib
 
+import local_results
 import population_shadow as shadow
 
 
@@ -106,6 +107,7 @@ class ShadowTests(unittest.TestCase):
                 self.assertFalse(target.exists())
 
 
+@local_results.needs('leaf-population-shadow-results.json.gz', 'leaf-population-trace-results.json.gz')
 class PublishedShadowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -10,9 +10,11 @@ import unittest
 from unittest import mock
 import subprocess
 
+import local_results
 import population_gates as gates
 
 
+@local_results.needs('leaf-population-trace-results.json.gz')
 class GateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -81,6 +83,7 @@ class GateTests(unittest.TestCase):
                 self.assertFalse(output.exists())
 
 
+@local_results.needs('leaf-population-gates-results.json.gz', 'leaf-population-trace-results.json.gz')
 class PublishedGateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

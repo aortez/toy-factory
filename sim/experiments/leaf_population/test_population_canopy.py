@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import local_results
 import population_canopy as canopy
 from test_population_foliage import fixture as foliage_fixture
 
@@ -120,6 +121,7 @@ class CanopyTests(unittest.TestCase):
                 stage.adapt(bad)
 
 
+@local_results.needs('leaf-population-canopy-results.json.gz')
 class PublishedCanopyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

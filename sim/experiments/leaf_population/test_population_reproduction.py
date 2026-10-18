@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import local_results
 import population_reproduction as access
 
 
@@ -103,6 +104,7 @@ class ReproductionTests(unittest.TestCase):
                 access.validate_trace(broken, final)
 
 
+@local_results.needs('leaf-population-reproduction-results.json.gz')
 class PublishedReproductionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

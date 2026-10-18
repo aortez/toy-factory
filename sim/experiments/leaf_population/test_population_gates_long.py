@@ -8,10 +8,12 @@ import unittest
 from unittest import mock
 import subprocess
 
+import local_results
 import population_gates_long as follow
 
 
 class FollowupTests(unittest.TestCase):
+    @local_results.needs('leaf-population-gates-results.json.gz')
     def test_fixed_plan_and_authenticated_anchor(self):
         self.assertEqual((follow.WORKERS, follow.CALL_SECONDS, follow.BUDGET_SECONDS), (2, 180, 900))
         self.assertEqual(follow.DAYS, (0, 32, 192, 208, 220, 222, 224, 256, 384, 512, 608))
@@ -45,6 +47,7 @@ class FollowupTests(unittest.TestCase):
                 self.assertFalse(output.exists())
 
 
+@local_results.needs('leaf-population-gates-long-results.json.gz', 'leaf-population-gates-results.json.gz')
 class PublishedFollowupTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

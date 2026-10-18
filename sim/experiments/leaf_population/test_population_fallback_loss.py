@@ -6,6 +6,7 @@ import subprocess
 import unittest
 from unittest import mock
 
+import local_results
 import population_fallback_loss as loss
 
 PUBLISHED = loss.collect.ROOT / 'benchmarks/garden-seasons/leaf-population-fallback-loss.json'
@@ -87,6 +88,7 @@ class LossAccountingTests(unittest.TestCase):
             loss.seed_bank(crowded, 0, 240)
 
 
+@local_results.needs('leaf-population-fallback-loss.json', 'leaf-population-fallback-results.json.gz')
 class PublishedLossTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

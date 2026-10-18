@@ -13,6 +13,7 @@ import unittest
 from unittest import mock
 from xml.etree import ElementTree
 
+import local_results
 import population_sweep as sweep
 import sweep_evidence as evidence
 import sweep_figure
@@ -158,6 +159,7 @@ class SweepTests(unittest.TestCase):
         self.assertFalse(sweep_figure.crosses((0, 0, 10, 10), ((-5, 12), (15, 12))))
 
 
+@local_results.needs('leaf-population-results.json.gz', 'leaf-population-threshold-sweep-results.json.gz')
 class SweepEvidenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

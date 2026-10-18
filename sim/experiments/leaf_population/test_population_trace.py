@@ -9,6 +9,7 @@ import unittest
 from unittest import mock
 import subprocess
 
+import local_results
 import population_trace as trace
 
 
@@ -75,6 +76,7 @@ class TraceTests(unittest.TestCase):
                 self.assertFalse(target.exists())
 
 
+@local_results.needs('leaf-population-trace-results.json.gz')
 class PublishedTraceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

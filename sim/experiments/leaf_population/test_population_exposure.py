@@ -8,6 +8,7 @@ from unittest import mock
 from xml.etree import ElementTree
 
 import exposure_figure
+import local_results
 import population_exposure as exposure
 from test_population_foliage import fixture
 
@@ -76,6 +77,7 @@ class ExposureTests(unittest.TestCase):
                 exposure.attribute(broken)
 
 
+@local_results.needs('leaf-population-exposure.json', 'leaf-population-foliage-results.json.gz')
 class PublishedExposureTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
