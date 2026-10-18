@@ -12,6 +12,8 @@
 #define RESEARCH_FRAME_BYTES      115200U
 #define RESEARCH_FAMILY_MAX_NODES 512U
 #define RESEARCH_FAMILY_MAX_SEEDS 16U
+#define RESEARCH_MODEL_CUSTOM     3U
+#define RESEARCH_MODEL_FILE_BYTES 172U
 
 enum research_scope {
 	RESEARCH_SCOPE_FAMILY = 0,
@@ -20,10 +22,15 @@ enum research_scope {
 
 struct research_options {
 	uint32_t seed;
-	uint8_t model;   /* 0=fixed wear, 1=Search 1, 2=Search 2 */
+	uint8_t model;   /* 0=fixed wear, 1=Search 1, 2=Search 2, 3=custom_model. */
 	uint8_t layout;  /* 0=rainfed, 1=rainfed-crowded */
 	uint8_t founder; /* 1..founders for family scope; zero for population scope. */
 	enum research_scope scope;
+	/* TLF1 repair model file, used only by RESEARCH_MODEL_CUSTOM and copied with
+	 * these options. Named models run only on the documented seeds; a custom
+	 * model accepts any seed, so its caller fixes the conditions.
+	 */
+	uint8_t custom_model[RESEARCH_MODEL_FILE_BYTES];
 };
 
 struct research_status {

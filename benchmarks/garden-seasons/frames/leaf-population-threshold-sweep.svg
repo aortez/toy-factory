@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="660" viewBox="0 0 960 660" role="img">
+<title>No light setting matches Search 1’s renewal with fixed wear’s survival</title>
+<desc>Each point averages 32 whole-population gardens through day 1376. Two blue paths start at fixed wear: the solid one makes the repair light gate stricter, up to never repairing; the dashed one makes it more permissive, down to repairing in darkness. Orange diamonds are the learned finalists. The shaded corner meets both renewal and survival criteria. Vertical whiskers are 95% bootstrap intervals over weather seeds.</desc>
+<rect width="960" height="660" fill="#fcfcfb"/>
+<g font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" fill="#52514e">
+<text x="32.0" y="40.0" font-size="21" text-anchor="start" font-weight="600" fill="#0b0b0b">No light setting matches Search 1’s renewal with fixed wear’s survival</text>
+<text x="32.0" y="66.0" font-size="13" text-anchor="start" font-weight="normal" fill="#52514e">Whole populations on 16 fresh weather seeds × 2 layouts through day 1376; each point averages 32 gardens.</text>
+<text x="32.0" y="86.0" font-size="13" text-anchor="start" font-weight="normal" fill="#52514e">Point labels give the minimum light at which a policy repairs; the condition gate stays at 192.</text>
+<path d="M32,118 H58" stroke="#2a78d6" stroke-width="2"/><circle cx="45" cy="118" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="66.0" y="122.0" font-size="13" text-anchor="start" font-weight="normal" fill="#52514e">Stricter repair than fixed wear</text>
+<path d="M315.65,118 H341.65" stroke="#2a78d6" stroke-width="2" stroke-dasharray="6 4"/><circle cx="328.65" cy="118" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="349.6" y="122.0" font-size="13" text-anchor="start" font-weight="normal" fill="#52514e">More permissive repair</text>
+<path d="M547.95,112 L553.95,118 L547.95,124 L541.95,118 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<text x="569.0" y="122.0" font-size="13" text-anchor="start" font-weight="normal" fill="#52514e">Learned finalists</text>
+<rect x="724.5" y="111" width="14" height="14" fill="#f0efec" stroke="#c3c2b7"/>
+<text x="752.5" y="122.0" font-size="13" text-anchor="start" font-weight="normal" fill="#52514e">Both criteria met</text>
+<rect x="672.8" y="170" width="247.2" height="137.4" fill="#f0efec"/>
+<path d="M96,580.0 H920" stroke="#c3c2b7"/>
+<text x="86.0" y="584.0" font-size="12" text-anchor="end" font-weight="normal" fill="#898781">0.00</text>
+<path d="M96,477.5 H920" stroke="#e1e0d9"/>
+<text x="86.0" y="481.5" font-size="12" text-anchor="end" font-weight="normal" fill="#898781">0.05</text>
+<path d="M96,375.0 H920" stroke="#e1e0d9"/>
+<text x="86.0" y="379.0" font-size="12" text-anchor="end" font-weight="normal" fill="#898781">0.10</text>
+<path d="M96,272.5 H920" stroke="#e1e0d9"/>
+<text x="86.0" y="276.5" font-size="12" text-anchor="end" font-weight="normal" fill="#898781">0.15</text>
+<path d="M96,170.0 H920" stroke="#e1e0d9"/>
+<text x="86.0" y="174.0" font-size="12" text-anchor="end" font-weight="normal" fill="#898781">0.20</text>
+<path d="M96.0,170 V580" stroke="#e1e0d9"/>
+<text x="96.0" y="600.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#898781">30</text>
+<path d="M199.0,170 V580" stroke="#e1e0d9"/>
+<text x="199.0" y="600.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#898781">40</text>
+<path d="M302.0,170 V580" stroke="#e1e0d9"/>
+<text x="302.0" y="600.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#898781">50</text>
+<path d="M405.0,170 V580" stroke="#e1e0d9"/>
+<text x="405.0" y="600.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#898781">60</text>
+<path d="M508.0,170 V580" stroke="#e1e0d9"/>
+<text x="508.0" y="600.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#898781">70</text>
+<path d="M611.0,170 V580" stroke="#e1e0d9"/>
+<text x="611.0" y="600.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#898781">80</text>
+<path d="M714.0,170 V580" stroke="#e1e0d9"/>
+<text x="714.0" y="600.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#898781">90</text>
+<path d="M817.0,170 V580" stroke="#e1e0d9"/>
+<text x="817.0" y="600.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#898781">100</text>
+<path d="M920.0,170 V580" stroke="#e1e0d9"/>
+<text x="920.0" y="600.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#898781">110</text>
+<path d="M672.8,170 V307.4 H920" fill="none" stroke="#898781"/>
+<text x="914.0" y="299.4" font-size="12" text-anchor="end" font-weight="normal" fill="#52514e">Search 1’s late renewal</text>
+<text x="678.8" y="186.0" font-size="12" text-anchor="start" font-weight="normal" fill="#52514e">Fixed wear’s survivors</text>
+<text x="508.0" y="626.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#52514e">Founder families surviving at day 1376 (of 128)</text>
+<text transform="translate(30,375.0) rotate(-90)" font-size="13" text-anchor="middle" fill="#52514e">Late renewal score</text>
+<path d="M229.9,388.9 V269.7" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M672.8,552.2 V485.0" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M868.5,577.9 V554.0" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M847.9,575.0 V550.8" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M755.2,578.2 V553.0" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M672.8,570.4 V530.5" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M580.1,530.2 V459.0" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M518.3,509.2 V406.7" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M281.4,394.6 V245.1" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M147.5,282.5 V182.8" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M116.6,575.4 V543.0" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M116.6,580.0 V580.0" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M363.8,360.8 V252.2" stroke="#eb6834" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M487.4,475.4 V390.7" stroke="#eb6834" stroke-opacity="0.45" stroke-width="1"/>
+<path d="M672.8,551.5 L580.1,494.9 L518.3,461.5 L281.4,319.1 L147.5,234.4 L116.6,561.1 L116.6,580.0" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M672.8,551.5 L755.2,567.2 L847.9,564.3 L868.5,567.2 L672.8,520.9 L229.9,329.1" fill="none" stroke="#2a78d6" stroke-width="2" stroke-dasharray="6 4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="229.9" cy="329.1" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 0 or more: late renewal 0.1224, 43 of 128 founder families surviving, 32 single-species gardens, 0 gardens with shrubs</title></circle>
+<circle cx="672.8" cy="520.9" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 65 or more: late renewal 0.0288, 86 of 128 founder families surviving, 0 single-species gardens, 14 gardens with shrubs</title></circle>
+<circle cx="868.5" cy="567.2" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 97 or more: late renewal 0.0063, 105 of 128 founder families surviving, 1 single-species gardens, 24 gardens with shrubs</title></circle>
+<circle cx="847.9" cy="564.3" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 113 or more: late renewal 0.0076, 103 of 128 founder families surviving, 0 single-species gardens, 22 gardens with shrubs</title></circle>
+<circle cx="755.2" cy="567.2" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 123 or more: late renewal 0.0063, 94 of 128 founder families surviving, 0 single-species gardens, 18 gardens with shrubs</title></circle>
+<circle cx="672.8" cy="551.5" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 131 or more: late renewal 0.0139, 86 of 128 founder families surviving, 2 single-species gardens, 9 gardens with shrubs</title></circle>
+<circle cx="580.1" cy="494.9" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 137 or more: late renewal 0.0415, 77 of 128 founder families surviving, 2 single-species gardens, 8 gardens with shrubs</title></circle>
+<circle cx="518.3" cy="461.5" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 143 or more: late renewal 0.0578, 71 of 128 founder families surviving, 3 single-species gardens, 6 gardens with shrubs</title></circle>
+<circle cx="281.4" cy="319.1" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 149 or more: late renewal 0.1273, 48 of 128 founder families surviving, 18 single-species gardens, 2 gardens with shrubs</title></circle>
+<circle cx="147.5" cy="234.4" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 161 or more: late renewal 0.1686, 35 of 128 founder families surviving, 29 single-species gardens, 2 gardens with shrubs</title></circle>
+<circle cx="116.6" cy="561.1" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Repairs at light 193 or more: late renewal 0.0092, 32 of 128 founder families surviving, 32 single-species gardens, 2 gardens with shrubs</title></circle>
+<circle cx="116.6" cy="580.0" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>Never repairs: late renewal 0.0000, 32 of 128 founder families surviving, 32 single-species gardens, 4 gardens with shrubs</title></circle>
+<path d="M363.8,301.4 L369.8,307.4 L363.8,313.4 L357.8,307.4 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>Search 1: late renewal 0.1330, 56 of 128 founder families surviving, 15 single-species gardens, 2 gardens with shrubs</title></path>
+<path d="M487.4,428.1 L493.4,434.1 L487.4,440.1 L481.4,434.1 Z" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>Search 2: late renewal 0.0712, 68 of 128 founder families surviving, 4 single-species gardens, 2 gardens with shrubs</title></path>
+<text x="665.8" y="568.5" font-size="13" text-anchor="end" font-weight="normal" fill="#0b0b0b" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">131 (fixed wear)</text>
+<text x="372.8" y="311.4" font-size="13" text-anchor="start" font-weight="normal" fill="#0b0b0b" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Search 1</text>
+<text x="480.4" y="451.1" font-size="13" text-anchor="end" font-weight="normal" fill="#0b0b0b" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">Search 2</text>
+<text x="220.9" y="333.1" font-size="12" text-anchor="end" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">0</text>
+<text x="679.8" y="512.9" font-size="12" text-anchor="start" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">65</text>
+<text x="877.5" y="571.2" font-size="12" text-anchor="start" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">97</text>
+<text x="840.9" y="581.3" font-size="12" text-anchor="end" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">113</text>
+<text x="762.2" y="559.2" font-size="12" text-anchor="start" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">123</text>
+<text x="573.1" y="511.9" font-size="12" text-anchor="end" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">137</text>
+<text x="511.3" y="478.5" font-size="12" text-anchor="end" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">143</text>
+<text x="288.4" y="311.1" font-size="12" text-anchor="start" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">149</text>
+<text x="138.5" y="238.4" font-size="12" text-anchor="end" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">161</text>
+<text x="125.6" y="565.1" font-size="12" text-anchor="start" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">193</text>
+<text x="125.6" y="584.0" font-size="12" text-anchor="start" font-weight="normal" fill="#52514e" stroke="#fcfcfb" stroke-width="3" stroke-linejoin="round" paint-order="stroke">never</text>
+</g></svg>

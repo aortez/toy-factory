@@ -104,10 +104,22 @@ rather than a defect specific to this shrub. Search 1 repairs less than fixed
 wear, which raises turnover in saturated gardens, and shrubs' shaded lower
 canopies depend most on repair. The
 [roadmap checkpoint](garden-alife-roadmap.md#current-checkpoint) sets this beside
-two earlier comparisons with the same tradeoff, makes a whole-population sweep
-of the repair light threshold the next step, and defers the proposed 13-day
+two earlier comparisons with the same tradeoff and defers the proposed 13-day
 selection-phase observation. The fewer-blocker placement rule stays opt-in; the
 objective, ecological rules and defaults remain unchanged.
+
+### Repair threshold sweep
+
+The [threshold sweep](../benchmarks/garden-seasons/leaf-population-threshold-sweep.md)
+asks whether any setting of the shared repair light gate gives renewal and
+variety together. On sixteen fresh weather seeds in both layouts, none of
+twelve settings meets the predeclared criteria, and the earlier tradeoff
+reproduces: Search 1 has 0.133 late renewal against fixed wear's 0.014 and
+loses 72 of 128 founder families against 42. Which species survives a collapse
+depends on the rule, so the roadmap now turns to coexistence mechanisms before
+any training. The runner's model-file path, described in the
+[research viewer guide](garden-research-player.md), replays any 172-byte repair
+model on any seed for this kind of comparison.
 
 Environment qualification, joint growth-and-repair improvements, broader search,
 and qualified device deployment remain follow-on work under

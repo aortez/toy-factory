@@ -29,6 +29,24 @@ static int number(const char *text, int base, uint32_t maximum, uint32_t *out)
 	return 0;
 }
 
+/* Exactly one model file; the session validates its contents when it opens. */
+static int read_model(const char *path, uint8_t *out)
+{
+	FILE *const stream = fopen(path, "rb");
+	if (stream == NULL) {
+		return -ENOENT;
+	}
+	uint8_t extra;
+	const size_t size = fread(out, 1U, RESEARCH_MODEL_FILE_BYTES, stream);
+	const bool longer = fread(&extra, 1U, 1U, stream) != 0U;
+	const bool failed = ferror(stream) != 0;
+	fclose(stream);
+	if (failed) {
+		return -EIO;
+	}
+	return ((size == RESEARCH_MODEL_FILE_BYTES) && !longer) ? 0 : -EMSGSIZE;
+}
+
 static int capture(struct research_session *session, const char *path, uint32_t *crc)
 {
 	uint8_t pixels[RESEARCH_FRAME_BYTES];
@@ -364,7 +382,8 @@ int main(int argc, char **argv)
 		      "NEW_DIR\n"
 		      "       research-replay --gate-panel SEED_HEX none|light|condition|both "
 		      "on|off NEW_DIR\n"
-		      "policies: initial, s1-g3-c4, s2-g3-c1; layouts: rainfed, rainfed-crowded\n",
+		      "policies: initial, s1-g3-c4, s2-g3-c1, or a 172-byte TLF1 model file "
+		      "(any seed); layouts: rainfed, rainfed-crowded\n",
 		      stderr);
 		return 2;
 	}
@@ -373,6 +392,9 @@ int main(int argc, char **argv)
 		if (strcmp(argv[1], research_model_name(model)) == 0) {
 			options.model = model;
 		}
+	}
+	if ((options.model == UINT8_MAX) && (read_model(argv[1], options.custom_model) == 0)) {
+		options.model = RESEARCH_MODEL_CUSTOM;
 	}
 	for (uint8_t layout = 0U; layout < 2U; ++layout) {
 		if (strcmp(argv[3], research_layout_name(layout)) == 0) {

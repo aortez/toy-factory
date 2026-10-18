@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "research_session.h"
+#include "research_models.h"
 #include "garden_leaf_family.h"
 #include "garden_leaf_owned.h"
 #include "garden_landing_ledger.h"
@@ -171,6 +172,44 @@ static void family_turnover(void)
 	research_session_close(session);
 }
 
+/* A custom copy of a named model replays identically and accepts any seed. */
+static void custom_model(void)
+{
+	struct research_options named = {.seed = UINT32_C(0x58d7d6ca),
+					 .scope = RESEARCH_SCOPE_POPULATION};
+	struct research_options custom = named;
+	custom.model = RESEARCH_MODEL_CUSTOM;
+	struct research_session *a = NULL, *b = NULL;
+	assert(research_session_open(&custom, &b) == -EINVAL && b == NULL);
+	memcpy(custom.custom_model, research_model_bytes[0], sizeof(custom.custom_model));
+	custom.custom_model[12] ^= 1U;
+	assert(research_session_open(&custom, &b) == -EBADMSG && b == NULL);
+	custom.custom_model[12] ^= 1U;
+	assert(strcmp(research_model_name(RESEARCH_MODEL_CUSTOM), "custom") == 0);
+	assert(research_model_name(RESEARCH_MODEL_CUSTOM + 1U) == NULL);
+
+	assert(research_session_open(&named, &a) == 0);
+	assert(research_session_open(&custom, &b) == 0);
+	assert(research_session_shadow_start(b, 1U, 208U, 224U) == -EINVAL);
+	assert(research_session_shadow_start(a, 1U, 208U, 224U) == 0);
+	research_session_close(a);
+	assert(research_session_open(&named, &a) == 0);
+	assert(research_session_step(a, RESEARCH_DAY_TICKS) == 0);
+	assert(research_session_step(b, RESEARCH_DAY_TICKS) == 0);
+	equal(a, b);
+	assert(research_session_reset(&b) == 0);
+	assert(research_session_step(b, RESEARCH_DAY_TICKS) == 0);
+	equal(a, b);
+	research_session_close(a);
+	research_session_close(b);
+
+	named.seed = custom.seed = 123U;
+	assert(research_session_open(&named, &a) == -EINVAL);
+	assert(research_session_open(&custom, &b) == 0);
+	assert(research_session_step(b, RESEARCH_DAY_TICKS) == 0);
+	research_session_close(b);
+}
+
 int main(void)
 {
 	struct research_options options = {.seed = UINT32_C(0x58d7d6ca), .founder = 1U};
@@ -188,7 +227,9 @@ int main(void)
 	options.founder = 4U;
 	assert(research_session_open(&options, &a) == -EINVAL && a == saved);
 	options.founder = 1U;
-	options.model = 3U;
+	options.model = RESEARCH_MODEL_CUSTOM; /* All-zero bytes are not a model file. */
+	assert(research_session_open(&options, &a) == -EINVAL && a == saved);
+	options.model = RESEARCH_MODEL_CUSTOM + 1U;
 	assert(research_session_open(&options, &a) == -EINVAL && a == saved);
 	options.model = 0U;
 	options.seed = 123U;
@@ -254,6 +295,8 @@ int main(void)
 	assert(research_session_family_view(NULL, &view) == -EINVAL);
 	assert(memcmp(&view, &untouched, sizeof(view)) == 0);
 	family_turnover();
-	puts("Research session: ownership, stepping, rendering, reset and latched failures pass.");
+	custom_model();
+	puts("Research session: ownership, stepping, rendering, reset, custom models and latched "
+	     "failures pass.");
 	return 0;
 }

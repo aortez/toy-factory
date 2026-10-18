@@ -9,8 +9,10 @@ work lands; it is the authoritative completion checklist.
 
 We are still at step 1, **environment qualification**. The committed evidence
 now runs through the [whole-population comparison](../benchmarks/garden-seasons/leaf-population.md)
-of the fixed wear-aware repair controller and both learned finalists, plus its
-single-case follow-up. The [integration guide](garden-research-integration.md)
+of the fixed wear-aware repair controller and both learned finalists, its
+single-case follow-up and a
+[repair threshold sweep](../benchmarks/garden-seasons/leaf-population-threshold-sweep.md).
+The [integration guide](garden-research-integration.md)
 describes what is built, checked and deliberately excluded. Earlier notes
 remain in the [research history](garden-research-history.md) and in this file's
 git history, and the [seasonal evidence index](../benchmarks/garden-seasons/README.md)
@@ -32,7 +34,7 @@ Studies named without a link ran in the local research backlog, outside git.
   ([recurring comparison](../benchmarks/garden-seasons/landing-recurring-fresh.md)),
   and leaf wear with paid repair produces natural replacement
   (maintenance comparison).
-- **Repair strictness trades turnover against persistence and variety.** Three
+- **Repair strictness trades turnover against persistence and variety.** Four
   comparisons change it in different ways and agree:
   - Allowing repair in light 64–127 keeps multiple species in every endpoint,
     against one in every control, but late births fall from 194 to 19
@@ -44,6 +46,11 @@ Studies named without a link ran in the local research backlog, outside git.
     renewal is 5.5 times higher, but 19 of 32 founder families are lost against
     11, including every shrub family
     ([population comparison](../benchmarks/garden-seasons/leaf-population.md)).
+  - Sweeping the shared light gate across twelve settings on sixteen fresh
+    weather seeds finds no setting with both. Settings that keep fixed wear's
+    variety renew at most 0.029, against Search 1's 0.133, and the one setting
+    that renews more than Search 1 loses 93 of 128 founder families
+    ([threshold sweep](../benchmarks/garden-seasons/leaf-population-threshold-sweep.md)).
 
   No tested setting has delivered sustained renewal and mixed-species
   persistence together.
@@ -61,6 +68,8 @@ Studies named without a link ran in the local research backlog, outside git.
   ([same-observation comparison](../benchmarks/garden-seasons/leaf-population-shadow.md)).
   The two searches evaluated 24 candidates. Training scores one family against
   fixed residents, while population use gives every family the same controller.
+  In the threshold sweep, both finalists fall close to the light gate's tradeoff
+  curve, not beyond it.
 - **The repair selector has a scheduling artifact.** The frozen kernel offers
   the controller one mature leaf per plant per ecology step, in a fixed rotation
   offset by lineage ID, with 256 ecology steps per day. A bright window `w`
@@ -72,23 +81,37 @@ Studies named without a link ran in the local research backlog, outside git.
 
 ### Current question and next step
 
-Does any repair setting give sustained renewal and variety together when every
-family shares one controller? Answer it directly with a whole-population sweep
-of the repair light threshold on fresh weather seeds, with fixed wear and both
-finalists as reference points. Fix the seeds, horizon and acceptance criteria
-in a protocol before any run.
+The [threshold sweep](../benchmarks/garden-seasons/leaf-population-threshold-sweep.md)
+answered the previous question: no setting of the shared repair light gate gives
+sustained renewal and variety together when every family shares one controller.
+Its [protocol](../benchmarks/garden-seasons/leaf-population-threshold-sweep-protocol.md)
+fixed the criteria before any run, and the earlier tradeoff reproduces on
+sixteen fresh weather seeds.
 
-- If some setting meets the criteria, the controller class is adequate and the
-  objective is the gap: evaluate candidates in the whole-population setting,
-  with variety in the score.
-- If none does, the ecology lacks a coexistence mechanism. Discuss per-species
-  strategies, niche differences or capacity before any training.
+The species left in a collapsing garden depends on the rule. Repairing
+regardless of light leaves flowers, strict gates leave ground cover, and shrubs
+disappear first in both directions. As the protocol requires, the open question
+is now which coexistence mechanism the ecology needs, discussed before any
+training:
+
+- **Per-species strategies.** Permissive repair favors flowers and strict
+  repair favors ground cover, so one shared rule may not suit all three
+  species. The research runtime can already give one founder family its own
+  controller.
+- **Niche differences.** All three species compete for the same slots under the
+  same light, so nothing protects a species once it becomes rare.
+- **Capacity.** With eight slots, a favored species can take over quickly.
+
+A first step needs no native calls: the sweep's retained histories can show
+how each species' adult lifespan, births and establishment respond to the gate,
+and so whether species-specific gates could plausibly reach both targets.
 
 The 13-day selection-phase observation proposed by the repair-opportunity audit
-is deferred: its outcome is largely predictable from the rotation arithmetic
-and would not choose between these directions. Ordinary host/device defaults, the frozen
-research runtime and the training objective remain unchanged. Experimental
-placement and repair variants stay opt-in, and neither finalist is promoted.
+remains deferred: its outcome is largely predictable from the rotation
+arithmetic and would not choose between these directions. Ordinary host/device
+defaults, the frozen research runtime and the training objective remain
+unchanged. Experimental placement and repair variants stay opt-in, and neither
+finalist is promoted.
 
 ## Goal and order
 

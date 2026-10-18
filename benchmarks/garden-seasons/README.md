@@ -34,7 +34,11 @@ matched shrub loss through [family losses](leaf-population-losses.md), a
 [repair opportunities](leaf-population-repair-opportunities.md). Each keeps its
 protocol and offline verifier. The
 [integration guide](../../docs/garden-research-integration.md#single-case-follow-up)
-summarizes every finding in one table.
+summarizes every finding in one table. The
+[repair threshold sweep](leaf-population-threshold-sweep.md) then maps the
+shared light gate across twelve settings on sixteen fresh weather seeds. No
+setting gives Search 1's late renewal with fixed wear's family survival
+([protocol](leaf-population-threshold-sweep-protocol.md)).
 
 The latest [competitive-renewal follow-up](landing-competitive-renewal.md)
 completes all 60 planned calls through day 512. All twelve worlds pass population

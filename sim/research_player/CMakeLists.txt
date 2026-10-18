@@ -78,6 +78,7 @@ add_executable(research-session-test research_session_test.c)
 add_executable(research-population-test research_population_test.c research_gate_test.c research_purchase_test.c research_fallback_test.c research_reproduction_test.c research_budget_test.c research_foliage_test.c)
 target_link_libraries(research-replay PRIVATE research_session)
 target_link_libraries(research-session-test PRIVATE research_session)
+target_include_directories(research-session-test PRIVATE "${TOY_FACTORY_RESEARCH_RUNTIME}/generated")
 target_link_libraries(research-population-test PRIVATE research_session)
 target_link_options(research-population-test PRIVATE -Wl,--wrap=malloc -Wl,--wrap=calloc
 	-Wl,--wrap=research_canopy_project

@@ -126,6 +126,21 @@ and a `TPR1` state envelope. Candidate founder and resident policy are null;
 ancestry and complete lifetime/seed histories remain present. Numeric-founder
 runs retain the original family schema and `TFR1` encoding.
 
+In place of a policy name, the headless runner also accepts the path to a
+172-byte TLF1 repair model. Named policies run only on the documented weather
+seeds; a model file accepts any seed, so its caller fixes and records the
+conditions. The record's `leaf_model_hex` and canonical state carry the exact
+model bytes. Shadow and gate diagnostics remain limited to the named policies.
+The [threshold sweep](../benchmarks/garden-seasons/leaf-population-threshold-sweep.md)
+uses this path. After unpacking its evidence, any of its models replays
+directly:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  artifacts/garden-threshold-sweep-review-v1/models/light-071.tlf \
+  457e75c9 rainfed 5283840 all
+```
+
 To collect matched checkpoints from one continuous population run:
 
 ```sh

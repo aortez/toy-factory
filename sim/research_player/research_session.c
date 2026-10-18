@@ -29,6 +29,7 @@
 
 _Static_assert(RESEARCH_STOP_TICK == TOY_FACTORY_MAINTENANCE_RUN_STOP, "Fixed research horizon");
 _Static_assert(sizeof(research_model_bytes[0]) == TOY_FACTORY_LEAF_NEURAL_FILE_SIZE, "Model size");
+_Static_assert(RESEARCH_MODEL_FILE_BYTES == TOY_FACTORY_LEAF_NEURAL_FILE_SIZE, "Custom model size");
 _Static_assert(PICOSYSTEM_GARDEN_MAX_NODES <= RESEARCH_FAMILY_MAX_NODES, "Family node capacity");
 _Static_assert(PICOSYSTEM_GARDEN_MAX_SEEDS <= RESEARCH_FAMILY_MAX_SEEDS, "Family seed capacity");
 
@@ -66,7 +67,15 @@ static bool selected_root(const struct research_session *session, uint8_t root)
 
 const char *research_model_name(uint8_t model)
 {
-	return model < 3U ? research_model_names[model] : NULL;
+	return model < 3U                       ? research_model_names[model]
+	       : model == RESEARCH_MODEL_CUSTOM ? "custom"
+						: NULL;
+}
+
+static const uint8_t *model_file(const struct research_options *options)
+{
+	return options->model == RESEARCH_MODEL_CUSTOM ? options->custom_model
+						       : research_model_bytes[options->model];
 }
 
 const char *research_layout_name(uint8_t layout)
@@ -137,7 +146,8 @@ static int births(struct research_session *session)
 int research_session_open(const struct research_options *options, struct research_session **out)
 {
 	if ((options == NULL) || (out == NULL) || (research_model_name(options->model) == NULL) ||
-	    (research_layout_name(options->layout) == NULL) || !known_seed(options->seed) ||
+	    (research_layout_name(options->layout) == NULL) ||
+	    ((options->model != RESEARCH_MODEL_CUSTOM) && !known_seed(options->seed)) ||
 	    ((options->scope != RESEARCH_SCOPE_FAMILY) &&
 	     (options->scope != RESEARCH_SCOPE_POPULATION))) {
 		return -EINVAL;
@@ -159,8 +169,8 @@ int research_session_open(const struct research_options *options, struct researc
 	int err = toy_factory_garden_landing_model_decode(
 		toy_factory_renewal_model_file, sizeof(toy_factory_renewal_model_file), &growth);
 	if (err == 0) {
-		err = toy_factory_leaf_neural_decode(research_model_bytes[options->model],
-						     sizeof(research_model_bytes[0]), &leaf);
+		err = toy_factory_leaf_neural_decode(model_file(options), RESEARCH_MODEL_FILE_BYTES,
+						     &leaf);
 	}
 	struct picosystem_garden_world initial;
 	if (err == 0) {
@@ -854,8 +864,7 @@ int research_session_write_json(const struct research_session *session, FILE *st
 					: "founder-family",
 		session->options.seed, research_layout_name(session->options.layout),
 		world(session)->logic_tick_count);
-	print_hex(stream, research_model_bytes[session->options.model],
-		  sizeof(research_model_bytes[0]));
+	print_hex(stream, model_file(&session->options), RESEARCH_MODEL_FILE_BYTES);
 	fputs("\",\"state_hex\":\"", stream);
 	print_hex(stream, state, size);
 	fputs("\",\"framebuffer_crc32\":", stream);

@@ -97,6 +97,36 @@ class PopulationTests(unittest.TestCase):
         self.run_replay(ticks=1376 * 3840 + 1, success=False)
         self.run_replay(extra=('--timeline',), success=False)
 
+    def test_custom_model_file_matches_named_model_and_accepts_any_seed(self):
+        named = self.run_replay(ticks=3840)
+        model = bytes.fromhex(named['leaf_model_hex'])
+        with tempfile.TemporaryDirectory(prefix='garden-population-test-') as folder:
+            path = Path(folder) / 'initial.tlf'
+            path.write_bytes(model)
+            self.assertEqual(self.run_replay(path, ticks=3840), named)
+            fresh = subprocess.run([BINARY, str(path), 'deadbeef', 'rainfed', '3840', 'all'],
+                                   capture_output=True, timeout=30)
+            self.assertEqual(fresh.returncode, 0, fresh.stderr)
+            record = json.loads(fresh.stdout)
+            self.check_record(record)
+            self.assertEqual((record['seed'], record['leaf_model_hex']), ('deadbeef', model.hex()))
+            named_fresh = subprocess.run([BINARY, 'initial', 'deadbeef', 'rainfed', '3840', 'all'],
+                                         capture_output=True, timeout=30)
+            self.assertNotEqual(named_fresh.returncode, 0)
+            self.assertEqual(named_fresh.stdout, b'')
+            corrupt = bytearray(model)
+            corrupt[12] ^= 1
+            for name, data in (('short', model[:-1]), ('long', model + b'\0'),
+                               ('corrupt', bytes(corrupt)), ('empty', b'')):
+                with self.subTest(name=name):
+                    bad = Path(folder) / f'{name}.tlf'
+                    bad.write_bytes(data)
+                    self.run_replay(bad, success=False)
+            self.run_replay(Path(folder) / 'missing.tlf', success=False)
+            self.run_replay(path, ticks=224 * 3840, extra=('--shadow', 1, Path(folder) / 'shadow'),
+                            success=False)
+            self.assertFalse((Path(folder) / 'shadow').exists())
+
     def test_timeline_matches_independent_checkpoints(self):
         with tempfile.TemporaryDirectory(prefix='garden-population-test-') as folder:
             timeline = Path(folder) / 'timeline'
