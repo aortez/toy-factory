@@ -26,6 +26,7 @@ RENDER_PROFILE_SAMPLES ?= 16
 RENDER_PROFILE_OUT ?= artifacts/render-profile.json
 HOST_SIMULATOR ?= build-host/toy-factory-sim
 HOST_PLAYER ?= build-host-player/toy-factory-player
+HOST_RESEARCH_PLAYER ?= artifacts/garden-research-player-build-v1/research-player
 HOST_OUT ?= artifacts/host-screenshot.png
 HOST_GARDEN_PROFILE ?= build-host-profile/toy-factory-garden-profile
 HOST_GARDEN_EVALUATOR ?= build-host/toy-factory-garden-eval
@@ -196,6 +197,7 @@ RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 	host-trace-landing-founders \
 	host-screen-landing-budget host-audit-landing-germination host-trace-landing-budget-reach host-screen-landing-placement host-audit-placement-turnover host-screen-landing-vacancy host-trace-landing-recovery host-audit-landing-bank-access host-screen-landing-order host-audit-landing-order-regressions host-trace-landing-late host-probe-landing-root-choice host-probe-landing-root-energy host-audit-landing-energy host-probe-landing-afternoon host-probe-landing-continuous-energy host-audit-landing-light \
 	host-image host-player-build host-player-check host-play \
+	host-research-player-build host-research-player-check host-play-research \
 	container-shell update update-fast update-pio update-pio-dma update-pl022-dma \
 	bootloader console status game-stats \
 	game-redraw core1-status core1-ping core1-raster core1-scene \
@@ -798,6 +800,18 @@ host-player-check: host-player-build ## Smoke-test the SDL player using its off-
 
 host-play: host-player-build ## Launch the interactive player on the host; pass ARGS="..."
 	"$(HOST_PLAYER)" $(ARGS)
+
+host-research-player-build: host-image ## Build the separate frozen-policy Garden viewer
+	$(COMPOSE) run --rm host-player bash scripts/container/host-research-player-build.sh
+
+host-research-player-check: host-research-player-build ## Check research ownership, playback, and capture parity
+	$(COMPOSE) run --rm -T host-player \
+		ctest --test-dir artifacts/garden-research-player-build-v1 --output-on-failure -R '^research-'
+	$(COMPOSE) run --rm -T host-player python3 -B -m unittest discover \
+		-s sim/research_player -p 'test_prepare.py'
+
+host-play-research: host-research-player-build ## Watch frozen repair policies; ARGS="--policy s1-g3-c4 --speed 256"
+	"$(HOST_RESEARCH_PLAYER)" $(ARGS)
 
 container-shell: ## Open a shell in the builder container
 	$(COMPOSE) run --rm firmware bash

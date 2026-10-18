@@ -4,7 +4,10 @@ Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
 ![Toy Factory Hourglass running on the PicoSystem](docs/images/hourglass.png)
 
-![Toy Factory Garden running on the PicoSystem](docs/images/garden.png)
+![A populated Toy Factory Garden with flowering plants and underground roots](docs/images/garden-populated.png)
+
+Garden mode after 256 simulated days, captured from the
+[host research viewer](docs/garden-research-player.md).
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:

@@ -3,8 +3,9 @@
 Build an interactive host viewer for the three frozen repair policies from the
 [durability comparison](../benchmarks/garden-seasons/leaf-family-durability.md).
 The purpose is to watch growth, leaf replacement and family turnover under the
-conditions already evaluated, including failed families. This is the proposed
-next implementation step, not another training run or a firmware promotion.
+conditions already evaluated, including failed families. The first implementation
+is now available; see the [launch guide and verification results](garden-research-player.md).
+This remains a host inspection tool, not another training run or a firmware promotion.
 
 ## Preserve the research world
 
