@@ -4,8 +4,8 @@
 
 #include "garden_world.h"
 
-#if !defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE) || defined(__ZEPHYR__)
-#error "Gap recovery is a host-only maintenance assay"
+#if defined(__ZEPHYR__)
+#error "Gap recovery is a host-only assay"
 #endif
 
 #define TOY_FACTORY_GARDEN_GAP_PROTOCOL       "largest-adult-export-v1"

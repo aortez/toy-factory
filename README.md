@@ -4,7 +4,10 @@ Toy Factory is an idle toy for the Pimoroni PicoSystem PIM559.
 
 ![Toy Factory Hourglass running on the PicoSystem](docs/images/hourglass.png)
 
-![Toy Factory Garden running on the PicoSystem](docs/images/garden.png)
+![A populated Toy Factory Garden with flowering plants and underground roots](docs/images/garden-populated.png)
+
+Garden mode after 256 simulated days, captured from the
+[host research viewer](docs/garden-research-player.md).
 
 The current baseline exercises the complete board and a game-oriented graphics
 path:
@@ -90,9 +93,9 @@ benchmark variants; the default uses polling SPI0/PL022.
 ## Build
 
 For the current Garden work, start with the
-[A-life checkpoint review guide](docs/garden-merge-checkpoint.md). It separates
-normal host/device behavior from opt-in research and summarizes the remaining
-ecology and training work.
+[research and viewer integration guide](docs/garden-research-integration.md). It
+separates normal host/device behavior from opt-in research and links the frozen
+repair-policy results, interactive viewer, and remaining ecology work.
 
 ```sh
 make build
@@ -550,6 +553,62 @@ JSON trace, a canonical CRC-protected binary model, and equivalent linkable C to
 `artifacts/`. The binary can seed another search or replace the neural reference
 in `make host-evaluate-garden`.
 
+Experimental landing-aware TGL2 models have separate
+[`host-landing-garden` and `host-evaluate-landing-garden` tools](docs/garden-landing-tools.md)
+for explicit import/inspection, deterministic replay, and matched outcome/PNG
+bundles. They do not change the existing trainer or device defaults.
+[`host-train-landing-garden`](docs/garden-landing-training.md) runs the separate,
+fixed-budget renewal pilot with per-generation review images and a capture-free
+repeat. It requires the explicitly identified starting controller; it does not
+silently substitute the built-in reference.
+[`host-validate-landing-garden`](docs/garden-landing-validation.md) tests the
+frozen finalists across additional seeds and explicit same-weight input
+ablations, with complete histories, fixed screenshots and exact repetition.
+[`host-probe-landing-garden`](docs/garden-landing-signals.md) separately tests
+live versus fixed occupancy and resource readings without changing model bytes.
+[`host-trace-landing-garden`](docs/garden-landing-decisions.md) records bounded
+same-state decision comparisons, with separate water/light probes and independent
+integer verification; only the live controller advances the world.
+[`host-train-landing-controls`](docs/garden-landing-controls.md) compares matched
+live versus fixed-input training, with fixed evaluation seeds and per-generation
+screenshots; it does not promote a controller or alter firmware defaults.
+[`host-train-landing-multiseed`](docs/garden-landing-multiseed.md) tests broader
+training experience against those frozen finalists on a shared fresh panel,
+keeping the candidate budget and network unchanged.
+[`host-audit-landing-renewal`](docs/garden-landing-renewal-audit.md) explains the
+saved seed/lineage outcomes and renewal-credit gaps without running new worlds.
+[`host-trace-landing-recruitment`](docs/garden-landing-recruitment.md) then
+replays a fixed matched subset with exact seed blockers and first-day resource
+accounting, checking that diagnostics do not change the biological trajectory.
+[`host-trace-landing-reach`](docs/garden-landing-reach.md) distinguishes open
+sites elsewhere from sites within each seed's producing parent's actual reach.
+[`host-screen-landing-range`](docs/garden-landing-range.md) runs a paired,
+host-only narrow/wide scattering screen with frozen models and unchanged scoring.
+[`host-audit-landing-establishment`](benchmarks/garden-seasons/landing-establishment.md)
+recomputes first-day allocation, root expansion and shortage timing from saved
+ordinary traces without running new simulations.
+[`host-screen-landing-water`](docs/garden-landing-water.md) compares the existing
+first-day water reserve on those frozen models, preserving ordinary ecology
+and scoring and tracing vetoes, resource spending and losing root opportunities.
+[`host-audit-landing-stalls`](benchmarks/garden-seasons/landing-stalls.md) inspects
+the saved refusal streaks and observed continuations without running new worlds.
+[`host-screen-landing-arbitration`](docs/garden-landing-arbitration.md) compares
+the current water veto with selection among water-eligible proposals, retaining
+the frozen models and both guarded and ordinary comparison baselines.
+[`host-audit-landing-turnover`](benchmarks/garden-seasons/landing-turnover.md)
+separates seed supply, first-day failures and gaps between established generations
+from the saved histories, without new simulation runs.
+
+The [adult resources and renewal checkpoint](docs/garden-adult-resources-checkpoint.md)
+summarizes the subsequent host-only investigations into resource budgets,
+construction, seed placement, bank access and competition. It links the main
+findings, review boundaries and validation commands; the
+[seasonal evidence index](benchmarks/garden-seasons/README.md) retains individual
+protocols, results, counterexamples and screenshots.
+The [landing tool guide](docs/garden-landing-tools.md) documents the explicit
+replay, audit and intervention commands. These experiments do not change the
+playable Garden or firmware defaults, and do not yet qualify a sustainable ecology.
+
 For interactive work on Linux, `make host-play` builds pinned SDL3 sources in a
 separate Docker image, then launches the resulting self-contained player on the
 host. Arrow keys act as the D-pad; A, B, X, and Y match the labeled face
@@ -785,9 +844,31 @@ additional minute with DTR held. The host timeout is therefore 240 seconds.
 Pause before capture for practical latency, stable timing, and deterministic
 automation.
 
-GitHub Actions runs `make check` and builds the PIO, PIO/DMA, and PL022/DMA
-variants for every pull request and push to `main`. Tests that need a connected
-PicoSystem remain part of the physical smoke-test boundary rather than hosted CI.
+GitHub Actions retains the full test suite on every pull request and push to
+`main`. Native tests run in six disjoint shards; the opt-in research configuration
+runs in three. Each shard executes serially because some archive-corruption tests
+use several GiB of memory. Source checks, default/PIO/PIO-DMA/PL022-DMA firmware
+builds, isolated research configurations, and the viewers run alongside them.
+The final **CI complete** check requires every job and shard to succeed, including
+rejecting cancelled or skipped jobs. Test inventories and JUnit timing reports
+are retained as workflow artifacts for 14 days.
+
+`make check` still performs the complete local check and pristine firmware build;
+`make check-source` is the shorter formatting and standalone-test pass. To
+reproduce a native CI shard locally, run `make host-build`, then:
+
+```sh
+docker compose run --rm -T firmware python3 scripts/container/ctest-shard.py \
+  --build-dir build-host --shard 4 --shards 6 \
+  --output-dir artifacts/ci-tests/native-4
+```
+
+Shard numbers are one-based. `--dry-run` records and verifies the selection
+without executing tests. New registered tests are included automatically, and
+successful runs must report exactly the selected tests. This changes scheduling,
+not coverage or simulator settings; it reduces elapsed CI time rather than the
+total test workload. Tests that need a connected PicoSystem remain part of the
+physical smoke-test boundary rather than hosted CI.
 
 The following scheduler and display results describe the preceding single-sprite
 baseline. On the tested PIM559, the exact 120 Hz scheduler ran with a maximum observed

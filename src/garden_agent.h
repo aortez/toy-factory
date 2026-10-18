@@ -8,6 +8,7 @@
 #define PICOSYSTEM_GARDEN_AGENT_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "garden_world.h"
@@ -124,6 +125,29 @@ typedef int (*picosystem_garden_agent_decide_fn)(
 	const struct picosystem_garden_agent_memory *memory,
 	struct picosystem_garden_agent_decision *decision, const void *context);
 
+#if !defined(__ZEPHYR__)
+#if defined(TOY_FACTORY_GARDEN_LATE_DISPERSAL)
+#define PICOSYSTEM_GARDEN_PLACEMENT_CHOICES 14U
+#else
+#define PICOSYSTEM_GARDEN_PLACEMENT_CHOICES 6U
+#endif
+
+/* Borrowed at a paid seed purchase, before genome mutation. Spacing includes
+ * retained dead plants; weather and other germination gates are not consulted.
+ * Active choices retain reflection aliases. Capacity may exceed the active
+ * count before an experiment's onset. No new RNG is supplied.
+ */
+struct picosystem_garden_seed_placement {
+	uint32_t parent;
+	uint32_t random;
+	uint32_t logic_tick;
+	uint8_t origin;
+	int8_t dispersal;
+	uint8_t columns[PICOSYSTEM_GARDEN_PLACEMENT_CHOICES];
+	uint16_t blocked_choices;
+};
+#endif
+
 #if defined(TOY_FACTORY_GARDEN_LEAF_MAINTENANCE)
 struct picosystem_garden_leaf_policy;
 #endif
@@ -137,6 +161,49 @@ struct picosystem_garden_agent_policy {
 	picosystem_garden_agent_decide_fn decide;
 	const void *context;
 	enum picosystem_garden_agent_arbitration arbitration;
+#if !defined(__ZEPHYR__)
+	/* Optional host-only ALL_TIPS experiment. Reject bids before ranking, not
+	 * by changing priority. If none qualifies, the original winner becomes
+	 * WAIT and alone advances memory/nonce, as with the legacy veto adapter.
+	 * NULL preserves ordinary arbitration. Context is borrowed for one step.
+	 */
+	int (*eligible)(const struct picosystem_garden_agent_observation *observation,
+			const struct picosystem_garden_agent_decision *decision, bool *allowed,
+			const void *context);
+	const void *eligibility_context;
+	/* Optional host-only ordinary-dispersal experiment. Return a choice index
+	 * into observation.columns, not an arbitrary column. NULL is unchanged
+	 * production. Callbacks may not mutate the world or consume another draw.
+	 * Errors propagate through the enclosing step's normal failure contract.
+	 */
+	int (*place_seed)(const struct picosystem_garden_seed_placement *observation,
+			  uint8_t *choice, const void *context);
+	const void *placement_context;
+	/* Host-only reproduction-order experiment. Zero preserves fixed order.
+	 * A nonzero maintenance-aligned tick starts rotation strictly afterwards;
+	 * storage, growth and germination order are never changed.
+	 */
+	uint32_t reproduction_rotation_after;
+	/* Host-only purchase order: begin after this stable lineage ID, wrapping
+	 * over living plants. The enclosing run owns and commits the cursor;
+	 * this policy is immutable. Incompatible with rotation/replacement.
+	 */
+	bool reproduction_purchase_order;
+	uint32_t reproduction_after_lineage;
+	/* Optional host-only permutation of current stored plant indices. The
+	 * callback runs after germination/growth, before visits; core validates
+	 * the complete permutation. Gates, fees and germination order are unchanged.
+	 * Context is immutable; the enclosing run commits state only on success.
+	 */
+	int (*reproduction_order)(const struct picosystem_garden_world *world, uint8_t *order,
+				  size_t capacity, const void *context);
+	const void *reproduction_order_context;
+	/* Host-only paid replacement of an owned spacing-blocked seed, strictly
+	 * after this maintenance-aligned tick. Zero leaves production unchanged.
+	 * Requires a spacing-aware place_seed callback; no new world/model fields.
+	 */
+	uint32_t seed_replacement_after;
+#endif
 };
 
 /* Validate the complete, versioned observation contract without mutating it. */

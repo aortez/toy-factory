@@ -230,8 +230,44 @@ static int test_mortality_buckets(void)
 	return 0;
 }
 
+static int test_adult_export_is_not_mortality(void)
+{
+	const uint32_t day = TOY_FACTORY_GARDEN_LIFETIME_CYCLE_TICKS;
+	CHECK(toy_factory_garden_lifetimes_reset(&ledger) == 0);
+	CHECK(toy_factory_garden_lifetimes_birth(&ledger, 1U, 0U, 0U, 0U) == 0);
+	CHECK(toy_factory_garden_lifetimes_birth(&ledger, 2U, 1U, 0U, 15U) == 0);
+	saved = ledger;
+	CHECK(toy_factory_garden_lifetimes_remove_adult(&ledger, 2U, day + 15U) == -EINVAL);
+	CHECK(memcmp(&saved, &ledger, sizeof(ledger)) == 0);
+	CHECK(toy_factory_garden_lifetimes_remove_adult(&ledger, 2U, day + 30U) == 0);
+	CHECK(ledger.records[2].death_cause == TOY_FACTORY_GARDEN_LIFETIME_CAUSES);
+	CHECK(ledger.records[2].death_tick == 0U);
+	CHECK(ledger.records[2].removal_tick == day + 30U);
+	saved = ledger;
+	CHECK(toy_factory_garden_lifetimes_remove_adult(&ledger, 2U, day + 45U) == -EEXIST);
+	CHECK(toy_factory_garden_lifetimes_death(&ledger, 2U, day + 45U,
+						 PICOSYSTEM_GARDEN_PLANT_DEAD) == -EEXIST);
+	CHECK(memcmp(&saved, &ledger, sizeof(ledger)) == 0);
+	/* The removed parent's already-paid seed may still germinate. */
+	CHECK(toy_factory_garden_lifetimes_birth(&ledger, 3U, 2U, 0U, day + 45U) == 0);
+	CHECK(toy_factory_garden_lifetimes_summarize(&ledger, 3U * day, &report) == 0);
+	CHECK(report.total.cycle_survivors == 2U);
+	CHECK(report.total.offspring_living_at_end == 1U);
+	CHECK(report.total.offspring_mortality.deaths == 0U);
+	CHECK(report.total.offspring_with_surviving_child == 1U);
+	CHECK(toy_factory_garden_lifetimes_remove_adult(&ledger, 1U, 3U * day) == 0);
+	CHECK(toy_factory_garden_lifetimes_summarize(&ledger, 3U * day, &report) == 0);
+	CHECK(report.total.founders_living_at_end == 0U);
+	CHECK(report.total.founder_mortality.deaths == 0U);
+	CHECK(toy_factory_garden_lifetimes_remove_adult(NULL, 1U, day) == -EINVAL);
+	CHECK(toy_factory_garden_lifetimes_remove_adult(&ledger, 0U, day) == -ERANGE);
+	CHECK(toy_factory_garden_lifetimes_remove_adult(&ledger, UINT32_MAX, day) == -ERANGE);
+	return 0;
+}
+
 int main(void)
 {
+	CHECK(test_adult_export_is_not_mortality() == 0);
 	CHECK(test_validation_and_capacity() == 0);
 	CHECK(test_complete_cohorts_and_death_boundaries() == 0);
 	CHECK(test_posthumous_parent_credit_and_large_ticks() == 0);

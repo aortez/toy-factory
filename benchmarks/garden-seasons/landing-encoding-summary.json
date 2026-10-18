@@ -1,0 +1,2393 @@
+{
+  "protocol": "landing-input-encoding-v1",
+  "input_sha256": "24c4623c78ebb752f7236324f5f3d9863387357bc86184c2f0c1d3d1719113da",
+  "frozen": {
+    "sources": {
+      "src/battery.c": "02e702db92987b095e18f054641407e5db02480bc25b420e5541eb2a6b42c161",
+      "src/battery.h": "ffc15df567d2665e95f3a927627807d4d3a72c34c1ae8c8141f598f04af15941",
+      "src/core1_runtime.c": "96ff6e3de157332c04d0c4c909ee0f3a756568d44cf52363a3560dd7d17587aa",
+      "src/core1_runtime.h": "ae5c59793727da2a3a8da0fb51d8509047c9a5059f30f71e97a7d5a9c3404dd2",
+      "src/dense_scene.c": "8016db2167c5d4756b14d659890f2a0a96d2e2b11ea055fdafec2c8ef0a659b6",
+      "src/dense_scene.h": "1e9eaaa77301d01115f5aa0d5c8de807e2a6d9c59f2b19f3533f6aa0fe98d498",
+      "src/diagnostic_shell.c": "99a3aa6f776c4053872b648e12bbeab3626a8664b425439cea3669c06831cf2b",
+      "src/diagnostic_shell.h": "bf0bed7f07751a68f2886ee34a80919bc57e31b8b7a0d598761337d44e0350ab",
+      "src/display_profile.c": "64c797194b4fe7b8065ffc527612cfdffb8bb75da9b9562043abc5e657f8147b",
+      "src/display_profile.h": "79eccc7f02376c6b79ff178adbe73ac44f4f10941615cb270cf3161a92776593",
+      "src/display_sync.c": "c37150c90a6e42ca2badc2a30e9e886586ec52e0af42484228171b514dcafe3f",
+      "src/display_sync.h": "7a94cbf593e57c6ecac3f98060e43685cd5c0d35904e5f44110376e5c1b25123",
+      "src/fixed_rate_scheduler.c": "60892223dac6a3d2c5fd829845fc9286ee9c00a41159be78fcf2f147afbfb654",
+      "src/fixed_rate_scheduler.h": "5b8a453d255519d85d898d1475a6e9ce5a5e78f118dbb73294beaa4d26d4c155",
+      "src/game_control.c": "353cd8360a40c881f6d17f1c15119027552dcfadb8e5f69e713484a5ff7e6819",
+      "src/game_control.h": "74d46717252c2612e2c9ccc55181731e7acfda0303b9268f5354d22ec5735796",
+      "src/game_demo.c": "62647fe197970b6ce790f96508d66b39d99244433de9a796c663338044b29305",
+      "src/game_demo.h": "e2649a62df8842bd8a5bbec91e95ab34589eea64148558a6ace6e33e2e3ad54b",
+      "src/game_scene.h": "ca0a276a09cc4e887691d47aa31a457a5786345f7d281cea43d1b152e2293ca9",
+      "src/game_scene_clockwork.c": "2cf0f240c15c799e4268bf608dc261975e2b2b819a5fafcc193473158de7765d",
+      "src/game_scene_hourglass.c": "971fd63cb80cc5383d3174643501f78e4ea0dee7bb0c93e6f97e7a52b3e7d568",
+      "src/game_scene_machine_lab.c": "0447e3f3468d85a23fa580638263f4c37ad93c0fdec951d5bac6544c5eca1628",
+      "src/game_scene_marble_machine.c": "81e8e856243b273055f39536da57b318fcf27dcedb325869afc64afdf2756bea",
+      "src/game_scene_selector.c": "f13424263560b28081458c8c0e7f02b4242bebeaa74f90876a2ce696597094b7",
+      "src/game_scene_selector.h": "0f712f1ee2010f120ba34ced4f73af8b3a4bec31b12f33513ad4819caaef8f1e",
+      "src/game_snapshot.c": "2de03a7df5a70b8b5a9d85462d60c0e982a983ec1444b0d7a0b8c62ec2e053ce",
+      "src/game_snapshot.h": "5829c171c915dc81c09d9019e6ee0579396e4b11e1ae7542b42077c9351ddf6d",
+      "src/game_world.c": "c59f8b6c736ff296209daf349538b74e2b81bcf697383667709f9def9aa3a933",
+      "src/game_world.h": "99bb44b698b0a284d09e039230d67b47782ddd4b4abd33d689c88808484208f5",
+      "src/garden_agent.c": "165da057b2dd35f8bdd3d4dbb667b3b504878397cb7fb5d1c7cf3a5fe313cb97",
+      "src/garden_agent.h": "6a1e6d9f773a8445140d7ce5294dea1365303a9efb431b2e3255bffc3df7801c",
+      "src/garden_agent_neural.c": "a6dd5dec3e2798980ee6515fe5eee8524b1bcfdae5e1bafd5b36fed4f5b2f89a",
+      "src/garden_agent_neural.h": "ba65a95815e78de40e9f4dcd02faf572d1c5e76eb213e2b29a3ba50375d65eaa",
+      "src/garden_agent_neural_codec.c": "3a29fecf09c4e2a91056f903fc8e746e8ca46fcdf96d8a257eac824ecbbd44dc",
+      "src/garden_canopy_transmission.h": "1d452c80610a5967e7c5258f325b404d3496c66ba6a58e6244dc280a86d87914",
+      "src/garden_climate.c": "523517697ca44a1da9bb372b2353736433ec139867858047bde2d4fd19834bb6",
+      "src/garden_climate.h": "faf6608fa9e245b2cfe4e6003b91fe636fbaff15432245308ef0ffac4e87beb1",
+      "src/garden_damage.c": "54f4f91e5946ea8f4af8c746c7be6f59cd2932fb2bd7c6b191e8e44f431369cf",
+      "src/garden_damage.h": "6783e3991e875ec684ce4b33fac4d9923c04733422b85fd43a89c517c3809abe",
+      "src/garden_dark_guard.h": "7f8d84fe85e0e26f6774a98c0706f2e82f012df11cc5cdc242215f343835bdae",
+      "src/garden_dawn_finish.h": "2d54d7dd27b0d0526f6374d2e3703dad868aead0bb9760755d1e91f6694ba092",
+      "src/garden_death_audit.h": "9f66497186809b84e1ad37d21208ec1b35dee2c665e3b7f3367ed3d76336407b",
+      "src/garden_dispersal.h": "a9de8f4b97f3264c70ecf3ae45482d714ab81593bb207123ac797a6cf33f0286",
+      "src/garden_flower_audit.h": "76e35126d659274fb6cbd256e446739c9ce11d2e5cbfaa0624a9b466df9a18ac",
+      "src/garden_full_pool.h": "263e6376df17fce43be206540ea7639db5ed3cff18dab15bbd606f4b3dac1162",
+      "src/garden_landing.c": "4615d8561887a810f04eabed4471ebf6a23ffc3e205277e192af4ce3a624017c",
+      "src/garden_landing.h": "a2129de4c94e135dabbd1f588c5339765b57e1d8cbe0f89647b85869085e8869",
+      "src/garden_landing_internal.h": "dbfd188e1b8a8b188242b9f4ce3f3f70295d5621305401964cdbbd07bc14ff48",
+      "src/garden_leaf.h": "a32e2781ac487bf95d27307325c5a5c0d65dfb22fe204b630fe53cc7d589def3",
+      "src/garden_light.c": "5f5cf18c5f9079976ffce06e8b39627dd2a4f5ccf78dad31338f7e3fbff7e3bb",
+      "src/garden_light.h": "12addc14869705cfdf4db128a4ff32ee92ff8cde76f06e5a63175e67cd694e73",
+      "src/garden_night_capacity.h": "d1fb64a98787d241f5f4a1a27c1f5d19d59923e21fd6a3b176c2ded4568b4f77",
+      "src/garden_plant_slots.h": "b52deb065b2be5a76e4d968ab70de77eec1d80e382270e61285beac05706ca62",
+      "src/garden_purchase_veto.h": "20f8f0c6218d96991f9d41a7d61c2853efbb725100cbdf0fc3d6cf60bb5142b6",
+      "src/garden_reproduction_audit.h": "1e57b3cab9071cc2aa8b5e54fe9d8dc46fe4216cc555d3e444ce66c439ca15fb",
+      "src/garden_seed_audit.h": "51f57dd5d8021336286635c20dbb1de392617987cc740ec399361e0578cf6cd3",
+      "src/garden_seed_order.h": "a62cbe874d6ef5673b0c2c50db9225a71a8fab0ef5023b7426eab8357a7ff0e8",
+      "src/garden_seed_reserve.h": "76e27685e91d91dd90aa0b44e15d18d67a3480f9e68a0a4afb88f938cf3bba69",
+      "src/garden_seed_spacing.h": "47223981c5a790b6272727799a557bd50d38d5836374a53c5d78df09a40fd4cc",
+      "src/garden_visual.h": "b43c2bb5c0346afe3082762ae2122748eff2bffbe95acd3ff094e9c2e4c61637",
+      "src/garden_water_audit.h": "2ccca5fb854aa967d62f0133b0943a57a518f5f0dfac7a943b1cceb65ac41f98",
+      "src/garden_world.c": "925c40d8cce39e8f71ba57c6e7027fff7e15541f4037068de82373f417a3db58",
+      "src/garden_world.h": "f4efb3a138521be48c8d1f353b85df612864e3bca95c09b89d9c629c78e5339d",
+      "src/granular_world.c": "7e7d85fd74bbf10d353747c437f84d4231f5ff3148ba76590584a8e559373032",
+      "src/granular_world.h": "e7d11f99b89da939e357b5393205abee1c27afaa1824d25db561357646a0d2ad",
+      "src/graphics.c": "0d1abd060759d38c58a4cc7107526ca0a555de0dff137e2723d43a6f1a014b9d",
+      "src/graphics.h": "2226ecda52335b7eeb31ba276e719fcb9de80d5b622e4158fb6d257529113f7f",
+      "src/graphics_raster.c": "2b25cd20b66938d017cf488da1c71e96a391a01d8c3900e7caf022933112a608",
+      "src/graphics_raster.h": "878d308c8d88fdd2030fff24de3723fe2d5ea9b89595d6c04b7e32bd3f96b86e",
+      "src/main.c": "9d15c8845997904ddd1be56451eb32d59b197ceed75e54f71f19bcf157d31069",
+      "src/physics_chain_fixture.c": "a656f7874ba6984d9f151ea12fd6f01dbf34d86496b159c25f9a27c5aca6e1fa",
+      "src/physics_chain_fixture.h": "b6cbe78bccfeea98bf8f81698555f2f9ee267ba6ead2a01b54e853c280d6dde9",
+      "src/physics_profile.c": "f14f63121ce68632d6066bec8096c7d28d81fcefd1f9912a6fac42352b80df2c",
+      "src/physics_profile.h": "2166ca5c6ba16c0a3d37a9d4cb93e94ac444055ee225f6b215eb81f237e12acb",
+      "src/physics_world.c": "805ab4590b6c5b606e684553459ed404ea9617a3ba7e54c3242401c86239dc0c",
+      "src/physics_world.h": "25565b34d4691b789ca258bc0d9d45e4f784db0e8b8126ceab6fa7e01caf8b3f",
+      "src/piezo.c": "b020d9807fd6600fbf07c3bafbd40342eef5313f5af0d60f582cd4fc3c5bff73",
+      "src/piezo.h": "ffa40f18bfd7dbaa578ac6021b36a875235b3e9f26018f43409ee090c8a5c978",
+      "src/portable_util.h": "d54feab0ca13a0e6c767e3a3eed10925bbf2926a8ea9f7376a5b526c311220f8",
+      "src/power_status.c": "4aca2098c6dcda83243fca1e7a46cab29916ca637d687caf519ae8706dda1d0a",
+      "src/power_status.h": "73b13e701488299b09335c40d6de8237bcefca7ec05154c5a0d5d24e7dee5d0d",
+      "src/render_placement.h": "553b12932955326e8b8a4822c0eac15ee104cfd56392d05bffb9357aeb0a16d1",
+      "src/scene_renderer.c": "66817fc5bae256e44d4f34070f531ac2c79661702196154ab1a59256da790431",
+      "src/scene_renderer.h": "0320dfb4ae03d522b471858dd2a50c1c3933055df809c13a5b21d771ae1ada3b",
+      "sim/garden_allocation.c": "70882c58d904a0208f325a4be437a85bff3670d0da9b38ef1608a868aa91be25",
+      "sim/garden_allocation_policy.c": "1c36ffa00ea094c6e130346851bb0d7460dceea83461d4c8461f1da74df691dd",
+      "sim/garden_allocation_policy.h": "3725744d1ad042fa0c5bf439df7668fc23637950c387d7534971b7fec1f2fd80",
+      "sim/garden_allocation_policy_test.c": "65d60d241242caff95e704d67f406fa2b21d19261488c58aa0dd7941947f5c99",
+      "sim/garden_canopy_transmission.c": "02993ff511ee47b2a84644b44373a52db0cdee2d10f14210e1c61c59fbe6c12e",
+      "sim/garden_canopy_transmission_test.c": "d0079d0af8be2a5ed7a3cd5bfd62586af5e0a888afe4627428ecf6671c2ff61a",
+      "sim/garden_capacity_test.c": "a507c81d973e26a04fa46e10c7e66b18e60f072508311f09f7a84a4aaf869a0d",
+      "sim/garden_climate_cli.c": "e225697b222b00b988bb461f5a460cf52467b9abf1e997aa18c02667822f5444",
+      "sim/garden_climate_cli.h": "c102de3b93b2f4b37d03866c79c664f1c1fb0c41a3a99dfb3cc14c99e75c6db1",
+      "sim/garden_climate_test.c": "b11ada0c22f6452796dca599727fc8335b11cc82f1becebdb714e9703df40b5b",
+      "sim/garden_damage_test.c": "ea9d6b5a7b81c61ac904bf6a3d539984e5ff7fb2fb8154a7866e3f60b50aa72c",
+      "sim/garden_dark_guard.c": "4cfbc2e782857d1d0b516ee37e383cca8c0f34dea00f4566a3c365f315925298",
+      "sim/garden_dark_guard_test.c": "f2af835eb99ee3d0b2ea28db0c1804f0bac153f65bc497154d2f7561b8956746",
+      "sim/garden_dawn_finish.c": "ccbbb1383722c6bd18ddd92c6b7ef91e9379092d57537c537848c3bb0ca8bc24",
+      "sim/garden_dawn_finish_test.c": "75e2e16ea11d8503954718709cc7505e360c5130d1ae5def1fdfef0992b9046e",
+      "sim/garden_dispersal_test.c": "fe221c582ef7242a7d5047283a007766aa07c7898d3bf2bc27ebde1746e4d1a3",
+      "sim/garden_disturbance.c": "193e29a00859e7d599beb6ef94057521b9437ae1678596ddec9e1b1dfc52343b",
+      "sim/garden_disturbance.h": "faec42d04bd4cc2c2fa91d2bcbf327c62c31f353a75d2abcd535b57e5ce91e9a",
+      "sim/garden_disturbance_test.c": "256fbb761eab7559f55f6349bde1b67a0d721589be63d5b16db6cf52212a787d",
+      "sim/garden_evaluation.c": "7468c136eb67ab3bb33ff97ddcddba2b278ee930628ab098152f1e9d116da5da",
+      "sim/garden_evaluation.h": "e7324c77dea498f06d0dc8bf64595604393a23dea9cbbfcef87c7c833552a366",
+      "sim/garden_experiment.c": "137711a9cc0f948dde7c77a00faaa2b0fdc5bf89f7e833ff0c5f5b20734c36ce",
+      "sim/garden_flower_audit_test.c": "b9d64ecba937ca60307c6d91bbb9423cad6081433cbe5289ceb0a9a8406fb09c",
+      "sim/garden_focal_policy.c": "f186cf2e3931f68308f563a49b424acf0a96f262a982a0b4bad590183f0f83fa",
+      "sim/garden_focal_policy.h": "c051385152f9a6cb56a3d0880e4a10e8d8bc38792b69f14220d5027355475553",
+      "sim/garden_focal_policy_test.c": "a0348cb4ec416bc60431285de28843ceb9a699ec01cc3e7fe36092b6e5ef01ba",
+      "sim/garden_founder_exit.c": "cb9c5fa8c5a994f319897c6576df5107d455e1db24bb83386223200c4428c332",
+      "sim/garden_founder_exit.h": "5e8716aac6966037dc131c29ab1ba58aea8f9e896666660f4e9e83e6f062f08a",
+      "sim/garden_founder_exit_test.c": "db0f78167a4a574a39eee588043fb48935cdac4fd84c8e98166c99bb4b505fdf",
+      "sim/garden_full_pool.c": "dae7b403c0833236470ee6402be0649001e820e56e977b648fb6d45f353cdca9",
+      "sim/garden_full_pool_test.c": "fd9882ce782a72633d955ff7d98a22a5ac2bcf227be9ef123b172f208374697d",
+      "sim/garden_gap.c": "d5237f7004fc361920bc24c1341be79d5aa0a93de95b2f2ff7e1077449c5c49c",
+      "sim/garden_gap.h": "84ee0b1caaa4a1849ca03ebc4e474d6a0ca584427f1d12dc4aa78ca6c9bd4365",
+      "sim/garden_gap_test.c": "5b85618bc10db0d4c0faed64e4066aab10b0062fe75dee20eba52f6b2a192967",
+      "sim/garden_inspect.c": "e840aebec8bb39e5593823ff9d26d8d11aed997e04c75e1e330c063d16ef59ba",
+      "sim/garden_landing_audit.c": "ec26521a9758a16134fe6faaa08f8e52e58f7c3add3a58e85442c993fcf768a4",
+      "sim/garden_landing_features.c": "6f7593905ec2e32c4bfa70446673cd513988bd49b02d104cfd595d7899795aad",
+      "sim/garden_landing_features.h": "69b9938a965397081a00c3bf90f58d37235ebc397e9e5cf6303ecb9dcdf9d808",
+      "sim/garden_landing_features_probe.c": "6aef31b4862582d92bdc93f2cf161dc70c009180ebd2dfb530facecb8b12664f",
+      "sim/garden_landing_features_test.c": "c4e666f17e51f67b5dab0b1ee6577d129dca0ee8a085ece9908482515ea150ef",
+      "sim/garden_landing_test.c": "35a38065b0dcfda3d9e398ec738c3cd609e30a2547c70f51842900811476b3da",
+      "sim/garden_leaf_policies.c": "2a11efdeb97b373494d75a4f31332f0a0d1d011fef0ebb0753aa3216b55c7bd3",
+      "sim/garden_leaf_policies.h": "397e3520dbe7772fafb0c66754ad585a1df7f0c808ac4cd911fdeb725b06527b",
+      "sim/garden_leaf_test.c": "fb7569c7b7293abbf888c8682807670287c50d760646a2297334fa0b873dcdb4",
+      "sim/garden_lifetimes.c": "25ebfcd211df55f096907989ea8311307c1dd10bb52ba7365b3c20cad117b567",
+      "sim/garden_lifetimes.h": "4fe72839b36038ab69add77c4617e79e89daebc5d10d07074431b6c1fdc33564",
+      "sim/garden_lifetimes_test.c": "f3a38fbd701f94c5068360bfc8ef1c3c379de04f029898ca64f3f8f199cf3e00",
+      "sim/garden_long_run_test.c": "6fbc1a6de1801819e2199246976e05a4702ff8af5c8f22c4a957543dab6a3079",
+      "sim/garden_model_file.c": "bdf4c61281499cb4a9dc87de2163e12471aae2207b309d5e1484a036c2967859",
+      "sim/garden_model_file.h": "5a23a8f34379d3fddb4e165aaf288b8da7f0bd6e232818674a5afe9f81aed84e",
+      "sim/garden_model_mutate.c": "4046be516b0cd5f1acc296ad066ab4b144919dca95118294ec9b8c0f23d21d61",
+      "sim/garden_model_mutation.c": "44e5788851f9edd0d930fd3baf3048c894a5a1f5c0c6acb1eef4cd2ceaea0844",
+      "sim/garden_model_mutation.h": "203c89fb4af495ace6099e5ceb098f5238dad9dc0f13352da906641ad31344be",
+      "sim/garden_night_capacity.c": "2292f8957ae462663369f28f89b12271bf595d2d98cd3234370888790de29903",
+      "sim/garden_night_capacity_test.c": "fc07994fd677bcc390482cd7421e5436e220ab85da66d67ea96adea3f8f41400",
+      "sim/garden_persistence.c": "71c236d368a40b2f57e63b36ec9d5f54f58ecae0368915517d5de4b57c71efde",
+      "sim/garden_persistence.h": "1b1571dcc9562f00d068c7bee9bf92bb78238715d3bfac6e22f1cdc25bcad6fa",
+      "sim/garden_persistence_check.c": "6d343f848035409e9e5c871431ae5707d2a423db4064c161530b5e73304d1be2",
+      "sim/garden_persistence_trial.c": "c95d036d2292cb64654c1bb3db3e69653b9b9e662895877361c633748d959276",
+      "sim/garden_pilot_parse.h": "fee01cc25cd19a833e3e73b99077058c0054257aa877ea283a3e5a8a8c1cda3f",
+      "sim/garden_plant_slots.c": "ad9d3de6a52b9c24bf9ba19d66117156e0cac9dd84bfa03132135d141169d1c7",
+      "sim/garden_plant_slots_test.c": "57cd44b6836c2a6a19663150bb0d9219a068ca09cc8191b15746bb0576a0a461",
+      "sim/garden_policy_probe.c": "3e24ec8768365a773517a2cf9f6c830d58e4b0f5e7701bc1d1a4f715ce81233d",
+      "sim/garden_policy_probe.h": "f438f4248410fdc9ce17eb871c79443e6461e4b0a4ea0a19bc44b738fc50fc50",
+      "sim/garden_policy_probe_test.c": "1e9945adda7f1e0ad522dabe137baefbaac7cb3870c9d1ba65d5b2da38329058",
+      "sim/garden_production_audit.c": "f566d00bb315a1b7f2f65750caa63c050667edf8b891f2aad1287707e53df89b",
+      "sim/garden_profile.c": "7d2b35e8354d95e3fecae4478f95270905ffaa7c23c61a4f9298d01b10dbe206",
+      "sim/garden_purchase_veto.c": "eb5f35b2675f87ff48d682fd45cb1a002bf54b51ccfb945fabd48891cdec583d",
+      "sim/garden_purchase_veto_test.c": "37f71ddea9971730f8645c686d583682a62c269ec5bbdbae2251ba140a4c8d00",
+      "sim/garden_recruitment_audit.c": "9449d839e31446d80963b46bc630af13df5931f394aecb072069ff0121a50c65",
+      "sim/garden_replay.c": "f07f77795fabbe4589055d47bc0abc1c8ee31dae3e6ae5b8237f29cbaa46d8d7",
+      "sim/garden_reproduction_audit_test.c": "1b37ace8436201ce98e014f97b3964c48b9700de6bf36bf45c258aa9fbbfbfa7",
+      "sim/garden_reserve_policy.c": "1ae99133e08b0f94fec6c88ec7be03cb941e6e956e387806305452e906f4f97f",
+      "sim/garden_reserve_policy.h": "4505776c29be3d5e6455ea5a3271d74018a4e087359e82ed59b89bc491093d74",
+      "sim/garden_reserve_policy_test.c": "bf52026d3d7c90770f3fe3a2dbb3a6023583e58ee12860cfdb86417cc80ac337",
+      "sim/garden_root_bootstrap.c": "96928b33488b297ce78393c2b0f14df61e04fa309f3833fe9dfb19f21aa91938",
+      "sim/garden_root_bootstrap.h": "f93e660b4207383b0486b59eb1178cdfde5f8f41471b91fb58e9066a718f6f81",
+      "sim/garden_root_bootstrap_test.c": "bb4ca1ff3d0d003a8597740a28814bb6d7bd92e15eba603c16e6c8c0dc07e516",
+      "sim/garden_seed_attempts.c": "bd9741940f178c40bd52a1d777d66671148bfb2f66b98a9197957a695c10951c",
+      "sim/garden_seed_audit_test.c": "a544585a4392fa315600bdf96718e2006bdca26850ece50ee3372a231fcecd7f",
+      "sim/garden_seed_order.c": "a54dae0317c83924d8cda12b2f12fb0329c7ae77da7c4b8a9e13e57f82ebb38f",
+      "sim/garden_seed_order_test.c": "2c5718d708ea1f879c7fcab917820279800c79a6c305907e79e9911cb779cdff",
+      "sim/garden_seed_reserve_test.c": "048289f04d07c2dc36dad6296236cbeacdf6b203c95a292d288c3f668a3706a4",
+      "sim/garden_seed_sites_test.c": "d2d5e03d360d6ff3c1820efc8316add98ad54f838310b2e5ab7386e0df1e41b7",
+      "sim/garden_seed_spacing.c": "cb19782b6740369fd1b15d055fcfa82711a8862b66a3be681eaa8d0f490817ed",
+      "sim/garden_seed_spacing_test.c": "1f225b661d86897c7a2cd2ffa9c5bc876de28ed0df3e12d7b0331e420eeee84b",
+      "sim/garden_seed_veto_test.c": "0d646c584c29a6e385742ca01e1c19fef2975c58f8e176aeaad4567796aac330",
+      "sim/garden_seedling_reserve.c": "912aec851cc13033c8d38b29f6f4f5d29a5ef8fafab9b0230f6beedadd066639",
+      "sim/garden_seedling_reserve.h": "30176c2f0c2f3f724ac3b28af617124e109be4525c26e226bd2f197952611cad",
+      "sim/garden_seedling_reserve_test.c": "419ae1c6826b44aa2000b17cd978fab12a1f73e2905a194c6eab720db1510c8d",
+      "sim/garden_topology.c": "95d6d2da35c96398c7007959ae820c66f31daa31313dee3929cf14f13df88bc8",
+      "sim/garden_topology.h": "70f322a05aa5dfb3c3d4fdbe76fbb400b310dbc1550ba9e19f71165970284319",
+      "sim/garden_topology_test.c": "327afbfe62298a8aa8aad974b02a13211b96853168b069880cd1c7a4a8045005",
+      "sim/garden_train.c": "41441dfa1ad5338e08b794868c7de9fde33ca95c8c10f9800c7b578d0929c6a4",
+      "sim/garden_water_audit_test.c": "762bfd9d58b103ff9d98f51dc9f32762244ce12e22e84822fc81310ea523dc20",
+      "sim/garden_water_budget.c": "1b93d32de083c285b82f52aeb70b1339628bcddbb0de3d0428f12f23d0ccb311",
+      "sim/garden_water_uptake_test.c": "d8c49fe0cec4f3ab24eeded708b287adb3be6c993fce0a54f8e78982acbb13a7",
+      "sim/garden_wet_germination.c": "bb70411490a4fbb93ea9069646c7072485bf818a669f186c57af6ab127372a3e",
+      "sim/garden_wet_germination.h": "6796748481c330529610665ed23a860a1727f1d4015332bc6a3fc370127c4c90",
+      "sim/garden_wet_germination_test.c": "8a72df9e8e2295a75a703383091b409693909bda9d9629cc8f2d5d0bce542383",
+      "sim/main.c": "00127d995e93a7a759e0db4618f54554e64912daf9dc1cbd319af21e64c3f282",
+      "sim/player.c": "65d476d1da49cf0cf7608c91019a2856a9cfb36e1d1ec466ed84526e69175a76",
+      "sim/simulator.c": "96935629fe458d8c9f9bbe7ef1ec6df1ed070daa20090284b56e5368f240cc33",
+      "sim/simulator.h": "28228ce004328a609c146c481d3832e82cf9752d8772ee9fee7bc4b2ac368075",
+      "sim/garden_seasons.py": "8bfa9f1e34a9e580546b446dd1b69bce6de07c777446fe04b96604c98d3225e9",
+      "scripts/container/host-garden-defaults.sh": "2a28ad0b5d4716a62f30b66cae126627ddf1692b1703dc74bbfac33b4d2e0afe",
+      "sim/test_garden_landing_features.py": "aee34598030dfa29fcb0534147b34b8e1f171b28bbabfcc5d74d19f2ba550078",
+      "benchmarks/garden-seasons/flower-sites-protocol.md": "487b46afe43a3a87d3b58059b9a8769f20d57e9b1bd33ead8f290dbb03d27a13",
+      "sim/test_garden_season_flower_origin.py": "862d8309caf58b8461abc3697b7e79603b24822a7059c3d539260b02eba66b8f",
+      "sim/garden_season_reproduction_funnel.py": "467106617f21807779769889d6925ba66a0e9234cf84e7dc86ab6d73628b1e04",
+      "sim/garden_season_seed_bank_capacity.py": "c9f8e71f001ad2eabb9618709d81aa033c2d04af32c662616d263b8004ffe854",
+      "sim/test_garden_landing_shadow.py": "5530d1582e21264e2f246f7afce7ea72c46ef884a3aaaea1126e7a1b86d1f75b",
+      "sim/garden_season_flower_origin.py": "1b53ecce9233bf0cb6c87eecd674c6bd01975e289b2cadb564a2fad05051f7e5",
+      "benchmarks/garden-seasons/seed-bank-capacity-protocol.md": "c45319c389ec448940e7b7798ff0c1d0c94cbf9b7f1447bae781d4759fb90758",
+      "sim/garden_season_seedling_confirmation.py": "a1ca0696d7222f1cf447232730de2859fa715c4b0a0dc00746831431ccb81226",
+      "sim/test_garden_season_seed_bank_capacity.py": "67dc334d5e774b064155e21ae3c2f138f184c8323369022fde04b15a071f8bf0",
+      "benchmarks/garden-seasons/reproduction-funnel-protocol.md": "4aeec89bef58570c920b2731b70b37eab36b58722c465628ed6ea89b820b1f3b",
+      "benchmarks/garden-seasons/landing-shadow-histories.json.gz": "24c4623c78ebb752f7236324f5f3d9863387357bc86184c2f0c1d3d1719113da",
+      "sim/garden_landing_features.py": "5b081aa7003397525621fa98991658aa3d8318c4b244bd8abd54f9372d561462",
+      "sim/test_garden_season_seed_waits.py": "5223a610ee9b84c2cbec022a5dc6288593d84a6fd089feeb5f4b8f3243c0a149",
+      "benchmarks/garden-seasons/flower-origin-protocol.md": "34f7a6f1649b2ec8f9e3bf9b5707de774919a5751acc206153f94e8df0060fa6",
+      "sim/garden_season_production_gates.py": "941b5de27c63dc65884e37baa731933ac9f01575cb8e91d5b1759cdda3ad61d8",
+      "docs/garden-landing-observation.md": "477be8b3cd904c017f48ee9ad8adf6511cfc3350f65d0e7bce41b9bbf537ccc6",
+      "benchmarks/garden-seasons/landing-shadow-summary.json": "bddedac9f56cc99d7ea61935730d1b4c51ac9cbbc2a326446b8cb15aa1c40239",
+      "sim/garden_season_flower_sites.py": "d87f38fa492169033936ac8cd116aa4b715ea18d218fbc0cc07a6a94ee068f27",
+      "sim/garden_season_seed_bank_diagnosis.py": "4e41b8d07ec7f1d3b428dc38262392e78fcf84257cdb91d7eed7f69b3c05c450",
+      "benchmarks/garden-seasons/production-gates-protocol.md": "fd5a1b5184d3fafc83d5d7084c1b5a5bfbf15a7c1922022f0b5a5b43ffd3683d",
+      "sim/test_garden_landing_contract.py": "6c6764b0450b62ddc96ce8b26c994324a9e028b8437a20313b38be4df7425f2f",
+      "docs/garden-landing-encoding.md": "a2d77400d033d39381b35ea71fd311c42bb2b529df424bed332a80a0142c5bcb",
+      "sim/garden_landing_shadow.py": "f1bb34061f972692e2a3c23ccb3d8932b25852369d63c9b6a725e411f6a9af29",
+      "sim/test_garden_season_flower_sites.py": "a097b3ba7cd4e341a80e27cd505ffbda92e79ee33d8948e41fa8ec3e478136a5",
+      "sim/test_garden_season_production_gates.py": "1198d9a05104fd036ce9eeee88333a627221b7c6cf4ad582cc31d01c2f168f5f",
+      "sim/test_garden_season_seed_bank_diagnosis.py": "de6ebb8ab1afcca9e854298fbc4f2605d26a9807dd85483e78ba6bee88d05a1c",
+      "sim/garden_season_seedling_population.py": "2e64af7d1f228751996eda82e64a0890c51d0a7360a785bb2565bd7ea3395aee",
+      "benchmarks/garden-seasons/landing-shadow-protocol.md": "6ef70f1b0c65b6312bd3ba3af61adf74af38ff2930acf9ace74054e808f0eadf",
+      "sim/CMakeLists.txt": "318c1c473a36e045ec1cb9c6f40a3bf8c994048bce8bf419a4c4aadb59ca5b15",
+      "benchmarks/garden-seasons/seed-waits-summary.json": "5d089e00e11e180bb1cb18c7143a05e67c0db0c0bed9c440ac58d61f38b640c2",
+      "sim/garden_season_seedling_reserve.py": "d5611236d35b2ad7823000ceed9d2f997004b80a4db657613597c19cb6757b75",
+      "sim/test_garden_season_reproduction_funnel.py": "8e0a7bea510406b6938e75381539c721de143225cea9b0f2d19b57cb605ce1cf",
+      "sim/garden_landing_contract.py": "d80d3a057585c13b9e4537e30b85a098dc3a20dcf5133fa4340da9eaad7bbd06",
+      "sim/garden_season_offspring.py": "f86504261edde4b0ac0b223a5ffa4aa95628a2c77d058c7fea957ea277813117",
+      "benchmarks/garden-seasons/seed-waits-protocol.md": "4d3fcc3cce25e414ac5056c48e19d65963cacdaa2432289dda44c5d8346aa8da",
+      "sim/garden_season_seed_waits.py": "e087a6fcaff0aa1edee9285941ccd24861250610ce483d215da31a7ac009cf1a",
+      "sim/garden_landing_encoding.py": "a7ba7558fee19b8ac1939a6fbfcec348667368960e3170f13d2b66982454ff8d"
+    },
+    "build": {
+      "flags": {
+        "TOY_FACTORY_GARDEN_BOTTOM_DRAINAGE:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_CANOPY_TRANSMISSION:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_COMBINED_EXPERIMENT:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_DARK_GUARD:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_DAWN_FINISH:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_FLOWER_DISPERSAL:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_FOCAL_SEED_VETO:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_FULL_POOL:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_LARGE_POOL:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_LARGE_SEED_BANK:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_LEAF_MAINTENANCE:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_NIGHT_CAPACITY:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_PLANT_SLOTS:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_PURCHASE_VETO:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_SEASONAL_SEED_BANK:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_SEED_ORDER:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_SEED_RESERVE:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_SEED_SPACING:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_WATER_HEADROOM:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_WET_GERMINATION:BOOL": "OFF",
+        "TOY_FACTORY_GARDEN_WIDE_DISPERSAL:BOOL": "OFF"
+      },
+      "cache_sha256": "7415a784121fe439f1bf54bad23aa445b987f46a5ba20ce742172e010151f7dc",
+      "probe_sha256": "7800da6c0d2d2744814ba2fa1d9e0db8ea5cba607c7d1ccc5884a554d7bb0bff"
+    }
+  },
+  "analysis": {
+    "groups": {
+      "whole": {
+        "base": {
+          "queries": 86980,
+          "stems": 62087,
+          "roots": 24893,
+          "choices": 43690,
+          "sources": 366141,
+          "cold_stems": 0,
+          "history_added": 0,
+          "current_dead_only": 0,
+          "history_dead_only": 0,
+          "masks": {
+            "off": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "current": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "history": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "current-no-dead": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "history-no-dead": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            }
+          }
+        },
+        "flower": {
+          "queries": 73497,
+          "stems": 54340,
+          "roots": 19157,
+          "choices": 39049,
+          "sources": 323913,
+          "cold_stems": 0,
+          "history_added": 6887,
+          "current_dead_only": 24,
+          "history_dead_only": 1,
+          "masks": {
+            "off": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "current": {
+              "ge_1": 22626,
+              "ge_4": 19407,
+              "ge_16": 17381,
+              "max": 110
+            },
+            "history": {
+              "ge_1": 29513,
+              "ge_4": 21507,
+              "ge_16": 17395,
+              "max": 110
+            },
+            "current-no-dead": {
+              "ge_1": 22602,
+              "ge_4": 19357,
+              "ge_16": 17298,
+              "max": 110
+            },
+            "history-no-dead": {
+              "ge_1": 29512,
+              "ge_4": 21469,
+              "ge_16": 17312,
+              "max": 110
+            }
+          }
+        }
+      },
+      "warmed": {
+        "base": {
+          "queries": 74527,
+          "stems": 53068,
+          "roots": 21459,
+          "choices": 36730,
+          "sources": 312662,
+          "cold_stems": 0,
+          "history_added": 0,
+          "current_dead_only": 0,
+          "history_dead_only": 0,
+          "masks": {
+            "off": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "current": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "history": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "current-no-dead": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "history-no-dead": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            }
+          }
+        },
+        "flower": {
+          "queries": 61044,
+          "stems": 45321,
+          "roots": 15723,
+          "choices": 32089,
+          "sources": 270434,
+          "cold_stems": 0,
+          "history_added": 5362,
+          "current_dead_only": 20,
+          "history_dead_only": 1,
+          "masks": {
+            "off": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "current": {
+              "ge_1": 19415,
+              "ge_4": 16874,
+              "ge_16": 15237,
+              "max": 110
+            },
+            "history": {
+              "ge_1": 24777,
+              "ge_4": 18971,
+              "ge_16": 15251,
+              "max": 110
+            },
+            "current-no-dead": {
+              "ge_1": 19395,
+              "ge_4": 16831,
+              "ge_16": 15170,
+              "max": 110
+            },
+            "history-no-dead": {
+              "ge_1": 24776,
+              "ge_4": 18940,
+              "ge_16": 15184,
+              "max": 110
+            }
+          }
+        }
+      },
+      "closing": {
+        "base": {
+          "queries": 2964,
+          "stems": 1338,
+          "roots": 1626,
+          "choices": 1278,
+          "sources": 7970,
+          "cold_stems": 0,
+          "history_added": 0,
+          "current_dead_only": 0,
+          "history_dead_only": 0,
+          "masks": {
+            "off": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "current": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "history": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "current-no-dead": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "history-no-dead": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            }
+          }
+        },
+        "flower": {
+          "queries": 1180,
+          "stems": 811,
+          "roots": 369,
+          "choices": 740,
+          "sources": 4703,
+          "cold_stems": 0,
+          "history_added": 48,
+          "current_dead_only": 0,
+          "history_dead_only": 0,
+          "masks": {
+            "off": {
+              "ge_1": 0,
+              "ge_4": 0,
+              "ge_16": 0,
+              "max": 0
+            },
+            "current": {
+              "ge_1": 594,
+              "ge_4": 457,
+              "ge_16": 388,
+              "max": 91
+            },
+            "history": {
+              "ge_1": 642,
+              "ge_4": 465,
+              "ge_16": 388,
+              "max": 91
+            },
+            "current-no-dead": {
+              "ge_1": 594,
+              "ge_4": 457,
+              "ge_16": 388,
+              "max": 91
+            },
+            "history-no-dead": {
+              "ge_1": 642,
+              "ge_4": 465,
+              "ge_16": 388,
+              "max": 91
+            }
+          }
+        }
+      }
+    },
+    "partitions": {
+      "seed": {
+        "ed52188c": {
+          "whole": {
+            "base": {
+              "queries": 40783,
+              "stems": 28375,
+              "roots": 12408,
+              "choices": 20725,
+              "sources": 166343,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 33657,
+              "stems": 23222,
+              "roots": 10435,
+              "choices": 18475,
+              "sources": 138591,
+              "cold_stems": 0,
+              "history_added": 3792,
+              "current_dead_only": 20,
+              "history_dead_only": 1,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 11398,
+                  "ge_4": 9945,
+                  "ge_16": 8867,
+                  "max": 110
+                },
+                "history": {
+                  "ge_1": 15190,
+                  "ge_4": 10920,
+                  "ge_16": 8877,
+                  "max": 110
+                },
+                "current-no-dead": {
+                  "ge_1": 11378,
+                  "ge_4": 9901,
+                  "ge_16": 8801,
+                  "max": 110
+                },
+                "history-no-dead": {
+                  "ge_1": 15189,
+                  "ge_4": 10888,
+                  "ge_16": 8811,
+                  "max": 110
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 34755,
+              "stems": 24081,
+              "roots": 10674,
+              "choices": 17498,
+              "sources": 140579,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 27629,
+              "stems": 18928,
+              "roots": 8701,
+              "choices": 15248,
+              "sources": 112827,
+              "cold_stems": 0,
+              "history_added": 3063,
+              "current_dead_only": 20,
+              "history_dead_only": 1,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 9694,
+                  "ge_4": 8470,
+                  "ge_16": 7591,
+                  "max": 110
+                },
+                "history": {
+                  "ge_1": 12757,
+                  "ge_4": 9442,
+                  "ge_16": 7601,
+                  "max": 110
+                },
+                "current-no-dead": {
+                  "ge_1": 9674,
+                  "ge_4": 8427,
+                  "ge_16": 7527,
+                  "max": 110
+                },
+                "history-no-dead": {
+                  "ge_1": 12756,
+                  "ge_4": 9411,
+                  "ge_16": 7537,
+                  "max": 110
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 887,
+              "stems": 461,
+              "roots": 426,
+              "choices": 402,
+              "sources": 2761,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 686,
+              "stems": 512,
+              "roots": 174,
+              "choices": 441,
+              "sources": 2923,
+              "cold_stems": 0,
+              "history_added": 1,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 349,
+                  "ge_4": 331,
+                  "ge_16": 296,
+                  "max": 91
+                },
+                "history": {
+                  "ge_1": 350,
+                  "ge_4": 335,
+                  "ge_16": 296,
+                  "max": 91
+                },
+                "current-no-dead": {
+                  "ge_1": 349,
+                  "ge_4": 331,
+                  "ge_16": 296,
+                  "max": 91
+                },
+                "history-no-dead": {
+                  "ge_1": 350,
+                  "ge_4": 335,
+                  "ge_16": 296,
+                  "max": 91
+                }
+              }
+            }
+          }
+        },
+        "82deacfd": {
+          "whole": {
+            "base": {
+              "queries": 46197,
+              "stems": 33712,
+              "roots": 12485,
+              "choices": 22965,
+              "sources": 199798,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 39840,
+              "stems": 31118,
+              "roots": 8722,
+              "choices": 20574,
+              "sources": 185322,
+              "cold_stems": 0,
+              "history_added": 3095,
+              "current_dead_only": 4,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 11228,
+                  "ge_4": 9462,
+                  "ge_16": 8514,
+                  "max": 109
+                },
+                "history": {
+                  "ge_1": 14323,
+                  "ge_4": 10587,
+                  "ge_16": 8518,
+                  "max": 109
+                },
+                "current-no-dead": {
+                  "ge_1": 11224,
+                  "ge_4": 9456,
+                  "ge_16": 8497,
+                  "max": 109
+                },
+                "history-no-dead": {
+                  "ge_1": 14323,
+                  "ge_4": 10581,
+                  "ge_16": 8501,
+                  "max": 109
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 39772,
+              "stems": 28987,
+              "roots": 10785,
+              "choices": 19232,
+              "sources": 172083,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 33415,
+              "stems": 26393,
+              "roots": 7022,
+              "choices": 16841,
+              "sources": 157607,
+              "cold_stems": 0,
+              "history_added": 2299,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 9721,
+                  "ge_4": 8404,
+                  "ge_16": 7646,
+                  "max": 109
+                },
+                "history": {
+                  "ge_1": 12020,
+                  "ge_4": 9529,
+                  "ge_16": 7650,
+                  "max": 109
+                },
+                "current-no-dead": {
+                  "ge_1": 9721,
+                  "ge_4": 8404,
+                  "ge_16": 7643,
+                  "max": 109
+                },
+                "history-no-dead": {
+                  "ge_1": 12020,
+                  "ge_4": 9529,
+                  "ge_16": 7647,
+                  "max": 109
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 2077,
+              "stems": 877,
+              "roots": 1200,
+              "choices": 876,
+              "sources": 5209,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 494,
+              "stems": 299,
+              "roots": 195,
+              "choices": 299,
+              "sources": 1780,
+              "cold_stems": 0,
+              "history_added": 47,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 245,
+                  "ge_4": 126,
+                  "ge_16": 92,
+                  "max": 91
+                },
+                "history": {
+                  "ge_1": 292,
+                  "ge_4": 130,
+                  "ge_16": 92,
+                  "max": 91
+                },
+                "current-no-dead": {
+                  "ge_1": 245,
+                  "ge_4": 126,
+                  "ge_16": 92,
+                  "max": 91
+                },
+                "history-no-dead": {
+                  "ge_1": 292,
+                  "ge_4": 130,
+                  "ge_16": 92,
+                  "max": 91
+                }
+              }
+            }
+          }
+        }
+      },
+      "scenario": {
+        "rainfed": {
+          "whole": {
+            "base": {
+              "queries": 52004,
+              "stems": 37020,
+              "roots": 14984,
+              "choices": 26523,
+              "sources": 217981,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 41642,
+              "stems": 30427,
+              "roots": 11215,
+              "choices": 23800,
+              "sources": 181391,
+              "cold_stems": 0,
+              "history_added": 3134,
+              "current_dead_only": 17,
+              "history_dead_only": 1,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 15073,
+                  "ge_4": 13381,
+                  "ge_16": 12417,
+                  "max": 110
+                },
+                "history": {
+                  "ge_1": 18207,
+                  "ge_4": 14829,
+                  "ge_16": 12430,
+                  "max": 110
+                },
+                "current-no-dead": {
+                  "ge_1": 15056,
+                  "ge_4": 13349,
+                  "ge_16": 12379,
+                  "max": 110
+                },
+                "history-no-dead": {
+                  "ge_1": 18206,
+                  "ge_4": 14809,
+                  "ge_16": 12392,
+                  "max": 110
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 47096,
+              "stems": 33291,
+              "roots": 13805,
+              "choices": 23381,
+              "sources": 195927,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 36734,
+              "stems": 26698,
+              "roots": 10036,
+              "choices": 20658,
+              "sources": 159337,
+              "cold_stems": 0,
+              "history_added": 2937,
+              "current_dead_only": 17,
+              "history_dead_only": 1,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 13506,
+                  "ge_4": 12055,
+                  "ge_16": 11155,
+                  "max": 110
+                },
+                "history": {
+                  "ge_1": 16443,
+                  "ge_4": 13503,
+                  "ge_16": 11168,
+                  "max": 110
+                },
+                "current-no-dead": {
+                  "ge_1": 13489,
+                  "ge_4": 12024,
+                  "ge_16": 11119,
+                  "max": 110
+                },
+                "history-no-dead": {
+                  "ge_1": 16442,
+                  "ge_4": 13484,
+                  "ge_16": 11132,
+                  "max": 110
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 1107,
+              "stems": 538,
+              "roots": 569,
+              "choices": 479,
+              "sources": 3209,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 1111,
+              "stems": 784,
+              "roots": 327,
+              "choices": 713,
+              "sources": 4541,
+              "cold_stems": 0,
+              "history_added": 48,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 567,
+                  "ge_4": 430,
+                  "ge_16": 363,
+                  "max": 91
+                },
+                "history": {
+                  "ge_1": 615,
+                  "ge_4": 438,
+                  "ge_16": 363,
+                  "max": 91
+                },
+                "current-no-dead": {
+                  "ge_1": 567,
+                  "ge_4": 430,
+                  "ge_16": 363,
+                  "max": 91
+                },
+                "history-no-dead": {
+                  "ge_1": 615,
+                  "ge_4": 438,
+                  "ge_16": 363,
+                  "max": 91
+                }
+              }
+            }
+          }
+        },
+        "rainfed-crowded": {
+          "whole": {
+            "base": {
+              "queries": 34976,
+              "stems": 25067,
+              "roots": 9909,
+              "choices": 17167,
+              "sources": 148160,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 31855,
+              "stems": 23913,
+              "roots": 7942,
+              "choices": 15249,
+              "sources": 142522,
+              "cold_stems": 0,
+              "history_added": 3753,
+              "current_dead_only": 7,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 7553,
+                  "ge_4": 6026,
+                  "ge_16": 4964,
+                  "max": 109
+                },
+                "history": {
+                  "ge_1": 11306,
+                  "ge_4": 6678,
+                  "ge_16": 4965,
+                  "max": 109
+                },
+                "current-no-dead": {
+                  "ge_1": 7546,
+                  "ge_4": 6008,
+                  "ge_16": 4919,
+                  "max": 109
+                },
+                "history-no-dead": {
+                  "ge_1": 11306,
+                  "ge_4": 6660,
+                  "ge_16": 4920,
+                  "max": 109
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 27431,
+              "stems": 19777,
+              "roots": 7654,
+              "choices": 13349,
+              "sources": 116735,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 24310,
+              "stems": 18623,
+              "roots": 5687,
+              "choices": 11431,
+              "sources": 111097,
+              "cold_stems": 0,
+              "history_added": 2425,
+              "current_dead_only": 3,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 5909,
+                  "ge_4": 4819,
+                  "ge_16": 4082,
+                  "max": 109
+                },
+                "history": {
+                  "ge_1": 8334,
+                  "ge_4": 5468,
+                  "ge_16": 4083,
+                  "max": 109
+                },
+                "current-no-dead": {
+                  "ge_1": 5906,
+                  "ge_4": 4807,
+                  "ge_16": 4051,
+                  "max": 109
+                },
+                "history-no-dead": {
+                  "ge_1": 8334,
+                  "ge_4": 5456,
+                  "ge_16": 4052,
+                  "max": 109
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 1857,
+              "stems": 800,
+              "roots": 1057,
+              "choices": 799,
+              "sources": 4761,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 69,
+              "stems": 27,
+              "roots": 42,
+              "choices": 27,
+              "sources": 162,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 27,
+                  "ge_4": 27,
+                  "ge_16": 25,
+                  "max": 91
+                },
+                "history": {
+                  "ge_1": 27,
+                  "ge_4": 27,
+                  "ge_16": 25,
+                  "max": 91
+                },
+                "current-no-dead": {
+                  "ge_1": 27,
+                  "ge_4": 27,
+                  "ge_16": 25,
+                  "max": 91
+                },
+                "history-no-dead": {
+                  "ge_1": 27,
+                  "ge_4": 27,
+                  "ge_16": 25,
+                  "max": 91
+                }
+              }
+            }
+          }
+        }
+      },
+      "policy": {
+        "baseline": {
+          "whole": {
+            "base": {
+              "queries": 17734,
+              "stems": 11223,
+              "roots": 6511,
+              "choices": 9686,
+              "sources": 65892,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 21023,
+              "stems": 15054,
+              "roots": 5969,
+              "choices": 12779,
+              "sources": 89733,
+              "cold_stems": 0,
+              "history_added": 2060,
+              "current_dead_only": 23,
+              "history_dead_only": 1,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 8797,
+                  "ge_4": 7804,
+                  "ge_16": 7140,
+                  "max": 110
+                },
+                "history": {
+                  "ge_1": 10857,
+                  "ge_4": 8921,
+                  "ge_16": 7152,
+                  "max": 110
+                },
+                "current-no-dead": {
+                  "ge_1": 8774,
+                  "ge_4": 7763,
+                  "ge_16": 7080,
+                  "max": 110
+                },
+                "history-no-dead": {
+                  "ge_1": 10856,
+                  "ge_4": 8892,
+                  "ge_16": 7092,
+                  "max": 110
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 15783,
+              "stems": 10238,
+              "roots": 5545,
+              "choices": 8769,
+              "sources": 60018,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 19072,
+              "stems": 14069,
+              "roots": 5003,
+              "choices": 11862,
+              "sources": 83859,
+              "cold_stems": 0,
+              "history_added": 1848,
+              "current_dead_only": 19,
+              "history_dead_only": 1,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 8312,
+                  "ge_4": 7407,
+                  "ge_16": 6807,
+                  "max": 110
+                },
+                "history": {
+                  "ge_1": 10160,
+                  "ge_4": 8523,
+                  "ge_16": 6819,
+                  "max": 110
+                },
+                "current-no-dead": {
+                  "ge_1": 8293,
+                  "ge_4": 7373,
+                  "ge_16": 6763,
+                  "max": 110
+                },
+                "history-no-dead": {
+                  "ge_1": 10159,
+                  "ge_4": 8501,
+                  "ge_16": 6775,
+                  "max": 110
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 1032,
+              "stems": 620,
+              "roots": 412,
+              "choices": 560,
+              "sources": 3684,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 667,
+              "stems": 520,
+              "roots": 147,
+              "choices": 449,
+              "sources": 3072,
+              "cold_stems": 0,
+              "history_added": 1,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 405,
+                  "ge_4": 382,
+                  "ge_16": 344,
+                  "max": 91
+                },
+                "history": {
+                  "ge_1": 406,
+                  "ge_4": 386,
+                  "ge_16": 344,
+                  "max": 91
+                },
+                "current-no-dead": {
+                  "ge_1": 405,
+                  "ge_4": 382,
+                  "ge_16": 344,
+                  "max": 91
+                },
+                "history-no-dead": {
+                  "ge_1": 406,
+                  "ge_4": 386,
+                  "ge_16": 344,
+                  "max": 91
+                }
+              }
+            }
+          }
+        },
+        "adaptive": {
+          "whole": {
+            "base": {
+              "queries": 69246,
+              "stems": 50864,
+              "roots": 18382,
+              "choices": 34004,
+              "sources": 300249,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 52474,
+              "stems": 39286,
+              "roots": 13188,
+              "choices": 26270,
+              "sources": 234180,
+              "cold_stems": 0,
+              "history_added": 4827,
+              "current_dead_only": 1,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 13829,
+                  "ge_4": 11603,
+                  "ge_16": 10241,
+                  "max": 109
+                },
+                "history": {
+                  "ge_1": 18656,
+                  "ge_4": 12586,
+                  "ge_16": 10243,
+                  "max": 109
+                },
+                "current-no-dead": {
+                  "ge_1": 13828,
+                  "ge_4": 11594,
+                  "ge_16": 10218,
+                  "max": 109
+                },
+                "history-no-dead": {
+                  "ge_1": 18656,
+                  "ge_4": 12577,
+                  "ge_16": 10220,
+                  "max": 109
+                }
+              }
+            }
+          },
+          "warmed": {
+            "base": {
+              "queries": 58744,
+              "stems": 42830,
+              "roots": 15914,
+              "choices": 27961,
+              "sources": 252644,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 41972,
+              "stems": 31252,
+              "roots": 10720,
+              "choices": 20227,
+              "sources": 186575,
+              "cold_stems": 0,
+              "history_added": 3514,
+              "current_dead_only": 1,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 11103,
+                  "ge_4": 9467,
+                  "ge_16": 8430,
+                  "max": 109
+                },
+                "history": {
+                  "ge_1": 14617,
+                  "ge_4": 10448,
+                  "ge_16": 8432,
+                  "max": 109
+                },
+                "current-no-dead": {
+                  "ge_1": 11102,
+                  "ge_4": 9458,
+                  "ge_16": 8407,
+                  "max": 109
+                },
+                "history-no-dead": {
+                  "ge_1": 14617,
+                  "ge_4": 10439,
+                  "ge_16": 8409,
+                  "max": 109
+                }
+              }
+            }
+          },
+          "closing": {
+            "base": {
+              "queries": 1932,
+              "stems": 718,
+              "roots": 1214,
+              "choices": 718,
+              "sources": 4286,
+              "cold_stems": 0,
+              "history_added": 0,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "history-no-dead": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                }
+              }
+            },
+            "flower": {
+              "queries": 513,
+              "stems": 291,
+              "roots": 222,
+              "choices": 291,
+              "sources": 1631,
+              "cold_stems": 0,
+              "history_added": 47,
+              "current_dead_only": 0,
+              "history_dead_only": 0,
+              "masks": {
+                "off": {
+                  "ge_1": 0,
+                  "ge_4": 0,
+                  "ge_16": 0,
+                  "max": 0
+                },
+                "current": {
+                  "ge_1": 189,
+                  "ge_4": 75,
+                  "ge_16": 44,
+                  "max": 55
+                },
+                "history": {
+                  "ge_1": 236,
+                  "ge_4": 79,
+                  "ge_16": 44,
+                  "max": 55
+                },
+                "current-no-dead": {
+                  "ge_1": 189,
+                  "ge_4": 75,
+                  "ge_16": 44,
+                  "max": 55
+                },
+                "history-no-dead": {
+                  "ge_1": 236,
+                  "ge_4": 79,
+                  "ge_16": 44,
+                  "max": 55
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "baseline",
+        "scenario": "rainfed",
+        "seed": "ed52188c"
+      },
+      "arm": "base",
+      "trace_sha256": "760c0cab9eed7432c595fc0ee342d765e0c60a215f4d4e3e53934466552fd8cb",
+      "bids": 7486,
+      "worlds": 32769,
+      "records": 37430,
+      "requests_sha256": "0ba70496e11294ce262e31b6c63a1028b8cc80f2fc69dfe90f21c401507a28dd",
+      "responses_sha256": "eccbacea1f4e85bb5caaf961da034a6ad18d1eef53f2ae4fac61e089b0eed723",
+      "days_sha256": "2dac3f7f814aedcbea0da16924ba526573ada2208134918edc55b9205caa5d4b"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "baseline",
+        "scenario": "rainfed",
+        "seed": "ed52188c"
+      },
+      "arm": "flower",
+      "trace_sha256": "2c3c5ffe29d809e6279b9ae0187f4b91e7c133917457b62459c812a8c619fcbd",
+      "bids": 13153,
+      "worlds": 32769,
+      "records": 65765,
+      "requests_sha256": "b6c189a185292362e1adaa04daa90054659fafd4b1d611b67501f1a067972a33",
+      "responses_sha256": "1773c50a1c87173b926bf77b6009cbcb4e2c0689a77c3cb1757a24deb09bfbb2",
+      "days_sha256": "d28b13ca68d4e7e04e37e38c455066a107cbc2f510764a26d8f5e5e8eb4ca752"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "baseline",
+        "scenario": "rainfed",
+        "seed": "82deacfd"
+      },
+      "arm": "base",
+      "trace_sha256": "6da6f316a4678734e623afedbf2d1b0f88961a0e0f3ce61ef6c55036dbbdb650",
+      "bids": 4184,
+      "worlds": 32769,
+      "records": 20920,
+      "requests_sha256": "e25329c2f5875939946e144b31294ce452f1a63b860eb57ccbc702e554be1126",
+      "responses_sha256": "a54f07dd084ecad78c321f7801555fbd5bb72b91f4cd497e23b82f37615cf888",
+      "days_sha256": "62b1512219b19a41f280073e4eb6d5ae4b4f95c43bc59c687d9cfe4ee900a7b7"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "baseline",
+        "scenario": "rainfed",
+        "seed": "82deacfd"
+      },
+      "arm": "flower",
+      "trace_sha256": "0da4c7d6b3ebe504e1edd0c173a996916e2dda7c2f49cd1e4844319436b337e7",
+      "bids": 3512,
+      "worlds": 32769,
+      "records": 17560,
+      "requests_sha256": "5dcaeca6a007edb213644fa9f495c14e314da1648edbff24dcab8a00b6a68e51",
+      "responses_sha256": "91792a1ce15877466a0de88f16734bf06196728238780d0d2775873b037d5153",
+      "days_sha256": "6b80c044015042ee426b90ed4e54910841d810aac27cb50a3ef138f2007e7df2"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "adaptive",
+        "scenario": "rainfed",
+        "seed": "ed52188c"
+      },
+      "arm": "base",
+      "trace_sha256": "fffe928b1a1e19c4540f7fa7d80e09ef28c3280812a6f70781027fb298f81f5a",
+      "bids": 19806,
+      "worlds": 32769,
+      "records": 99030,
+      "requests_sha256": "5579871e30f0e842e86d999830dbc31ae73df7ba7c1db79282e80577fa8f5ee6",
+      "responses_sha256": "c0f9e1355c667d5c3024c7f5655ad6982dc6abfa0c02e607c4888a4984261afe",
+      "days_sha256": "fdf4b6d7952000a261066d237aaec041bbccf772ad221ccdd4acc56025cf5b1b"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "adaptive",
+        "scenario": "rainfed",
+        "seed": "ed52188c"
+      },
+      "arm": "flower",
+      "trace_sha256": "4167c6a3bcc89090154599600b12162806aa5a0644b839227adf6bc8c7de0a90",
+      "bids": 10415,
+      "worlds": 32769,
+      "records": 52075,
+      "requests_sha256": "68d5e64a1c78402d2c5c24a68ade6115da4c9140726f198266fb98f21ee08ee9",
+      "responses_sha256": "432296f6f800d3e482457331f8a983b42f89ca976e33b2a02a5848a5cd40f7ac",
+      "days_sha256": "e0c6a3fdbfb3d403c9664be6055e9b656360a582787899af35f525b49a66b32c"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "adaptive",
+        "scenario": "rainfed",
+        "seed": "82deacfd"
+      },
+      "arm": "base",
+      "trace_sha256": "7f97f35c0fca8d1f5b52f971f5af4f19b736ffc3931b7342ece496d354ab246a",
+      "bids": 20528,
+      "worlds": 32769,
+      "records": 102640,
+      "requests_sha256": "ac9d4b201fdbda3d216e3d04e7c782a3685008e8f42f497a27325fc07a7b9f1a",
+      "responses_sha256": "f81fe0aa93b1de66e34049483746d5be24c67efc0e2cb74a15d075983c0f5318",
+      "days_sha256": "f24f3d4d23e15f77e7bf59fad9f12fc013f0043466f60f04b624a18ec869ac7f"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "adaptive",
+        "scenario": "rainfed",
+        "seed": "82deacfd"
+      },
+      "arm": "flower",
+      "trace_sha256": "a12daf92492285ec93de72373db53c3ffaa0b4c964ad82e79488f1496df3843a",
+      "bids": 14562,
+      "worlds": 32769,
+      "records": 72810,
+      "requests_sha256": "9ebd675ab7eace6e275b692c38e76f01bb218d1b72e01ce8ea33873eaab69a56",
+      "responses_sha256": "e1cfa97571a985b9c3cf82f143f50dd41bda7f06644c8629d97ef26984a81281",
+      "days_sha256": "eb9659e2cf0a47052bda2ee070387a664e9597ad7628322a89dfaa636372029d"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "baseline",
+        "scenario": "rainfed-crowded",
+        "seed": "ed52188c"
+      },
+      "arm": "base",
+      "trace_sha256": "e7a469148e4b5b313a20d44a084b5b9c3e1632d58f8c25327230f8c6043a4492",
+      "bids": 2294,
+      "worlds": 32769,
+      "records": 11470,
+      "requests_sha256": "8244ffc6f46cf9cfa69efbdd4d4ae5dc9a199a40641bfde0acf8b41eb2350309",
+      "responses_sha256": "40a787d8f1828866670202229d00768984aba4078fdc08952972bf9aeefb7890",
+      "days_sha256": "f60e57a45123d79f99d475b94e3892be4e38b1b03db03dc7556a7537bfbf041b"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "baseline",
+        "scenario": "rainfed-crowded",
+        "seed": "ed52188c"
+      },
+      "arm": "flower",
+      "trace_sha256": "82a6b21c632af2ee458cd294c68f89a149cb84bf092fbd854f8ab7d5f2bf881b",
+      "bids": 2561,
+      "worlds": 32769,
+      "records": 12805,
+      "requests_sha256": "3cac33ccd2a2a29275f2127315b33bee9bbc24123885b10d38c9bb2000d95e46",
+      "responses_sha256": "7d77900b9e85555460b4d2d0f72d114feadec88365a3609111287773cc829ab8",
+      "days_sha256": "1e9be9294d81a2941751c394fab4694fe7f6519ed1311c6850f77ff335943359"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "baseline",
+        "scenario": "rainfed-crowded",
+        "seed": "82deacfd"
+      },
+      "arm": "base",
+      "trace_sha256": "a6d0e3a20a3e4e66f1da5585caba4d8e890bc419aac9aa33ab600fa3c5406f14",
+      "bids": 3770,
+      "worlds": 32769,
+      "records": 18850,
+      "requests_sha256": "3a80c2b9dda3c07fb32c9a3d882d9f3b0c15b463a4f79bdc8211022efdc506ed",
+      "responses_sha256": "2ddb93c293c65998ce67c73cf3313f719f91e92a174d358a41fd31c18b24c4ec",
+      "days_sha256": "f63cf65fd30f8317a23bfc181085968adf5af3bc41d5d356be0f9cf36f05a780"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "baseline",
+        "scenario": "rainfed-crowded",
+        "seed": "82deacfd"
+      },
+      "arm": "flower",
+      "trace_sha256": "d9b6a7efcd4f3d07f0ebf1e8a46d893c649a1ece93b45e92a7ad2df1ab2f43aa",
+      "bids": 1797,
+      "worlds": 32769,
+      "records": 8985,
+      "requests_sha256": "b30001ddbb9eecc92f007c57f13d79560ac8d0a50c55e1090dcf9f326a72d087",
+      "responses_sha256": "e7c64aa8662809b142358ef37bb4af72ea360182221a51f9e01029e806479d26",
+      "days_sha256": "0c8de930a9fd2125f79c734f7b5b7e1942362ba12ebaf79911fe80f48dfb1eb9"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "adaptive",
+        "scenario": "rainfed-crowded",
+        "seed": "ed52188c"
+      },
+      "arm": "base",
+      "trace_sha256": "d1b2a15ef9acde3567166fd08e2e95616bca400c62d8f94b374a462a1360ef16",
+      "bids": 11197,
+      "worlds": 32769,
+      "records": 55985,
+      "requests_sha256": "4a583b608af2f95d15b3aff4ad55ac7a24169fa9e999b0251421d3507c9ee866",
+      "responses_sha256": "a27270422f34ae4d3d8a660e140792e02084a2df155d581ebcfa104603afa2f8",
+      "days_sha256": "f830fcc8f3803f8d1675b74ddb8dfa5ac7479dfce320744fd68c566f34af2854"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "adaptive",
+        "scenario": "rainfed-crowded",
+        "seed": "ed52188c"
+      },
+      "arm": "flower",
+      "trace_sha256": "e327d72d313638df2aa1590deb76e9c6c96bc430b2100eb028b75b38c55fdfc3",
+      "bids": 7528,
+      "worlds": 32769,
+      "records": 37640,
+      "requests_sha256": "ad1996756bd281cf7fc6966274ae26b46cceaf1548875a50bfd453e4eae998cf",
+      "responses_sha256": "0679bf913278ffbc8105fcae63212808279fc4f60931b137a9ede217f784a121",
+      "days_sha256": "7dbda1667c9cf8ea39b33f0bc0417b2ef0d2248d0850eae3058d9e4f43a53f01"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "adaptive",
+        "scenario": "rainfed-crowded",
+        "seed": "82deacfd"
+      },
+      "arm": "base",
+      "trace_sha256": "da0cb1be6f6b1a3d3e1647801f438626414cdc0967c99259d33769aa9e86541a",
+      "bids": 17715,
+      "worlds": 32769,
+      "records": 88575,
+      "requests_sha256": "746c33346cfd1c422052c870a5f52321503443972d40b757ce7ac66df5ef3cdc",
+      "responses_sha256": "92e2c4cbebb935874812e1c776d49d6c82e281ece1785e04cd973b9a88c8894b",
+      "days_sha256": "56a5d5d2ad76c5f34b5d508981876d024666ab1d36f30661e385f2f6d2191901"
+    },
+    {
+      "case": {
+        "mode": "seasonal",
+        "policy": "adaptive",
+        "scenario": "rainfed-crowded",
+        "seed": "82deacfd"
+      },
+      "arm": "flower",
+      "trace_sha256": "2248e33b0dc8788b74f701be04cc68fb4ea1bd37bd331561b0133a78e92989ce",
+      "bids": 19969,
+      "worlds": 32769,
+      "records": 99845,
+      "requests_sha256": "d4c2750a3ed9a13ad9ac9e952764100c1cb42d03815da81c81d13152398ca509",
+      "responses_sha256": "a196960ee94bbe60a65adf9b5a25975672ecedfa60258542efb8051f1ab2e6f5",
+      "days_sha256": "6e8e672b292e3b06af42c1c925ebe8fc2b4b781d5466a1d65a87923797f263dd"
+    }
+  ]
+}

@@ -1,0 +1,1109 @@
+{
+  "all_seeds": {
+    "always_reachable_spacing_blocked": 345,
+    "any_alternative_open": 378,
+    "any_global_open": 806,
+    "any_reachable_open": 416,
+    "any_reachable_spacing_clear": 461,
+    "checks_with": {
+      "alternative_open": 63943,
+      "global_open": 635017,
+      "reachable_open": 63995,
+      "reachable_spacing_clear": 836642
+    },
+    "mature_checks": 4586768,
+    "never_reachable_open": 390,
+    "no_mature_checks": 0,
+    "outcomes": {
+      "expired": 439,
+      "germinated": 271,
+      "pending": 96
+    },
+    "purchase_alternative_open_actual_blocked": 50,
+    "purchase_reachable_open": 88,
+    "seeds": 806,
+    "unique_support_counts": {
+      "3": 438,
+      "4": 40,
+      "5": 7,
+      "6": 321
+    }
+  },
+  "artifact_hashes_rechecked": 303,
+  "independent_frozen_verification": true,
+  "inputs": {
+    "landing-multiseed-models.json.gz": "631364e9c1c23c676fb7cf699f630c807b6197cc21b6bc5b317afaf5095e757c",
+    "landing-multiseed-results.json.gz": "c68d070a6f6a1859cb88fb90934f68e1928d22d2a79c94ffc9cdece631915bd4",
+    "landing-recruitment-trace-results.json.gz": "2e4a8b9bada29ae847e0f77d22e020cab9b117765455ff6e11fbd52088b44561",
+    "landing-renewal-audit-results.json.gz": "974866fec534ee6c3a147e9b2c251d5b016184a6e8546606b222ca0b03f82539"
+  },
+  "late_expired": {
+    "seasonal": {
+      "always_reachable_spacing_blocked": 44,
+      "any_alternative_open": 80,
+      "any_global_open": 151,
+      "any_reachable_open": 80,
+      "any_reachable_spacing_clear": 107,
+      "checks_with": {
+        "alternative_open": 16792,
+        "global_open": 125232,
+        "reachable_open": 16792,
+        "reachable_spacing_clear": 318077
+      },
+      "mature_checks": 1235784,
+      "never_reachable_open": 71,
+      "no_mature_checks": 0,
+      "outcomes": {
+        "expired": 151
+      },
+      "purchase_alternative_open_actual_blocked": 21,
+      "purchase_reachable_open": 21,
+      "seeds": 151,
+      "unique_support_counts": {
+        "3": 67,
+        "4": 15,
+        "5": 1,
+        "6": 68
+      }
+    },
+    "steady": {
+      "always_reachable_spacing_blocked": 170,
+      "any_alternative_open": 22,
+      "any_global_open": 192,
+      "any_reachable_open": 22,
+      "any_reachable_spacing_clear": 22,
+      "checks_with": {
+        "alternative_open": 16819,
+        "global_open": 260626,
+        "reachable_open": 16819,
+        "reachable_spacing_clear": 177636
+      },
+      "mature_checks": 1571328,
+      "never_reachable_open": 170,
+      "no_mature_checks": 0,
+      "outcomes": {
+        "expired": 192
+      },
+      "purchase_alternative_open_actual_blocked": 6,
+      "purchase_reachable_open": 6,
+      "seeds": 192,
+      "unique_support_counts": {
+        "3": 135,
+        "5": 2,
+        "6": 55
+      }
+    }
+  },
+  "manifest_sha256": "0c08a37256b2e42d6f7d553b860448d26975599ea2431442274f44e6cb288656",
+  "plan": [
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "single-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "multi-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697833-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "single-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "multi-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697834-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "single-s6d697835-live"
+    },
+    {
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "multi-s6d697835-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697835-live"
+    },
+    {
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697835-live"
+    }
+  ],
+  "protocol_sha256": "835d116df66542103a0ae5538d3d30030a1c2943f779354cd74b68223a6ca166",
+  "repeat_verified": true,
+  "results_sha256": "36298ca2862aa4b7283a6f82dc2533f29f0af95ad35f8fbf830392742a19f1f5",
+  "rule": "garden-landing-reach-v1",
+  "totals": {
+    "ecology_samples": 589824,
+    "seed_samples": 4592849
+  },
+  "worlds": [
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 385525,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 32,
+            "any_alternative_open": 28,
+            "any_global_open": 61,
+            "any_reachable_open": 28,
+            "any_reachable_spacing_clear": 29,
+            "checks_with": {
+              "alternative_open": 5787,
+              "global_open": 25574,
+              "reachable_open": 5787,
+              "reachable_spacing_clear": 105015
+            },
+            "mature_checks": 385058,
+            "never_reachable_open": 33,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 13,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 4,
+            "purchase_reachable_open": 4,
+            "seeds": 61,
+            "unique_support_counts": {
+              "3": 42,
+              "6": 19
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 23,
+            "any_alternative_open": 9,
+            "any_global_open": 32,
+            "any_reachable_open": 9,
+            "any_reachable_spacing_clear": 9,
+            "checks_with": {
+              "alternative_open": 4151,
+              "global_open": 16525,
+              "reachable_open": 4151,
+              "reachable_spacing_clear": 72942
+            },
+            "mature_checks": 261888,
+            "never_reachable_open": 23,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 32
+            },
+            "purchase_alternative_open_actual_blocked": 1,
+            "purchase_reachable_open": 1,
+            "seeds": 32,
+            "unique_support_counts": {
+              "3": 23,
+              "6": 9
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "single-s6d697833-live",
+      "recruitment_trace_sha256": "536b3d6a3dc5a4632bd5e67eed09f9e7bb79fa806e73c0e6c62f9d47c6a625c6",
+      "trace_sha256": "aaf9f52d4632c6a7ec4b8f641920c8562a062b6daab4859bc340c8eae8a3581a"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 384722,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 42,
+            "any_alternative_open": 13,
+            "any_global_open": 56,
+            "any_reachable_open": 13,
+            "any_reachable_spacing_clear": 14,
+            "checks_with": {
+              "alternative_open": 6158,
+              "global_open": 82706,
+              "reachable_open": 6158,
+              "reachable_spacing_clear": 43007
+            },
+            "mature_checks": 384290,
+            "never_reachable_open": 43,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 8,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 2,
+            "purchase_reachable_open": 3,
+            "seeds": 56,
+            "unique_support_counts": {
+              "3": 21,
+              "5": 1,
+              "6": 34
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 29,
+            "any_alternative_open": 3,
+            "any_global_open": 32,
+            "any_reachable_open": 3,
+            "any_reachable_spacing_clear": 3,
+            "checks_with": {
+              "alternative_open": 3783,
+              "global_open": 56142,
+              "reachable_open": 3783,
+              "reachable_spacing_clear": 24468
+            },
+            "mature_checks": 261888,
+            "never_reachable_open": 29,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 32
+            },
+            "purchase_alternative_open_actual_blocked": 1,
+            "purchase_reachable_open": 1,
+            "seeds": 32,
+            "unique_support_counts": {
+              "3": 13,
+              "6": 19
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-7d3b7bde",
+        "scenario": "rainfed-crowded",
+        "seed": "7d3b7bde"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-steady-7d3b7bde",
+      "model": "multi-s6d697833-live",
+      "recruitment_trace_sha256": "4684120a67781398e74c05d18e0f7c5708da9bd3d1ae079802421098c5fde2a3",
+      "trace_sha256": "e919c121b9c3407e4ed4a13d35b5a4d8933515b9041e1397e99a3a174c5e00f3"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 379454,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 24,
+            "any_alternative_open": 35,
+            "any_global_open": 70,
+            "any_reachable_open": 39,
+            "any_reachable_spacing_clear": 46,
+            "checks_with": {
+              "alternative_open": 7854,
+              "global_open": 62096,
+              "reachable_open": 7861,
+              "reachable_spacing_clear": 60479
+            },
+            "mature_checks": 378928,
+            "never_reachable_open": 31,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 36,
+              "germinated": 26,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 8,
+            "purchase_reachable_open": 13,
+            "seeds": 70,
+            "unique_support_counts": {
+              "3": 33,
+              "6": 37
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 13,
+            "any_alternative_open": 8,
+            "any_global_open": 28,
+            "any_reachable_open": 8,
+            "any_reachable_spacing_clear": 15,
+            "checks_with": {
+              "alternative_open": 3170,
+              "global_open": 35155,
+              "reachable_open": 3170,
+              "reachable_spacing_clear": 24579
+            },
+            "mature_checks": 229152,
+            "never_reachable_open": 20,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 28
+            },
+            "purchase_alternative_open_actual_blocked": 5,
+            "purchase_reachable_open": 5,
+            "seeds": 28,
+            "unique_support_counts": {
+              "3": 16,
+              "6": 12
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697833-live",
+      "recruitment_trace_sha256": "3d0686eeb56bc042d4fe44d31892fa671a01c281c69eb5567e854a1a44328683",
+      "trace_sha256": "547944c3c0437426acc4d590f7f832094dca3b52b9e383aca3e3cb518442dad9"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 381902,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 22,
+            "any_alternative_open": 36,
+            "any_global_open": 69,
+            "any_reachable_open": 39,
+            "any_reachable_spacing_clear": 47,
+            "checks_with": {
+              "alternative_open": 3728,
+              "global_open": 21952,
+              "reachable_open": 3732,
+              "reachable_spacing_clear": 87173
+            },
+            "mature_checks": 381383,
+            "never_reachable_open": 30,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 36,
+              "germinated": 25,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 7,
+            "purchase_reachable_open": 9,
+            "seeds": 69,
+            "unique_support_counts": {
+              "3": 30,
+              "4": 7,
+              "5": 1,
+              "6": 31
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 13,
+            "any_alternative_open": 13,
+            "any_global_open": 28,
+            "any_reachable_open": 13,
+            "any_reachable_spacing_clear": 15,
+            "checks_with": {
+              "alternative_open": 3338,
+              "global_open": 13862,
+              "reachable_open": 3338,
+              "reachable_spacing_clear": 66545
+            },
+            "mature_checks": 229152,
+            "never_reachable_open": 15,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 28
+            },
+            "purchase_alternative_open_actual_blocked": 6,
+            "purchase_reachable_open": 6,
+            "seeds": 28,
+            "unique_support_counts": {
+              "3": 7,
+              "4": 4,
+              "5": 1,
+              "6": 16
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697833-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697833-live",
+      "recruitment_trace_sha256": "5850c70eac2117c772df906d493e8fe2d435875268729795bd4c0315fa37b9a5",
+      "trace_sha256": "ff230bbc09fd36605d4c1a9e43abbe7152589d1307beee4a1a5647a8fd8f3f47"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 384229,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 42,
+            "any_alternative_open": 12,
+            "any_global_open": 56,
+            "any_reachable_open": 14,
+            "any_reachable_spacing_clear": 14,
+            "checks_with": {
+              "alternative_open": 8454,
+              "global_open": 81717,
+              "reachable_open": 8456,
+              "reachable_spacing_clear": 42294
+            },
+            "mature_checks": 383797,
+            "never_reachable_open": 42,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 8,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 4,
+            "purchase_reachable_open": 8,
+            "seeds": 56,
+            "unique_support_counts": {
+              "3": 31,
+              "4": 2,
+              "6": 23
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 29,
+            "any_alternative_open": 3,
+            "any_global_open": 32,
+            "any_reachable_open": 3,
+            "any_reachable_spacing_clear": 3,
+            "checks_with": {
+              "alternative_open": 4798,
+              "global_open": 57077,
+              "reachable_open": 4798,
+              "reachable_spacing_clear": 24177
+            },
+            "mature_checks": 261888,
+            "never_reachable_open": 29,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 32
+            },
+            "purchase_alternative_open_actual_blocked": 2,
+            "purchase_reachable_open": 2,
+            "seeds": 32,
+            "unique_support_counts": {
+              "3": 20,
+              "6": 12
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "single-s6d697834-live",
+      "recruitment_trace_sha256": "a6159e4d7905ffd82e4494ba46b82e70a2776efefffb872ea2cade772550bf74",
+      "trace_sha256": "2884b664f633eaf16cfef94f51a9d50339b92317a51e7e67c6661cd4938be2e1"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 388064,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 40,
+            "any_alternative_open": 26,
+            "any_global_open": 74,
+            "any_reachable_open": 33,
+            "any_reachable_spacing_clear": 34,
+            "checks_with": {
+              "alternative_open": 2132,
+              "global_open": 72014,
+              "reachable_open": 2140,
+              "reachable_spacing_clear": 55040
+            },
+            "mature_checks": 387506,
+            "never_reachable_open": 41,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 26,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 2,
+            "purchase_reachable_open": 6,
+            "seeds": 74,
+            "unique_support_counts": {
+              "3": 51,
+              "4": 2,
+              "6": 21
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 28,
+            "any_alternative_open": 4,
+            "any_global_open": 32,
+            "any_reachable_open": 4,
+            "any_reachable_spacing_clear": 4,
+            "checks_with": {
+              "alternative_open": 1380,
+              "global_open": 47718,
+              "reachable_open": 1380,
+              "reachable_spacing_clear": 31497
+            },
+            "mature_checks": 261888,
+            "never_reachable_open": 28,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 32
+            },
+            "purchase_alternative_open_actual_blocked": 0,
+            "purchase_reachable_open": 0,
+            "seeds": 32,
+            "unique_support_counts": {
+              "3": 27,
+              "6": 5
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-steady-5aa2b327",
+        "scenario": "rainfed",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697834-live--rainfed-steady-5aa2b327",
+      "model": "multi-s6d697834-live",
+      "recruitment_trace_sha256": "e8aedbe25daf962e7d31c454d3220bc1e79fe51643c6325a1a11549cc7c18bd2",
+      "trace_sha256": "2c985d56940afdb9565428fedcd5a6d65d87916a8e7c2b693cf5377d5af13517"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 381909,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 9,
+            "any_alternative_open": 65,
+            "any_global_open": 85,
+            "any_reachable_open": 70,
+            "any_reachable_spacing_clear": 76,
+            "checks_with": {
+              "alternative_open": 3750,
+              "global_open": 21568,
+              "reachable_open": 3760,
+              "reachable_spacing_clear": 125567
+            },
+            "mature_checks": 381283,
+            "never_reachable_open": 15,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 31,
+              "germinated": 46,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 7,
+            "purchase_reachable_open": 12,
+            "seeds": 85,
+            "unique_support_counts": {
+              "3": 23,
+              "4": 22,
+              "5": 2,
+              "6": 38
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 2,
+            "any_alternative_open": 17,
+            "any_global_open": 23,
+            "any_reachable_open": 17,
+            "any_reachable_spacing_clear": 21,
+            "checks_with": {
+              "alternative_open": 2576,
+              "global_open": 12284,
+              "reachable_open": 2576,
+              "reachable_spacing_clear": 82241
+            },
+            "mature_checks": 188232,
+            "never_reachable_open": 6,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 23
+            },
+            "purchase_alternative_open_actual_blocked": 6,
+            "purchase_reachable_open": 6,
+            "seeds": 23,
+            "unique_support_counts": {
+              "3": 4,
+              "4": 8,
+              "6": 11
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697834-live",
+      "recruitment_trace_sha256": "746b90fa1576b39c5f85e1888a17f1b277201b8f83fc9a060d006edede1063e7",
+      "trace_sha256": "24391982d6e78b883bd35e1ca7805ffcac4e9cf637835116b794a44992ce1255"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 377112,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 20,
+            "any_alternative_open": 43,
+            "any_global_open": 67,
+            "any_reachable_open": 46,
+            "any_reachable_spacing_clear": 47,
+            "checks_with": {
+              "alternative_open": 9670,
+              "global_open": 37838,
+              "reachable_open": 9674,
+              "reachable_spacing_clear": 79988
+            },
+            "mature_checks": 376608,
+            "never_reachable_open": 21,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 35,
+              "germinated": 24,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 3,
+            "purchase_reachable_open": 8,
+            "seeds": 67,
+            "unique_support_counts": {
+              "3": 29,
+              "4": 4,
+              "6": 34
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 9,
+            "any_alternative_open": 18,
+            "any_global_open": 27,
+            "any_reachable_open": 18,
+            "any_reachable_spacing_clear": 18,
+            "checks_with": {
+              "alternative_open": 2148,
+              "global_open": 16014,
+              "reachable_open": 2148,
+              "reachable_spacing_clear": 43603
+            },
+            "mature_checks": 220968,
+            "never_reachable_open": 9,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 27
+            },
+            "purchase_alternative_open_actual_blocked": 2,
+            "purchase_reachable_open": 2,
+            "seeds": 27,
+            "unique_support_counts": {
+              "3": 13,
+              "4": 3,
+              "6": 11
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697834-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697834-live",
+      "recruitment_trace_sha256": "374eba82ca03f7f110fdb1e7cfab256fb083488566e72ab8133f7555a5c2bc54",
+      "trace_sha256": "1bf6380e99c0f363507bb468614e6bf637f7a0a3744c7d2dda474bf2cdbf60ab"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 385097,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 43,
+            "any_alternative_open": 12,
+            "any_global_open": 57,
+            "any_reachable_open": 13,
+            "any_reachable_spacing_clear": 14,
+            "checks_with": {
+              "alternative_open": 4633,
+              "global_open": 63937,
+              "reachable_open": 4634,
+              "reachable_spacing_clear": 32746
+            },
+            "mature_checks": 384658,
+            "never_reachable_open": 44,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 9,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 1,
+            "purchase_reachable_open": 4,
+            "seeds": 57,
+            "unique_support_counts": {
+              "3": 43,
+              "5": 3,
+              "6": 11
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 30,
+            "any_alternative_open": 2,
+            "any_global_open": 32,
+            "any_reachable_open": 2,
+            "any_reachable_spacing_clear": 2,
+            "checks_with": {
+              "alternative_open": 1436,
+              "global_open": 34602,
+              "reachable_open": 1436,
+              "reachable_spacing_clear": 16368
+            },
+            "mature_checks": 261888,
+            "never_reachable_open": 30,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 32
+            },
+            "purchase_alternative_open_actual_blocked": 1,
+            "purchase_reachable_open": 1,
+            "seeds": 32,
+            "unique_support_counts": {
+              "3": 28,
+              "5": 2,
+              "6": 2
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "single-s6d697835-live",
+      "recruitment_trace_sha256": "aff361d7eb96c6c8239abcb17bd06ccc7edf546fbd9b7e6942a55a842498bdad",
+      "trace_sha256": "65f0b29d82a729a1e8e31385622d07d034b4e2a16f83612018237688e5fb2f77"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 385240,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 44,
+            "any_alternative_open": 8,
+            "any_global_open": 54,
+            "any_reachable_open": 8,
+            "any_reachable_spacing_clear": 10,
+            "checks_with": {
+              "alternative_open": 2478,
+              "global_open": 74367,
+              "reachable_open": 2478,
+              "reachable_spacing_clear": 18390
+            },
+            "mature_checks": 384822,
+            "never_reachable_open": 46,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 40,
+              "germinated": 6,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 2,
+            "purchase_reachable_open": 4,
+            "seeds": 54,
+            "unique_support_counts": {
+              "3": 38,
+              "6": 16
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 31,
+            "any_alternative_open": 1,
+            "any_global_open": 32,
+            "any_reachable_open": 1,
+            "any_reachable_spacing_clear": 1,
+            "checks_with": {
+              "alternative_open": 1271,
+              "global_open": 48562,
+              "reachable_open": 1271,
+              "reachable_spacing_clear": 8184
+            },
+            "mature_checks": 261888,
+            "never_reachable_open": 31,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 32
+            },
+            "purchase_alternative_open_actual_blocked": 1,
+            "purchase_reachable_open": 1,
+            "seeds": 32,
+            "unique_support_counts": {
+              "3": 24,
+              "6": 8
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "steady",
+        "id": "rainfed-crowded-steady-5aa2b327",
+        "scenario": "rainfed-crowded",
+        "seed": "5aa2b327"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-steady-5aa2b327",
+      "model": "multi-s6d697835-live",
+      "recruitment_trace_sha256": "560416b60115f7e7f08023a61e13971fe886814aecfc27c9e2b22313e115dd45",
+      "trace_sha256": "f1185682a8c8473579fd0c2baf0b2837967f496aedd12172e2a252853d5dd419"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 380013,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 16,
+            "any_alternative_open": 44,
+            "any_global_open": 79,
+            "any_reachable_open": 55,
+            "any_reachable_spacing_clear": 63,
+            "checks_with": {
+              "alternative_open": 1791,
+              "global_open": 29989,
+              "reachable_open": 1804,
+              "reachable_spacing_clear": 81401
+            },
+            "mature_checks": 379428,
+            "never_reachable_open": 24,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 32,
+              "germinated": 39,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 0,
+            "purchase_reachable_open": 2,
+            "seeds": 79,
+            "unique_support_counts": {
+              "3": 46,
+              "4": 3,
+              "6": 30
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 3,
+            "any_alternative_open": 13,
+            "any_global_open": 24,
+            "any_reachable_open": 13,
+            "any_reachable_spacing_clear": 21,
+            "checks_with": {
+              "alternative_open": 933,
+              "global_open": 11109,
+              "reachable_open": 933,
+              "reachable_spacing_clear": 46619
+            },
+            "mature_checks": 196416,
+            "never_reachable_open": 11,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 24
+            },
+            "purchase_alternative_open_actual_blocked": 0,
+            "purchase_reachable_open": 0,
+            "seeds": 24,
+            "unique_support_counts": {
+              "3": 13,
+              "6": 11
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "single-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "single-s6d697835-live",
+      "recruitment_trace_sha256": "c288ea40227a2c9995617023eea840516520f1f622f7e334209bfd2783997cf8",
+      "trace_sha256": "348b20a4e2214e56e7218884aca2270b3bb70aa2a11edfaf258c4249d66293c8"
+    },
+    {
+      "audit": {
+        "ecology_samples": 49152,
+        "seed_samples": 379582,
+        "summary": {
+          "all_seeds": {
+            "always_reachable_spacing_blocked": 11,
+            "any_alternative_open": 56,
+            "any_global_open": 78,
+            "any_reachable_open": 58,
+            "any_reachable_spacing_clear": 67,
+            "checks_with": {
+              "alternative_open": 7508,
+              "global_open": 61259,
+              "reachable_open": 7511,
+              "reachable_spacing_clear": 105542
+            },
+            "mature_checks": 379007,
+            "never_reachable_open": 20,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 29,
+              "germinated": 41,
+              "pending": 8
+            },
+            "purchase_alternative_open_actual_blocked": 10,
+            "purchase_reachable_open": 15,
+            "seeds": 78,
+            "unique_support_counts": {
+              "3": 51,
+              "6": 27
+            }
+          },
+          "late_expired": {
+            "always_reachable_spacing_blocked": 4,
+            "any_alternative_open": 11,
+            "any_global_open": 21,
+            "any_reachable_open": 11,
+            "any_reachable_spacing_clear": 17,
+            "checks_with": {
+              "alternative_open": 4627,
+              "global_open": 36808,
+              "reachable_open": 4627,
+              "reachable_spacing_clear": 54490
+            },
+            "mature_checks": 171864,
+            "never_reachable_open": 10,
+            "no_mature_checks": 0,
+            "outcomes": {
+              "expired": 21
+            },
+            "purchase_alternative_open_actual_blocked": 2,
+            "purchase_reachable_open": 2,
+            "seeds": 21,
+            "unique_support_counts": {
+              "3": 14,
+              "6": 7
+            }
+          }
+        }
+      },
+      "case": {
+        "climate": "seasonal",
+        "id": "rainfed-crowded-seasonal-940cfdc4",
+        "scenario": "rainfed-crowded",
+        "seed": "940cfdc4"
+      },
+      "id": "multi-s6d697835-live--rainfed-crowded-seasonal-940cfdc4",
+      "model": "multi-s6d697835-live",
+      "recruitment_trace_sha256": "8f2f6c7976cd41f3dcaba4843f114333c8af4292b49b193d0c62b7e8ea123dd8",
+      "trace_sha256": "284cf97c0d990c1f412d84dddc17109b9aa44cd561673bb00227922d2f29a664"
+    }
+  ]
+}

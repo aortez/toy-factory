@@ -302,6 +302,10 @@ PicoSystem profiles for final RP2040 cycle, transfer, stack, and RAM decisions.
 
 ## Interactive SDL3 player
 
+For the frozen family-repair experiments, use the separate
+[Garden research player](garden-research-player.md) (`make host-play-research`).
+The ordinary scene player below does not reproduce that research profile.
+
 On Linux, launch a scene with:
 
 ```sh

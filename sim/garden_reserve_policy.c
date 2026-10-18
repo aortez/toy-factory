@@ -64,6 +64,148 @@ int toy_factory_garden_reserve_forecast(
 	return 0;
 }
 
+int toy_factory_garden_afternoon_forecast(const struct picosystem_garden_agent_observation *o,
+					  uint8_t action,
+					  struct toy_factory_garden_afternoon_forecast *forecast)
+{
+	if (forecast == NULL) {
+		return -EINVAL;
+	}
+	struct toy_factory_garden_reserve_forecast energy;
+	const int err = toy_factory_garden_reserve_forecast(o, action, &energy);
+	if (err != 0) {
+		return err;
+	}
+	struct toy_factory_garden_afternoon_forecast result = {.allowed = true};
+	const uint32_t maintenance = ((uint32_t)o->plant_node_count + 7U) / 8U;
+	const uint32_t before = maintenance != 0U ? maintenance : 1U;
+	if ((o->sun_phase >= PICOSYSTEM_GARDEN_SUN_NOON_PHASE) &&
+	    (o->sun_phase < PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE) &&
+	    (energy.post_nodes > o->plant_node_count) && (energy.maintenance_cost > before)) {
+		result.applies = true;
+		result.maintenance_before = before;
+		result.margin = (int32_t)o->stored_energy - (int32_t)energy.growth_cost -
+				(int32_t)energy.daylight_upkeep - (int32_t)energy.night_upkeep;
+		result.allowed = result.margin >= 0;
+	}
+	*forecast = result;
+	return 0;
+}
+
+static uint32_t unscaled_beam(uint32_t phase)
+{
+	const struct picosystem_garden_sun sun = picosystem_garden_sun_at(
+		phase + PICOSYSTEM_GARDEN_SUN_CYCLE_TICKS - PICOSYSTEM_GARDEN_SUN_INITIAL_PHASE);
+	return (uint32_t)sun.strength - PICOSYSTEM_GARDEN_LIGHT_MINIMUM;
+}
+
+int toy_factory_garden_daylight_forecast(const struct picosystem_garden_agent_observation *o,
+					 uint8_t action,
+					 struct toy_factory_garden_daylight_forecast *forecast)
+{
+	if (forecast == NULL) {
+		return -EINVAL;
+	}
+	struct toy_factory_garden_reserve_forecast energy;
+	const int err = toy_factory_garden_reserve_forecast(o, action, &energy);
+	if (err != 0) {
+		return err;
+	}
+	struct toy_factory_garden_daylight_forecast result = {.allowed = true};
+	if ((action != PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT) &&
+	    (o->sun_phase >= PICOSYSTEM_GARDEN_SUN_NOON_PHASE) &&
+	    (o->sun_phase < PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE)) {
+		result.applies = true;
+		const uint32_t now_beam = unscaled_beam(o->sun_phase);
+		/* At most 63 future samples; the divisor is positive in this phase range.
+		 * Per-leaf integer uptake earns nothing below strength 64.
+		 */
+		if (o->sun_strength >= 64U) {
+			const uint32_t current_beam =
+				(uint32_t)o->sun_strength - PICOSYSTEM_GARDEN_LIGHT_MINIMUM;
+			for (uint32_t q = (uint32_t)o->sun_phase + 1U;
+			     q < PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE; ++q) {
+				const uint32_t estimate =
+					PICOSYSTEM_GARDEN_LIGHT_MINIMUM +
+					(unscaled_beam(q) * current_beam) / now_beam;
+				result.useful_steps += estimate >= 64U ? 1U : 0U;
+			}
+		}
+		result.daylight_credit =
+			((uint32_t)o->last_energy_income * result.useful_steps) / 2U;
+		const int32_t after_cost = (int32_t)o->stored_energy - (int32_t)energy.growth_cost;
+		result.projected_sunset = after_cost + (int32_t)result.daylight_credit -
+					  (int32_t)energy.daylight_upkeep;
+		if (result.projected_sunset > 256) {
+			result.projected_sunset = 256;
+		}
+		result.allowed = (after_cost >= (int32_t)energy.maintenance_cost) &&
+				 (result.projected_sunset >= (int32_t)energy.night_upkeep);
+	}
+	*forecast = result;
+	return 0;
+}
+
+int toy_factory_garden_dawn_forecast(const struct picosystem_garden_agent_observation *o,
+				     uint8_t action,
+				     struct toy_factory_garden_dawn_forecast *forecast)
+{
+	if (forecast == NULL) {
+		return -EINVAL;
+	}
+	struct toy_factory_garden_reserve_forecast energy;
+	int err = toy_factory_garden_reserve_forecast(o, action, &energy);
+	if (err != 0) {
+		return err;
+	}
+	struct toy_factory_garden_dawn_forecast result = {.allowed = true};
+	if ((action == PICOSYSTEM_GARDEN_AGENT_ACTION_WAIT) ||
+	    (o->sun_phase < PICOSYSTEM_GARDEN_SUN_NOON_PHASE) ||
+	    (o->sun_phase >= PICOSYSTEM_GARDEN_SUN_SUNSET_PHASE)) {
+		*forecast = result;
+		return 0;
+	}
+	struct toy_factory_garden_daylight_forecast daylight;
+	struct toy_factory_garden_afternoon_forecast afternoon;
+	err = toy_factory_garden_daylight_forecast(o, action, &daylight);
+	if (err == 0) {
+		err = toy_factory_garden_afternoon_forecast(o, action, &afternoon);
+	}
+	if (err != 0) {
+		return err;
+	}
+	result.applies = true;
+	result.allowed = false;
+	result.stores_applies = afternoon.applies;
+	const uint32_t now_beam = unscaled_beam(o->sun_phase);
+	const uint32_t current_beam = (uint32_t)o->sun_strength - PICOSYSTEM_GARDEN_LIGHT_MINIMUM;
+	/* Positive divisor for phases 64..127; at most 64 bounded estimates. */
+	for (uint32_t q = 1U; q <= PICOSYSTEM_GARDEN_SUN_NOON_PHASE; ++q) {
+		const uint32_t estimate = PICOSYSTEM_GARDEN_LIGHT_MINIMUM +
+					  (unscaled_beam(q) * current_beam) / now_beam;
+		if (estimate < 64U) {
+			continue;
+		}
+		const uint32_t payments = (q + PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR - 1U) /
+					  PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR;
+		result.estimate_available = true;
+		result.first_light_phase = (uint8_t)q;
+		result.payment_phase =
+			(uint8_t)(payments * PICOSYSTEM_GARDEN_MAINTENANCE_TICK_DIVISOR);
+		result.reserve = payments * energy.maintenance_cost;
+		result.projected_margin = daylight.projected_sunset - (int32_t)energy.night_upkeep -
+					  (int32_t)result.reserve;
+		if (result.stores_applies) {
+			result.stores_margin = afternoon.margin - (int32_t)result.reserve;
+		}
+		result.allowed = (result.projected_margin >= 0) &&
+				 (!result.stores_applies || (result.stores_margin >= 0));
+		break;
+	}
+	*forecast = result;
+	return 0;
+}
+
 static int decide(const struct picosystem_garden_agent_observation *observation,
 		  const struct picosystem_garden_agent_memory *memory,
 		  struct picosystem_garden_agent_decision *decision, const void *context)
