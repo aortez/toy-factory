@@ -4,9 +4,38 @@ Bounded follow-up to [winter/drought implementation](../../docs/garden-seasons.m
 Default device-sized ecology: 256 nodes, eight plant slots, eight seeds, no gardener
 or recurring irrigation. Climate remains v1 (2–4-day drought); no tuning is promoted.
 
-Start with the [adult resources and renewal checkpoint](../../docs/garden-adult-resources-checkpoint.md)
-for the current scope, grouped findings, review order and limitations. This page
+Start with the [roadmap checkpoint](../../docs/garden-alife-roadmap.md#current-checkpoint)
+for the current findings and next step, and the
+[integration guide](../../docs/garden-research-integration.md) for what is built
+and checked. The [adult resources and renewal checkpoint](../../docs/garden-adult-resources-checkpoint.md)
+keeps that earlier review's scope, grouped findings and limitations. This page
 is a detailed evidence index in investigation order, not a list of current tasks.
+
+The [whole-population comparison](leaf-population.md) gives every family the
+same controller through day 1376. Both finalists keep higher late renewal and
+no garden empties, but Search 1 loses 19 of 32 founder families, including every
+shrub family, against 11 for fixed wear. Its single-case follow-up traces one
+matched shrub loss through [family losses](leaf-population-losses.md), a
+[winter trace](leaf-population-trace.md),
+[same-observation decisions](leaf-population-shadow.md) and
+[repair gates](leaf-population-gates.md) with their
+[day-608](leaf-population-gates-long.md),
+[second-seed](leaf-population-gates-transfer.md),
+[four-seed](leaf-population-gates-panel.md) and
+[early-life](leaf-population-gates-early.md) follow-ups. It continues through
+[purchase sites](leaf-population-purchases.md),
+[fewer-blocker placement](leaf-population-fallback.md) and its
+[regression](leaf-population-fallback-loss.md),
+[reproduction order](leaf-population-reproduction.md), the
+[step budget](leaf-population-budget.md), [dawn income](leaf-population-dawn.md),
+[leaf uptake](leaf-population-foliage.md),
+[light exposure](leaf-population-exposure.md),
+[shadow sources](leaf-population-canopy.md) and
+[repair opportunities](leaf-population-repair-opportunities.md). Each keeps its
+protocol and offline verifier. The
+[integration guide](../../docs/garden-research-integration.md#single-case-follow-up)
+summarizes every finding in one table.
+
 The latest [competitive-renewal follow-up](landing-competitive-renewal.md)
 completes all 60 planned calls through day 512. All twelve worlds pass population
 viability and retain existing species/families, but none passes sustained renewal.
