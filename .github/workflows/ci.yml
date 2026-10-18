@@ -18,7 +18,9 @@ jobs:
   validate:
     name: Native tests and firmware builds
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # The serial archive-corruption regressions exceed the old 45-minute
+    # budget before firmware builds; retain their coverage with bounded time.
+    timeout-minutes: 90
 
     steps:
       - name: Check out repository
