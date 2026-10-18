@@ -2,13 +2,16 @@
 #ifndef TOY_FACTORY_RESEARCH_SESSION_H_
 #define TOY_FACTORY_RESEARCH_SESSION_H_
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 
-#define RESEARCH_DAY_TICKS   3840U
-#define RESEARCH_STOP_TICK   (1376U * RESEARCH_DAY_TICKS)
-#define RESEARCH_FRAME_BYTES 115200U
+#define RESEARCH_DAY_TICKS        3840U
+#define RESEARCH_STOP_TICK        (1376U * RESEARCH_DAY_TICKS)
+#define RESEARCH_FRAME_BYTES      115200U
+#define RESEARCH_FAMILY_MAX_NODES 512U
+#define RESEARCH_FAMILY_MAX_SEEDS 16U
 
 struct research_options {
 	uint32_t seed;
@@ -21,6 +24,30 @@ struct research_status {
 	uint32_t tick;
 	uint32_t living;
 	uint32_t pending;
+};
+
+struct research_family_segment {
+	uint32_t lineage;
+	uint8_t start_x;
+	uint8_t start_y;
+	uint8_t end_x;
+	uint8_t end_y;
+	bool base;
+};
+
+struct research_family_seed {
+	uint32_t parent;
+	uint8_t x;
+	uint8_t y;
+};
+
+struct research_family_view {
+	uint32_t tick;
+	uint16_t segment_count;
+	uint8_t living;
+	uint8_t seed_count;
+	struct research_family_segment segments[RESEARCH_FAMILY_MAX_NODES];
+	struct research_family_seed seeds[RESEARCH_FAMILY_MAX_SEEDS];
 };
 
 /* Host-only owner of the simulation and diagnostic ledgers. Two allocations
@@ -43,6 +70,13 @@ int research_session_reset(struct research_session **session);
  */
 int research_session_step(struct research_session *session, uint32_t ticks);
 int research_session_status(const struct research_session *session, struct research_status *out);
+/* Read-only native-pixel geometry for the selected family's living plants and
+ * pending seeds, including posthumous seeds. Dead bodies are excluded. The
+ * caller owns the value copy; no allocation, raster access or mutation occurs.
+ * Invalid arguments or a failed session leave *out unchanged.
+ */
+int research_session_family_view(const struct research_session *session,
+				 struct research_family_view *out);
 int research_session_encode(const struct research_session *session, uint8_t *out, size_t capacity,
 			    size_t *size);
 

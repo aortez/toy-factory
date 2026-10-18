@@ -61,9 +61,11 @@ are outside this first step.
   counts outside the canonical pixels. Keep gardener input disabled. A garden
   full of resident plants must not be presented as candidate-family survival.
 
-Start with one garden at a time. Side-by-side worlds, family highlighting,
-backward seeking and resumable checkpoint files can follow if useful. Existing
-canonical encodings identify state; they are not an authenticated resume format.
+Start with one garden at a time. Family highlighting is now available as a
+read-only viewer overlay; canonical captures stay unchanged. Side-by-side
+worlds, backward seeking and resumable checkpoint files can follow if useful.
+Existing canonical encodings identify state; they are not an authenticated
+resume format.
 
 ## Acceptance checks
 

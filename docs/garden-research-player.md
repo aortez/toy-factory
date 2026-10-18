@@ -43,6 +43,7 @@ dependencies, or execute saved binaries. The first build may download SDL.
 | R | Reset the same policy and conditions |
 | Minus or plus | Select 1x, 16x, 256x, or maximum speed |
 | M | Maximum speed |
+| H | Toggle the selected family's overlay |
 | S | Save a screenshot and complete state/history record |
 | Escape | Quit |
 
@@ -63,11 +64,26 @@ and `bank` counts refer only to the candidate family, not the whole garden.
 A populated garden can therefore have an extinct candidate family. W2 growth,
 seasonal rain and the fixed ecology remain unchanged. Gardener keys do nothing.
 
+Press H to trace the selected family's living stems and roots in cyan, with
+small squares at their bases. Pink diamonds mark that family's pending seeds,
+including seeds whose parents have died. Dead plants are not highlighted.
+The overlay follows lineage identity through reproduction and plant-slot reuse;
+it does not identify family membership by location or appearance.
+
+The overlay starts off. Add `--highlight-family` to start with it enabled:
+
+```sh
+make host-play-research ARGS="--policy s1-g3-c4 --speed 256 --highlight-family"
+```
+
+Highlighting does not advance the world or cancel queued steps. It changes only
+the viewer display; saved captures retain the original pixels without overlays.
+
 ## Captures
 
 `S` creates a fresh `shot-*` directory under `artifacts/garden-research-captures`:
 
-- `frame.png`: the unmodified 240-by-240 garden image, without viewer text;
+- `frame.png`: the unmodified 240-by-240 garden image, without viewer text or overlays;
 - `frame.raw`: its exact RGB565 big-endian bytes;
 - `state.json`: the canonical state, model identity, conditions and full histories;
 - `manifest.json`: the frozen runtime archive identity, policy name and frame CRC.
@@ -92,7 +108,10 @@ make host-research-player-check
 Checks cover ownership, independent sessions, reset and allocation failure,
 latched audit errors, render-state preservation, actual SDL keyboard events,
 queued tick/day presses and stop boundaries, speed-independent results, invalid
-inputs, capture safety, and PNG-to-native pixel equality. Preparation tests reject
+inputs, capture safety, and PNG-to-native pixel equality. Overlay checks cover
+actual H events and displayed marker pixels, exact restoration after toggling
+off, unchanged captures for all three policies, and a 64-day lineage replay with
+descendants, dead plants, reused slots and posthumous seeds. Preparation tests reject
 changed archives, models, sources, manifests, unsafe paths, symlinks and partial
 output directories. The new C code
 builds with strict warnings and undefined-behavior sanitization.
@@ -112,5 +131,5 @@ docker compose run --rm -T host-player python3 -B sim/research_player/check_repl
 ```
 
 The implementation follows the [playback plan](garden-research-playback-plan.md).
-Side-by-side worlds, family highlighting, backward seeking, browser playback,
+Side-by-side worlds, backward seeking, browser playback,
 new training and firmware deployment remain separate work.

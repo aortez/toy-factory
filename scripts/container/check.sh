@@ -5,7 +5,8 @@ set -euo pipefail
 readonly app_dir=/workspace/app
 
 cd "$app_dir"
-clang-format --dry-run --Werror src/*.c src/*.h sim/*.c sim/*.h scripts/tests/*.c
+clang-format --dry-run --Werror src/*.c src/*.h sim/*.c sim/*.h \
+	sim/research_player/*.c sim/research_player/*.h scripts/tests/*.c
 bash -n scripts/*.sh scripts/container/*.sh scripts/tests/*.sh
 ./scripts/tests/fixed-rate-scheduler-test.sh
 ./scripts/tests/game-scene-selector-test.sh

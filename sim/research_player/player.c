@@ -11,20 +11,23 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#define SECOND_NS UINT64_C(1000000000)
-#define SLICE_NS  UINT64_C(4000000)
-#define FRAME_NS  UINT64_C(33333333)
-#define WIDTH     240
-#define HEIGHT    304
+#define SECOND_NS  UINT64_C(1000000000)
+#define SLICE_NS   UINT64_C(4000000)
+#define FRAME_NS   UINT64_C(33333333)
+#define WIDTH      240
+#define GARDEN_TOP 74
+#define HEIGHT     (GARDEN_TOP + WIDTH)
 
 struct options {
 	struct research_options research;
 	const char *capture_dir;
+	const char *test_view;
 	uint32_t stop_tick;
 	uint32_t frames;
 	uint8_t speed;
 	bool paused;
 	bool capture_on_exit;
+	bool highlight_family;
 	bool test_controls;
 	bool exit_at_stop;
 };
@@ -51,10 +54,11 @@ static void usage(void)
 {
 	puts("Usage: research-player [--policy initial|s1-g3-c4|s2-g3-c1]\n"
 	     "  [--seed HEX] [--layout rainfed|rainfed-crowded] [--founder ID]\n"
-	     "  [--speed 1|16|256|max] [--paused] [--capture-dir DIR]\n"
+	     "  [--speed 1|16|256|max] [--paused] [--highlight-family] [--capture-dir DIR]\n"
 	     "  [--stop-tick TICKS] [--frames COUNT] [--capture-on-exit] [--test-controls]\n"
+	     "  [--test-view NEW_PNG (requires --test-controls)]\n"
 	     "Space/P pause; N/. step one tick; D step one day (3840 ticks); R reset\n"
-	     "-/+ speed; M maximum speed; S screenshot + state; Escape quit\n"
+	     "-/+ speed; M maximum speed; H family overlay; S screenshot + state; Escape quit\n"
 	     "No gardener inputs. Changing policy or conditions requires a fresh launch.");
 }
 
@@ -95,6 +99,10 @@ static int parse(int argc, char **argv, struct options *out)
 		}
 		if (strcmp(arg, "--capture-on-exit") == 0) {
 			out->capture_on_exit = true;
+			continue;
+		}
+		if (strcmp(arg, "--highlight-family") == 0) {
+			out->highlight_family = true;
 			continue;
 		}
 		if (strcmp(arg, "--test-controls") == 0) {
@@ -163,11 +171,13 @@ static int parse(int argc, char **argv, struct options *out)
 			}
 		} else if (strcmp(arg, "--capture-dir") == 0) {
 			out->capture_dir = value;
+		} else if (strcmp(arg, "--test-view") == 0) {
+			out->test_view = value;
 		} else {
 			return -EINVAL;
 		}
 	}
-	return 0;
+	return (out->test_view != NULL && !out->test_controls) ? -EINVAL : 0;
 }
 
 static int pixels(struct player *player)
@@ -338,6 +348,9 @@ static int key(struct player *player, SDL_Scancode code)
 		break;
 	case SDL_SCANCODE_S:
 		return capture(player);
+	case SDL_SCANCODE_H:
+		player->options.highlight_family = !player->options.highlight_family;
+		break;
 	default:
 		break;
 	}
@@ -416,7 +429,46 @@ static int advance(struct player *player, uint64_t elapsed, uint32_t *advanced)
 	return 0;
 }
 
-static int present(struct player *player)
+static int render_family(struct player *player)
+{
+	struct research_family_view family;
+	const int err = research_session_family_view(player->session, &family);
+	if (err != 0) {
+		return err;
+	}
+	if (!SDL_SetRenderDrawColor(player->renderer, 80U, UINT8_MAX, UINT8_MAX, UINT8_MAX)) {
+		return -EIO;
+	}
+	for (uint16_t i = 0U; i < family.segment_count; ++i) {
+		const struct research_family_segment *const segment = &family.segments[i];
+		const float x = segment->start_x, y = GARDEN_TOP + segment->start_y;
+		if (segment->base) {
+			const SDL_FRect marker = {x - 3.0f, y - 3.0f, 7.0f, 7.0f};
+			if (!SDL_RenderRect(player->renderer, &marker)) {
+				return -EIO;
+			}
+		} else if (!SDL_RenderLine(player->renderer, x, y, segment->end_x,
+					   GARDEN_TOP + segment->end_y)) {
+			return -EIO;
+		}
+	}
+	if (!SDL_RenderDebugText(player->renderer, 0.0f, 62.0f, "Cyan:living") ||
+	    !SDL_SetRenderDrawColor(player->renderer, UINT8_MAX, 96U, 224U, UINT8_MAX) ||
+	    !SDL_RenderDebugText(player->renderer, 112.0f, 62.0f, "Pink:seeds")) {
+		return -EIO;
+	}
+	for (uint8_t i = 0U; i < family.seed_count; ++i) {
+		const float x = family.seeds[i].x, y = GARDEN_TOP + family.seeds[i].y;
+		const SDL_FPoint marker[] = {
+			{x, y - 4.0f}, {x + 4.0f, y}, {x, y + 4.0f}, {x - 4.0f, y}, {x, y - 4.0f}};
+		if (!SDL_RenderLines(player->renderer, marker, 5)) {
+			return -EIO;
+		}
+	}
+	return 0;
+}
+
+static int draw_frame(struct player *player)
 {
 	struct research_status status;
 	int err = research_session_status(player->session, &status);
@@ -426,7 +478,7 @@ static int present(struct player *player)
 	if (err != 0) {
 		return err;
 	}
-	const SDL_FRect rectangle = {0.0f, 64.0f, 240.0f, 240.0f};
+	const SDL_FRect rectangle = {0.0f, GARDEN_TOP, 240.0f, 240.0f};
 	char title[200];
 	const int length = snprintf(
 		title, sizeof(title), "Toy Factory research | %s | %08" PRIx32 " | %s | founder %u",
@@ -444,8 +496,16 @@ static int present(struct player *player)
 	if (!SDL_UpdateTexture(player->texture, NULL, player->rgba, WIDTH * 4) ||
 	    !SDL_SetRenderDrawColor(player->renderer, 12U, 16U, 22U, UINT8_MAX) ||
 	    !SDL_RenderClear(player->renderer) ||
-	    !SDL_RenderTexture(player->renderer, player->texture, NULL, &rectangle) ||
-	    !SDL_SetRenderDrawColor(player->renderer, 210U, 225U, 230U, UINT8_MAX) ||
+	    !SDL_RenderTexture(player->renderer, player->texture, NULL, &rectangle)) {
+		return -EIO;
+	}
+	if (player->options.highlight_family) {
+		err = render_family(player);
+		if (err != 0) {
+			return err;
+		}
+	}
+	if (!SDL_SetRenderDrawColor(player->renderer, 210U, 225U, 230U, UINT8_MAX) ||
 	    !SDL_RenderDebugTextFormat(player->renderer, 0.0f, 0.0f, "%s  F%u %s",
 				       research_model_name(player->options.research.model),
 				       (unsigned int)player->options.research.founder,
@@ -459,8 +519,22 @@ static int present(struct player *player)
 				       status.pending) ||
 	    !SDL_RenderDebugText(player->renderer, 0.0f, 32.0f, "Space pause  N tick  D day") ||
 	    !SDL_RenderDebugText(player->renderer, 0.0f, 42.0f, "-/+ speed  M max  R reset") ||
-	    !SDL_RenderDebugText(player->renderer, 0.0f, 52.0f, "S capture   Esc quit") ||
-	    !SDL_SetWindowTitle(player->window, title) || !SDL_RenderPresent(player->renderer)) {
+	    !SDL_RenderDebugText(player->renderer, 0.0f, 52.0f, "H family  S capture  Esc quit") ||
+	    (!player->options.highlight_family &&
+	     !SDL_RenderDebugText(player->renderer, 0.0f, 62.0f, "Family overlay: off")) ||
+	    !SDL_SetWindowTitle(player->window, title)) {
+		return -EIO;
+	}
+	return 0;
+}
+
+static int present(struct player *player)
+{
+	const int err = draw_frame(player);
+	if (err != 0) {
+		return err;
+	}
+	if (!SDL_RenderPresent(player->renderer)) {
 		return -EIO;
 	}
 	player->dirty = false;
@@ -568,6 +642,122 @@ static int test_step_queue(struct player *player)
 	return key(player, SDL_SCANCODE_R);
 }
 
+static SDL_Surface *test_frame(struct player *player)
+{
+	if (draw_frame(player) != 0) {
+		return NULL;
+	}
+	SDL_Surface *const raw = SDL_RenderReadPixels(player->renderer, NULL);
+	if (raw == NULL) {
+		return NULL;
+	}
+	SDL_Surface *const rgba = SDL_ConvertSurface(raw, SDL_PIXELFORMAT_RGBA32);
+	SDL_DestroySurface(raw);
+	return rgba;
+}
+
+static bool test_pixel(const SDL_Surface *surface, const SDL_FRect *viewport, int x, int y,
+		       uint8_t r, uint8_t g, uint8_t b)
+{
+	const int px = (int)(viewport->x + ((float)x + 0.5f) * viewport->w / WIDTH);
+	const int py = (int)(viewport->y + ((float)y + 0.5f) * viewport->h / HEIGHT);
+	if ((px < 0) || (py < 0) || (px >= surface->w) || (py >= surface->h)) {
+		return false;
+	}
+	const uint8_t *const pixel = (const uint8_t *)surface->pixels +
+				     (size_t)py * (size_t)surface->pitch + (size_t)px * 4U;
+	return pixel[0] == r && pixel[1] == g && pixel[2] == b;
+}
+
+static int test_highlight(struct player *player)
+{
+	const bool requested = player->options.highlight_family;
+	int err = research_session_step(player->session, 16U * RESEARCH_DAY_TICKS);
+	struct research_family_view family;
+	if (err == 0) {
+		err = research_session_family_view(player->session, &family);
+	}
+	if (err != 0) {
+		return err;
+	}
+	player->options.highlight_family = false;
+	player->pending = 17U;
+	player->budget = 123U;
+	SDL_Surface *before = test_frame(player), *highlighted = NULL, *restored = NULL;
+	const uint32_t crc = player->crc;
+	SDL_FRect viewport;
+	if ((before == NULL) ||
+	    !SDL_GetRenderLogicalPresentationRect(player->renderer, &viewport)) {
+		err = -EIO;
+	}
+	for (unsigned int press = 0U; (err == 0) && (press < 2U); ++press) {
+		SDL_Event event = {.type = SDL_EVENT_KEY_DOWN};
+		event.key.scancode = SDL_SCANCODE_H;
+		if (!SDL_PushEvent(&event) || (events(player) != 0) ||
+		    (player->options.highlight_family != (press == 0U)) ||
+		    (player->pending != 17U) || (player->budget != 123U)) {
+			err = -EFAULT;
+			break;
+		}
+		SDL_Surface *const frame = test_frame(player);
+		if (press == 0U) {
+			highlighted = frame;
+		} else {
+			restored = frame;
+		}
+		if ((frame == NULL) || (player->crc != crc)) {
+			err = -EFAULT;
+		}
+	}
+	if (err == 0) {
+		if ((before->w != restored->w) || (before->h != restored->h)) {
+			err = -EFAULT;
+		}
+		for (int row = 0; (err == 0) && (row < before->h); ++row) {
+			if (memcmp((const uint8_t *)before->pixels +
+					   (size_t)row * (size_t)before->pitch,
+				   (const uint8_t *)restored->pixels +
+					   (size_t)row * (size_t)restored->pitch,
+				   (size_t)before->w * 4U) != 0) {
+				err = -EFAULT;
+			}
+		}
+		for (uint16_t i = 0U; (err == 0) && (i < family.segment_count); ++i) {
+			const struct research_family_segment *const segment = &family.segments[i];
+			if (segment->base &&
+			    !test_pixel(highlighted, &viewport, segment->start_x - 3,
+					GARDEN_TOP + segment->start_y - 3, 80U, UINT8_MAX,
+					UINT8_MAX)) {
+				err = -EFAULT;
+			}
+		}
+		for (uint8_t i = 0U; (err == 0) && (i < family.seed_count); ++i) {
+			if (!test_pixel(highlighted, &viewport, family.seeds[i].x,
+					GARDEN_TOP + family.seeds[i].y - 4, UINT8_MAX, 96U, 224U)) {
+				err = -EFAULT;
+			}
+		}
+	}
+	if ((err == 0) && (player->options.test_view != NULL)) {
+		SDL_IOStream *const stream = SDL_IOFromFile(player->options.test_view, "wbx");
+		if (stream == NULL) {
+			err = -EIO;
+		} else {
+			if (!SDL_SavePNG_IO(highlighted, stream, false)) {
+				err = -EIO;
+			}
+			if (!SDL_CloseIO(stream)) {
+				err = -EIO;
+			}
+		}
+	}
+	SDL_DestroySurface(before);
+	SDL_DestroySurface(highlighted);
+	SDL_DestroySurface(restored);
+	player->options.highlight_family = requested;
+	return err == 0 ? key(player, SDL_SCANCODE_R) : err;
+}
+
 static int test_controls(struct player *player)
 {
 	static const SDL_Scancode keys[] = {SDL_SCANCODE_N, SDL_SCANCODE_D,      SDL_SCANCODE_R,
@@ -597,7 +787,8 @@ static int test_controls(struct player *player)
 			return -EFAULT;
 		}
 	}
-	return player->options.speed == 3U ? test_step_queue(player) : -EFAULT;
+	int err = player->options.speed == 3U ? test_step_queue(player) : -EFAULT;
+	return err == 0 ? test_highlight(player) : err;
 }
 
 int main(int argc, char **argv)

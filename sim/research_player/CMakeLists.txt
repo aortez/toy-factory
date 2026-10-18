@@ -26,7 +26,8 @@ add_executable(research-session-test research_session_test.c)
 target_link_libraries(research-replay PRIVATE research_session)
 target_link_libraries(research-session-test PRIVATE research_session)
 target_link_options(research-session-test PRIVATE -Wl,--wrap=malloc -Wl,--wrap=calloc
-    -Wl,--wrap=toy_factory_garden_landing_ledger_step)
+    -Wl,--wrap=toy_factory_garden_landing_ledger_step
+    -Wl,--wrap=toy_factory_leaf_owned_snapshot)
 foreach(target research_session research-replay research-session-test)
     target_compile_options(${target} PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion
         -UNDEBUG -fsanitize=undefined -fno-sanitize-recover=undefined)

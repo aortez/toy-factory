@@ -17,6 +17,8 @@
 
 _Static_assert(RESEARCH_STOP_TICK == TOY_FACTORY_MAINTENANCE_RUN_STOP, "Fixed research horizon");
 _Static_assert(sizeof(research_model_bytes[0]) == TOY_FACTORY_LEAF_NEURAL_FILE_SIZE, "Model size");
+_Static_assert(PICOSYSTEM_GARDEN_MAX_NODES <= RESEARCH_FAMILY_MAX_NODES, "Family node capacity");
+_Static_assert(PICOSYSTEM_GARDEN_MAX_SEEDS <= RESEARCH_FAMILY_MAX_SEEDS, "Family seed capacity");
 
 struct research_session {
 	struct research_options options;
@@ -254,6 +256,97 @@ int research_session_encode(const struct research_session *session, uint8_t *out
 		return session->failure;
 	}
 	return toy_factory_leaf_family_encode(&session->snapshot, out, capacity, size);
+}
+
+int research_session_family_view(const struct research_session *session,
+				 struct research_family_view *out)
+{
+	if ((session == NULL) || (out == NULL)) {
+		return -EINVAL;
+	}
+	if (session->failure != 0) {
+		return session->failure;
+	}
+	const struct picosystem_garden_world *const state = world(session);
+	const struct toy_factory_leaf_family_owners *const owners = &session->snapshot.owners;
+	if ((state->node_count > PICOSYSTEM_GARDEN_MAX_NODES) ||
+	    (state->plant_count > PICOSYSTEM_GARDEN_MAX_PLANTS) ||
+	    (state->seed_count > PICOSYSTEM_GARDEN_MAX_SEEDS) ||
+	    (owners->count > TOY_FACTORY_LEAF_FAMILY_MAX_LINEAGES)) {
+		return -ERANGE;
+	}
+	struct research_family_view result = {.tick = state->logic_tick_count};
+	bool selected[PICOSYSTEM_GARDEN_MAX_PLANTS] = {false};
+	for (uint8_t i = 0U; i < state->plant_count; ++i) {
+		const struct picosystem_garden_plant *const plant = &state->plants[i];
+		if ((plant->lineage_id == 0U) || (plant->lineage_id > owners->count)) {
+			return -ERANGE;
+		}
+		selected[i] = (owners->root[plant->lineage_id] == session->options.founder) &&
+			      ((plant->flags & PICOSYSTEM_GARDEN_PLANT_DEAD) == 0U);
+		if (selected[i]) {
+			++result.living;
+		}
+	}
+	for (uint16_t i = 0U; i < state->node_count; ++i) {
+		const struct picosystem_garden_node *const node = &state->nodes[i];
+		if (node->plant_index >= state->plant_count) {
+			return -ERANGE;
+		}
+		if (!selected[node->plant_index]) {
+			continue;
+		}
+		struct research_family_segment segment = {
+			.lineage = state->plants[node->plant_index].lineage_id,
+			.start_x = node->x,
+			.start_y = node->y,
+			.end_x = node->x,
+			.end_y = node->y,
+			.base = node->parent_index == PICOSYSTEM_GARDEN_NODE_NONE};
+		if (!segment.base) {
+			if ((node->parent_index >= i) ||
+			    (state->nodes[node->parent_index].plant_index != node->plant_index)) {
+				return -ERANGE;
+			}
+			const struct picosystem_garden_node *const parent =
+				&state->nodes[node->parent_index];
+			segment.start_x = parent->x;
+			segment.start_y = parent->y;
+			/* Match the frozen renderer's integer growth interpolation. */
+			segment.end_x =
+				(uint8_t)((int32_t)parent->x +
+					  (((int32_t)node->x - parent->x) * node->growth_progress) /
+						  UINT8_MAX);
+			segment.end_y =
+				(uint8_t)((int32_t)parent->y +
+					  (((int32_t)node->y - parent->y) * node->growth_progress) /
+						  UINT8_MAX);
+		}
+		result.segments[result.segment_count++] = segment;
+	}
+	for (uint8_t i = 0U; i < state->seed_count; ++i) {
+		const struct picosystem_garden_seed *const seed = &state->seeds[i];
+		if ((seed->parent_lineage_id == 0U) || (seed->parent_lineage_id > owners->count)) {
+			return -ERANGE;
+		}
+		if (owners->root[seed->parent_lineage_id] != session->options.founder) {
+			continue;
+		}
+		const int32_t x = (int32_t)(PICOSYSTEM_GARDEN_ORIGIN_X_PIXELS +
+					    seed->column * PICOSYSTEM_GARDEN_CELL_PIXELS +
+					    PICOSYSTEM_GARDEN_CELL_PIXELS / 2U) +
+				  seed->visual_offset;
+		if ((seed->column >= PICOSYSTEM_GARDEN_GRID_COLUMNS) || (x < 0) ||
+		    (x >= (int32_t)PICOSYSTEM_GRAPHICS_WIDTH)) {
+			return -ERANGE;
+		}
+		result.seeds[result.seed_count++] =
+			(struct research_family_seed){.parent = seed->parent_lineage_id,
+						      .x = (uint8_t)x,
+						      .y = PICOSYSTEM_GARDEN_SOIL_TOP_PIXELS + 2U};
+	}
+	*out = result;
+	return 0;
 }
 
 int research_session_render(struct research_session *session, uint8_t *out, size_t capacity,

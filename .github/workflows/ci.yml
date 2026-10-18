@@ -49,6 +49,9 @@ jobs:
       - name: Build and smoke-test interactive host player
         run: make host-player-check
 
+      - name: Build and test frozen-policy Garden research viewer
+        run: make host-research-player-check
+
       - name: Build PIO firmware variant
         run: make build-pio
 

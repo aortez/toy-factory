@@ -102,8 +102,27 @@ class PlayerTests(unittest.TestCase):
 
     def test_actual_event_controls_and_reset(self):
         reference, _ = self.reference('initial', 0)
-        result = self.run_player('--test-controls')
+        view = self.root / 'viewer.png'
+        result = self.run_player('--test-controls', '--test-view', view)
         self.assertEqual(result.stdout, reference)
+        before = view.read_bytes()
+        self.assertEqual(struct.unpack_from('>II', before, 16), (720, 942))
+        result = self.run_player('--test-controls', '--test-view', view, success=False)
+        self.assertEqual(result.stdout, b'')
+        self.assertEqual(view.read_bytes(), before)
+
+    def test_highlight_preserves_every_policy_capture(self):
+        for model in ('initial', 's1-g3-c4', 's2-g3-c1'):
+            with self.subTest(model=model):
+                reference, pixels = self.reference(model, 61440, 4, 'rainfed-crowded')
+                for highlight in (False, True):
+                    folder = self.root / f'{model}-{highlight}'
+                    extra = ('--highlight-family',) if highlight else ()
+                    result = self.run_player('--policy', model, '--layout', 'rainfed-crowded',
+                        '--founder', 4, '--speed', 'max', '--stop-tick', 61440,
+                        '--capture-on-exit', '--capture-dir', folder, *extra)
+                    self.assertEqual(result.stdout, reference)
+                    self.verify_capture(next(folder.glob('shot-*')), reference, pixels)
 
     def test_every_policy_and_speed_matches_headless(self):
         for model in ('initial', 's1-g3-c4', 's2-g3-c1'):
@@ -128,7 +147,8 @@ class PlayerTests(unittest.TestCase):
     def test_invalid_conditions_and_horizon(self):
         for args in (('--seed', '00000001'), ('--founder', '4'), ('--founder', '0'),
                      ('--policy', 'anything'), ('--speed', '2'), ('--stop-tick', '5283841'),
-                     ('--frames', '-1'), ('--seed',), ('--unexpected', '1')):
+                     ('--frames', '-1'), ('--seed',), ('--unexpected', '1'),
+                     ('--test-view', str(self.root / 'not-created.png'))):
             with self.subTest(args=args):
                 self.run_player(*args, success=False)
 
