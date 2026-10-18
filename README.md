@@ -93,9 +93,9 @@ benchmark variants; the default uses polling SPI0/PL022.
 ## Build
 
 For the current Garden work, start with the
-[recruitment checkpoint review guide](docs/garden-recruitment-checkpoint.md). It separates
-normal host/device behavior from opt-in research and summarizes the remaining
-ecology and training work.
+[research and viewer integration guide](docs/garden-research-integration.md). It
+separates normal host/device behavior from opt-in research and links the frozen
+repair-policy results, interactive viewer, and remaining ecology work.
 
 ```sh
 make build
