@@ -187,7 +187,7 @@ RENDER_PROFILE_BUILD_DIR = build-render-profile-$(DISPLAY_TRANSPORT)-$(DISPLAY_H
 RENDER_PROFILE_UF2 = $(RENDER_PROFILE_BUILD_DIR)/zephyr/zephyr.uf2
 
 .PHONY: host-audit-landing-soil host-trace-landing-drydown host-audit-landing-seed-spending host-audit-landing-root-allocation host-probe-landing-root-allocation host-audit-landing-root-direction host-probe-landing-root-direction host-probe-landing-directions host-probe-landing-uptake host-audit-landing-population host-probe-landing-population host-probe-landing-dawn host-probe-landing-daylight host-audit-landing-dawn help image setup build build-fast build-pio build-pio-dma build-pl022-dma \
-	build-render-profile format check check-pio-dma check-pl022-dma check-render-profile \
+	build-render-profile format check check-source check-pio-dma check-pl022-dma check-render-profile \
 	host-build host-check host-research-check host-run host-cli host-profile-build host-profile-garden \
 	host-evaluate-garden host-train-garden host-experiment-garden host-gallery-garden host-audit-garden \
 	host-seasons-garden host-recruitment-garden host-landing-garden host-evaluate-landing-garden \
@@ -274,6 +274,9 @@ format: ## Format application, simulator, and native-test C source
 
 check: ## Run checks and a pristine firmware build
 	$(COMPOSE) run --rm firmware ./scripts/container/check.sh
+
+check-source: ## Run formatting, standalone tests, and CI tooling checks without the long replay suite
+	$(COMPOSE) run --rm -T firmware ./scripts/container/check.sh --source-only
 
 check-pio-dma: ## Pristine-build the PIO SPI plus DMA benchmark
 	$(COMPOSE) run --rm firmware ./scripts/container/build.sh --pristine --variant pio-dma

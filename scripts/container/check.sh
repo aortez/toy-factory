@@ -2,6 +2,14 @@
 
 set -euo pipefail
 
+source_only=0
+if [[ $# -eq 1 && "$1" == "--source-only" ]]; then
+	source_only=1
+elif [[ $# -ne 0 ]]; then
+	echo "usage: $0 [--source-only]" >&2
+	exit 2
+fi
+
 readonly app_dir=/workspace/app
 
 cd "$app_dir"
@@ -35,7 +43,11 @@ python3 scripts/tests/render-profile-test.py
 python3 scripts/tests/sequence-runner-test.py
 python3 scripts/tests/serial-command-test.py
 python3 scripts/tests/host-garden-defaults-test.py
+python3 scripts/tests/ctest-shard-test.py
 git diff --check
+if (( source_only )); then
+	exit 0
+fi
 ./scripts/container/host-build.sh --pristine
 ctest --test-dir build-host --output-on-failure
 ./scripts/container/build.sh --pristine

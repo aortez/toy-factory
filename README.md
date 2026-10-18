@@ -844,9 +844,31 @@ additional minute with DTR held. The host timeout is therefore 240 seconds.
 Pause before capture for practical latency, stable timing, and deterministic
 automation.
 
-GitHub Actions runs `make check` and builds the PIO, PIO/DMA, and PL022/DMA
-variants for every pull request and push to `main`. Tests that need a connected
-PicoSystem remain part of the physical smoke-test boundary rather than hosted CI.
+GitHub Actions retains the full test suite on every pull request and push to
+`main`. Native tests run in six disjoint shards; the opt-in research configuration
+runs in three. Each shard executes serially because some archive-corruption tests
+use several GiB of memory. Source checks, default/PIO/PIO-DMA/PL022-DMA firmware
+builds, isolated research configurations, and the viewers run alongside them.
+The final **CI complete** check requires every job and shard to succeed, including
+rejecting cancelled or skipped jobs. Test inventories and JUnit timing reports
+are retained as workflow artifacts for 14 days.
+
+`make check` still performs the complete local check and pristine firmware build;
+`make check-source` is the shorter formatting and standalone-test pass. To
+reproduce a native CI shard locally, run `make host-build`, then:
+
+```sh
+docker compose run --rm -T firmware python3 scripts/container/ctest-shard.py \
+  --build-dir build-host --shard 4 --shards 6 \
+  --output-dir artifacts/ci-tests/native-4
+```
+
+Shard numbers are one-based. `--dry-run` records and verifies the selection
+without executing tests. New registered tests are included automatically, and
+successful runs must report exactly the selected tests. This changes scheduling,
+not coverage or simulator settings; it reduces elapsed CI time rather than the
+total test workload. Tests that need a connected PicoSystem remain part of the
+physical smoke-test boundary rather than hosted CI.
 
 The following scheduler and display results describe the preceding single-sprite
 baseline. On the tested PIM559, the exact 120 Hz scheduler ran with a maximum observed

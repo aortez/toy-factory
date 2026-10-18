@@ -16,11 +16,9 @@ concurrency:
 
 jobs:
   validate:
-    name: Native tests and firmware builds
+    name: Source checks and firmware builds
     runs-on: ubuntu-24.04
-    # The serial archive-corruption regressions exceed the old 45-minute
-    # budget before firmware builds; retain their coverage with bounded time.
-    timeout-minutes: 90
+    timeout-minutes: 30
 
     steps:
       - name: Check out repository
@@ -37,8 +35,11 @@ jobs:
       - name: Prepare checkout for the build container
         run: sudo chown -R 1000:1000 "$GITHUB_WORKSPACE"
 
-      - name: Run native tests and build default firmware
-        run: make check
+      - name: Check sources and standalone tests
+        run: make check-source
+
+      - name: Build default firmware
+        run: docker compose run --rm -T firmware ./scripts/container/build.sh --pristine
 
       - name: Build and smoke-test interactive host player
         run: make host-player-check
@@ -52,10 +53,14 @@ jobs:
       - name: Build PL022 and DMA firmware variant
         run: make check-pl022-dma
 
-  garden-research:
-    name: Garden research configurations
+  native-tests:
+    name: Native tests (${{ matrix.shard }}/6)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
 
     steps:
       - name: Check out repository
@@ -69,8 +74,78 @@ jobs:
       - name: Prepare checkout for the build container
         run: sudo chown -R 1000:1000 "$GITHUB_WORKSPACE"
 
-      - name: Build and test opt-in Garden research configuration
-        run: make host-research-check
+      - name: Build native tests
+        run: make host-build
+
+      - name: Run native test shard
+        run: >-
+          docker compose run --rm -T firmware python3 scripts/container/ctest-shard.py
+          --build-dir build-host --shard ${{ matrix.shard }} --shards 6
+          --output-dir artifacts/ci-tests/native-${{ matrix.shard }}
+
+      - name: Preserve inventory and test timings
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-tests-${{ matrix.shard }}
+          path: artifacts/ci-tests/native-${{ matrix.shard }}
+          retention-days: 14
+
+  garden-research:
+    name: Garden research tests (${{ matrix.shard }}/3)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build pinned development image
+        run: make image
+
+      - name: Prepare checkout for the build container
+        run: sudo chown -R 1000:1000 "$GITHUB_WORKSPACE"
+
+      - name: Build opt-in Garden research configuration
+        run: docker compose run --rm -T firmware bash scripts/container/host-research-check.sh --build-only
+
+      - name: Run Garden research test shard
+        run: >-
+          docker compose run --rm -T firmware python3 scripts/container/ctest-shard.py
+          --build-dir artifacts/build-host-research-check
+          --shard ${{ matrix.shard }} --shards 3
+          --output-dir artifacts/ci-tests/research-${{ matrix.shard }}
+
+      - name: Preserve inventory and test timings
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: research-tests-${{ matrix.shard }}
+          path: artifacts/ci-tests/research-${{ matrix.shard }}
+          retention-days: 14
+
+  garden-late:
+    name: Isolated Garden configurations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build pinned development image
+        run: make image
+
+      - name: Prepare checkout for the build container
+        run: sudo chown -R 1000:1000 "$GITHUB_WORKSPACE"
 
       - name: Build and test isolated late Garden research configurations
         run: |
@@ -93,3 +168,27 @@ jobs:
 
       - name: Build and test frozen-policy Garden research viewer
         run: make host-research-player-check
+
+  complete:
+    name: CI complete
+    if: always()
+    needs: [validate, native-tests, garden-research, garden-late, garden-viewer]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every suite and shard to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          jobs = json.loads(os.environ["RESULTS"])
+          failed = {name: job["result"] for name, job in jobs.items()
+                    if job["result"] != "success"}
+          if not jobs or failed:
+              print(f"CI did not pass: {failed}", file=sys.stderr)
+              sys.exit(1)
+          print("Every CI suite and shard passed.")
+          PY

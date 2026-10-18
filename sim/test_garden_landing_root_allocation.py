@@ -2,7 +2,6 @@
 """Independent focal allocation arithmetic, CLI rejection, neutrality and receipts."""
 
 import argparse
-import copy
 import gzip
 import json
 from pathlib import Path
@@ -15,6 +14,11 @@ from test_garden_landing_tools import run
 
 BUILD = None
 RESULT = probe.ROOT / 'benchmarks/garden-seasons/landing-root-allocation-results.json.gz'
+
+
+def saved_result():
+    with gzip.open(RESULT, 'rt') as stream:
+        return json.load(stream)
 
 
 def fixture():
@@ -164,12 +168,14 @@ class CliTests(unittest.TestCase):
 class SavedTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        with gzip.open(RESULT, 'rt') as stream: cls.value = json.load(stream)
+        cls.value = saved_result()
 
     def test_portable_and_corruptions(self):
         with patch('subprocess.Popen', side_effect=AssertionError('offline only')): probe.check_value(self.value)
         for fault in ('coverage', 'priority', 'repeat', 'prefix', 'conclusion'):
-            bad = copy.deepcopy(self.value)
+            # Decode an independent copy of the same full fixture. Recursive
+            # Python deepcopy dominates this test on these large JSON trees.
+            bad = saved_result()
             e = bad['cases'][0]
             if fault == 'coverage': e['arms']['candidate']['allocation']['focal_frames'].pop()
             elif fault == 'priority':
@@ -178,6 +184,8 @@ class SavedTests(unittest.TestCase):
             elif fault == 'prefix': e['first_effect']['matching_prior_samples'] += 1
             else: bad['conclusion']['supports_broader_trial'] = not bad['conclusion']['supports_broader_trial']
             with self.subTest(fault=fault), self.assertRaises(RuntimeError): probe.check_value(bad)
+            # Do not retain the previous corrupt tree while decoding the next.
+            del bad, e
 
     def test_focal_improvement_does_not_hide_population_harm(self):
         self.assertEqual(self.value['conclusion'], dict(focal_pairs_improving=4, focal_pairs_passing=4,

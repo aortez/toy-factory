@@ -2,8 +2,11 @@
 
 set -euo pipefail
 
-if (( $# != 0 )); then
-	echo "usage: $0" >&2
+build_only=0
+if [[ $# -eq 1 && "$1" == "--build-only" ]]; then
+	build_only=1
+elif (( $# != 0 )); then
+	echo "usage: $0 [--build-only]" >&2
 	exit 2
 fi
 
@@ -36,4 +39,7 @@ cmake -S sim -B "$build_dir" -G Ninja \
 	-DTOY_FACTORY_GARDEN_PLANT_SLOTS=ON \
 	-DTOY_FACTORY_GARDEN_FULL_POOL=ON
 cmake --build "$build_dir" --parallel 2
+if (( build_only )); then
+	exit 0
+fi
 ctest --test-dir "$build_dir" --output-on-failure --parallel 2
