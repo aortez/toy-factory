@@ -11,4 +11,4 @@ cmake -S sim/research_player -B "$build_dir" -G Ninja \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DTOY_FACTORY_RESEARCH_RUNTIME="$runtime" -DTOY_FACTORY_RESEARCH_VIEWER=ON
 cmake --build "$build_dir" --parallel 2 \
-    --target research-player research-replay research-session-test
+    --target research-player research-replay research-session-test research-population-test

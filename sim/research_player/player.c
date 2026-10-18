@@ -53,7 +53,7 @@ static const uint32_t speeds[] = {1U, 16U, 256U, 0U};
 static void usage(void)
 {
 	puts("Usage: research-player [--policy initial|s1-g3-c4|s2-g3-c1]\n"
-	     "  [--seed HEX] [--layout rainfed|rainfed-crowded] [--founder ID]\n"
+	     "  [--seed HEX] [--layout rainfed|rainfed-crowded] [--founder ID|all]\n"
 	     "  [--speed 1|16|256|max] [--paused] [--highlight-family] [--capture-dir DIR]\n"
 	     "  [--stop-tick TICKS] [--frames COUNT] [--capture-on-exit] [--test-controls]\n"
 	     "  [--test-view NEW_PNG (requires --test-controls)]\n"
@@ -140,10 +140,15 @@ static int parse(int argc, char **argv, struct options *out)
 				return -EINVAL;
 			}
 		} else if (strcmp(arg, "--founder") == 0) {
-			if (number(value, 10, UINT8_MAX, &parsed) != 0) {
+			if (strcmp(value, "all") == 0) {
+				out->research.scope = RESEARCH_SCOPE_POPULATION;
+				out->research.founder = 0U;
+			} else if (number(value, 10, UINT8_MAX, &parsed) != 0) {
 				return -EINVAL;
+			} else {
+				out->research.scope = RESEARCH_SCOPE_FAMILY;
+				out->research.founder = (uint8_t)parsed;
 			}
-			out->research.founder = (uint8_t)parsed;
 		} else if (strcmp(arg, "--speed") == 0) {
 			if (strcmp(value, "max") == 0) {
 				out->speed = 3U;
@@ -479,12 +484,21 @@ static int draw_frame(struct player *player)
 		return err;
 	}
 	const SDL_FRect rectangle = {0.0f, GARDEN_TOP, 240.0f, 240.0f};
+	const bool population = player->options.research.scope == RESEARCH_SCOPE_POPULATION;
+	char scope[24];
+	const int scope_length = population
+					 ? snprintf(scope, sizeof(scope), "ALL")
+					 : snprintf(scope, sizeof(scope), "F%u",
+						    (unsigned int)player->options.research.founder);
+	if ((scope_length < 0) || ((size_t)scope_length >= sizeof(scope))) {
+		return -EOVERFLOW;
+	}
 	char title[200];
 	const int length = snprintf(
-		title, sizeof(title), "Toy Factory research | %s | %08" PRIx32 " | %s | founder %u",
+		title, sizeof(title), "Toy Factory research | %s | %08" PRIx32 " | %s | %s",
 		research_model_name(player->options.research.model), player->options.research.seed,
 		research_layout_name(player->options.research.layout),
-		(unsigned int)player->options.research.founder);
+		population ? "whole population" : scope);
 	if ((length < 0) || ((size_t)length >= sizeof(title))) {
 		return -EOVERFLOW;
 	}
@@ -506,22 +520,25 @@ static int draw_frame(struct player *player)
 		}
 	}
 	if (!SDL_SetRenderDrawColor(player->renderer, 210U, 225U, 230U, UINT8_MAX) ||
-	    !SDL_RenderDebugTextFormat(player->renderer, 0.0f, 0.0f, "%s  F%u %s",
-				       research_model_name(player->options.research.model),
-				       (unsigned int)player->options.research.founder,
+	    !SDL_RenderDebugTextFormat(player->renderer, 0.0f, 0.0f, "%s %s %s",
+				       research_model_name(player->options.research.model), scope,
 				       player->options.paused ? "PAUSED" : "RUNNING") ||
 	    !SDL_RenderDebugTextFormat(player->renderer, 0.0f, 10.0f,
 				       "Day %" PRIu32 "  %s  ~%" PRIu32 ".%" PRIu32 "x",
 				       status.tick / RESEARCH_DAY_TICKS, speed, speed_tenths / 10U,
 				       speed_tenths % 10U) ||
-	    !SDL_RenderDebugTextFormat(player->renderer, 0.0f, 20.0f,
-				       "Family live:%" PRIu32 " bank:%" PRIu32, status.living,
-				       status.pending) ||
+	    !SDL_RenderDebugTextFormat(
+		    player->renderer, 0.0f, 20.0f, "%s live:%" PRIu32 " bank:%" PRIu32,
+		    population ? "World" : "Family", status.living, status.pending) ||
 	    !SDL_RenderDebugText(player->renderer, 0.0f, 32.0f, "Space pause  N tick  D day") ||
 	    !SDL_RenderDebugText(player->renderer, 0.0f, 42.0f, "-/+ speed  M max  R reset") ||
-	    !SDL_RenderDebugText(player->renderer, 0.0f, 52.0f, "H family  S capture  Esc quit") ||
+	    !SDL_RenderDebugText(player->renderer, 0.0f, 52.0f,
+				 population ? "H all  S capture  Esc quit"
+					    : "H family  S capture  Esc quit") ||
 	    (!player->options.highlight_family &&
-	     !SDL_RenderDebugText(player->renderer, 0.0f, 62.0f, "Family overlay: off")) ||
+	     !SDL_RenderDebugText(player->renderer, 0.0f, 62.0f,
+				  population ? "Population overlay: off"
+					     : "Family overlay: off")) ||
 	    !SDL_SetWindowTitle(player->window, title)) {
 		return -EIO;
 	}
