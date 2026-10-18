@@ -43,8 +43,9 @@ make host-player-check
 make host-research-player-check
 ```
 
-CI runs these checks along with the isolated late Garden configurations and
-alternate display firmware builds. The viewer checks include strict C warnings,
+CI runs these checks in parallel firmware, research, and viewer jobs, including
+the isolated late Garden configurations and alternate display firmware builds.
+The viewer checks include strict C warnings,
 undefined-behavior sanitization, actual SDL input events, source/model integrity,
 capture safety, and highlighted/unhighlighted simulation and pixel parity.
 The longer archived-replay check is documented in the viewer guide.

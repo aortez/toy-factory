@@ -38,19 +38,8 @@ jobs:
       - name: Run native tests and build default firmware
         run: make check
 
-      - name: Build and test opt-in Garden research configuration
-        run: make host-research-check
-
-      - name: Build and test isolated late Garden research configurations
-        run: |
-          docker compose run --rm -T firmware bash scripts/container/host-late-dispersal-build.sh
-          docker compose run --rm -T firmware bash scripts/container/host-landing-seed-replacement-build.sh
-
       - name: Build and smoke-test interactive host player
         run: make host-player-check
-
-      - name: Build and test frozen-policy Garden research viewer
-        run: make host-research-player-check
 
       - name: Build PIO firmware variant
         run: make build-pio
@@ -60,3 +49,45 @@ jobs:
 
       - name: Build PL022 and DMA firmware variant
         run: make check-pl022-dma
+
+  garden-research:
+    name: Garden research configurations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build pinned development image
+        run: make image
+
+      - name: Prepare checkout for the build container
+        run: sudo chown -R 1000:1000 "$GITHUB_WORKSPACE"
+
+      - name: Build and test opt-in Garden research configuration
+        run: make host-research-check
+
+      - name: Build and test isolated late Garden research configurations
+        run: |
+          docker compose run --rm -T firmware bash scripts/container/host-late-dispersal-build.sh
+          docker compose run --rm -T firmware bash scripts/container/host-landing-seed-replacement-build.sh
+
+  garden-viewer:
+    name: Frozen-policy Garden viewer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prepare checkout for the build container
+        run: sudo chown -R 1000:1000 "$GITHUB_WORKSPACE"
+
+      - name: Build and test frozen-policy Garden research viewer
+        run: make host-research-player-check
