@@ -22,6 +22,18 @@ make host-play-research \
   ARGS="--policy s2-g3-c1 --layout rainfed-crowded --founder 4 --seed 9a903368 --speed 256"
 ```
 
+To apply the chosen repair policy to every plant, including all descendants:
+
+```sh
+make host-play-research ARGS="--policy s1-g3-c4 --founder all --speed 256"
+```
+
+This opt-in population mode displays `ALL` and whole-world living/seed counts.
+It is a different experiment from one candidate family competing with selective
+residents; it does not change the default launch or the archived family runs.
+The [population comparison](../benchmarks/garden-seasons/leaf-population.md)
+reports renewal and diversity across the matched panel and retains every capture.
+
 Rainfed has founders 1–3; rainfed-crowded has founders 1–5. The four panel seeds
 are `58d7d6ca`, `9a903368`, `6b9c1a3e`, and `59818bc3`; the archived reference
 seed `98a89374` is also accepted. Use eight lowercase hexadecimal digits without
@@ -58,7 +70,7 @@ Repeated N, period or D presses queue their steps, up to the run's stop tick;
 holding a key does not auto-repeat. Pause/resume or reset cancels any queued
 steps. A screenshot records the current completed tick, not queued future work.
 
-The candidate policy belongs to one founder family and follows its descendants.
+With a numeric `--founder`, the candidate policy belongs to one founder family and follows its descendants.
 Other families retain the selective resident controller. The header's `live`
 and `bank` counts refer only to the candidate family, not the whole garden.
 A populated garden can therefore have an extinct candidate family. W2 growth,
@@ -67,6 +79,7 @@ seasonal rain and the fixed ecology remain unchanged. Gardener keys do nothing.
 Press H to trace the selected family's living stems and roots in cyan, with
 small squares at their bases. Pink diamonds mark that family's pending seeds,
 including seeds whose parents have died. Dead plants are not highlighted.
+With `--founder all`, the overlay covers every living plant and pending seed.
 The overlay follows lineage identity through reproduction and plant-slot reuse;
 it does not identify family membership by location or appearance.
 
@@ -99,6 +112,243 @@ the final image and state. Successful exit prints the same JSON record as the
 headless research runner. Canonical state records identify a run; loading them
 to resume playback is not implemented.
 
+The headless runner accepts a numeric founder or `all` in its final condition
+argument, followed by an optional new raw-frame path and render cadence:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  s1-g3-c4 58d7d6ca rainfed 245760 all
+```
+
+That example advances 64 Garden days without rendering. Population records use
+`garden-leaf-population-replay-v1`, `controller_assignment: whole-population`,
+and a `TPR1` state envelope. Candidate founder and resident policy are null;
+ancestry and complete lifetime/seed histories remain present. Numeric-founder
+runs retain the original family schema and `TFR1` encoding.
+
+In place of a policy name, the headless runner also accepts the path to a
+172-byte TLF1 repair model. Named policies run only on the documented weather
+seeds; a model file accepts any seed, so its caller fixes and records the
+conditions. The record's `leaf_model_hex` and canonical state carry the exact
+model bytes. Shadow and gate diagnostics remain limited to the named policies.
+The [threshold sweep](../benchmarks/garden-seasons/leaf-population-threshold-sweep.md)
+uses this path. After unpacking its evidence, any of its models replays
+directly:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  artifacts/garden-threshold-sweep-review-v1/models/light-071.tlf \
+  457e75c9 rainfed 5283840 all
+```
+
+To collect matched checkpoints from one continuous population run:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  s1-g3-c4 58d7d6ca rainfed 5283840 all --timeline artifacts/new-population-timeline
+```
+
+The fresh directory receives raw pixels and complete JSON at days 0, 32, 192,
+608, 992, and 1376. A shorter horizon captures the scheduled dates up to that
+point and the requested endpoint. Existing directories are rejected; failed
+partial captures are retained but do not receive successful final stdout.
+
+For a bounded read-only resource and germination trace of one family within a
+uniform population, use `--trace FOUNDER NEW_DIR` instead of `--timeline`:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  s1-g3-c4 58d7d6ca rainfed 983040 all --trace 2 artifacts/new-shrub-trace
+```
+
+This records the same checkpoints plus `trace.json`, with per-lineage daily
+budgets and per-seed blocker histograms. The simulation/history JSON is
+unchanged. Tracing is host-only, limited to day 256, and uses bounded storage
+allocated at activation rather than per-step logs. It must be enabled at tick
+zero; resetting the session disables it. Numeric-founder family competition
+does not support this trace. See the [trace protocol](../benchmarks/garden-seasons/leaf-population-trace-protocol.md)
+for units, capacities, and interpretation, and the
+[six-run result](../benchmarks/garden-seasons/leaf-population-trace.md) for validation.
+
+Use `--shadow FOUNDER NEW_DIR` for the fixed winter observation comparison:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  s1-g3-c4 58d7d6ca rainfed 983040 all --shadow 2 artifacts/new-shrub-shadow
+```
+
+This includes the resource trace and adds `shadow.json`: every selected-family
+leaf observation during days `(208,224]`, evaluated by all three frozen repair
+controllers. Only the original controller's decision is applied. The endpoint
+must be between days 224 and 256. The diagnostic uses one additional bounded
+host allocation and is disabled on reset. See the
+[comparison protocol](../benchmarks/garden-seasons/leaf-population-shadow-protocol.md)
+and [results](../benchmarks/garden-seasons/leaf-population-shadow.md). The frozen
+simulation and canonical state format are unchanged.
+
+For the fixed-case scheduled gate intervention:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  --gate light on artifacts/new-shrub-gate
+```
+
+The arms are `none`, `light`, `condition`, and `both`; `on`/`off` selects only
+resource tracing. Unlike shadow mode, this applies a derived controller to
+family 2 after day 208, with Search 1 elsewhere. The seed, layout, activation,
+day-256 endpoint, and eight capture dates are fixed by the
+[protocol](../benchmarks/garden-seasons/leaf-population-gates-protocol.md).
+These runs use distinct `TGR1` state and `garden-leaf-gate-replay-v1` JSON,
+including their exact derived model. They cannot be combined with shadow mode,
+and reset disables the intervention. Ordinary viewer and firmware defaults
+remain unchanged. See the [results](../benchmarks/garden-seasons/leaf-population-gates.md).
+
+Use `--gate-long` instead of `--gate` for the fixed day-608 follow-up. It keeps
+all eight earlier captures, adds days 384, 512, and 608, and explicitly freezes
+resource tracing at day 256 while continuing complete history tracking.
+`trace.json` therefore describes the day-256 prefix, not the longer endpoint.
+State identity and the applied intervention are unchanged. See the
+[follow-up protocol](../benchmarks/garden-seasons/leaf-population-gates-long-protocol.md)
+and [results](../benchmarks/garden-seasons/leaf-population-gates-long.md).
+
+`--gate-transfer` uses the same day-608 schedule on the second fixed rainfed
+seed, `59818bc3`. Only the weather seed differs from `--gate-long`; the four
+model variants, family assignment after day 208, captures, and day-256 trace
+freeze are unchanged. Its founder is already dead at the switch, so its
+descendants receive the intervention. See the
+[second-seed protocol](../benchmarks/garden-seasons/leaf-population-gates-transfer-protocol.md)
+and [results](../benchmarks/garden-seasons/leaf-population-gates-transfer.md).
+
+For the from-start four-seed comparison:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  --gate-panel 58d7d6ca both on artifacts/new-shrub-gate-panel
+```
+
+This accepts only `58d7d6ca`, `9a903368`, `6b9c1a3e`, or `59818bc3`, and
+applies the chosen variant to family 2 from the first decision after tick zero.
+Other families still use Search 1. Activation tick zero is included in both
+the canonical state and JSON identity; this is not the day-208 intervention.
+The day-608 endpoint, eleven captures, and day-256 trace freeze are unchanged.
+See the [panel protocol](../benchmarks/garden-seasons/leaf-population-gates-panel-protocol.md)
+and [results](../benchmarks/garden-seasons/leaf-population-gates-panel.md).
+
+For the read-only purchase-time diagnostic of the contrasting early handoff:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  --purchase-panel 9a903368 both on artifacts/new-purchase-trace
+```
+
+This fixed-seed command has the same eleven captures and day-608 endpoint.
+With `on`, it adds `purchases.json` for all paid purchases during `[30,35)` days,
+plus the usual resource trace. `off` disables both diagnostics. The observer
+borrows current plant and placement state; it does not change policy or RNG.
+The frozen preparation remains intact; CMake stages a separate callback-binding
+adapter in the build directory. See the
+[bounded protocol](../benchmarks/garden-seasons/leaf-population-purchases-protocol.md)
+and [results](../benchmarks/garden-seasons/leaf-population-purchases.md).
+The trace's destination array has fourteen storage slots, with six active
+entries and eight trailing zeros during this window. Padding is not reachable
+space; the offline validator checks and excludes it.
+
+For the host-only fewer-blocker placement experiment:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  --fallback-panel 9a903368 both fewest on artifacts/new-blocker-fallback
+```
+
+Choose `original|fewest` independently of `none|light|condition|both` repair
+and `on|off` logging. The fixed seed, day-608 horizon, eleven captures, and
+trace windows match `--purchase-panel`. Only family 2 uses the new placement
+rule: retain clear-site behavior; if all reachable sites are blocked, prefer
+the fewest stored spacing blockers, with cyclic ties from the existing draw.
+Retained dead plants count, and reflected aliases keep their choice indices.
+The policy uses an explicit borrowed route, not observer activation, and does
+not allocate while stepping or draw additional random numbers.
+
+New-policy JSON has schema `garden-blocker-fallback-replay-v1` and explicit
+`placement_intervention` metadata. Its canonical bytes prefix `TGR1` with a
+12-byte `TBF1` header: version 1, founder 2, two reserved zero bytes, and
+little-endian activation tick zero. Original mode retains the exact previous
+identity. The [comparison](../benchmarks/garden-seasons/leaf-population-fallback.md)
+finds mixed effects; this is not a viewer or firmware default.
+
+For ordered reproduction access in the condition-only placement comparison:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  --reproduction-panel 9a903368 condition fewest on artifacts/new-reproduction-trace
+```
+
+This command accepts only `condition` repair and `original|fewest` placement.
+With `on`, it adds `reproduction.json` alongside the unchanged resource and
+purchase traces. It counts all reproduction-cadence visits in `(128,232]`
+days and retains ordered receipts on ticks where a seed slot is open. Later
+visits after that slot is filled are included. `off` disables all diagnostics;
+neither setting changes canonical identity or policy. Histograms retain
+simultaneous blockers, so a full bank does not imply an otherwise eligible
+plant. The trace is session-owned, has fixed bounds, and refuses publication
+after recording failure. See the
+[protocol](../benchmarks/garden-seasons/leaf-population-reproduction-protocol.md)
+and [results](../benchmarks/garden-seasons/leaf-population-reproduction.md).
+
+For step-level resource budgets around the eight missed openings of shrub 17:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  --budget-panel 9a903368 condition fewest on artifacts/new-budget-trace
+```
+
+This narrower diagnostic accepts only `condition` repair and `fewest` placement.
+With `on`, it retains the three preceding traces and adds `budget.json`: 2,244
+ecology steps across eight overlapping windows, one day before and a quarter
+day after each focal visit. Six resource payment points separate income,
+storage overflow, upkeep, growth, repair, and seed purchases. Reproduction
+cadence rows also retain the actual eligibility thresholds and blockers.
+`off` disables all diagnostics without changing policy or replay identity.
+The host-only collector has fixed storage, no step allocation, and refuses
+incomplete or failed traces. See the
+[bounded protocol](../benchmarks/garden-seasons/leaf-population-budget-protocol.md)
+and [results](../benchmarks/garden-seasons/leaf-population-budget.md).
+
+For matched leaf light and condition during day 152:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  --foliage-panel 9a903368 condition original on artifacts/new-foliage-trace
+```
+
+Use `original` for shrub 19 or `fewest` for shrub 17. With `on`, this retains
+the three preceding traces and adds `foliage.json`: 256 ecology steps in
+`(152,153]` days, each with actual uptake light, pre-repair leaf condition,
+positions, repair selection, fractional energy, and payment stages. Wear has
+already occurred at the observation point; repair has not. Every step must
+reconstruct the ledger's income exactly. `off` disables diagnostics without
+changing policy. These are fixed-case host measurements, not a new controller
+or a change to firmware. See the
+[protocol](../benchmarks/garden-seasons/leaf-population-foliage-protocol.md)
+and [results](../benchmarks/garden-seasons/leaf-population-foliage.md).
+
+For the same replays with dawn shadow-source attribution:
+
+```sh
+artifacts/garden-research-player-build-v1/research-replay \
+  --canopy-panel 9a903368 condition original on artifacts/new-canopy-trace
+```
+
+This retains the four preceding traces and adds `canopy.json` for the 32 ecology
+steps in `(152.75,152.875]`. The host adapter reconstructs pre-uptake opacity on
+a private world copy using the frozen builder, then requires every projected
+light cell to equal actual uptake light before accepting it. Sources retain
+lineage, cell, center/neighbor opacity, and dead status. The existing frozen
+uptake-audit restriction remains intact. Storage is session-owned and bounded;
+reset disables the diagnostic. See the
+[protocol](../benchmarks/garden-seasons/leaf-population-canopy-protocol.md)
+and [results](../benchmarks/garden-seasons/leaf-population-canopy.md).
+
 ## Verification
 
 ```sh
@@ -115,6 +365,14 @@ descendants, dead plants, reused slots and posthumous seeds. Preparation tests r
 changed archives, models, sources, manifests, unsafe paths, symlinks and partial
 output directories. The new C code
 builds with strict warnings and undefined-behavior sanitization.
+
+Population checks compare the private owned path with the checked uniform
+replay, exercise all three policies and both layouts, and verify ancestry across
+births and slot reuse. They also cover scope validation, allocation failures,
+reset, latched audit failures, capture identity, rendering cadence, and viewer
+capture/overlay parity. Timeline, renewal-scoring, bounded-collector, and offline
+evidence tests run in the same check target. The population adapter reuses the frozen uniform kernel;
+it does not patch the authenticated runtime or change ecological rules.
 
 Nine longer checks also matched complete archived stdout and raw pixels:
 three day-608 anchors, three day-1376 rainfed founder-1 runs on `58d7d6ca`, and

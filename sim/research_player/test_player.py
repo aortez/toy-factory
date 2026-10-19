@@ -152,6 +152,22 @@ class PlayerTests(unittest.TestCase):
             with self.subTest(args=args):
                 self.run_player(*args, success=False)
 
+    def test_whole_population_capture_and_overlay(self):
+        for model in ('initial', 's1-g3-c4', 's2-g3-c1'):
+            reference, pixels = self.reference(model, 61440, 'all', 'rainfed-crowded')
+            record = json.loads(reference)
+            self.assertEqual(record['controller_assignment'], 'whole-population')
+            self.assertIsNone(record['candidate_founder'])
+            self.assertIsNone(record['resident_policy'])
+            for highlight in (False, True):
+                folder = self.root / f'population-{model}-{highlight}'
+                extra = ('--highlight-family',) if highlight else ()
+                result = self.run_player('--policy', model, '--layout', 'rainfed-crowded',
+                    '--founder', 'all', '--speed', 'max', '--stop-tick', 61440,
+                    '--capture-on-exit', '--capture-dir', folder, *extra)
+                self.assertEqual(result.stdout, reference)
+                self.verify_capture(next(folder.glob('shot-*')), reference, pixels)
+
     def test_capture_rejects_symlink_directory(self):
         target = self.root / 'target'
         target.mkdir()
