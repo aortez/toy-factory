@@ -10,9 +10,11 @@ for the current findings and next step, and the
 and checked. The [adult resources and renewal checkpoint](../../docs/garden-adult-resources-checkpoint.md)
 keeps that earlier review's scope, grouped findings and limitations. This page
 is a detailed evidence index in investigation order, not a list of current tasks.
-From the whole-population comparison on, result archives, result JSON and frame
-captures stay local, outside git. Each report names its files; its protocol and
-collector reproduce them.
+From the whole-population comparison on, result archives, result JSON, figures
+and frame captures stay local, outside git. Each population report is a short
+note: what ran, what it found, its result's SHA256, the script that reproduces
+it and a link to the full report in PR #38. `make host-research-player-build`
+prepares the runtime and binary those scripts use.
 
 The [whole-population comparison](leaf-population.md) gives every family the
 same controller through day 1376. Both finalists keep higher late renewal and

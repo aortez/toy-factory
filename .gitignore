@@ -30,3 +30,4 @@ __pycache__/
 /benchmarks/**/*.json.gz
 /benchmarks/garden-seasons/*.json
 /benchmarks/garden-seasons/frames/**/*.png
+/benchmarks/garden-seasons/frames/**/*.svg

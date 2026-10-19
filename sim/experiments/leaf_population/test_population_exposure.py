@@ -89,10 +89,13 @@ class PublishedExposureTests(unittest.TestCase):
         self.assertEqual(self.result['native_calls'], 0)
         self.assertEqual(len(self.result['inputs']), 2)
         svg = exposure_figure.render(self.result)
-        self.assertEqual(svg, FIGURE.read_bytes())
         root = ElementTree.fromstring(svg)
         self.assertEqual(root.attrib['viewBox'], '0 0 1040 800')
         self.assertNotIn(b'<script', svg)
+
+    @local_results.needs('frames/leaf-population-exposure.svg')
+    def test_local_figure_matches_derivation(self):
+        self.assertEqual(exposure_figure.render(self.result), FIGURE.read_bytes())
 
     def test_upper_canopy_is_similar_and_lower_canopy_explains_gap(self):
         a, b = (self.result['cases'][p] for p in ('original', 'fewest'))
