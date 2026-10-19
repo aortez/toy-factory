@@ -101,7 +101,9 @@ add_test(NAME research-session COMMAND research-session-test)
 add_test(NAME research-population COMMAND research-population-test)
 add_test(NAME research-population-cli COMMAND "${Python3_EXECUTABLE}" -B
     "${CMAKE_CURRENT_LIST_DIR}/test_population.py" $<TARGET_FILE:research-replay>)
-set_tests_properties(research-population research-population-cli PROPERTIES TIMEOUT 90)
+set_tests_properties(research-population-cli PROPERTIES TIMEOUT 90)
+# The sanitized population test takes about 80 seconds on CI; allow for slower runners.
+set_tests_properties(research-population PROPERTIES TIMEOUT 240)
 add_test(NAME research-population-analysis COMMAND "${Python3_EXECUTABLE}" -B -m unittest
     discover -s "${CMAKE_CURRENT_LIST_DIR}/../experiments/leaf_population" -p "test_*.py")
 # Archive verification now takes about a minute; allow scheduling headroom.
